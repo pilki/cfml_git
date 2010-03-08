@@ -31,9 +31,11 @@ Global Instance deque_rep `{Rep a_ A} : Rep (deque a_) (list A) :=
 
 (** automation *)
 
+Lemma C_val2 : C = 2.
+Proof. auto. Qed.
 Lemma c_val2 : c = 2.
 Proof. rewrite~ c_val. Qed.
-Hint Rewrite c_val2 : rew_maths.
+Hint Rewrite C_val2 c_val2 : rew_maths.
 
 Hint Constructors Forall2.
 Hint Resolve Forall2_last.
@@ -54,6 +56,27 @@ Proof.
   rewrite~ (@length_zero_inv _ r) in H.
   rewrite~ (@length_zero_inv _ f) in H.
   inverts~ H.
+Qed.
+
+Lemma empty_from_list : forall lenf lenr Q,
+  rep (lenf, nil, lenr, nil) Q -> Q = nil.
+Proof.
+  introv K. lets (H&LF&LR&CF&CR): K.
+  rew_list in *. apply~ empty_from_len.
+Qed.
+
+Lemma singleton_right : forall lenf lenr x r Q,
+  rep (lenf, nil, lenr, x::r) Q -> r = nil.
+Proof.
+  introv (H&LF&LR&CF&CR). rew_list in *.
+  apply~ length_zero_inv.
+Qed.
+
+Lemma singleton_left : forall lenf lenr x f Q,
+  rep (lenf, x::f, lenr, nil) Q -> f = nil.
+Proof.
+  introv (H&LF&LR&CF&CR). rew_list in *.
+  apply~ length_zero_inv.
 Qed.
 
 (** verification *)
@@ -80,47 +103,125 @@ Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
 
 Lemma check_spec : 
   Spec check (q:deque a_) |R>>
-    forall Q, inv 1 q Q ->
+    forall Q, inv 2 q Q ->
     R (Q ; deque a_).
 Proof.
-  xcf. intros (((lenf,f),lenr),r) Q K. xgo.
-  destructs K. subst. simple~.
-  destructs K. simpl. rew_list~.
+  xcf. intros (((lenf,f),lenr),r) Q K. 
+
+
 Qed.
 
 Hint Extern 1 (RegisterSpec check) => Provide check_spec.
 
-Lemma snoc_spec : 
-  RepTotal snoc (Q;deque a_) (X;a_) >> (Q & X) ; deque a_.
+Lemma cons_spec : 
+  RepTotal cons (X;a_) (Q;deque a_) >> (X::Q) ; deque a_.
 Proof.
-  xcf. intros (((lenf,f),lenr),r) x. introv (H&LF&LR&LE) RX.
-  xgo~; ximpl_nointros. unfolds. rew_list. rewrite~ <- app_assoc. 
+  xcf. intros x (((lenf,f),lenr),r) X Q RX RQ. 
+  xgo; ximpl_nointros. intuit RQ. splits~; rew_list~. 
 Qed.
 
-Hint Extern 1 (RegisterSpec snoc) => Provide snoc_spec.
+Hint Extern 1 (RegisterSpec cons) => Provide cons_spec.
 
 Lemma head_spec : 
   RepSpec head (Q;deque a_) |R>>
      Q <> (@nil A) -> R (is_head Q ;; a_).
 Proof.
-  xcf. intros (((lenf,f),lenr),r) Q RQ NE. xgo.
-  apply NE. apply~ empty_from_f.
-  intuit RQ. inverts* H.
+  xcf. intros (((lenf,f),lenr),r) Q RQ NE. xgo; xcleanpat.
+  apply NE. apply~ empty_from_list.
+  rewrite (singleton_right RQ) in RQ. intuit RQ.
+   rew_list in H. inverts~ H.
+  intuit RQ. rew_list in H. inverts~ H.
 Qed.
 
 Hint Extern 1 (RegisterSpec head) => Provide head_spec.
+
+Hint Resolve empty_spec.
 
 Lemma tail_spec :
   RepSpec tail (Q;deque a_) |R>> 
      Q <> nil -> R (is_tail Q ;; deque a_).
 Proof.
-  xcf. intros (((lenf,f),lenr),r) Q RQ NE. xmatch.
-  apply NE. apply~ empty_from_f.
-  intuit RQ. rew_list in *. inverts H. xapp~. ximpl~.
+  xcf. intros (((lenf,f),lenr),r) Q RQ NE. xmatch; xcleanpat.
+  xgo. apply NE. apply~ empty_from_list.
+  xgo. rewrite (singleton_right RQ) in RQ. intuit RQ.
+   rew_list in H. inverts H. inverts~ H6. 
+  intuit RQ. rew_list in *. inverts H.
+   xapp. fapplys HR. constructors~. ximpl~.
 Qed.
 
 Hint Extern 1 (RegisterSpec tail) => Provide tail_spec.
 
+Lemma snoc_spec : 
+  RepTotal snoc (Q;deque a_) (X;a_) >> (Q & X) ; deque a_.
+Proof.
+  xcf. intros (((lenf,f),lenr),r) x Q X RQ RX.
+  xgo; ximpl_nointros. intuit RQ. splits~; rew_list~.
+  rewrite~ <- app_assoc.
+Qed.
+
+Hint Extern 1 (RegisterSpec snoc) => Provide snoc_spec.
+
+Lemma is_last_one : forall A (x:A),
+  is_last (x::nil) x.
+Proof. intros. unfolds. exists~ (@nil A0). Qed.
+Hint Resolve is_last_one.
+
+Lemma is_init_one : forall A (x:A),
+  is_init (x::nil) nil.
+Proof. intros. unfolds. exists~ x. Qed.
+Hint Resolve is_init_one.
+
+(*
+*)
+
+
+Section PropProperties2.
+Variables A1 A2 : Type.
+Implicit Types l : list A1.
+Implicit Types r : list A2.
+Hint Constructors Forall2.
+
+Lemma Forall2_last_inv : forall P l1 r' x1, 
+  Forall2 P (l1 & x1) r' ->
+  exists r2 x2, r' = r2 & x2 /\ Forall2 P l1 r2 /\ P x1 x2.
+Admitted. (* todo *)
+
+End PropProperties2.
+
+Implicit Arguments Forall2_last_inv [A1 A2 P l1 r' x1].
+
+
+
+Lemma last_spec : 
+  RepSpec last (Q;deque a_) |R>>
+     Q <> (@nil A) -> R (is_last Q ;; a_).
+Proof.
+  xcf. intros (((lenf,f),lenr),r) Q RQ NE. xgo; xcleanpat.
+  apply NE. apply~ empty_from_list.
+  rewrite (singleton_left RQ) in RQ. intuit RQ.
+   rew_list in H. inverts H. inverts~ H6.
+  intuit RQ. rew_list in H. rewrite <- app_assoc in H.
+   lets~ (Q'&X&EQ'&RQ'&RX): (Forall2_last_inv H).
+Qed.
+
+Hint Extern 1 (RegisterSpec last) => Provide last_spec.
+
+Lemma init_spec :
+  RepSpec init (Q;deque a_) |R>> 
+     Q <> nil -> R (is_init Q ;; deque a_).
+Proof.
+  xcf. intros (((lenf,f),lenr),r) Q RQ NE. xmatch; xcleanpat.
+  xgo. apply NE. apply~ empty_from_list.
+  xgo. rewrite (singleton_left RQ) in RQ. intuit RQ.
+   rew_list in H. inverts H. inverts~ H6.
+  intuit RQ. rew_list in *. rewrite <- app_assoc in H.
+   lets (Q'&X&EQ'&RQ'&RX): (Forall2_last_inv H).
+   xapp. fapplys HR. constructors~. ximpl~.
+Qed.
+
+Hint Extern 1 (RegisterSpec init) => Provide init_spec.
+
 End Polymorphic.
 
 End BankersQueueSpec.
+
