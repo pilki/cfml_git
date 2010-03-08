@@ -19,6 +19,7 @@ TOOLS=\
 OKA=\
 	okasaki/Okasaki_ml.v \
 	okasaki/QueueSig_ml.v \
+	okasaki/DequeSig_ml.v \
 	okasaki/OrderedSig_ml.v \
 	okasaki/FsetSig_ml.v \
 	okasaki/HeapSig_ml.v \
@@ -36,6 +37,7 @@ OKA=\
 	okasaki/UnbalancedSet_ml.v \
 	okasaki/BottomUpMergeSort_ml.v \
 	okasaki/QueueSig_proof.v \
+	okasaki/DequeSig_proof.v \
 	okasaki/OrderedSig_proof.v \
 	okasaki/FsetSig_proof.v \
 	okasaki/HeapSig_proof.v \
@@ -53,9 +55,9 @@ OKA=\
 	okasaki/BottomUpMergeSort_proof.v 
 
 NEW=\
-	okasaki/DequeSig_ml.v \
-	okasaki/DequeSig_proof.v \
-	okasaki/BankersDeque_ml.v 
+	okasaki/OrderedSig_proof.v \
+	okasaki/HeapSig_proof.v \
+	okasaki/LazyPairingHeap_ml.v 
 
 #okasaki/PhysicistsQueue_ml.v 
  

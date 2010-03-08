@@ -1,0 +1,44 @@
+
+(*
+Definition spec_measure_2 
+  A1 A2 B (size:A1->A2->nat)
+  f (K:A1->A2->~~B->Prop) :=
+  spec_2 (fun x1 x2 R => 
+    spec_2 (fun y1 y2 R' => (size y1 y2 < size x1 x2)%nat -> K y1 y2 R') f ->
+    K x1 x2 R) f.
+
+Let measure_for2 : forall 
+  A11 A12 B1 (size1:A11->A12->nat) f1 (K1:A11->A12->~~B1->Prop) 
+  A21 A22 B2 (size2:A21->A22->nat) f2 (K2:A12->A22->~~B2->Prop),
+  
+(P Q : nat -> Prop),
+  (forall n, (forall m, m < n -> P n))
+
+  (forall n, P n /\ Q n).
+*)
+
+Lemma merge_spec : RepTotal merge (E1;heap) (E2;heap) >>
+  E1 \u E2 ; heap.
+Proof.
+  xintros. intros h1 h2. intros. sets_eq n: ((size h1 + size h2)%nat).
+  gen EQn. gen h1 h2 E1 E2. pattern n.
+  match goal with |- ?P _ => sets m_spec: P end.
+  applys (>>> proj1 __ (link_spec (S n))). move n after m_spec.
+  induction n using peano_induction. rename H into IH. split. 
+  (* verif merge *)
+  unfolds. clears. introv R1 R2 N. xcf_app. xmatch; xcleanpat.
+  xgo. inverts R2. equates* 1.
+  xgo. inverts R1. equates* 1.
+  inverts R1. inverts R2.
+   simpl in N. forwards (_&K): (IH ((n-1)%nat)). math. unfolds in K.
+   xapp~. xif.
+     xapp~. ximpl. equates* 1.
+     applys_to P_x0 nle_to_sle. xapp~. ximpl. equates* 1.
+  (* verif link *)
+  unfolds. xcf. introv Sh1 Rx Ro Rs R2 Lo Ls L2 N.
+  forwards (K&_): (IH ((size h + size a)%nat)). skip. 
+   unfolds in K. clears.
+  xmatch; inverts H.
+  xgo. inverts Ro. constructors*. simpl in K.
+  xgo~. xapp. constructors*.
+Qed.

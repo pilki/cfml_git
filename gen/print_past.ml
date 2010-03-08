@@ -175,12 +175,12 @@ and string_of_structure_item si =
    match si.pstr_desc with
    | Pstr_eval e -> sprintf "let _ = %s" (string_of_expression false e)
    | Pstr_value (r,l) -> 
-      if (List.length l != 1)
-         then unsupported "mutually-recursive top-level definitions";
-      (* todo: ajouter support pour le "and" *)
-      let (p,e) = List.hd l in
-      Format.sprintf "@[let%s %s =@ @[<2>%s@]@]" 
-         (string_of_recflag r) (string_of_pattern false p) (string_of_expression false e)
+       let show_pe (p,e) =
+          let sp = string_of_pattern false p in
+          let se = string_of_expression false e in
+          Format.sprintf "%s =@ @[%s@]" sp se in
+       let sl = show_list show_pe " and " l in
+       Format.sprintf "@[let%s %s]" (string_of_recflag r) sl 
    | Pstr_primitive (s,v) -> sprintf "val %s : _" s 
    | Pstr_type l -> sprintf "type _ = _"
    | Pstr_exception (s,e) -> sprintf "exception %s = _" s

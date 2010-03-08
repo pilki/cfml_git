@@ -8,7 +8,8 @@ struct
 
    module Element = Element
 
-   type heap = Empty | Node of Element.t * heap * heap Lazy.t
+   type heaps = Empty | Node of Element.t * heaps * heaps Lazy.t
+   type heap = heaps
 
    let empty = Empty
 
