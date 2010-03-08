@@ -20,7 +20,7 @@ Definition inv (d:int) `{Rep a_ A} (q:queue a_) (Q:list A) :=
   /\ lenr = length r
   /\ lenr <= lenf + d.
 
-Global Instance repr `{Rep a_ A} : Rep (queue a_) (list A) :=
+Global Instance queue_rep `{Rep a_ A} : Rep (queue a_) (list A) :=
   inv 0.
 
 (** automation *)
@@ -31,14 +31,37 @@ Hint Unfold is_head is_tail.
 Hint Extern 1 (@rep (queue _) _ _ _ _) => simpl.
 Hint Unfold inv.
 
-Ltac auto_tilde ::= auto with maths.
+Ltac auto_tilde ::= eauto with maths.
+
+Section Polymorphic.
+Variables (a_ A : Type) (RA:Rep a_ A).
 
 (** useful facts *)
 
-(** verification *)
+Lemma empty_from_lenf : forall f lenr r Q,
+  rep (0, f, lenr, r) Q -> Q = nil.
+Proof.
+  introv (H&LF&LR&LE). 
+  rewrite~ (@length_zero_inv _ r) in H.
+  rewrite~ (@length_zero_inv _ f) in H.
+  inverts~ H.
+Qed.
 
-Section Polymorphic.
-Variables (a_ A : Type) (RA:Rep a_ A).
+Lemma empty_from_f : forall lenf lenr r Q,
+  rep (lenf, nil, lenr, r) Q -> Q = nil.
+Proof.
+  introv (H&LF&LR&LE). rew_list in LF. 
+  apply~ empty_from_lenf. constructors~.
+Qed.
+
+Lemma empty_to_lenf : forall lenf f lenr r,
+  rep (lenf, f, lenr, r) nil -> lenf = 0.
+Proof.
+  introv (H&LF&LR&LE). inverts H.
+  destruct (nil_eq_app_rev_inv H1). subst~.
+Qed.
+
+(** verification *)
 
 Lemma empty_spec : 
   rep (@empty a_) (@nil A).
@@ -47,15 +70,17 @@ Proof.
   intros. simpl. rew_list~.
 Qed.
 
+Hint Extern 1 (RegisterSpec empty) => Provide empty_spec.
+
 Lemma is_empty_spec : 
   RepTotal is_empty (Q;queue a_) >> bool_of (Q = nil).
 Proof.
-  xcf. intros (((lenf,f),lenr),r) Q (H&LF&LR&LE). xgo.
-  unfolds. extens. iff Z; fold_prop.
-  rewrite~ (@length_zero_inv _ r) in H.
-   rewrite~ (@length_zero_inv _ f) in H. inverts~ H.
-  subst. inverts H. destruct (nil_eq_app_rev_inv H1). subst~.
-Qed.
+  xcf. intros (((lenf,f),lenr),r) Q RQ. xgo.
+  unfolds. extens. iff Z; fold_prop; subst.
+  apply~ empty_from_lenf. apply~ empty_to_lenf.
+Qed. 
+
+Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
 
 Lemma check_spec : 
   Spec check (q:queue a_) |R>>
@@ -64,7 +89,7 @@ Lemma check_spec :
 Proof.
   xcf. intros (((lenf,f),lenr),r) Q K. xgo.
   destructs K. subst. simple~.
-  destructs K. simpl. rew_list. rewrite~ length_rev.
+  destructs K. simpl. rew_list~.
 Qed.
 
 Hint Extern 1 (RegisterSpec check) => Provide check_spec.
@@ -73,30 +98,33 @@ Lemma snoc_spec :
   RepTotal snoc (Q;queue a_) (X;a_) >> (Q & X) ; queue a_.
 Proof.
   xcf. intros (((lenf,f),lenr),r) x. introv (H&LF&LR&LE) RX.
-  xgo~; ximpl. unfolds. rew_list. rewrite~ <- app_assoc. 
+  xgo~; ximpl_nointros. unfolds. rew_list. rewrite~ <- app_assoc. 
 Qed.
 
-(* -- todo
+Hint Extern 1 (RegisterSpec snoc) => Provide snoc_spec.
+
 Lemma head_spec : 
   RepSpec head (Q;queue a_) |R>>
      Q <> (@nil A) -> R (is_head Q ;; a_).
 Proof.
-  xcf. intros (lenf, r] q. introv H NE.
-  simpl in H.
- xgo; rew_list in H.
-  rewrite~ M in H. inverts~ H.
-  inverts~ H.
+  xcf. intros (((lenf,f),lenr),r) Q RQ NE. xgo.
+  apply NE. apply~ empty_from_f.
+  intuit RQ. inverts* H.
 Qed.
+
+Hint Extern 1 (RegisterSpec head) => Provide head_spec.
 
 Lemma tail_spec :
   RepSpec tail (Q;queue a_) |R>> 
      Q <> nil -> R (is_tail Q ;; queue a_).
 Proof.
-  xcf. intros [f r] q. introv [H M] NE. xmatch.
-  xgo. rewrite~ M in H. inverts~ H.
-  inverts H. xgo~.
+  xcf. intros (((lenf,f),lenr),r) Q RQ NE. xmatch.
+  apply NE. apply~ empty_from_f.
+  intuit RQ. rew_list in *. inverts H. xapp~. ximpl~.
 Qed.
 
+Hint Extern 1 (RegisterSpec tail) => Provide tail_spec.
 
 End Polymorphic.
-*)
+
+End BankersQueueSpec.

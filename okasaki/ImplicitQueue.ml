@@ -1,6 +1,7 @@
 open Okasaki
 open QueueSig
 
+(* 
 module ImplicitQueue : Queue =
 struct
 
@@ -37,3 +38,4 @@ struct
                  Deep (Two (y,z), lazy (tail q), r)
 
 end
+*)

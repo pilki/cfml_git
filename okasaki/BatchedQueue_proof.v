@@ -12,7 +12,7 @@ Import MLBatchedQueue.
 
 (** invariant *)
 
-Global Instance repr `{Rep a_ A} : Rep (queue a_) (list A) :=
+Global Instance queue_rep `{Rep a_ A} : Rep (queue a_) (list A) :=
   fun (q:queue a_) (Q:list A) =>
   let (f,r) := q in 
      Forall2 rep (f ++ rev r) Q
@@ -100,4 +100,4 @@ Hint Extern 1 (RegisterSpec tail) => Provide tail_spec.
 
 End Polymorphic.
 
-
+End BatchedQueueSpec.

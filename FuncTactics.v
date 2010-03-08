@@ -566,25 +566,29 @@ Ltac ximpl_base tt :=
         | apply pred_le_refl
         | unfold post_le ].
 
-Tactic Notation "ximpl" :=
+Tactic Notation "ximpl_nointros" :=
   ximpl_base tt.
-Tactic Notation "ximpl" "~" :=
-  ximpl; xauto_tilde.
-Tactic Notation "ximpl" "*" :=
-  ximpl; xauto_star.
 
 Ltac check_post_le_no_meta_left tt :=
   match goal with |- ?P ===> _ =>
     match goal with |- P ===> _ => idtac end end.
 
-Tactic Notation "ximpl" "as" ident(x) :=
+Tactic Notation "ximpl" "as" simple_intropattern(x) :=
   let H := fresh "H" x in intros x Hx.
-Tactic Notation "ximpl" "~" "as" ident(x) :=
+Tactic Notation "ximpl" "~" "as" simple_intropattern(x) :=
   ximpl as x; xauto_tilde.
-Tactic Notation "ximpl" "*" "as" ident(x) :=
+Tactic Notation "ximpl" "*" "as" simple_intropattern(x) :=
   ximpl as x; xauto_star.
 Tactic Notation "ximpl" "as" simple_intropattern(x) simple_intropattern(Hx) :=
   intros x Hx.
+
+Tactic Notation "ximpl" :=
+  let x := fresh "x" in ximpl as x.
+Tactic Notation "ximpl" "~" :=
+  ximpl; xauto_tilde.
+Tactic Notation "ximpl" "*" :=
+  ximpl; xauto_star.
+
 
 (*--------------------------------------------------------*)
 (* ** [xapp] *)
@@ -625,7 +629,7 @@ Ltac xapp_core cont_r cont_w :=
         | fail 1 "cannot find a specification" ].
 
 Ltac xapp_cont_w_auto tt :=
-  first [ check_post_le_no_meta_left tt; ximpl | idtac ].
+  first [ check_post_le_no_meta_left tt; ximpl_nointros | idtac ].
 
 Ltac xapp_cont_w_manual x :=
   let Hx := fresh "H" x in intros x Hx.
