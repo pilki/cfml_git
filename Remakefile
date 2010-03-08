@@ -1,0 +1,21 @@
+COQBIN=
+INCLUDES=-I . -I ./demo -I ./okasaki 
+COQC=$(COQBIN)coqc -dont-load-proofs $(INCLUDES)
+RECOQ=/home/charguer/coq/recoq/recoq
+
+TARGETS=$(wildcard *.vo) $(wildcard lib/*.vo) $(wildcard demo/*.vo) $(wildcard okasaki/*.vo)
+
+# do not recompile the .vo file given as target to remake
+ifeq ($(findstring $(MAKECMDGOALS),*.vo),)
+$(MAKECMDGOALS): $(patsubst $(MAKECMDGOALS), , $(TARGETS))
+	touch $(MAKECMDGOALS)
+endif
+
+%.vo: %.v
+	@echo "RECOQ $<"
+	$(RECOQ) $< -c $(COQC) $<
+
+all: $(TARGETS) 
+
+
+
