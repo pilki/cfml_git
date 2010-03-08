@@ -101,14 +101,68 @@ Qed.
 
 Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
 
+Ltac xauto_tilde_default cont ::= 
+  check_not_a_tag tt;  
+  try solve [ cont tt | apply refl_equal | substs; if_eq; solve [ cont tt | apply refl_equal ] ].
+
+Ltac xret_pre cont := 
+  match ltac_get_tag tt with
+  | tag_ret => cont tt
+  | tag_let => xlet; [ cont tt | instantiate ]
+  end.  
+
+Tactic Notation "xret" :=  (* todo: fonctions ltac *)
+  xret_pre ltac:(fun _ => xret_noclean; xclean).
+Tactic Notation "xret" "~" :=  
+  xret; xauto~.
+Tactic Notation "xret" "*" :=  
+  xret; xauto*.
+
+Axiom div2_bounds : forall m n,
+  m = n / 2 -> n <= 2 * m /\ 2 * m <= n + 1.
+Implicit Arguments div2_bounds [m n].
+
+Axiom abs_pos_le : forall (n:int) (m:nat),
+  0 <= n -> n <= m -> abs n <= m.
+
+Axiom rev_rev : forall A (l:list A), rev (rev l) = l.
+Hint Rewrite rev_rev : rew_list.
+
+Axiom nat_int_eq : forall (n:int) (m:nat),
+  m = abs n -> m = n :> int.
+Implicit Arguments nat_int_eq [n m].
+
 Lemma check_spec : 
   Spec check (q:deque a_) |R>>
     forall Q, inv 2 q Q ->
     R (Q ; deque a_).
 Proof.
-  xcf. intros (((lenf,f),lenr),r) Q K. 
-
-
+  xcf. intros (((lenf,f),lenr),r) Q (H&LF&LR&CF&CR).
+  xmatch. xcases.
+  (* rebalance left *) 
+  xret~. xret~.
+  lets (B1&B2): (div2_bounds (eq_sym Pi)).
+  asserts: (0 <= i /\ i <= length f). math. (*todo: math E *)
+  xgo~. forwards~ (Ef&Lf'&Lx14): take_and_drop. apply~ abs_pos_le.
+  lets: (nat_int_eq Lf'). hnf. splits.
+    gen H. rewrite Ef. rewrite <- Pr'. rew_list~.
+    auto~.
+    subst r'. rew_length~.
+    math.
+    math.   
+  (* rebalance right *)
+  xret~. xret~.
+  lets (B1&B2): (div2_bounds (eq_sym Pi)).
+  asserts: (0 <= i /\ i <= length r). math. (*todo: math E *)
+  xgo~. forwards~ (Er&Lr'&Lx10): take_and_drop. apply~ abs_pos_le.
+  lets: (nat_int_eq Lr'). hnf. splits.
+    gen H. rewrite Er. rewrite <- Pf'. rew_list~.
+    subst f'. rew_length~.
+    auto~.
+    math.
+    math.   
+  (* no rebalance *)
+  xgo. simpl. subst q. splits~.
 Qed.
 
 Hint Extern 1 (RegisterSpec check) => Provide check_spec.
