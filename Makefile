@@ -53,7 +53,11 @@ OKA=\
 	okasaki/BottomUpMergeSort_proof.v 
 
 NEW=\
-	okasaki/PhysicistsQueue_ml.v 
+	okasaki/DequeSig_ml.v \
+	okasaki/DequeSig_proof.v \
+	okasaki/BankersDeque_ml.v 
+
+#okasaki/PhysicistsQueue_ml.v 
  
 
 
@@ -93,7 +97,7 @@ ALL=$(TOOLS) $(DEMO) $(OKA)
 .SECONDARY: *.d okasaki/*.d demo/*.d *_ml.d okasaki/*_ml.d demo/*_ml.d
 
 def: all
-all: full
+all: full .camldep
 full: $(ALL:.v=.vo) 
 tools: $(TOOLS:.v=.vo) 
 demo: $(DEMO:.v=.vo)

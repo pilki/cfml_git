@@ -1,13 +1,6 @@
 Set Implicit Arguments.
 Require Import FuncTactics QueueSig_ml LibCore.
 
-Definition is_head A (l:list A) (x:A) :=
-  exists t, l = x::t.
-
-Definition is_tail A (l:list A) (t:list A) :=
-  exists x, l = x::t.
-
-
 Module Type QueueSigSpec.
 
 Declare Module Q : MLQueue.

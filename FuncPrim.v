@@ -16,6 +16,24 @@ Instance list_rep : forall `{Rep a A}, Rep (list a) (list A) :=
 (************************************************************)
 (** Axiomatic specification of the primitive functions *)
 
+Parameter ml_take : val.
+
+Parameter ml_take_spec : forall A,
+  Spec ml_take (n:int) (L:list A) |R>>
+    0 <= n -> n <= length L -> R(= take (abs n) L).
+
+Hint Extern 1 (RegisterSpec ml_take) => Provide ml_take_spec.
+
+Parameter ml_drop : val.
+
+Parameter ml_drop_spec : forall A,
+  Spec ml_drop (n:int) (L:list A) |R>>
+    0 <= n -> n <= length L -> R(= drop (abs n) L).
+
+Hint Extern 1 (RegisterSpec ml_drop) => Provide ml_drop_spec.
+
+
+
 Parameter ml_list_hd : val.
 
 Parameter ml_list_hd_spec : forall A,

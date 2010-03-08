@@ -63,19 +63,19 @@ let all_primitives_table = (*todo:complete*)
     "List.rev", "ml_rev";
     "List.append", "ml_append";
     "Stream.append", "ml_append";
-    "Stream.take", "mk_take";  
+    "Stream.take", "ml_take";  
     "Stream.drop", "ml_drop";  ]
 
 let builtin_constructors_table = (* todo: indiquer pervasives *)
-  [ "[]", "nil";
-    "::", "cons";
-    "()", "tt";
-    "true", "true";
-    "false", "false";
-    "Nil", "nil";
-    "Cons", "cons";
-    "Stream.Nil", "nil";
-    "Stream.Cons", "cons";
+  [ "[]", "Coq.Lists.List.nil";
+    "::", "Coq.Lists.List.cons";
+    "()", "Coq.Init.Datatypes.tt";
+    "true", "Coq.Init.Datatypes.true";
+    "false", "Coq.Init.Datatypes.false";
+    "Nil", "Coq.Lists.List.nil";
+    "Cons", "Coq.Lists.List.cons";
+    "Stream.Nil", "Coq.Lists.List.nil";
+    "Stream.Cons", "Coq.Lists.List.cons";
     ]
 
 let inlined_primitives_names =

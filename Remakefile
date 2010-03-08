@@ -11,6 +11,11 @@ $(MAKECMDGOALS): $(patsubst $(MAKECMDGOALS), , $(TARGETS))
 	touch $(MAKECMDGOALS)
 endif
 
+lib/%.vo: lib/%.v
+	@echo "RECOQ $<"
+	$(RECOQ) $< -c $(COQC) $<
+   cp $< .
+
 %.vo: %.v
 	@echo "RECOQ $<"
 	$(RECOQ) $< -c $(COQC) $<
