@@ -129,11 +129,6 @@ Ltac inverts_tactic H i1 i2 i3 i4 i5 i6 ::=
 
 Hint Constructors invd inv.
 
-Lemma empty_inv : forall `{Rep a A},
-  inv _ empty nil.
-Admitted.
-Hint Extern 1 (inv _ empty _) => apply empty_inv.
-
 Ltac inverts_as_tactic H ::=
   let rec go tt :=
     match goal with 
@@ -162,78 +157,23 @@ Proof.
   rew_list. simpl. rew_list. fequals.
 Qed.
 
-
-Lemma snoc_spec : forall `{Rep a A},
-  RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ; queue a.
-Proof.
-  intros. xintros. intros. sets_eq n: (length Q).
-  gen x1 x2 Q X. gen H. gen a A. apply~ good_induct; clears n.
-  introv IH. intros ? ? ? q y Q RQ N Y RY. subst_hyp N.
-  xcf_app; auto. xisspec. (* todo: automate xisspec *)
-  xmatch. 
-  xgo. inverts RQ as _ M. inverts M. rew_list~.
-  xgo. inverts RQ as _ M. inverts M. rew_list~.
-  xgo. inverts RQ as. introv Df Vf Rm _ Dr EQ.
-   inverts Dr. subst Q. rew_list~.
-  inverts RQ as. introv Df Vf Rm _ Dr EQ. 
-   inverts Dr as RX. xlet. (* todo; xapp_args *)
-    applys~ (>>> IH ((a*a)%type) (x,y) (X,Y)). skip.
-   xgo. hnf in P_x0. subst Q. constructors~.
-     rew_list. rewrite~ splitin_last.
-  xgo. inverts RQ. 
-    destruct d. applys~ C. applys~ C0. auto.
-    destruct dr. applys~ C1. applys~ C2. auto.
-Qed.
-
-Hint Extern 1 (RegisterSpec snoc) => Provide snoc_spec.
-
-
-
-
-
-
-Section Polymorphic.
-Variables (a_ A : Type) (RA:Rep a_ A).
-
-Lemma empty_spec : 
-  rep (@empty a_) (@nil A).
-Proof.
-  generalizes RA A. apply (empty_cf a_). xgo.
-  intros. simpl. rew_list*. (*todo: rew_list~*)
-Qed.
+Lemma empty_spec : forall `{Rep a A},
+  rep (@empty a) (@nil A).
+Proof. intros. gen A H. apply (empty_cf a). xgo~. Qed.
 
 Hint Extern 1 (RegisterSpec empty) => Provide empty_spec.
 
-Lemma is_empty_spec : 
-  RepTotal is_empty (Q;queue a_) >> bool_of (Q = nil).
+Lemma to_empty : forall `{Rep a A} Q,
+  rep (Shallow Zero) Q -> Q = nil.
+Proof. introv RQ. inverts RQ as _ M. inverts~ M. Qed.
+
+Lemma from_empty : forall `{Rep a A} q,
+  rep q nil -> q = Shallow Zero.
 Proof.
-  xcf. intros (f0,r0) l [H M]. xgo.
-  rewrite~ M in H. inverts~ H.
-  intro_subst_hyp. inverts H as K.
-   destruct (nil_eq_app_rev_inv K). false.
+  introv RQ. inverts RQ as.
+  introv _ ID. inverts~ ID.
+  introv ? ? Df ? ? ?. inverts Df; false.
 Qed.
-
-Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
-
-Lemma checkf_spec : 
-  Spec checkf (q:queue a_) |R>>
-    forall Q, (let (f,r) := q in Forall2 rep (f ++ rev r) Q) ->
-    R (Q ; queue a_).
-Proof.
-  xcf. intros (f,r) l K. xgo; rew_list in K.
-  auto~. split; auto_false.
-Qed.
-
-Hint Extern 1 (RegisterSpec checkf) => Provide checkf_spec.
-
-Lemma snoc_spec : 
-  RepTotal snoc (Q;queue a_) (X;a_) >> (Q & X) ; queue a_.
-Proof.
-  xcf. intros [f r] x. introv [H M] RX. xgo~.
-  rew_list. rewrite~ <- app_assoc.
-Qed.
-
-Hint Extern 1 (RegisterSpec snoc) => Provide snoc_spec.
 
 Lemma head_spec : 
   RepSpec head (Q;queue a_) |R>>
@@ -258,6 +198,47 @@ Qed.
 
 Hint Extern 1 (RegisterSpec tail) => Provide tail_spec.
 
-End Polymorphic.
+
+
+
+Lemma is_empty_spec : forall `{Rep a A},
+  RepTotal is_empty (Q;queue a) >> bool_of (Q = nil).
+Proof.
+  intros. xcf; auto. xisspec. (* todo *) introv RQ. xgo.
+  apply~ to_empty.
+  intro_subst_hyp. applys C. apply~ from_empty.
+Qed.
+
+Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
+
+Lemma empty_inv : forall `{Rep a A},
+  inv _ empty nil.
+Proof. intros. apply empty_spec. Qed.
+Hint Extern 1 (inv _ empty _) => apply empty_inv.
+
+
+Lemma snoc_spec : forall `{Rep a A},
+  RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ; queue a.
+Proof.
+  intros. xintros. intros. sets_eq n: (length Q).
+  gen a A H x1 x2 Q X. apply~ good_induct; clears n.
+  introv IH. intros ? ? ? q y Q RQ N Y RY. subst_hyp N.
+  xcf_app; auto. xisspec. (* todo: automate xisspec *)
+  xmatch. 
+  xgo. inverts RQ as _ M. inverts M. rew_list~.
+  xgo. inverts RQ as _ M. inverts M. rew_list~.
+  xgo. inverts RQ as. introv Df Vf Rm _ Dr EQ.
+   inverts Dr. subst Q. rew_list~.
+  inverts RQ as. introv Df Vf Rm _ Dr EQ. 
+   inverts Dr as RX. xlet. (* todo; xapp_args *)
+    applys~ (>>> IH ((a*a)%type) (x,y) (X,Y)). skip.
+   xgo. hnf in P_x0. subst Q. constructors~.
+     rew_list. rewrite~ splitin_last.
+  xgo. inverts RQ. 
+    destruct d. applys~ C. applys~ C0. auto.
+    destruct dr. applys~ C1. applys~ C2. auto.
+Qed.
+
+Hint Extern 1 (RegisterSpec snoc) => Provide snoc_spec.
 
 End ImplicitQueueSpec.
