@@ -91,7 +91,8 @@ Ltac xintros_core cont1 cont2 cont3 ::=
 Ltac xcurried_core ::=
   let arity := spec_goal_arity tt in
   let lemma := get_curried_prove_x arity in
-  eapply lemma; try solve [ xcf; auto; instantiate; try xisspec ].
+  eapply lemma; try solve [ xcf; auto; instantiate; 
+    try (check_noevar; xisspec) ].
 
 Lemma good_induct : forall (P : (nat->Prop) -> Prop),
   (forall n, (forall m, n > m -> P (eq m)) -> P (gt n)) ->
@@ -175,30 +176,33 @@ Proof.
   introv ? ? Df ? ? ?. inverts Df; false.
 Qed.
 
-Lemma head_spec : 
-  RepSpec head (Q;queue a_) |R>>
-     Q <> (@nil A) -> R (is_head Q ;; a_).
+Lemma head_spec : forall `{Rep a A},
+  RepSpec head (Q;queue a) |R>>
+     Q <> (@nil A) -> R (is_head Q ;; a).
 Proof.
-  xcf. intros [f r] q. introv [H M] NE. xgo; rew_list in H.
-  rewrite~ M in H. inverts~ H.
-  inverts~ H.
+  intros. xintros.
+  instantiate (1:=queue a). xcf; auto. xisspec. (*todo*)
+  intros. sets_eq n: (length Q).
+  gen a A H x1 Q. apply~ good_induct; clears n.
+  introv IH. intros ? ? ? q Q RQ NE N. subst n.
+  xcf_app; auto. xisspec. (* todo: automate xisspec *)
+  xgo. 
+  apply NE. apply~ to_empty.
+  inverts RQ as _ M. inverts~ M.
+  inverts RQ as M. inverts M. subst Q. rew_list~.
+  inverts RQ as M. inverts M. subst Q. rew_list~.
+  inverts RQ. 
+    destruct d. applys~ C. applys~ C0. auto.
+    destruct df. auto. applys~ C1. applys~ C2.
 Qed.
 
 Hint Extern 1 (RegisterSpec head) => Provide head_spec.
 
-Lemma tail_spec :
-  RepSpec tail (Q;queue a_) |R>> 
-     Q <> nil -> R (is_tail Q ;; queue a_).
-Proof.
-  xcf. intros [f r] q. introv [H M] NE. xmatch.
-  xgo. rewrite~ M in H. inverts~ H.
-  inverts H. xgo~.
-  (*todo: use ximpl for ( ; ) ==> ( ;; ) *)
-Qed.
+Lemma empty_inv : forall `{Rep a A},
+  inv _ empty nil.
+Proof. intros. apply empty_spec. Qed.
 
-Hint Extern 1 (RegisterSpec tail) => Provide tail_spec.
-
-
+Hint Extern 1 (inv _ empty _) => apply empty_inv.
 
 
 Lemma is_empty_spec : forall `{Rep a A},
@@ -211,10 +215,41 @@ Qed.
 
 Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
 
-Lemma empty_inv : forall `{Rep a A},
-  inv _ empty nil.
-Proof. intros. apply empty_spec. Qed.
-Hint Extern 1 (inv _ empty _) => apply empty_inv.
+Lemma tail_spec : forall `{Rep a A},
+  RepSpec tail (Q;queue a) |R>> 
+     Q <> nil -> R (is_tail Q ;; queue a).
+Proof.
+  intros. xintros.
+  instantiate (1:=queue a). xcf; auto. xisspec. (*todo*)
+  intros. sets_eq n: (length Q).
+  gen a A H x1 Q. apply~ good_induct; clears n.
+  introv IH. intros ? ? ? q Q RQ NE N. subst n.
+  xcf_app; auto. xisspec. (* todo: automate xisspec *)
+  xmatch.
+  xgo. apply NE. apply~ to_empty.
+  xgo. inverts RQ as _ M. inverts M. exists~ (@nil A).
+  xgo. inverts RQ as M. inverts M. subst Q. rew_list. eauto 10.
+  inverts RQ as Df ? ? ? ? EQ. inverts Df. 
+   rew_list in EQ.
+    xapp_spec (@is_empty_spec (a*a)%type _ _). eauto. ximpl~.
+   xif. xgo. subst. simpl. rew_list. eauto 10.
+   xapp_spec (@head_spec (a*a)%type _ _). (* todo xapp_spec~ *)
+     fapplys HR; auto~. apply pred_le_refl.
+   xcleanpat. xmatch. clear H0.
+   xlet. applys~ (>>> IH ((a*a)%type) Qm). skip. clear IH.
+   destruct P_x2 as ([Y Z]&[RY RZ]&[Zm EQm]).
+   destruct P_x3 as (Qm'&RQm'&[Tm' EQm']).
+   subst Qm. inverts EQm'. xgo. subst Q. eauto 10.
+   xgo. inverts RQ. 
+     destruct d. applys~ C. applys~ C0. auto.
+     destruct df. auto. applys~ C2. applys~ C1.
+Qed.
+
+Hint Extern 1 (RegisterSpec tail) => Provide tail_spec.
+
+
+
+
 
 
 Lemma snoc_spec : forall `{Rep a A},
@@ -222,7 +257,7 @@ Lemma snoc_spec : forall `{Rep a A},
 Proof.
   intros. xintros. intros. sets_eq n: (length Q).
   gen a A H x1 x2 Q X. apply~ good_induct; clears n.
-  introv IH. intros ? ? ? q y Q RQ N Y RY. subst_hyp N.
+  introv IH. intros ? ? ? q y Q RQ N Y RY. subst n.
   xcf_app; auto. xisspec. (* todo: automate xisspec *)
   xmatch. 
   xgo. inverts RQ as _ M. inverts M. rew_list~.
