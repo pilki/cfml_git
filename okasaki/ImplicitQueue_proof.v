@@ -153,21 +153,33 @@ Ltac inverts_as_tactic H ::=
   go tt; gen_to_generalize; unfolds ltac_to_generalize;
   unfold eq' in *.
 
+Hint Extern 1 (@rep (prod _ _) _ _ _ _) => simpl.
+
+Lemma splitin_last : forall A Q (x y:A),
+  splitin (Q & (x,y)) = splitin Q ++ x::y::nil.
+Proof.
+  intros. induction Q as [|[a b]]. auto.
+  rew_list. simpl. rew_list. fequals.
+Qed.
 
 
 Lemma snoc_spec : forall `{Rep a A},
   RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ; queue a.
 Proof.
-  intros. xintros. intros. sets_eq n: (length Q). gen x1 x2 Q X.
-  gen H. gen a A. apply~ good_induct; clears n.
-  introv IH. intros ? ? ? q y Q RQ N X RX. subst_hyp N.
+  intros. xintros. intros. sets_eq n: (length Q).
+  gen x1 x2 Q X. gen H. gen a A. apply~ good_induct; clears n.
+  introv IH. intros ? ? ? q y Q RQ N Y RY. subst_hyp N.
   xcf_app; auto. xisspec. (* todo: automate xisspec *)
   xmatch. 
   xgo. inverts RQ as _ M. inverts M. rew_list~.
   xgo. inverts RQ as _ M. inverts M. rew_list~.
   xgo. inverts RQ as. introv Df Vf Rm _ Dr EQ.
    inverts Dr. subst Q. rew_list~.
-  
+  inverts RQ as. introv Df Vf Rm _ Dr EQ. 
+   inverts Dr as RX. xlet. (* todo; xapp_args *)
+    applys~ (>>> IH ((a*a)%type) (x,y) (X,Y)). skip.
+   xgo. hnf in P_x0. subst Q. constructors~.
+     rew_list. rewrite~ splitin_last.
   xgo. inverts RQ. 
     destruct d. applys~ C. applys~ C0. auto.
     destruct dr. applys~ C1. applys~ C2. auto.
