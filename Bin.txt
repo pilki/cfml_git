@@ -1,4 +1,48 @@
 
+(* todo: simplify using rep_unique *)
+
+
+
+(*-- old
+
+Hint Extern 1 (RegisterSpec link) => Provide link_spec.
+
+Lemma merge_spec : RepTotal merge (E1;heap) (E2;heap) >>
+  E1 \u E2 ; heap.
+Proof.
+  xcf. introv R1 R2. xmatch; xcleanpat.
+  xgo. inverts R2. equates* 1.
+  xgo. inverts R1. equates* 1.
+  inverts R1. inverts R2. xapp~. xif.
+  xapp~. ximpl. equates* 1.
+  applys_to P_x0 nle_to_sle. xapp~. ximpl. equates* 1.
+Qed.
+
+Hint Extern 1 (RegisterSpec merge) => Provide merge_spec.
+
+Lemma link_spec : Spec link h1 h2 |R>>
+  forall x ho hs X Eo Es E2,
+  h1 = Node x ho hs ->
+  rep x X ->
+  inv ho Eo ->
+  inv hs Es ->
+  inv h2 E2 ->
+  foreach (is_ge X) Eo ->
+  foreach (is_ge X) Es ->
+  foreach (is_ge X) E2 ->
+  R (\{X} \u Eo \u Es \u E2 ; heap).
+Proof.
+  xcf. introv Sh1 Rx Ro Rs R2 Lo Ls L2.
+  xmatch; inverts H.
+  xgo. inverts Ro. constructors*.
+  xgo~. constructors*.
+Qed.
+
+Hint Extern 1 (RegisterSpec link) => Provide link_spec.
+
+*)
+
+
 (*
 Definition spec_measure_2 
   A1 A2 B (size:A1->A2->nat)

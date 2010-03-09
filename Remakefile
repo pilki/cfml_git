@@ -1,5 +1,5 @@
 COQBIN=
-INCLUDES=-I . -I ./demo -I ./okasaki 
+INCLUDES=-I . -I ./demo -I ./okasaki -I ./lib
 COQC=$(COQBIN)coqc -dont-load-proofs $(INCLUDES)
 RECOQ=/home/charguer/coq/recoq/recoq
 
@@ -10,11 +10,6 @@ ifeq ($(findstring $(MAKECMDGOALS),*.vo),)
 $(MAKECMDGOALS): $(patsubst $(MAKECMDGOALS), , $(TARGETS))
 	touch $(MAKECMDGOALS)
 endif
-
-lib/%.vo: lib/%.v
-	@echo "RECOQ $<"
-	$(RECOQ) $< -c $(COQC) $<
-   cp $< .
 
 %.vo: %.v
 	@echo "RECOQ $<"

@@ -1,5 +1,5 @@
 #COQBIN=/home/charguer/coq/trunk/bin/
-INCLUDES=-I . -I ./demo -I ./okasaki 
+INCLUDES=-I . -I ./demo -I ./okasaki -I ./lib
 # -I ocamllib 
 COQC=$(COQBIN)coqc -dont-load-proofs $(INCLUDES)
 COQDEP=$(COQBIN)coqdep $(INCLUDES)
@@ -114,15 +114,16 @@ none:
 
 libcompile:
 	make lib -C lib
-	cp lib/*.vo .
+#cp lib/*.vo .
 
-lib: force libcompile
+lib: libcompile
+# force
 
 force: ;
 
-LibCore.vo: lib/LibCore.v
-	make lib -C lib
-	cp lib/*.vo .
+#LibCore.vo: lib/LibCore.v
+#	make lib -C lib
+#	cp lib/*.vo .
 #does not depend on all
 
 $(GENERATOR): force
@@ -136,15 +137,15 @@ $(GENERATOR): force
 	@echo "OCAMLC $<"
 	@$(OCAMLC) -c $< 
 
-%_ml.vo: %_ml.v %_ml.d LibCore.vo FuncPrim.vo
+%_ml.vo: %_ml.v %_ml.d FuncPrim.vo #LibCore.vo 
 	@echo "COQC $<"
 	@$(COQC) $< 
 
-%_proof.vo: %_proof.v %_ml.vo %_proof.d LibCore.vo FuncTactics.vo
+%_proof.vo: %_proof.v %_ml.vo %_proof.d FuncTactics.vo #LibCore.vo 
 	@echo "COQC $<"
 	@$(COQC) $<
 
-%.vo: %.v %.d LibCore.vo
+%.vo: %.v %.d #LibCore.vo
 	@echo "COQC $<"
 	@$(COQC) $< 
 
@@ -163,9 +164,11 @@ $(GENERATOR): force
 	sed 's/.cmo/.cmi/g' .camldeptemp > .camldep
 	rm .camldeptemp
 
+.libdep: lib/*.v
+	$(COQDEP) $(wildcard lib/*.v) > .libdep
+
 include .camldep
-
-
+include .libdep
 
 COLD=clean cleanall dep new test
 ifeq ($(findstring $(MAKECMDGOALS),$(COLD)),)
