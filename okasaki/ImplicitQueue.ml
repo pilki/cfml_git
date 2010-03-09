@@ -5,30 +5,31 @@ module ImplicitQueue : Queue =
 struct
 
    type 'a digit = Zero | One of 'a | Two of 'a * 'a
-   type 'a queue = Shallow of 'a digit | Deep of 'a digit * ('a * 'a) queue Lazy.t * 'a digit
+   type 'a queues = Shallow of 'a digit | Deep of 'a digit * ('a * 'a) queues Lazy.t * 'a digit
+   type 'a queue = 'a queues
 
    let empty : 'a queue = Shallow Zero
 
-   let is_empty : 'a queue -> bool = function  
+   let is_empty : 'a. 'a queue -> bool = function  
      | Shallow Zero -> true
      | _ -> false
 
-   let rec snoc q y : 'a queue -> 'a -> 'a queue = 
+   let rec snoc : 'a. 'a queue -> 'a -> 'a queue = fun q y ->
       match q with
       | Shallow Zero -> Shallow (One y)
       | Shallow (One x) -> Deep (Two (x,y), lazy empty, Zero)
       | Deep (f, m, Zero) -> Deep (f, m, One y)
-      | Deep (f, m, One x) -> Deep (f, lazy (snoc (!$m) (x,y) : ('a * 'a) queue), Zero)
+      | Deep (f, m, One x) -> Deep (f, lazy (snoc (!$m) (x,y)), Zero)
+      | _ -> raise BrokenInvariant
 
-   (*   raise EmptyStructure Deep (f, lazy (snoc (!$m) (x,y)), Zero)*)
-(*
-   and head : 'a queue -> 'a = function
+   and head : 'a. 'a queue -> 'a = function
       | Shallow Zero -> raise EmptyStructure
       | Shallow (One x) -> x
       | Deep (One x, m, r) -> x
       | Deep (Two (x,y), m, r) -> x
+      | _ -> raise BrokenInvariant
 
-   and tail : 'a queue -> 'a queue = function 
+   and tail : 'a. 'a queue -> 'a queue = function 
       | Shallow Zero -> raise EmptyStructure
       | Shallow (One x) -> empty
       | Deep (Two (x,y), m, r) -> Deep (One y, m, r)
@@ -37,5 +38,6 @@ struct
             then Shallow r
             else let (y,z) = head q in
                  Deep (Two (y,z), lazy (tail q), r)
-*)
+      | _ -> raise BrokenInvariant
+
 end

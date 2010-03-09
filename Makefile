@@ -137,7 +137,8 @@ $(MYOCAMLDEP):
 
 %_ml.v: %.ml %.cmi $(GENERATOR) 
 	@echo "GENERATING $@"
-	@$(GENERATOR) -debug $(INCLUDES) $<
+	@$(GENERATOR) $(INCLUDES) $<
+# -debug
 
 %.cmi: %.ml 
 	@echo "MAKING CMI: $@"
@@ -189,8 +190,9 @@ endif
 
 
 ifneq ($(findstring $(MAKECMDGOALS),new),)
-include $(NEW:.v=.d) 
-include $(TOOLS:.v=.d)
+include $(ALL:.v=.d) $(NEW:.v=.d)
+#include 
+#include $(TOOLS:.v=.d)
 endif
 
 ifneq ($(findstring $(MAKECMDGOALS),test),)
