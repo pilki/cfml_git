@@ -57,7 +57,6 @@ OKA=\
 	okasaki/BottomUpMergeSort_proof.v 
 
 NEW=\
-	okasaki/QueueSig_proof.v \
 	okasaki/ImplicitQueue_ml.v 
 
 #okasaki/PhysicistsQueue_ml.v 
