@@ -1,4 +1,156 @@
 
+Definition rep_spec_2_hyp (a1 a2 A1 A2 B : Type)
+  (rep1:a1->A1->Prop) (rep2:a2->A2->Prop) (P:A1->A2->Prop)
+  (RK:a1->a2->A1->A2->~~B->Prop) f :=
+  spec_2 (B:=B) (fun x1 x2 R => forall X1 X2, 
+    rep1 x1 X1 -> rep2 x2 X2 -> P X1 X2 -> RK x1 x2 X1 X2 R) f.
+
+Lemma conj_strengthen_2 : forall (Q1 Q2 P1 P2 : Prop),
+  (Q1 -> P1) -> (Q2 -> P2) -> (Q1 /\ Q2) -> (P1 /\ P2).
+Proof. auto*. Qed.
+
+Lemma rep_spec_2_size : forall A1 A2 (mu:A1->A2->nat) 
+  (a1 a2 B : Type) (rep1:a1->A1->Prop) (rep2:a2->A2->Prop) 
+  (RK:a1->a2->A1->A2->~~B->Prop) f,
+  (forall n, rep_spec_2_hyp rep1 rep2 (fun X1 X2 => mu X1 X2 = n) RK f) ->
+  rep_spec_2 rep1 rep2 RK f.
+Proof.
+  introv H.
+  unfolds. xintros.  unfolds. split. xweaken. unfolds rep_spec_2_hyp. eapply H. xintros.
+Qed.
+
+  spec_2 (B:=B) (fun x1 x2 R => forall X1 X2, 
+    rep1 x1 X1 -> rep2 x2 X2 -> P X1 X2 -> RK x1 x2 X1 X2 R) f.
+
+Lemma merge_spec : RepTotal merge (E1;heap) (E2;heap) >>
+  E1 \u E2 ; heap.
+Proof.
+  applys (>>> proj1 __ link_spec).
+  eapply conj_strengthen_2; try intros M.
+  
+
+  eapply rep_induction_mut_2_2_2 with 
+   (mu1 := fun E1 E2 => (2 * (card E1 + card E2) + 1)%nat)
+   (mu2 := fun E1 E2 => (2 * (card E1 + card E2))%nat);
+   unfold rep_spec_2, rep_spec_2_hyp.
+  (* verif merge *)
+  xcf. introv R1 R2 [_ IH]. xmatch; xcleanpat.
+  xgo. inverts R2. equates* 1.
+  xgo. inverts R1. equates* 1.
+  inverts R1. inverts R2. xapp~. xif.
+    xapp~.
+    applys_to P_x0 nle_to_sle. xapp~. ximpl. equates* 1.
+  (* verif link *)
+  xcf. intros h1 h2 E1 E2 R1 R2 [IH _] X MX GX. inverts R1. 
+  xgo. applys_to MX proj1. eapply (in_empty X). eauto.
+  xmatch.
+  xgo. inverts H0. forwards~: (>>> min_of_eq MX). constructors*.
+  xgo~. forwards~: (>>> min_of_eq MX). constructors*.
+Qed.
+
+
+
+
+(*
+Lemma testing: 
+  forall a A B (P:a->A->Prop) (K:a->A->~~B->Prop) (f:val),
+  True ->
+  spec_1 (fun x R => forall X, P x X -> K x X R) f.
+Admitted.
+*)
+(*
+Lemma min_of_eq : forall X Y E1 E2,
+  min_of (\{Y} \u E1 \u E2) X ->
+  foreach (is_ge X) E1 ->
+  foreach (is_ge X) E2 ->
+  X <= Y.
+Proof.
+  introv [M1 M2] G1 G2. multiset_in M1.
+  apply le_refl.
+  apply~ M2.
+  apply~ M2.
+Qed.
+*)
+
+
+(*
+Lemma test : (BagEmpty (multiset T)).
+typeclass. Qed.
+Lemma test2 : (BagCard (multiset T)).
+typeclass. Qed.
+Lemma test23 : @card_empty (multiset T) _ _ _ = card_empty.
+typeclass. Qed.
+*)
+
+(*
+Definition sum_measure A1 A2 (mu1:A1->nat) (mu2:A2->nat) (p:A1+A2) : nat :=
+  match p with 
+  | inl x => mu1 x 
+  | inr x => mu2 x 
+  end.
+  (*(sum_measure (fun h1 h2 => 2 * (size h1 + size h2)) (fun h size).*)
+
+Definition size_pair (p:heap*heap) :=
+  let (h1,h2) := p in (size h1 + size h2)%nat.
+*)
+(*
+  sets lt: (fun p1 p2 => match p1,p2 with
+    | inl x, inr y => size_pair x < size_pair y
+    | inr x, inl y => size_pair x <= size_pair y
+    | _,_ => False end).
+*)
+
+Lemma spec_induction_mut_2_2_2 : 
+  forall A11 A12 B1 A21 A22 B2 (lt:binary(A11*A12+A21*A22)),
+  forall (Wf: wf lt) f1 f2 (K1:A11->A12->~~B1->Prop) (K2:A21->A22->~~B2->Prop),
+  spec_2 (fun x1 x2 R => 
+    spec_2 (fun y1 y2 R' => lt (inl (y1,y2)) (inl (x1,x2)) -> K1 y1 y2 R') f1 ->
+    spec_2 (fun y1 y2 R' => lt (inr (y1,y2)) (inl (x1,x2)) -> K2 y1 y2 R') f2 ->
+    K1 x1 x2 R) f1 ->
+  spec_2 (fun x1 x2 R => 
+    spec_2 (fun y1 y2 R' => lt (inl (y1,y2)) (inr (x1,x2)) -> K1 y1 y2 R') f1 ->
+    spec_2 (fun y1 y2 R' => lt (inr (y1,y2)) (inr (x1,x2)) -> K2 y1 y2 R') f2 ->
+    K2 x1 x2 R) f2 ->
+  spec_2 K1 f1 /\ spec_2 K2 f2.
+Admitted.
+*)
+
+(*
+Definition link_spec := Spec link h1 h2 |R>>
+  forall E1 E2,
+  inv h1 E1 ->
+  inv h2 E2 ->
+  forall x ho hs X Eo Es,
+  h1 = Node x ho hs ->
+  rep x X ->
+  inv ho Eo ->
+  inv hs Es ->
+  foreach (is_ge X) Eo ->
+  foreach (is_ge X) Es ->
+  foreach (is_ge X) E2 ->
+  R (\{X} \u Eo \u Es \u E2 ; heap).
+*)
+(*
+Definition link_spec := RepSpec link (E1;heap) (E2;heap) |R>>
+  forall x h1 ho hs X Eo Es,
+  rep x X ->
+  inv ho Eo ->
+  inv hs Es ->
+  h1 = Node x ho hs ->
+  foreach (is_ge X) Eo ->
+  foreach (is_ge X) Es ->
+  foreach (is_ge X) E2 ->
+  R (\{X} \u Eo \u Es \u E2 ; heap).
+*)
+
+(*
+Definition is_rep_root X E :=
+  match E with
+  | Empty => False
+  | Node x ho hs => rep x X 
+  end.
+*)
+
 (* todo: simplify using rep_unique *)
 
 

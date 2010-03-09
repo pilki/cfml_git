@@ -122,6 +122,10 @@ let process_implementation_file ppf sourcefile =
           Typecore.report_error ppf err;
           print_newline();
           raise e
+      | Typetexp.Error (loc,err) -> 
+          Typetexp.report_error ppf err;
+          print_newline();
+          raise e
       | Typemod.Error (loc,err) -> 
           Typemod.report_error ppf err;
           print_newline();
@@ -158,7 +162,7 @@ let typecheck_implementation_file ppf sourcefile parsetree =
     let typedtree = Typemod.type_implementation sourcefile prefixname modulename env parsetree in
     Some typedtree
   with
-    e ->
+    e -> (* todo: factorize with above *)
       match e with
         Syntaxerr.Error err ->
           fprintf Format.err_formatter "@[%a@]@."
@@ -170,6 +174,10 @@ let typecheck_implementation_file ppf sourcefile parsetree =
           None
       | Env.Error err -> 
           Env.report_error ppf err;
+          print_newline();
+          raise e
+      | Typetexp.Error (loc,err) -> 
+          Typetexp.report_error ppf err;
           print_newline();
           raise e
       | Typecore.Error (loc,err) -> 

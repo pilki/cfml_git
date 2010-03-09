@@ -160,7 +160,7 @@ let read_pers_struct modname filename =
     really_input ic buffer 0 (String.length cmi_magic_number);
     if buffer <> cmi_magic_number then begin
       close_in ic;
-      raise(Error(Not_an_interface filename))
+      raise(Error(Not_an_interface ("invalid magic number for: " ^ filename)))
     end;
     let (name, sign) = input_value ic in
     let crcs = input_value ic in

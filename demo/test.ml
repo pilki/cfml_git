@@ -1,4 +1,50 @@
+(* ---------------------------------------------------------*)
+(* test polymorphic recursion *)
 
+type 'a tree = Leaf of 'a | Node of ('a * 'a) tree;;
+
+let rec depth : 'a. 'a tree -> int =
+  function Leaf _ -> 1 | Node x -> 1 + depth x;;
+
+(*
+
+let rec depth_aux : 'a. int -> 'a tree -> _ =
+  fun n ->
+  function Leaf _ -> (n+1) | Node x -> depth_aux (n+1) x;;
+
+
+let rec f : 'a. 'a -> _ = 
+  fun x -> 1
+and g x = f x;;
+
+type 'a t = Leaf of 'a | Node of ('a * 'a) t;;
+let rec depth : 'a. 'a t -> _ =
+  function Leaf _ -> 1 | Node x -> 1 + depth x;;
+
+let rec r : 'a. 'a list * 'b list ref = [], ref []
+and q () = r;;
+let f : 'a. _ -> _ = fun x -> x;;
+let zero : 'a. [> `Int of int | `B of 'a] as 'a  = `Int 0;;
+
+
+
+
+
+
+type 'a rlist =
+  | Nil
+  | Zero of ('a * 'a) rlist 
+  | One of 'a * ('a * 'a) rlist
+
+let rec cons : 'a -> 'a rlist -> 'a rlist = 
+  fun x -> function
+  | Nil -> One (x,Nil) 
+  | Zero ps -> One (x,ps)
+  | One (y,ps) -> Zero (cons (x,y) ps)
+
+
+
+*)
 
 
 (*
@@ -25,48 +71,11 @@ let f (p : int option * int option) = match p with
   | (Some x,_) | (_,Some x) when x > 0 -> x
   | _ -> 0
 
+*)
 
 
 (* ---------------------------------------------------------*)
 (* test lazy *)
-
-
-
-
-
-(* ---------------------------------------------------------*)
-(* test polymorphic recursion *)
-
-
-
-
-
-type 'a rlist =
-  | Nil
-  | Zero of ('a * 'a) rlist 
-  | One of 'a * ('a * 'a) rlist
-okok
-let rec cons : 'a -> 'a rlist -> 'a rlist = 
-  fun x -> function
-  | Nil -> One (x,Nil) 
-  | Zero ps -> One (x,ps)
-  | One (y,ps) -> Zero (cons (x,y) ps)
-*)
-
-(*
-type 'a tree = Leaf of 'a | Node of ('a * 'a) tree;;
-
-let rec depth : 'a. 'a tree -> _ =
-  function Leaf _ -> 1 | Node x -> 1 + depth x;;
-
-let rec depth_aux : 'a. int -> 'a tree -> _ =
-  fun n ->
-  function Leaf _ -> (n+1) | Node x -> depth_aux (n+1) x;;
-
-*)
-
-
-
 
 
 (*

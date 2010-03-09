@@ -6,7 +6,7 @@ COQDEP=$(COQBIN)coqdep $(INCLUDES)
 COQDOC=$(COQBIN)coqdoc
 OCAMLC=ocamlc $(INCLUDES)
 OCAMLDEP=ocamldep $(INCLUDES)
-
+MYOCAMLDEP=gen/myocamldep.byte 
 GENERATOR=gen/main.byte 
 
 TOOLS=\
@@ -31,6 +31,7 @@ OKA=\
 	okasaki/RedBlackSet_ml.v \
 	okasaki/LeftistHeap_ml.v \
 	okasaki/PairingHeap_ml.v \
+	okasaki/LazyPairingHeap_ml.v \
 	okasaki/BinomialHeap_ml.v \
 	okasaki/SplayHeap_ml.v \
 	okasaki/RedBlackSet_ml.v \
@@ -48,6 +49,7 @@ OKA=\
 	okasaki/RealTimeQueue_proof.v \
 	okasaki/LeftistHeap_proof.v \
 	okasaki/PairingHeap_proof.v \
+	okasaki/LazyPairingHeap_proof.v \
 	okasaki/BinomialHeap_proof.v \
 	okasaki/SplayHeap_proof.v \
 	okasaki/RedBlackSet_proof.v \
@@ -55,9 +57,8 @@ OKA=\
 	okasaki/BottomUpMergeSort_proof.v 
 
 NEW=\
-	okasaki/OrderedSig_proof.v \
-	okasaki/HeapSig_proof.v \
-	okasaki/LazyPairingHeap_ml.v 
+	okasaki/QueueSig_proof.v \
+	okasaki/ImplicitQueue_ml.v 
 
 #okasaki/PhysicistsQueue_ml.v 
  
@@ -93,7 +94,7 @@ ALL=$(TOOLS) $(DEMO) $(OKA)
 # $(COD) $(DEV) $(TUTO) $(FORM) $(DEV) $(OKA) $(DEV:.v=.vo)
 
 .PHONY: all def clean cleanall dep tools tools demo oka new cod dvpt test gen lib none
-.SUFFIXES: .ml _ml.v _ml.vo _proof.v _proof.vo .v .vo 
+.SUFFIXES: .camldep .ml _ml.v _ml.vo _proof.v _proof.vo .v .vo 
 .SECONDARY: *.cmi okasaki/*.cmi demo/*.cmi
 .SECONDARY: *_ml.v okasaki/*_ml.v demo/*_ml.v
 .SECONDARY: *.d okasaki/*.d demo/*.d *_ml.d okasaki/*_ml.d demo/*_ml.d
@@ -107,8 +108,9 @@ oka: $(OKA:.v=.vo)
 new: $(NEW:.v=.vo) 
 cod: $(COD:.v=.vo) 
 dvpt: $(DEV:.v=.vo) 
-test: $(TEST:.v=.vo)
-gen: $(GENERATOR)
+test: $(TEST:.v=.vo) 
+gen: 
+	make -C gen
 dep: .camldep $(ALL:.v=.d)
 none:
 
@@ -126,16 +128,20 @@ force: ;
 #	cp lib/*.vo .
 #does not depend on all
 
-$(GENERATOR): force
+#during dvpt only: force
+$(GENERATOR): 
 	make -C gen
 
+$(MYOCAMLDEP): 
+	make -C gen 
+
 %_ml.v: %.ml %.cmi $(GENERATOR) 
-	@echo "GENERATING $<"
+	@echo "GENERATING $@"
 	@$(GENERATOR) -debug $(INCLUDES) $<
 
 %.cmi: %.ml 
-	@echo "OCAMLC $<"
-	@$(OCAMLC) -c $< 
+	@echo "MAKING CMI: $@"
+	@$(GENERATOR) -onlycmi $(INCLUDES) $<
 
 %_ml.vo: %_ml.v %_ml.d FuncPrim.vo #LibCore.vo 
 	@echo "COQC $<"
@@ -158,22 +164,29 @@ $(GENERATOR): force
 #%_ml.d: %_ml.v
 #	@$(COQDEP) $< > $@
  
-.camldep: demo/*.ml okasaki/*.ml
+.camldep: demo/*.ml okasaki/*.ml $(MYOCAMLDEP) 
 	@echo "OCAMLDEP"
-	$(OCAMLDEP) demo/*.ml okasaki/*.ml > .camldeptemp
+	$(MYOCAMLDEP) $(INCLUDES) demo/*.ml okasaki/*.ml > .camldeptemp
 	sed 's/.cmo/.cmi/g' .camldeptemp > .camldep
 	rm .camldeptemp
 
 .libdep: lib/*.v
 	$(COQDEP) $(wildcard lib/*.v) > .libdep
 
+	
+include .camldep
+#include .libdep
+
+ifeq ($(findstring $(MAKECMDGOALS),clean gen dep .camldep),)
 include .camldep
 include .libdep
+endif
 
-COLD=clean cleanall dep new test
+COLD=clean cleanall dep new test gen .camldep
 ifeq ($(findstring $(MAKECMDGOALS),$(COLD)),)
 include $(ALL:.v=.d)
 endif
+
 
 ifneq ($(findstring $(MAKECMDGOALS),new),)
 include $(NEW:.v=.d) 
@@ -184,7 +197,6 @@ ifneq ($(findstring $(MAKECMDGOALS),test),)
 include $(TEST:.v=.d) 
 include $(TOOLS:.v=.d)
 endif
-
 
 cleancod:
 	rm *_ml.v *_ml.vo

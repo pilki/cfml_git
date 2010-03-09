@@ -1,10 +1,8 @@
 OPTIONS=-I lex -I parsing -I typing -I utils
+OCAMLBUILD=ocamlbuild $(OPTIONS)
 
-all:
-	ocamlbuild $(OPTIONS) main.byte
-
-opt:
-	ocamlbuild main.opt
+all: 
+	$(OCAMLBUILD) main.byte tools/myocamldep.byte
 
 clean:
 	rm -Rf _build

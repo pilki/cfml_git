@@ -13,9 +13,7 @@ let trace s =
 
 let ppf = Format.std_formatter
 
-(*
-let is_making_cmi = ref false
-*)
+let onlycmi = ref false
 
 (* err_formatter *)
 
@@ -25,7 +23,6 @@ let _ =
    (*
    Clflags.include_dirs := [ "./okasaki" ];
    Clflags.recursive_types := true;
-  
    Clflags.no_std_include := true;
    *)
 
@@ -36,6 +33,7 @@ let _ =
      [ ("-I", Arg.String (fun i -> Clflags.include_dirs := i::!Clflags.include_dirs), 
                       "includes a directory where to look for interface files");
        ("-rectypes", Arg.Set Clflags.recursive_types, "activates recursive types");
+       ("-onlycmi", Arg.Set onlycmi, "only generate the cmi file");
        ("-debug", Arg.Set is_tracing, "trace the various steps") ]
      (fun f -> files := f::!files)
      ("usage: -I dir -rectypes file.ml");
@@ -79,6 +77,11 @@ let _ =
    file_put_contents (debugdir ^ "_normalized_typed.ml") (Print_tast.string_of_structure typedtree2); 
    ignore (typedtree2);
 
+   if !onlycmi then begin
+      trace "5) exiting after cmi has been generated";
+      exit 0;
+   end;
+
    (*---------------------------------------------------*)
    trace "5) constructing caracteristic formula ast";
    let cftops = Characteristic.cfg_file typedtree2 in
@@ -94,10 +97,7 @@ let _ =
    file_put_contents outputfile (cutlines 50 result); 
 
    (*---------------------------------------------------*)
-   print_string "*) characteristic formulae successfully generated\n"
-
-
-
+   trace "8) characteristic formulae successfully generated\n"
 
 
 (*########################################################

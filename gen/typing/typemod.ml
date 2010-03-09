@@ -897,13 +897,13 @@ let type_implementation sourcefile outputprefix modulename initial_env ast =
       let coercion = Includemod.compunit sourcefile sg intf_file dclsig in
       (str, coercion)
     end else begin
-      check_nongen_schemes finalenv str;
+     check_nongen_schemes finalenv str;
       normalize_signature finalenv simple_sg;
       let coercion =
         Includemod.compunit sourcefile sg
                             "(inferred signature)" simple_sg in
       if not !Clflags.dont_write_files then
-        Env.save_signature simple_sg modulename (outputprefix ^ ".cmi");
+      Env.save_signature simple_sg modulename (outputprefix ^ ".cmi");
       (str, coercion)
     end
   end
