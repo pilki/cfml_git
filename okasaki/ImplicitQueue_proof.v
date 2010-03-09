@@ -3,6 +3,13 @@ Require Import FuncTactics LibCore.
 Require Import QueueSig_ml QueueSig_proof.
 Require Import ImplicitQueue_ml.
 
+
+Instance prod_rep : forall `{Rep a1 A1} `{Rep a2 A2},
+   Rep (a1 * a2) (A1 * A2) := 
+  fun p P => match p,P with (x,y),(X,Y) => rep x X /\ rep y Y end.
+
+
+
 Module ImplicitQueueSpec <: QueueSigSpec.
 
 (** instantiations *)
@@ -12,24 +19,51 @@ Import MLImplicitQueue.
 
 (** invariant *)
 
-Global Instance queue_rep `{Rep a_ A} : Rep (queue a_) (list A) :=
-  fun (q:queue a_) (Q:list A) => Q = nil.
-  (*let (f,r) := q in 
-     Forall2 rep (f ++ rev r) Q
-  /\ (f = nil -> r = nil).*)
+Inductive invd `{Rep a A} : digit a -> list A -> Prop :=
+  | invd_zero : 
+     invd Zero nil
+  | invd_one : forall x X,
+     rep x X -> invd (One x) (X::nil)
+  | invd_two : forall x X y Y,
+     rep x X -> rep y Y -> invd (Two x y) (X::Y::nil).
 
-  (*todo: xisspec loop is invariant is just true *)
+Fixpoint splitin A (Q:list (A*A)) : list A :=
+  match Q with
+  | nil => nil
+  | (x,y)::Q' => x::y::(splitin Q')
+  end.
+
+Inductive inv : forall `{Rep a A}, queue a -> list A -> Prop :=
+  | inv_shallow : forall `{Rep a A} d Q,
+     (match d with Two _ _ => False | _ => True end) ->
+     invd d Q ->
+     inv _ (Shallow d) Q
+  | inv_deep : forall `{Rep a A} df qm dr Qf Qr Qm Q,
+     invd df Qf ->
+     invd dr Qr ->
+     inv _ qm Qm ->
+     (match df with Zero => False | _ => True end) ->
+     (match dr with Two _ _ => False | _ => True end) ->
+     Q =' Qf ++ splitin Qm ++ Qr ->
+     inv _ (Deep df qm dr) Q.
+     
+Global Instance queue_rep `{Rep a A} : Rep (queue a) (list A) := 
+  inv H.
+
+(* todo: si on met queue a_, on n'a pas d'erreur de bound name *)
+(*todo: xisspec loop if evars are in the goal *)
 
 (** automation *)
 
 Hint Constructors Forall2.
 Hint Resolve Forall2_last.
 Hint Unfold is_head is_tail.
-(*
-Hint Extern 1 (@rep (queue _) _ _ _ _) => simpl; rew_list.
-Hint Extern 1 (@rep (queues _) _ _ _ _) => simpl; rew_list.
-*)
 
+Hint Extern 1 (@rep (queue _) _ _ _ _) => simpl.
+Hint Extern 1 (@rep (queues _) _ _ _ _) => simpl.
+
+
+Ltac auto_tilde ::= try solve [ eauto ].
 Ltac auto_star ::= try solve [ rew_list in *; intuition (eauto) ].
 
 
@@ -76,15 +110,67 @@ Ltac xcf_for_core f ::=
   | _ => sapply H
   end; clear H; xcf_post tt.
 
+Ltac inverts_tactic H i1 i2 i3 i4 i5 i6 ::=
+  let rec go i1 i2 i3 i4 i5 i6 :=
+    match goal with 
+    | |- (ltac_Mark -> _) => intros _
+    | |- (?x = ?y -> _) => let H := fresh in intro H; 
+                           first [ subst x | subst y ]; 
+                           go i1 i2 i3 i4 i5 i6
+    | |- (existT ?P ?p ?x = existT ?P ?p ?y -> _) =>
+         let H := fresh in intro H; 
+         generalize (@inj_pair2 _ P p x y H);
+         clear H; go i1 i2 i3 i4 i5 i6
+    | |- (?P -> ?Q) => i1; go i2 i3 i4 i5 i6 ltac:(intro)
+    | |- (forall _, _) => intro; go i1 i2 i3 i4 i5 i6
+    end in
+  generalize ltac_mark; invert keep H; go i1 i2 i3 i4 i5 i6;
+  unfold eq' in *.
+
+Hint Constructors invd inv.
+
+Lemma empty_inv : forall `{Rep a A},
+  inv _ empty nil.
+Admitted.
+Hint Extern 1 (inv _ empty _) => apply empty_inv.
+
+Ltac inverts_as_tactic H ::=
+  let rec go tt :=
+    match goal with 
+    | |- (ltac_Mark -> _) => intros _
+    | |- (?x = ?y -> _) => let H := fresh "TEMP" in intro H; 
+                           first [ subst x | subst y ]; 
+                           go tt
+    | |- (existT ?P ?p ?x = existT ?P ?p ?y -> _) =>
+         let H := fresh in intro H; 
+         generalize (@inj_pair2 _ P p x y H);
+         clear H; go tt
+    | |- (forall _, _) => 
+       intro; let H := get_last_hyp tt in mark_to_generalize H; go tt
+    end in
+  pose ltac_mark; inversion H; 
+  generalize ltac_mark; gen_until_mark; 
+  go tt; gen_to_generalize; unfolds ltac_to_generalize;
+  unfold eq' in *.
+
+
+
 Lemma snoc_spec : forall `{Rep a A},
   RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ; queue a.
 Proof.
   intros. xintros. intros. sets_eq n: (length Q). gen x1 x2 Q X.
   gen H. gen a A. apply~ good_induct; clears n.
-  introv IH RQ N RX. subst_hyp N.
+  introv IH. intros ? ? ? q y Q RQ N X RX. subst_hyp N.
   xcf_app; auto. xisspec. (* todo: automate xisspec *)
-  xmatch.
+  xmatch. 
+  xgo. inverts RQ as _ M. inverts M. rew_list~.
+  xgo. inverts RQ as _ M. inverts M. rew_list~.
+  xgo. inverts RQ as. introv Df Vf Rm _ Dr EQ.
+   inverts Dr. subst Q. rew_list~.
   
+  xgo. inverts RQ. 
+    destruct d. applys~ C. applys~ C0. auto.
+    destruct dr. applys~ C1. applys~ C2. auto.
 Qed.
 
 Hint Extern 1 (RegisterSpec snoc) => Provide snoc_spec.
