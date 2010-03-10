@@ -1,3 +1,7 @@
+
+
+*) avoid copy-pasting statments by using definitions 
+
 *) Physicists queue, check_spec, avant xgo:
    bug si l'hypothèse "True" est dans le contexte 
 
@@ -13,7 +17,7 @@
 
 *) FuncTactics : ximpl_nointros => ximpl_refl
 
-*) Polymorhism 
+*) Polymorhisme à essayer !!!
       Record RepType :=
          { RepType_base :> Type;
            RepType_model : Type;
@@ -33,3 +37,11 @@
 *) todo: xisspec loop if evars are in the goal 
 
 *) [inductions] that works
+
+*) todo: bug des variables nommées comme les types 
+
+*) SkewBinaryRandomAccesList slightly modified compared with original code;
+
+*) todo : égalité polymorphe pour tester si les listes sont vides
+
+*) todo : vérification de types habités
