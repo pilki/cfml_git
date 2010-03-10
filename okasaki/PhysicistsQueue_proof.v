@@ -32,6 +32,7 @@ Hint Extern 1 (@rep (queue _) _ _ _ _) => simpl.
 Hint Unfold inv.
 
 Ltac auto_tilde ::= auto 8 with maths.
+Ltac auto_star ::= eauto with maths.
 
 (** useful facts *)
 
@@ -92,20 +93,26 @@ Lemma check_spec :
     R (Q ; queue a).
 Proof.
   xcf. intros ((((w,lenf),f),lenr),r) Q (g&RQ&DF&LF&LR&LE&_).
-  xgo; ximpl.
-  subst. exists g. splits*. math.
+  xgo; try ximpl; eauto.
+  subst. exists g. splits*. 
   apply refl_equal.
   subst f'. exists (rev r). rew_list~.
 Qed.
 
 Hint Extern 1 (RegisterSpec check) => Provide check_spec.
 
+(* todo: move *)
+Lemma app_rev_cons : forall A (x:A) l1 l2,
+  l1 ++ rev (x :: l2) = (l1 ++ rev l2) & x.
+Proof. intros. rewrite rev_cons. rewrite~ app_assoc. Qed.
+
+
 Lemma snoc_spec : 
   RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ; queue a.
 Proof.
   xcf. intros ((((w,lenf),f),lenr),r) x. introv (g&RQ) RX.
-  xgo~; ximpl. intuit. exists g. rew_list. splits~.
-   rewrite~ <- app_assoc.
+  xgo~; try ximpl; eauto. intuit. exists g. splits~.
+   rewrite~ app_rev_cons. rew_length~.
 Qed.
 
 Hint Extern 1 (RegisterSpec snoc) => Provide snoc_spec.
@@ -129,12 +136,11 @@ Proof.
   forwards*: rep_not_nil. destruct Q. false. intuit RQ.
   subst f. xmatch. xcleanpat. rew_list in *. xapp~. calc_partial_eq tt.
   subst. xapp~. (* todo: pb de xauto qui fait reflequal *)
-  inverts H0. exists x. rewrite app_assoc. splits*. rew_length~. math.
-  ximpl as l Hl. eauto. (* todo: [ximpl*] *)
+  inverts H0. exists x. rewrite app_assoc. splits*. rew_length~. ximpl*.
 Qed.
 
 Hint Extern 1 (RegisterSpec tail) => Provide tail_spec.
 
 End Polymorphic.
 
-
+End PhysicistsQueueSpec.

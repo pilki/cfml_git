@@ -1148,7 +1148,7 @@ Tactic Notation "xfunc" "as" "f" :=
     and [curried_n f], both of which are attempted to be 
     discharged automatically (using [xisspec] and [xcurried]) *)
 
-Ltac xintros_core cont1 cont2 cont3 ::=
+Ltac xintros_core cont1 cont2 cont3 :=
    let arity := spec_goal_arity tt in
    let lemma := get_spec_intro_x arity in
    apply lemma; [ instantiate; cont1 tt 

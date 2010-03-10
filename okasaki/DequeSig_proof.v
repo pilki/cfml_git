@@ -23,7 +23,7 @@ Parameter cons_spec :
 
 Parameter head_spec : 
   RepSpec head (Q;deque a) |R>>
-     Q <> nil A -> R (is_head Q ;; a).
+     Q <> nil -> R (is_head Q ;; a).
 
 Parameter tail_spec :
   RepSpec tail (Q;deque a) |R>> 

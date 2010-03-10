@@ -22,7 +22,7 @@ Global Instance queue_rep `{Rep a A} : Rep (queue a) (list A) :=
 
 Hint Constructors Forall2.
 Hint Resolve Forall2_last.
-Hint Extern 1 (@rep (queue _) _ _ _ _) => simpl; rew_list.
+Hint Extern 1 (@rep (queue _) _ _ _ _) => simpl.
 Ltac auto_tilde ::= eauto.
 
 (** useful facts *)
@@ -58,16 +58,21 @@ Lemma checkf_spec :
     R (Q ; queue a).
 Proof.
   xcf. intros (f,r) l K. xgo; rew_list in K.
-  auto~. split; auto_false.
+  simpl. rew_list~. split; auto_false.
 Qed.
 
 Hint Extern 1 (RegisterSpec checkf) => Provide checkf_spec.
 
+(* todo: move *)
+Lemma app_rev_cons : forall A (x:A) l1 l2,
+  l1 ++ rev (x :: l2) = (l1 ++ rev l2) & x.
+Proof. intros. rewrite rev_cons. rewrite~ app_assoc. Qed.
+
 Lemma snoc_spec : 
   RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ; queue a.
 Proof.
-  xcf. intros [f r] x. introv [H M] RX. xgo~.
-  rew_list. rewrite~ <- app_assoc.
+  xcf. intros [f r] x. introv [H M] RX. xgo~. 
+  rewrite~ app_rev_cons. ximpl~.
 Qed.
 
 Hint Extern 1 (RegisterSpec snoc) => Provide snoc_spec.
@@ -89,7 +94,7 @@ Lemma tail_spec :
 Proof.
   xcf. intros [f r] q. introv [H M] NE. xmatch.
   xgo. rewrite~ M in H. inverts~ H.
-  inverts H. xgo~.
+  inverts H. xgo~. ximpl~.
 Qed.
 
 Hint Extern 1 (RegisterSpec tail) => Provide tail_spec.

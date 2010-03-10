@@ -50,7 +50,7 @@ Lemma empty_from_f : forall lenf lenr r Q,
   rep (lenf, nil, lenr, r) Q -> Q = nil.
 Proof.
   introv (H&LF&LR&LE). rew_list in LF. 
-  apply~ empty_from_lenf. constructors~.
+  apply~ empty_from_lenf. 
 Qed.
 
 Lemma empty_to_lenf : forall lenf f lenr r,
