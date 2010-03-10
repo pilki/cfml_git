@@ -22,10 +22,10 @@ Parameter cons_spec :
   RepTotal cons (X;a) (L;cat a) >> (X::L) ; cat a.
 
 Parameter snoc_spec : 
-  RepTotal snoc (L;cat a) (X;a) >> (Q&X) ; cat a.
+  RepTotal snoc (L;cat a) (X;a) >> (L&X) ; cat a.
 
 Parameter append_spec : 
-  RepTotal append (L1;cat a) (L2;cat a) >> (Q1++Q2) ; cat a.
+  RepTotal append (L1;cat a) (L2;cat a) >> (L1++L2) ; cat a.
 
 Parameter head_spec : 
   RepSpec head (L;cat a) |R>>

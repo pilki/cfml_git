@@ -63,11 +63,6 @@ Qed.
 
 Hint Extern 1 (RegisterSpec checkf) => Provide checkf_spec.
 
-(* todo: move *)
-Lemma app_rev_cons : forall A (x:A) l1 l2,
-  l1 ++ rev (x :: l2) = (l1 ++ rev l2) & x.
-Proof. intros. rewrite rev_cons. rewrite~ app_assoc. Qed.
-
 Lemma snoc_spec : 
   RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ; queue a.
 Proof.
@@ -79,7 +74,7 @@ Hint Extern 1 (RegisterSpec snoc) => Provide snoc_spec.
 
 Lemma head_spec : 
   RepSpec head (Q;queue a) |R>>
-     Q <> (@nil A) -> R (is_head Q ;; a).
+     Q <> nil -> R (is_head Q ;; a).
 Proof.
   xcf. intros [f r] q. introv [H M] NE. xgo; rew_list in H.
   rewrite~ M in H. inverts~ H.

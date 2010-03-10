@@ -9,10 +9,9 @@ struct
 
    let empty : 'a rlist = []
 
-   let is_empty = function  (* todo: f = [] *)
-      | []  -> true
+   let is_empty = function 
+      | [] -> true
       | _ -> false
-
 
    let cons x = function
       | ((w1,t1)::(w2,t2)::ts') as ts -> 
@@ -33,10 +32,6 @@ struct
       | (w, Node(x,t1,t2))::ts -> (w/2,t1)::(w/2,t2)::ts
       | _ -> raise BrokenInvariant
 
-   (* todo: slightly modified compared with original code;
-      check out if BinaryRandomAccessList is better *)
-
-   (* todo: lookup uses an option *)
    let rec lookupTree w i t = 
       match (w,t) with
       | (1, Leaf x) -> 

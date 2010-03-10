@@ -10,7 +10,7 @@ struct
 
    let empty : 'a rlist = []
 
-   let is_empty = function  (* todo: f = [] *)
+   let is_empty = function
       | [] -> true
       | _ -> false
 

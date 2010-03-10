@@ -8,7 +8,7 @@ struct
 
    let empty : 'a queue = ([],[])
 
-   let is_empty = function  (* todo: f = [] *)
+   let is_empty = function  
      | [],_  -> true
      | _ -> false
 

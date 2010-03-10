@@ -95,7 +95,7 @@ Hint Extern 1 (inv _ empty _) => apply empty_inv.
 
 Lemma head_spec : forall `{Rep a A},
   RepSpec head (Q;queue a) |R>>
-     Q <> (@nil A) -> R (is_head Q ;; a).
+     Q <> nil -> R (is_head Q ;; a).
 Proof.
   xcf. intros. sets_eq n: (length Q).
   gen _x0 Q. gen a A. apply~ eq_gt_induction; clears n.

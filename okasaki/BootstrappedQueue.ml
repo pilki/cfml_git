@@ -6,7 +6,8 @@ open QueueSig
 module BootstrappedQueue : Queue =
 struct
 
-   type 'a queue = Empty | Struct of int * 'a list * 'a list Lazy.t queue * int * 'a list 
+   type 'a queues = Empty | Struct of int * 'a list * 'a list Lazy.t queues * int * 'a list 
+   type 'a queue = 'a queues
 
    let empty = Empty
 

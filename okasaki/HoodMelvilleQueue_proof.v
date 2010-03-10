@@ -1,41 +1,35 @@
-
-(* todo: migrate *)
-
-(**************************************************************************
-* Queue : batch implementation                                            *
-***************************************************************************)
-
 Set Implicit Arguments.
-Require queue_hood_melville_ml.
-Module Caml := queue_hood_melville_ml.
-Require Import FuncTactics LibList.
-Require Import LibInt.
-Import Caml.
+Require Import FuncTactics LibCore.
+Require Import QueueSig_ml QueueSig_proof.
+Require Import HoodMelvilleQueue_ml.
 
-Hint Rewrite double : rew_maths.
-Ltac auto_tilde ::= auto with maths.
+Module HoodMelvilleQueueSpec <: QueueSigSpec.
 
-(* ---------------------------------------------------------------------- *)
-(** ** Invariants *)
+(** instantiations *)
 
-Definition queue A := 
-  (int * list A * status A * int * list A)%type.
+Module Import Q <: MLQueue := MLHoodMelvilleQueue.
+Import MLHoodMelvilleQueue.
 
-Record base A (lf lenf lenr : int) (r g l:list A) :=
+(** invariant *)
+
+Section Invariant.
+Variables (a A : Type) (RA:Rep a A).
+
+Record base (lf lenf lenr : int) (r g : list a) (Q:list A) :=
   { base_lenr : lenr = length r;
     base_lenf : lenf = lf;
-    base_lval : l = g ++ rev r }.
+    base_lval : Forall2 rep (g ++ rev r) Q }.
 
-Record oper A lenf f lenr r (g l:list A) (d n m p : int) : Prop := 
-  { oper_base : base (2*m + 1 - p) lenf lenr r g l;
+Record oper lenf f lenr r (g :list a) Q (d n m p : int) : Prop := 
+  { oper_base : base (2*m + 1 - p) lenf lenr r g Q;
     oper_npos : n >= 0;
     oper_mpos : m >= 0;
     oper_ppos : p >= 0;
     oper_nval : n + d = 2*p + 2*lenr + 2;
     reve_lf   : length f = m - p :> int; 
-    oper_fval : f = take (length f) l }.
+    oper_fval : f = take (length f) Q }.
 
-Record reve A (f f' f'' r' r'' g l : list A) (ok n m p : int) : Prop :=
+Record reve `{Rep a A} (f f' f'' r' r'' g : list a) Q (ok n m p : int) : Prop :=
   { reve_gval : g = rev (take (abs ok) f') ++ f'' ++ rev r'' ++ r';
     reve_lf'  : length f' = n :> int;
     reve_lf'' : length f'' = m - n :> int;
@@ -44,7 +38,7 @@ Record reve A (f f' f'' r' r'' g l : list A) (ok n m p : int) : Prop :=
     reve_okval: ok = n - p;
     reve_nle : n <= m }.
 
-Record appe A (f f' r' g l:list A) (ok n m p : int) : Prop :=
+Record appe (f f' r' g:list a) Q (ok n m p : int) : Prop :=
   { appe_gval : g = rev (take (abs ok) f') ++ r';
     appe_lf'  : length f' = 2*m + 1 - n :> int;
     appe_lr'  : length r' = n :> int;
@@ -53,56 +47,66 @@ Record appe A (f f' r' g l:list A) (ok n m p : int) : Prop :=
     appe_nge  : n >= m;
     appe_nle  : n <= 2*m + 1 }.
 
-Definition inv (c:bool) (d:int) A (l:list A) (q:queue A) : Prop :=
+Definition inv (c:bool) (d:int) (q:queue a) (Q:list A) : Prop :=
   let '(lenf,f,s,lenr,r) := q in
   match s with
-  | Idle => base (length f) lenf lenr r f l /\ lenr <= lenf
-  | Done f' => c /\ base (length f') lenf lenr r f' l /\ lenr <= lenf
+  | Idle => base (length f) lenf lenr r f Q /\ lenr <= lenf
+  | Done f' => c /\ base (length f') lenf lenr r f' Q /\ lenr <= lenf
   | Reversing ok f'' f' r'' r' => exists n m p g,
-        oper lenf f lenr r g l d n m p 
-     /\ reve f f' f'' r' r'' g l ok n m p  
+        oper lenf f lenr r g Q d n m p 
+     /\ reve f f' f'' r' r'' g Q ok n m p  
   | Appending ok f' r' => exists n m p g,
-        oper lenf f lenr r g l d n m p 
-     /\ appe f f' r' g l ok n m p  
+        oper lenf f lenr r g Q d n m p 
+     /\ appe f f' r' g Q ok n m p  
   end.
 
-Definition repr := inv false 0.
+End Invariant.
 
-(** pre-condition for [check] *)
-Definition check_pre A (l:list A) q :=
+Global Instance queue_rep `{Rep a A} : Rep (queue a) (list A) :=
+  inv false 0.
+
+(** automation *)
+
+Hint Constructors Forall2.
+Hint Resolve Forall2_last.
+Hint Extern 1 (@rep (queue _) _ _ _ _) => simpl.
+Ltac auto_tilde ::= eauto.
+
+(** useful facts *)
+
+Section Polymorphic.
+Variables (a A : Type) (RA:Rep a A).
+Implicit Types Q : list A.
+
+Definition check_precondition q Q :=
   let '(lenf,f,s,lenr,r) := q in
-    (lenr <= lenf /\ inv true 2 l q)    
- \/ (lenr = lenf + 1 /\ base (length f) lenf lenr r f l).
-    (* note: (lenr <= lenf) could also be derived *)
+    (lenr <= lenf /\ inv true 2 q Q)    
+ \/ (lenr = lenf + 1 /\ base (length f) lenf lenr r f Q).
 
-
-(* ---------------------------------------------------------------------- *)
-(** ** Facts *)
-
-Lemma base_self_nil : forall A lenf lenr r f lf (l:list A),
-  base lf lenf lenr r f l ->
+Lemma base_self_nil : forall lenf lenr r f lf Q,
+  base lf lenf lenr r f Q ->
   lf >= length f ->
   lenr <= lenf ->
-  lenf == 0 ->
-  l = nil.
+  lenf = 0 ->
+  Q = nil.
 Proof.
   introv B L. intros. destruct B as [? ? E]. 
   rewrite~ (@length_zero_inv _ r) in E.
   rewrite~ (@length_zero_inv _ f) in E.
 Qed.
 
-Lemma base_self_nil_inv : forall A lenf lenr r g lf l,
-  @base A lf lenf lenr r g l ->
-  l = nil -> lf >= 0 -> lf <= length g ->  
-  lenf == 0.
+Lemma base_self_nil_inv : forall lenf lenr r g lf Q,
+  base lf lenf lenr r g Q ->
+  Q = nil -> lf >= 0 -> lf <= length g ->  
+  lenf = 0.
 Proof.
-  introv B E Ge Le. subst l. destruct B.
+  introv B E Ge Le. subst Q. destruct B.
   destruct~ (@nil_eq_app_rev_inv _ g r).
   subst. calc_list in *. math.
 Qed.
 
-Lemma repr_fnil : forall A (l:list A) lenf lenr r s,
-  repr l (lenf, nil, s, lenr, r) -> l = nil.
+Lemma repr_fnil : forall Q lenf lenr r s,
+  rep (lenf, nil, s, lenr, r) Q -> Q = nil.
 Proof.
   introv R.
   destruct s as  [|ok f'' f' r'' r'|ok f' r'|f']; simpl in R.
@@ -125,9 +129,9 @@ Proof.
   destruct R as (C&_&_). false.
 Qed.
 
-Lemma repr_fcons : forall A x y (l:list A) lenf f s lenr r,
- repr (x :: l) (lenf, y :: f, s, lenr, r) -> y = x.
-Proof.
+Lemma repr_fcons : forall x X Q lenf f s lenr r,
+ rep (lenf, x :: f, s, lenr, r) (X :: Q) -> rep x X.
+Proof. (* todo: rep unique *)
   introv R. destruct s as [|ok f'' f' r'' r'|ok f' r'|f']. 
   (* subcase: idle *)
   destruct R as ([E1 E2 E3]&L). calc_list in E3. inversion~ E3. 
@@ -141,15 +145,13 @@ Proof.
   destruct R as (C&_&_). false.
 Qed.
 
+(** verification *)
 
-(* ---------------------------------------------------------------------- *)
-(** ** Verification *)
-
-Lemma exec_spec : forall A,
-  Spec exec (s:status A) |R>>
-    forall l lenf f lenr r d, d > 0 -> d <= 2 -> 
-     inv true d l (lenf,f,s,lenr,r) -> 
-     R (fun s' => inv true (d-1) l (lenf,f,s',lenr,r)).
+Lemma exec_spec : 
+  Spec exec (s:status a) |R>>
+    forall Q lenf f lenr r d, d > 0 -> d <= 2 -> 
+     inv true d (lenf,f,s,lenr,r) Q -> 
+     R (fun s' => inv true (d-1) (lenf,f,s',lenr,r) Q).
 Proof. (* Admitted. *)
   xcf. introv Dinf Dsup Inv. xgo.
   (* reversing *)
@@ -203,11 +205,11 @@ Qed.
 
 Hint Extern 1 (RegisterSpec exec) => Provide exec_spec.
 
-Lemma invalidate_spec : forall A,
-  Spec invalidate (s:status A) |R>>
-    forall l x ft lenf lenr r,
-     repr (x::l) (lenf,x::ft,s,lenr,r) -> 
-     R (fun s' => check_pre l (lenf-1,ft,s',lenr,r)).
+Lemma invalidate_spec : 
+  Spec invalidate (s:status a) |R>>
+    forall Q x ft lenf lenr r,
+     repr (x::Q) (lenf,x::ft,s,lenr,r) -> 
+     R (fun s' => check_precondition (lenf-1,ft,s',lenr,r) Q).
 Proof. 
   xcf. introv Inv. xgo.
   (* case reversing *)
@@ -278,10 +280,10 @@ Qed.
 
 Hint Extern 1 (RegisterSpec invalidate) => Provide invalidate_spec.
 
-Lemma exec2_spec : forall A,
-  Spec exec2 (q:queue A) |R>>
-    forall l, inv true 2 l q -> 
-    R (repr l).
+Lemma exec2_spec : 
+  Spec exec2 (q:queue a) |R>>
+    forall Q, inv true 2 q Q -> 
+    R (Q ; queue a).
 Proof. 
   xcf. introv Inv. xgo.
   applys~ (>>>Hyps HR __ __ Inv).
@@ -292,9 +294,9 @@ Qed.
 
 Hint Extern 1 (RegisterSpec exec2) => Provide exec2_spec.
 
-Lemma check_spec : forall A,
-  Spec check (q:queue A) |R>>
-    forall l, check_pre l q -> R (repr l).
+Lemma check_spec : 
+  Spec check (q:queue a) |R>>
+    forall Q, check_precondition q Q -> R (Q ; queue a).
 Proof.
   xcf. introv H. xgo; destruct H as [[L Inv]|[L Inv]]; tryfalse by math/.
   auto. 
@@ -303,26 +305,30 @@ Proof.
    destruct Inv as (B&Le). split.
      constructor~.
        constructor~. calc_list~.
-       subst l. rewrite~ take_app_length.
+       subst Q. rewrite~ take_app_length.
      constructor~. simpl. calc_list~.
 Qed.
 
 Hint Extern 1 (RegisterSpec check) => Provide check_spec.
 
-Lemma empty_spec : forall A, repr nil (@empty A A A).
+Lemma empty_spec : 
+  rep (@empty a) (@nil A).
 Proof.
+  generalizes RA A. apply (empty_cf a). xgo.
+  intros. simpl. rew_list~. 
+Qed.
+(*
   intros. 
   assert (@empty A A A = (0,nil,Idle,0,nil)).
     apply (Caml.empty_cf A A A (fun C B A p => p = (0,nil,Idle,0,nil))).
     xret~.
   unfold repr. rewrite H. split~. constructor~. 
-Qed.
+*)
 
 Hint Extern 1 (RegisterSpec empty) => Provide empty_spec.
 
-Lemma isEmpty_spec : forall A,
-  Spec isEmpty (q:queue A) |R>> 
-    forall l, repr l q -> R (fun b => trueb b <-> l = nil).
+Lemma is_empty_spec : 
+  RepTotal is_empty (Q;queue a) >> bool_of (Q = nil).
 Proof.
   simpl. xcf. introv H. xgo. clear H0. 
   renames _p1 to f, _p2 to s, _p3 to lenr, _p4 to r.
@@ -352,11 +358,10 @@ Qed.
 
 Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty.
 
-Lemma snoc_spec : forall A,
-  Spec Caml.snoc (x:A) (q:queue A) |R>>
-    forall l, repr l q -> R (repr (l & x)).
+Lemma snoc_spec : 
+  RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ; queue a.
 Proof.
-  xcf. intros x _p l Re. xgo; clear H. 
+  xcf. intros x _p Q Re. xgo; clear H. 
   asserts [[L St]|L]: ((lenr = lenf /\ state = Idle) \/ (lenr < lenf)).
     destruct state as [|ok f'' f' r'' r'|ok f' r'|f'].
       destruct Re as (B&L). destruct B.
@@ -368,21 +373,21 @@ Proof.
       destruct Re as (C&_&_). false.
   (* case start rotation *)
   right. split~. subst state. inversion Re as [[E1 E2 E3] Le].
-  constructor. calc_length~. auto. subst l. calc_list~. 
+  constructor. calc_length~. auto. subst Q. calc_list~. 
   (* case continue rotation *)
   left. split~. destruct state as [|ok f'' f' r'' r'|ok f' r'|f'].
   (* subcase: idle *)
   destruct Re as ([E1 E2 E3]&_). split~.
-    constructor. calc_length~. math. subst l. calc_list~.
+    constructor. calc_length~. math. subst Q. calc_list~.
   (* subcase: reversing *)
   destruct Re as (n&m&p&g&Op&Re). exists n m p g. split.
     destruct Op. constructor~. 
       destruct oper_base0. constructor.
         calc_length~.
         math.
-        subst l. calc_rev~.
+        subst Q. calc_rev~.
       rewrite~ take_app_l. destruct Re. destruct oper_base0. 
-       subst g l. calc_length~.
+       subst g Q. calc_length~.
     destruct Re. constructor~.
   (* subcase: appending *)
   destruct Re as (n&m&p&g&Op&Ap). exists n m p g. split.
@@ -390,9 +395,9 @@ Proof.
       destruct oper_base0. constructor.
         calc_length~.
         math.
-        subst l. calc_rev~.
+        subst Q. calc_rev~.
       rewrite~ take_app_l. destruct Ap. destruct oper_base0. 
-       subst g l. calc_length~.
+       subst g Q. calc_length~.
     destruct Ap. constructor~.
   (* subcase: done *)
   destruct Re as (C&_&_). false. 
@@ -400,9 +405,9 @@ Qed.
 
 Hint Extern 1 (RegisterSpec snoc) => Provide snoc_spec.
 
-Lemma head_spec : forall A,
-  Spec Caml.head (q:queue A) |R>>
-    forall x l, repr (x::l) q -> R (= x).
+Lemma head_spec : 
+  RepSpec head (Q;queue a) |R>>
+     Q <> nil -> R (is_head Q ;; a).
 Proof.
   xcf. introv R. xgo.
   lets: (>>> repr_fnil R). false.
@@ -411,9 +416,9 @@ Qed.
 
 Hint Extern 1 (RegisterSpec head) => Provide head_spec.
 
-Lemma tail_spec : forall A,
-  Spec Caml.tail (q:queue A) |R>>
-    forall x l, repr (x::l) q -> R (repr l).
+Lemma tail_spec :
+  RepSpec tail (Q;queue a) |R>> 
+     Q <> nil -> R (is_tail Q ;; queue a).
 Proof.
   xcf. introv R. destruct _p as ((((lenf,f),s),lenr),r). xgo.
   lets: (>>> repr_fnil R). false.
@@ -424,3 +429,9 @@ Proof.
 Qed.
 
 Hint Extern 1 (RegisterSpec tail) => Provide tail_spec.
+
+End Polymorphic.
+
+End HoodMelvilleQueueSpec.
+
+

@@ -147,7 +147,7 @@ Hint Extern 1 (RegisterSpec cons) => Provide cons_spec.
 
 Lemma head_spec : 
   RepSpec head (Q;deque a_) |R>>
-     Q <> (@nil A) -> R (is_head Q ;; a_).
+     Q <> nil -> R (is_head Q ;; a_).
 Proof.
   xcf. intros (((lenf,f),lenr),r) Q RQ NE. xgo; xcleanpat.
   apply NE. apply~ empty_from_list.
@@ -184,7 +184,7 @@ Hint Extern 1 (RegisterSpec snoc) => Provide snoc_spec.
 
 Lemma last_spec : 
   RepSpec last (Q;deque a_) |R>>
-     Q <> (@nil A) -> R (is_last Q ;; a_).
+     Q <> nil -> R (is_last Q ;; a_).
 Proof.
   xcf. intros (((lenf,f),lenr),r) Q RQ NE. xgo; xcleanpat.
   apply NE. apply~ empty_from_list.

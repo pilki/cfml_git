@@ -23,7 +23,7 @@ Parameter snoc_spec :
 
 Parameter head_spec : 
   RepSpec head (Q;queue a) |R>>
-     Q <> (@nil A) -> R (is_head Q ;; a).
+     Q <> nil -> R (is_head Q ;; a).
 
 Parameter tail_spec :
   RepSpec tail (Q;queue a) |R>> 

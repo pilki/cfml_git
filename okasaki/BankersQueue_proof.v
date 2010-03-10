@@ -104,7 +104,7 @@ Hint Extern 1 (RegisterSpec snoc) => Provide snoc_spec.
 
 Lemma head_spec : 
   RepSpec head (Q;queue a_) |R>>
-     Q <> (@nil A) -> R (is_head Q ;; a_).
+     Q <> nil -> R (is_head Q ;; a_).
 Proof.
   xcf. intros (((lenf,f),lenr),r) Q RQ NE. xgo.
   apply NE. apply~ empty_from_f.
