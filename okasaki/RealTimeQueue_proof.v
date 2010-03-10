@@ -12,12 +12,12 @@ Import MLRealTimeQueue.
 
 (** invariant *)
 
-Definition inv (d:int) `{Rep a_ A} (q:queue a_) (Q:list A) :=
+Definition inv (d:int) `{Rep a A} (q:queue a) (Q:list A) :=
   let '(f,r,s) := q in 
      Forall2 rep (f ++ rev r) Q
   /\ length s = length f - length r + d :> int.
 
-Global Instance queue_rep `{Rep a_ A} : Rep (queue a_) (list A) :=
+Global Instance queue_rep `{Rep a A} : Rep (queue a) (list A) :=
   inv 0.
 
 (** automation *)
@@ -32,7 +32,7 @@ Ltac auto_tilde ::= auto with maths.
 (** useful facts *)
 
 Section Polymorphic.
-Variables (a_ A : Type) (RA:Rep a_ A).
+Variables (a A : Type) (RA:Rep a A).
 Implicit Types Q : list A.
 
 Lemma repr_nil_inv : forall r s Q,
@@ -49,16 +49,16 @@ Proof. introv [H M]. destruct f. auto. inverts H. Qed.
 (** verification *)
 
 Lemma empty_spec : 
-  rep (@empty a_) (@nil A).
+  rep (@empty a) (@nil A).
 Proof.
-  generalizes RA A. apply (empty_cf a_). xgo.
+  generalizes RA A. apply (empty_cf a). xgo.
   intros. simpl. rew_list*.
 Qed.
 
 Hint Extern 1 (RegisterSpec empty) => Provide empty_spec.
 
 Lemma is_empty_spec : 
-  RepTotal is_empty (Q;queue a_) >> bool_of (Q = nil).
+  RepTotal is_empty (Q;queue a) >> bool_of (Q = nil).
 Proof.
   xcf. intros ((f,r),s) Q RQ. xgo.
   apply* repr_nil_inv. 
@@ -68,13 +68,13 @@ Qed.
 Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
 
 Lemma rotate_spec : 
-  Spec rotate (q:queue a_) |R>>
+  Spec rotate (q:queue a) |R>>
     let '(f,r,s) := q in (* todo: bug dispaly let '(f,r,s) := q in *)
     length r = length f + 1 :> int ->
     R (fun o => o = f ++ rev r ++ s).
 Proof.
   intros.
-  sets m: (unproj31 (list a_) (list a_) (@list_sub a_)).
+  sets m: (unproj31 (list a) (list a) (@list_sub a)).
   xinduction m. unfold m. prove_wf. (* todo: tactic *)
   xcf. 
   intros_all. destruct x as ((x1,x2),x3). auto*.
@@ -90,9 +90,9 @@ Qed.
 Hint Extern 1 (RegisterSpec rotate) => Provide rotate_spec.
 
 Lemma exec_spec : 
-  Spec exec (q:queue a_) |R>>
+  Spec exec (q:queue a) |R>>
     forall Q, inv 1 q Q -> 
-    R (Q ; queue a_).
+    R (Q ; queue a).
 Proof.
   xcf. intros ((f0,r0),s0) l [H M].
   xgo; rew_length in M; auto~.
@@ -102,7 +102,7 @@ Qed.
 Hint Extern 1 (RegisterSpec exec) => Provide exec_spec.
 
 Lemma snoc_spec : 
-  RepTotal snoc (Q;queue a_) (X;a_) >> (Q & X) ; queue a_.
+  RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ; queue a.
 Proof.
   xcf. introv RQ RX. xmatch. xapp (Q & X). inverts RQ. constructor.
   rew_list. rewrite~ <- app_assoc.
@@ -112,8 +112,8 @@ Qed.
 Hint Extern 1 (RegisterSpec snoc) => Provide snoc_spec.
 
 Lemma head_spec : 
-  RepSpec head (Q;queue a_) |R>>
-     Q <> nil -> R (is_head Q ;; a_).
+  RepSpec head (Q;queue a) |R>>
+     Q <> nil -> R (is_head Q ;; a).
 Proof.
   xcf. intros ((f,r),s) Q. introv RQ NE. xgo.
   false (repr_nil_inv RQ).
@@ -123,8 +123,8 @@ Qed.
 Hint Extern 1 (RegisterSpec head) => Provide head_spec.
 
 Lemma tail_spec :
-  RepSpec tail (Q;queue a_) |R>> 
-     Q <> nil -> R (is_tail Q ;; queue a_).
+  RepSpec tail (Q;queue a) |R>> 
+     Q <> nil -> R (is_tail Q ;; queue a).
 Proof.
   xcf. intros ((f,r),s) Q. introv RQ NE. xmatch.
   false (repr_nil_inv RQ).

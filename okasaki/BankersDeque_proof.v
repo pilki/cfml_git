@@ -8,7 +8,7 @@ Definition C := 2.
 Lemma c_spec : c = C.
 Proof. xgo~. Qed.
 
-Module BankersQueueSpec <: QueueSigSpec.
+Module BankersDequeSpec <: DequeSigSpec.
 
 (** instantiations *)
 
@@ -17,7 +17,7 @@ Import MLBankersDeque.
 
 (** invariant *)
 
-Definition inv (d:int) `{Rep a_ A} (q:deque a_) (Q:list A) :=
+Definition inv (d:int) `{Rep a A} (q:deque a) (Q:list A) :=
   let '(lenf,f,lenr,r) := q in 
      Forall2 rep (f ++ rev r) Q
   /\ lenf = length f
@@ -25,7 +25,7 @@ Definition inv (d:int) `{Rep a_ A} (q:deque a_) (Q:list A) :=
   /\ lenf <= C*lenr + 1 + d
   /\ lenr <= C*lenf + 1 + d.
 
-Global Instance deque_rep `{Rep a_ A} : Rep (deque a_) (list A) :=
+Global Instance deque_rep `{Rep a A} : Rep (deque a) (list A) :=
   inv 0.
 
 (** automation *)
@@ -44,7 +44,7 @@ Hint Unfold inv.
 Ltac auto_tilde ::= eauto with maths.
 
 Section Polymorphic.
-Variables (a_ A : Type) (RA:Rep a_ A).
+Variables (a A : Type) (RA:Rep a A).
 
 (** useful facts *)
 
@@ -81,9 +81,9 @@ Qed.
 (** verification *)
 
 Lemma empty_spec : 
-  rep (@empty a_) (@nil A).
+  rep (@empty a) (@nil A).
 Proof.
-  generalizes RA A. apply (empty_cf a_). xgo.
+  generalizes RA A. apply (empty_cf a). xgo.
   intros. simpl. rew_list~.
 Qed.
 
@@ -91,7 +91,7 @@ Hint Extern 1 (RegisterSpec empty) => Provide empty_spec.
 Hint Resolve empty_spec.
 
 Lemma is_empty_spec : 
-  RepTotal is_empty (Q;deque a_) >> bool_of (Q = nil).
+  RepTotal is_empty (Q;deque a) >> bool_of (Q = nil).
 Proof.
   xcf. intros (((lenf,f),lenr),r) Q RQ. xgo.
   unfolds. extens. iff Z; fold_prop; subst.
@@ -102,9 +102,9 @@ Qed.
 Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
 
 Lemma check_spec : 
-  Spec check (q:deque a_) |R>>
+  Spec check (q:deque a) |R>>
     forall Q, inv 2 q Q ->
-    R (Q ; deque a_).
+    R (Q ; deque a).
 Proof.
   xcf. intros (((lenf,f),lenr),r) Q (H&LF&LR&CF&CR).
   xmatch. xcases.
@@ -137,7 +137,7 @@ Qed.
 Hint Extern 1 (RegisterSpec check) => Provide check_spec.
 
 Lemma cons_spec : 
-  RepTotal cons (X;a_) (Q;deque a_) >> (X::Q) ; deque a_.
+  RepTotal cons (X;a) (Q;deque a) >> (X::Q) ; deque a.
 Proof.
   xcf. intros x (((lenf,f),lenr),r) X Q RX RQ. 
   xgo; ximpl_nointros. intuit RQ. splits~; rew_list~. 
@@ -146,8 +146,8 @@ Qed.
 Hint Extern 1 (RegisterSpec cons) => Provide cons_spec.
 
 Lemma head_spec : 
-  RepSpec head (Q;deque a_) |R>>
-     Q <> nil -> R (is_head Q ;; a_).
+  RepSpec head (Q;deque a) |R>>
+     Q <> nil -> R (is_head Q ;; a).
 Proof.
   xcf. intros (((lenf,f),lenr),r) Q RQ NE. xgo; xcleanpat.
   apply NE. apply~ empty_from_list.
@@ -159,8 +159,8 @@ Qed.
 Hint Extern 1 (RegisterSpec head) => Provide head_spec.
 
 Lemma tail_spec :
-  RepSpec tail (Q;deque a_) |R>> 
-     Q <> nil -> R (is_tail Q ;; deque a_).
+  RepSpec tail (Q;deque a) |R>> 
+     Q <> nil -> R (is_tail Q ;; deque a).
 Proof.
   xcf. intros (((lenf,f),lenr),r) Q RQ NE. xmatch; xcleanpat.
   xgo. apply NE. apply~ empty_from_list.
@@ -173,7 +173,7 @@ Qed.
 Hint Extern 1 (RegisterSpec tail) => Provide tail_spec.
 
 Lemma snoc_spec : 
-  RepTotal snoc (Q;deque a_) (X;a_) >> (Q & X) ; deque a_.
+  RepTotal snoc (Q;deque a) (X;a) >> (Q & X) ; deque a.
 Proof.
   xcf. intros (((lenf,f),lenr),r) x Q X RQ RX.
   xgo; ximpl_nointros. intuit RQ. splits~; rew_list~.
@@ -183,8 +183,8 @@ Qed.
 Hint Extern 1 (RegisterSpec snoc) => Provide snoc_spec.
 
 Lemma last_spec : 
-  RepSpec last (Q;deque a_) |R>>
-     Q <> nil -> R (is_last Q ;; a_).
+  RepSpec last (Q;deque a) |R>>
+     Q <> nil -> R (is_last Q ;; a).
 Proof.
   xcf. intros (((lenf,f),lenr),r) Q RQ NE. xgo; xcleanpat.
   apply NE. apply~ empty_from_list.
@@ -197,8 +197,8 @@ Qed.
 Hint Extern 1 (RegisterSpec last) => Provide last_spec.
 
 Lemma init_spec :
-  RepSpec init (Q;deque a_) |R>> 
-     Q <> nil -> R (is_init Q ;; deque a_).
+  RepSpec init (Q;deque a) |R>> 
+     Q <> nil -> R (is_init Q ;; deque a).
 Proof.
   xcf. intros (((lenf,f),lenr),r) Q RQ NE. xmatch; xcleanpat.
   xgo. apply NE. apply~ empty_from_list.
@@ -213,5 +213,5 @@ Hint Extern 1 (RegisterSpec init) => Provide init_spec.
 
 End Polymorphic.
 
-End BankersQueueSpec.
+End BankersDequeSpec.
 
