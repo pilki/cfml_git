@@ -6,39 +6,39 @@ Module Type QueueSigSpec.
 Declare Module Q : MLDeque.
 Import Q.
 
-Global Instance deque_rep : forall `{Rep a_ A},  
-  Rep (deque a_) (list A).
+Global Instance deque_rep : forall `{Rep a A},  
+  Rep (deque a) (list A).
 
 Section Polymorphic.
-Variables (a_ A : Type) (RA:Rep a_ A).
+Variables (a A : Type) (RA:Rep a A).
 
 Parameter empty_spec : 
-  rep (@empty a_) (@nil A).
+  rep (@empty a) (@nil A).
 
 Parameter is_empty_spec : 
-  RepTotal is_empty (Q;deque a_) >> bool_of (Q = nil).
+  RepTotal is_empty (Q;deque a) >> bool_of (Q = nil).
 
 Parameter cons_spec : 
-  RepTotal cons (X;a_) (Q;deque a_) >> (X::Q) ; deque a_.
+  RepTotal cons (X;a) (Q;deque a) >> (X::Q) ; deque a.
 
 Parameter head_spec : 
-  RepSpec head (Q;deque a_) |R>>
-     Q <> (@nil A) -> R (is_head Q ;; a_).
+  RepSpec head (Q;deque a) |R>>
+     Q <> nil A -> R (is_head Q ;; a).
 
 Parameter tail_spec :
-  RepSpec tail (Q;deque a_) |R>> 
-     Q <> nil -> R (is_tail Q ;; deque a_).
+  RepSpec tail (Q;deque a) |R>> 
+     Q <> nil -> R (is_tail Q ;; deque a).
 
 Parameter snoc_spec : 
-  RepTotal snoc (Q;deque a_) (X;a_) >> (Q&X) ; deque a_.
+  RepTotal snoc (Q;deque a) (X;a) >> (Q&X) ; deque a.
 
 Parameter last_spec : 
-  RepSpec last (Q;deque a_) |R>>
-     Q <> (@nil A) -> R (is_last Q ;; a_).
+  RepSpec last (Q;deque a) |R>>
+     Q <> nil -> R (is_last Q ;; a).
 
 Parameter init_spec :
-  RepSpec init (Q;deque a_) |R>> 
-     Q <> nil -> R (is_init Q ;; deque a_).
+  RepSpec init (Q;deque a) |R>> 
+     Q <> nil -> R (is_init Q ;; deque a).
 
 End Polymorphic.
 

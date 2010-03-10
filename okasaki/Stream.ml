@@ -38,3 +38,10 @@ let to_list s =
       | lazy (Cons(x,s)) -> aux (x::acc) s
       in
    aux [] s
+
+let of_list l =
+   let rec aux acc = function
+      | [] -> lazy Nil
+      | x::l' -> aux (lazy (Cons (x, acc))) l'
+      in
+   aux (lazy Nil) l
