@@ -97,12 +97,9 @@ Lemma head_spec : forall `{Rep a A},
   RepSpec head (Q;queue a) |R>>
      Q <> (@nil A) -> R (is_head Q ;; a).
 Proof.
-  intros. xintros.
-  instantiate (1:=queue a). xcf; auto. xisspec. (*todo*)
-  intros. sets_eq n: (length Q).
-  gen a A H x1 Q. apply~ eq_gt_induction; clears n.
+  xcf. intros. sets_eq n: (length Q).
+  gen _x0 Q. gen a A. apply~ eq_gt_induction; clears n.
   introv IH. intros ? ? ? q Q RQ NE N. subst n.
-  xcf_app; auto. xisspec. (* todo: automate xisspec *)
   xgo. 
   apply NE. apply~ to_empty.
   inverts RQ as _ M. inverts~ M.
@@ -118,7 +115,7 @@ Hint Extern 1 (RegisterSpec head) => Provide head_spec.
 Lemma is_empty_spec : forall `{Rep a A},
   RepTotal is_empty (Q;queue a) >> bool_of (Q = nil).
 Proof.
-  intros. xcf; auto. xisspec. (* todo *) introv RQ. xgo.
+  xcf. introv RQ. xgo.
   apply~ to_empty.
   intro_subst_hyp. applys C. apply~ from_empty.
 Qed.
@@ -129,22 +126,18 @@ Lemma tail_spec : forall `{Rep a A},
   RepSpec tail (Q;queue a) |R>> 
      Q <> nil -> R (is_tail Q ;; queue a).
 Proof.
-  intros. xintros.
-  instantiate (1:=queue a). xcf; auto. xisspec. (*todo*)
-  intros. sets_eq n: (length Q).
-  gen a A H x1 Q. apply~ eq_gt_induction; clears n.
-  introv IH. intros ? ? ? q Q RQ NE N. subst n.
-  xcf_app; auto. xisspec. (* todo: automate xisspec *)
-  xmatch.
+  intros. xintros. xcf; auto. instantiate (1:=a); xisspec_core. (* todo*)
+  intros. sets_eq n: (length Q). gen x1 Q. gen a A.
+  apply~ eq_gt_induction; clears n.
+  introv IH. intros ? ? ? q Q RQ NE N. subst n. xcf_app. xmatch.
   xgo. apply NE. apply~ to_empty.
   xgo. inverts RQ as _ M. inverts M. exists~ (@nil A).
   xgo. inverts RQ as M. inverts M. subst Q. rew_list. eauto 10.
   inverts RQ as Df ? ? ? ? EQ. inverts Df. 
    rew_list in EQ.
-    xapp_spec (@is_empty_spec (a*a)%type _ _). eauto. ximpl~.
+    xapp_spec~ (@is_empty_spec (a*a)%type _ _).
    xif. xgo. subst. simpl. rew_list. eauto 10.
-   xapp_spec (@head_spec (a*a)%type _ _). (* todo xapp_spec~ *)
-     fapplys HR; auto~. apply pred_le_refl.
+   xapp_spec~ (@head_spec (a*a)%type _ _).
    xcleanpat. xmatch. clear H0.
    xlet. applys~ (>>> IH ((a*a)%type) Qm). skip. clear IH.
    destruct P_x2 as ([Y Z]&[RY RZ]&[Zm EQm]).
@@ -163,14 +156,13 @@ Proof.
   intros. xintros. intros. sets_eq n: (length Q).
   gen a A H x1 x2 Q X. apply~ eq_gt_induction; clears n.
   introv IH. intros ? ? ? q y Q RQ N Y RY. subst n.
-  xcf_app; auto. xisspec. (* todo: automate xisspec *)
-  xmatch. 
+  xcf_app. xmatch. 
   xgo. inverts RQ as _ M. inverts M. rew_list~.
   xgo. inverts RQ as _ M. inverts M. rew_list~.
   xgo. inverts RQ as. introv Df Vf Rm _ Dr EQ.
    inverts Dr. subst Q. rew_list~.
   inverts RQ as. introv Df Vf Rm _ Dr EQ. 
-   inverts Dr as RX. xlet. (* todo; xapp_args *)
+   inverts Dr as RX. xlet.
     applys~ (>>> IH ((a*a)%type) (x,y) (X,Y)). skip.
    xgo. hnf in P_x0. subst Q. constructors~.
      rew_list. rewrite~ splitin_last.
