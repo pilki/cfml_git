@@ -3,7 +3,6 @@ Require Import FuncTactics LibCore.
 Require Import OrderedSig_ml HeapSig_ml OrderedSig_proof HeapSig_proof.
 Require Import PairingHeap_ml.
 
-
 Module PairingHeapSpec (O:MLOrdered) (OS:OrderedSigSpec with Module O:=O)
   <: HeapSigSpec with Definition H.MLElement.t := O.t.
 
@@ -52,7 +51,7 @@ Ltac myauto cont :=
   match goal with 
   | |- _ = _ :> LibSet.set ?T => try solve [ change (multiset T) with U; cont tt ]
   | |- _ => cont tt
-  end. (* todo: pour éviter un hint trop lent de hint-core avec eauto *)
+  end.
 
 Ltac auto_tilde ::= myauto ltac:(fun _ => eauto).
 Ltac auto_star ::= try solve [ intuition (eauto with multiset) ].
@@ -83,7 +82,6 @@ Proof.
 Qed.
 
 Hint Resolve min_of_prove.
-Hint Unfold removed_min.
 
 (** verification *)
 

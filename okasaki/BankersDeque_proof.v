@@ -5,9 +5,8 @@ Require Import BankersDeque_ml.
 
 Definition C := 2.
 
-Lemma c_val : c = C.
+Lemma c_spec : c = C.
 Proof. xgo~. Qed.
-
 
 Module BankersQueueSpec <: QueueSigSpec.
 
@@ -34,7 +33,7 @@ Global Instance deque_rep `{Rep a_ A} : Rep (deque a_) (list A) :=
 Lemma C_val2 : C = 2.
 Proof. auto. Qed.
 Lemma c_val2 : c = 2.
-Proof. rewrite~ c_val. Qed.
+Proof. rewrite~ c_spec. Qed.
 Hint Rewrite C_val2 c_val2 : rew_maths.
 
 Hint Constructors Forall2.
@@ -43,7 +42,7 @@ Hint Extern 1 (@rep (deque _) _ _ _ _) => simpl.
 Hint Unfold inv.
 
 Ltac auto_tilde ::= eauto with maths.
-
+
 Section Polymorphic.
 Variables (a_ A : Type) (RA:Rep a_ A).
 
@@ -89,6 +88,7 @@ Proof.
 Qed.
 
 Hint Extern 1 (RegisterSpec empty) => Provide empty_spec.
+Hint Resolve empty_spec.
 
 Lemma is_empty_spec : 
   RepTotal is_empty (Q;deque a_) >> bool_of (Q = nil).
@@ -101,37 +101,6 @@ Qed.
 
 Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
 
-Ltac xauto_tilde_default cont ::= 
-  check_not_a_tag tt;  
-  try solve [ cont tt | apply refl_equal | substs; if_eq; solve [ cont tt | apply refl_equal ] ].
-
-Ltac xret_pre cont := 
-  match ltac_get_tag tt with
-  | tag_ret => cont tt
-  | tag_let => xlet; [ cont tt | instantiate ]
-  end.  
-
-Tactic Notation "xret" :=  (* todo: fonctions ltac *)
-  xret_pre ltac:(fun _ => xret_noclean; xclean).
-Tactic Notation "xret" "~" :=  
-  xret; xauto~.
-Tactic Notation "xret" "*" :=  
-  xret; xauto*.
-
-Axiom div2_bounds : forall m n,
-  m = n / 2 -> n <= 2 * m /\ 2 * m <= n + 1.
-Implicit Arguments div2_bounds [m n].
-
-Axiom abs_pos_le : forall (n:int) (m:nat),
-  0 <= n -> n <= m -> abs n <= m.
-
-Axiom rev_rev : forall A (l:list A), rev (rev l) = l.
-Hint Rewrite rev_rev : rew_list.
-
-Axiom nat_int_eq : forall (n:int) (m:nat),
-  m = abs n -> m = n :> int.
-Implicit Arguments nat_int_eq [n m].
-
 Lemma check_spec : 
   Spec check (q:deque a_) |R>>
     forall Q, inv 2 q Q ->
@@ -142,7 +111,7 @@ Proof.
   (* rebalance left *) 
   xret~. xret~.
   lets (B1&B2): (div2_bounds (eq_sym Pi)).
-  asserts: (0 <= i /\ i <= length f). math. (*todo: math E *)
+  math: (0 <= i /\ i <= length f).
   xgo~. forwards~ (Ef&Lf'&Lx14): take_and_drop. apply~ abs_pos_le.
   lets: (nat_int_eq Lf'). hnf. splits.
     gen H. rewrite Ef. rewrite <- Pr'. rew_list~.
@@ -153,7 +122,7 @@ Proof.
   (* rebalance right *)
   xret~. xret~.
   lets (B1&B2): (div2_bounds (eq_sym Pi)).
-  asserts: (0 <= i /\ i <= length r). math. (*todo: math E *)
+  math: (0 <= i /\ i <= length r).
   xgo~. forwards~ (Er&Lr'&Lx10): take_and_drop. apply~ abs_pos_le.
   lets: (nat_int_eq Lr'). hnf. splits.
     gen H. rewrite Er. rewrite <- Pf'. rew_list~.
@@ -189,8 +158,6 @@ Qed.
 
 Hint Extern 1 (RegisterSpec head) => Provide head_spec.
 
-Hint Resolve empty_spec.
-
 Lemma tail_spec :
   RepSpec tail (Q;deque a_) |R>> 
      Q <> nil -> R (is_tail Q ;; deque a_).
@@ -214,37 +181,6 @@ Proof.
 Qed.
 
 Hint Extern 1 (RegisterSpec snoc) => Provide snoc_spec.
-
-Lemma is_last_one : forall A (x:A),
-  is_last (x::nil) x.
-Proof. intros. unfolds. exists~ (@nil A0). Qed.
-Hint Resolve is_last_one.
-
-Lemma is_init_one : forall A (x:A),
-  is_init (x::nil) nil.
-Proof. intros. unfolds. exists~ x. Qed.
-Hint Resolve is_init_one.
-
-(*
-*)
-
-
-Section PropProperties2.
-Variables A1 A2 : Type.
-Implicit Types l : list A1.
-Implicit Types r : list A2.
-Hint Constructors Forall2.
-
-Lemma Forall2_last_inv : forall P l1 r' x1, 
-  Forall2 P (l1 & x1) r' ->
-  exists r2 x2, r' = r2 & x2 /\ Forall2 P l1 r2 /\ P x1 x2.
-Admitted. (* todo *)
-
-End PropProperties2.
-
-Implicit Arguments Forall2_last_inv [A1 A2 P l1 r' x1].
-
-
 
 Lemma last_spec : 
   RepSpec last (Q;deque a_) |R>>

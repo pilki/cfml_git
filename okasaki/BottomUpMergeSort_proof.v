@@ -55,16 +55,14 @@ Instance heap_rep : Rep sortable (multiset T) :=
 (** automation *)
 
 Hint Extern 1 (_ < _) => simpl; math.
-
 Hint Extern 1 (_ = _ :> multiset _) => permut_simpl : multiset.
-
 Definition U := multiset T.
 
 Ltac myauto cont :=
   match goal with 
-  | |- _ = _ :> LibSet.set ?T => try solve [ change (multiset T) with U; cont tt ]
+  | |- _ = _ :> multiset ?T => try solve [ change (multiset T) with U; cont tt ]
   | |- _ => cont tt
-  end. (* todo: pour éviter un hint trop lent de hint-core avec eauto *)
+  end. 
 
 Ltac auto_tilde ::= myauto ltac:(fun _ => auto with maths).
 Ltac auto_star ::= try solve [ intuition (eauto with multiset) ].

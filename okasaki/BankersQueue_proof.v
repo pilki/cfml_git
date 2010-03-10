@@ -27,12 +27,11 @@ Global Instance queue_rep `{Rep a_ A} : Rep (queue a_) (list A) :=
 
 Hint Constructors Forall2.
 Hint Resolve Forall2_last.
-Hint Unfold is_head is_tail.
 Hint Extern 1 (@rep (queue _) _ _ _ _) => simpl.
 Hint Unfold inv.
 
 Ltac auto_tilde ::= eauto with maths.
-
+
 Section Polymorphic.
 Variables (a_ A : Type) (RA:Rep a_ A).
 

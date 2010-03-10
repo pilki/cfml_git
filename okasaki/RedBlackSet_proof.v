@@ -44,14 +44,12 @@ Inductive inv : bool -> nat -> set -> LibSet.set T -> Prop :=
       (n =' case_color col m (S m)) ->
       inv rr n (Node col a y b) E.
 
-Hint Constructors inv.
-
 Instance set_rep : Rep set (LibSet.set T) := 
   fun e E => 
   exists n, inv true n e E /\ node_color e = Black.
 
-
 (** termination relation *)
+(* we could use a size function as well *)
 
 Inductive subtree : set -> set -> Prop :=
   | subtree_left : forall col a x b, subtree a (Node col a x b)
@@ -68,6 +66,8 @@ Qed.
 Hint Resolve subtree_wf : wf.
 
 (** automation *)
+
+Hint Constructors inv.
 
 Hint Extern 1 (_ = _ :> LibSet.set _) => permut_simpl : set.
 
@@ -127,11 +127,8 @@ Hint Resolve foreach_lt_trans foreach_gt_trans.
 
 (** local tactics *)
 
-Ltac intuit_core := 
-  repeat match goal with H: _ /\ _ |- _ => destruct H end.
-
-Tactic Notation "intuit" :=
-  intuit_core; try rewrite foreach_single_eq in *.
+Ltac my_intuit := 
+  intuit; try rewrite foreach_single_eq in *.
 
 (** verification *)
 
@@ -178,24 +175,24 @@ Proof.
   xcleanpat. inverts Inv1. inverts H3. simpls. subst.
   destruct Ixor as [[? ?]|[? ?]]; substb i1 i2.
   destruct H12 as [|[? ?]]; auto_false.
-  rew_foreach H6. rew_foreach GtX. intuit.
+  rew_foreach H6. rew_foreach GtX. my_intuit.
   applys* (>>> inv_node (\{Y0} \u A0 \u B0) Y (\{X} \u B \u E2)). 
   (* balance 2 *) 
   xcleanpat. inverts Inv1. inverts H4. simpls. subst.
   destruct Ixor as [[? ?]|[? ?]]; substb i1 i2.
   destruct H12 as [|[? ?]]; auto_false.
-  rew_foreach H9. rew_foreach GtX. intuit.
+  rew_foreach H9. rew_foreach GtX. my_intuit.
   applys* (>>> inv_node (\{Y} \u A \u A0) Y0 (\{X} \u B0 \u E2)). 
   (* balance 3 *) 
   xcleanpat. inverts Inv2. inverts H3. simpls. subst.
   destruct Ixor as [[? ?]|[? ?]]; substb i1 i2.
-  rew_foreach H6. rew_foreach LtX. intuit.
+  rew_foreach H6. rew_foreach LtX. my_intuit.
   applys* (>>> inv_node (\{X} \u E1 \u A0) Y0 (\{Y} \u B0 \u B)). 
   destruct H12 as [|[? ?]]; auto_false.
   (* balance 3 *) 
   xcleanpat. inverts Inv2. inverts H4. simpls. subst.
   destruct Ixor as [[? ?]|[? ?]]; substb i1 i2.
-  rew_foreach H10. rew_foreach LtX. intuit.
+  rew_foreach H10. rew_foreach LtX. my_intuit.
   applys* (>>> inv_node (\{X} \u E1 \u A) Y (\{Y0} \u A0 \u B0)). 
   destruct H12 as [|[? ?]]; auto_false.
   (* no balance *)

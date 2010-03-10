@@ -6,28 +6,28 @@ Module Type QueueSigSpec.
 Declare Module Q : MLQueue.
 Import Q.
 
-Global Instance queue_rep : forall `{Rep a_ A},  
-  Rep (queue a_) (list A).
+Global Instance queue_rep : forall `{Rep a A},  
+  Rep (queue a) (list A).
 
 Section Polymorphic.
-Variables (a_ A : Type) (RA:Rep a_ A).
+Variables (a A : Type) (RA:Rep a A).
 
 Parameter empty_spec : 
-  rep (@empty a_) (@nil A).
+  rep (@empty a) (@nil A).
 
 Parameter is_empty_spec : 
-  RepTotal is_empty (Q;queue a_) >> bool_of (Q = nil).
+  RepTotal is_empty (Q;queue a) >> bool_of (Q = nil).
 
 Parameter snoc_spec : 
-  RepTotal snoc (Q;queue a_) (X;a_) >> (Q&X) ; queue a_.
+  RepTotal snoc (Q;queue a) (X;a) >> (Q&X) ; queue a.
 
 Parameter head_spec : 
-  RepSpec head (Q;queue a_) |R>>
-     Q <> (@nil A) -> R (is_head Q ;; a_).
+  RepSpec head (Q;queue a) |R>>
+     Q <> (@nil A) -> R (is_head Q ;; a).
 
 Parameter tail_spec :
-  RepSpec tail (Q;queue a_) |R>> 
-     Q <> nil -> R (is_tail Q ;; queue a_).
+  RepSpec tail (Q;queue a) |R>> 
+     Q <> nil -> R (is_tail Q ;; queue a).
 
 End Polymorphic.
 

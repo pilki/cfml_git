@@ -3,7 +3,6 @@ Require Import FuncTactics LibCore.
 Require Import QueueSig_ml QueueSig_proof.
 Require Import RealTimeQueue_ml.
 
-
 Module RealTimeQueueSpec <: QueueSigSpec.
 
 (** instantiations *)
@@ -25,18 +24,16 @@ Global Instance queue_rep `{Rep a_ A} : Rep (queue a_) (list A) :=
 
 Hint Constructors Forall2.
 Hint Resolve Forall2_last.
-Hint Unfold is_head is_tail.
 Hint Extern 1 (@rep _ _ _ _ _) => simpl.
 Hint Unfold inv.
 
 Ltac auto_tilde ::= auto with maths.
 
+(** useful facts *)
 
 Section Polymorphic.
 Variables (a_ A : Type) (RA:Rep a_ A).
 Implicit Types Q : list A.
-
-(** useful facts *)
 
 Lemma repr_nil_inv : forall r s Q,
   rep (nil,r,s) Q -> Q = nil.

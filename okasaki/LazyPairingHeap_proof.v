@@ -3,25 +3,6 @@ Require Import FuncTactics LibCore.
 Require Import OrderedSig_ml HeapSig_ml OrderedSig_proof HeapSig_proof.
 Require Import LazyPairingHeap_ml.
 
-
-Instance union_inst : forall A, BagCard (multiset A).
-Admitted.
-
-Class Card_empty `{BagEmpty T, BagCard T} :=
-  { card_empty : card \{} = 0%nat }.
-Class Card_single `{BagSingle A T, BagCard T} :=
-  { card_single : forall X, card \{X} = 1%nat }.
-Class Card_union `{BagUnion T, BagCard T} :=
-  { card_union : forall E F, card (E \u F) = (card E + card F)%nat }.
-
-Instance card_empty_inst : forall A, Card_empty (T:=multiset A).
-Admitted.
-Instance card_single_inst : forall A, Card_single (T:=multiset A).
-Admitted.
-Instance card_union_inst : forall A, Card_union (T:=multiset A).
-Admitted.
-
-
 Module LazyPairingHeapSpec (O:MLOrdered) (OS:OrderedSigSpec with Module O:=O)
   <: HeapSigSpec with Definition H.MLElement.t := O.t.
 
@@ -60,19 +41,25 @@ Instance heap_rep : Rep heap (multiset T) := inv.
 
 Hint Extern 1 (_ < _) => simpl; math.
 Hint Extern 1 (_ <= _) => simpl; math.
-
 Hint Extern 1 (_ = _ :> multiset _) => permut_simpl : multiset.
 
 Definition U := multiset T.
 
 Ltac myauto cont :=
   match goal with 
-  | |- _ = _ :> LibSet.set ?T => try solve [ change (multiset T) with U; cont tt ]
+  | |- _ = _ :> multiset ?T => try solve [ change (multiset T) with U; cont tt ]
   | |- _ => cont tt
-  end. (* todo: pour éviter un hint trop lent de hint-core avec eauto *)
+  end. 
 
 Ltac auto_tilde ::= myauto ltac:(fun _ => eauto).
 Ltac auto_star ::= try solve [ intuition (eauto with multiset) ].
+
+Hint Rewrite (card_empty (T:=multiset T)) (card_single (T:=multiset T))
+  (card_union (T:=multiset T)) : rew_card.
+Ltac rew_card := autorewrite with rew_card.
+
+Hint Extern 1 ((_ < _)%nat) => simpl; rew_card; math.
+(* todo: changer ça *)
 
 (** useful facts *)
 
@@ -80,62 +67,20 @@ Hint Constructors inv Forall Forall2.
 Hint Extern 1 (@rep heap _ _ _ _) => simpl.
 Hint Extern 1 (@rep heaps _ _ _ _) => simpl.
 
+Lemma is_ge_refl : forall x, is_ge x x.
+Proof. intros. apply le_refl. Qed.
+
 Lemma foreach_ge_trans : forall (X Y : OS.T) (E : multiset OS.T),
   foreach (is_ge X) E -> Y <= X -> foreach (is_ge Y) E.
 Proof. intros. apply~ foreach_weaken. intros_all. apply* le_trans. Qed.
 
-Hint Resolve foreach_ge_trans.
-Hint Unfold removed_min.
-
-(** verification *)
-
-Lemma empty_spec : rep empty \{}.
-Proof. apply empty_cf. xret~. Qed.
-
-Hint Extern 1 (RegisterSpec empty) => Provide empty_spec.
-
-Definition rep_spec_2 (a1 a2 A1 A2 B : Type)
-  (rep1:a1->A1->Prop) (rep2:a2->A2->Prop)
-  (RK:a1->a2->A1->A2->~~B->Prop) f :=
-  spec_2 (B:=B) (fun x1 x2 R => forall X1 X2, 
-    rep1 x1 X1 -> rep2 x2 X2 -> RK x1 x2 X1 X2 R) f.
-
-Definition rep_spec_2_hyp (a1 a2 A1 A2 B : Type)
-  (rep1:a1->A1->Prop) (rep2:a2->A2->Prop) (P:A1->A2->Prop)
-  (RK:a1->a2->A1->A2->~~B->Prop) f :=
-  spec_2 (B:=B) (fun x1 x2 R => forall X1 X2, 
-    rep1 x1 X1 -> rep2 x2 X2 -> P X1 X2 -> RK x1 x2 X1 X2 R) f.
-
-
-Lemma is_empty_spec : RepTotal is_empty (E;heap) >> 
-  bool_of (E = \{}).
-Proof.
-  xcf. intros e E RepE. inverts RepE; xgo. 
-  auto. intros_all. fset_inv.
-Qed. 
-
-Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
+Hint Resolve is_ge_refl foreach_ge_trans.
 
 Fixpoint size h :=
   match h with
   | Empty => 1%nat
   | Node a ho hs => (1 + size ho + size hs)%nat
   end.
-
-
-Definition link_spec := RepSpec link (E1;heap) (E2;heap) |R>>
-  forall X, min_of E1 X -> foreach (is_ge X) E2 ->
-  R (E1 \u E2 ; heap).
-
-Hint Rewrite (card_empty (T:=multiset T)) (card_single (T:=multiset T))
-  (card_union (T:=multiset T)) : rew_card.
-Ltac rew_card := autorewrite with rew_card.
-
-Hint Extern 1 ((_ < _)%nat) => simpl; rew_card; math.
-
-Lemma is_ge_refl : forall x, is_ge x x.
-Proof. intros. apply le_refl. Qed.
-Hint Resolve is_ge_refl.
 
 Lemma min_of_prove : forall X Eo Es,
   foreach (is_ge X) Eo ->
@@ -155,11 +100,39 @@ Lemma min_of_eq : forall X Y E1 E2,
   Y <= X.
 Proof.
   introv [M1 M2] G1 G2. multiset_in M1.
-  apply le_refl.
-  apply~ G1.
-  apply~ G2.
+  apply le_refl. apply~ G1. apply~ G2.
 Qed.
 
+(** verification *)
+
+Lemma empty_spec : rep empty \{}.
+Proof. apply empty_cf. xret~. Qed.
+
+Hint Extern 1 (RegisterSpec empty) => Provide empty_spec.
+
+Lemma is_empty_spec : RepTotal is_empty (E;heap) >> 
+  bool_of (E = \{}).
+Proof.
+  xcf. intros e E RepE. inverts RepE; xgo. 
+  auto. intros_all. fset_inv.
+Qed. 
+
+Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
+
+
+(* todo: refaire sans ça 
+
+Definition rep_spec_2 (a1 a2 A1 A2 B : Type)
+  (rep1:a1->A1->Prop) (rep2:a2->A2->Prop)
+  (RK:a1->a2->A1->A2->~~B->Prop) f :=
+  spec_2 (B:=B) (fun x1 x2 R => forall X1 X2, 
+    rep1 x1 X1 -> rep2 x2 X2 -> RK x1 x2 X1 X2 R) f.
+
+Definition rep_spec_2_hyp (a1 a2 A1 A2 B : Type)
+  (rep1:a1->A1->Prop) (rep2:a2->A2->Prop) (P:A1->A2->Prop)
+  (RK:a1->a2->A1->A2->~~B->Prop) f :=
+  spec_2 (B:=B) (fun x1 x2 R => forall X1 X2, 
+    rep1 x1 X1 -> rep2 x2 X2 -> P X1 X2 -> RK x1 x2 X1 X2 R) f.
 
 Axiom rep_induction_mut_2_2_2 : 
   forall (a11 a12 A11 A12 B1 : Type)
@@ -175,6 +148,16 @@ Axiom rep_induction_mut_2_2_2 :
   rep_spec_2_hyp (B:=B2) rep21 rep22 (fun X21 X22 => IH (mu2 X21 X22)) RK2 f2 -> 
      rep_spec_2 (B:=B1) rep11 rep12 RK1 f1 
   /\ rep_spec_2 (B:=B2) rep21 rep22 RK2 f2.
+
+intros. sets_eq n: (length Q).
+gen a A H x1 Q. apply~ good_induct; clears n.
+introv IH. intros ? ? ? q Q RQ NE N. subst n.
+
+*)
+
+Definition link_spec := RepSpec link (E1;heap) (E2;heap) |R>>
+  forall X, min_of E1 X -> foreach (is_ge X) E2 ->
+  R (E1 \u E2 ; heap).
 
 Lemma merge_spec : RepTotal merge (E1;heap) (E2;heap) >>
   E1 \u E2 ; heap.
@@ -198,10 +181,6 @@ Proof.
   xgo. inverts H0. forwards~: (>>> min_of_eq MX). constructors*.
   xgo~. forwards~: (>>> min_of_eq MX). constructors*.
 Qed.
-
-
-
-
 
 Hint Extern 1 (RegisterSpec merge) => Provide merge_spec.
 

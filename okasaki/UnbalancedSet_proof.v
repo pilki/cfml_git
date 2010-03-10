@@ -63,8 +63,7 @@ Ltac myauto cont :=
 Ltac auto_tilde ::= myauto ltac:(fun _ => eauto).
 Ltac auto_star ::= try solve [ intuition (eauto with set) ].
 
-Hint Extern 1 (rep _ _) => simpl. (* todo: specialize *)
-
+Hint Extern 1 (rep _ _) => simpl. 
 Hint Constructors inv.
 
 (** useful facts *)

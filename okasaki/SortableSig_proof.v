@@ -19,8 +19,10 @@ Inductive sorted : list T -> multiset T -> Prop :=
 Global Instance heap_rep : Rep sortable (multiset T).
 
 Parameter empty_spec : rep empty \{}.
+
 Parameter add_spec : RepTotal add (X;t) (E;sortable) >>
   \{X} \u E ; sortable.
+
 Parameter sort_spec : RepTotal sort (E;sortable) >>
   ((fun L => sorted L E) ;; list t).
 

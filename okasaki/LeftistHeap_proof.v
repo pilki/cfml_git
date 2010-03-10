@@ -3,7 +3,6 @@ Require Import FuncTactics LibCore.
 Require Import OrderedSig_ml HeapSig_ml OrderedSig_proof HeapSig_proof.
 Require Import LeftistHeap_ml.
 
-
 Module LeftistHeapSpec (O:MLOrdered) (OS:OrderedSigSpec with Module O:=O)
   <: HeapSigSpec with Definition H.MLElement.t := O.t.
 
@@ -64,13 +63,12 @@ Definition U := multiset T.
 
 Ltac myauto cont :=
   match goal with 
-  | |- _ = _ :> LibSet.set ?T => try solve [ change (multiset T) with U; cont tt ]
+  | |- _ = _ :> multiset ?T => try solve [ change (multiset T) with U; cont tt ]
   | |- _ => cont tt
-  end. (* todo: pour éviter un hint trop lent de hint-core avec eauto *)
+  end. 
 
 Ltac auto_tilde ::= myauto ltac:(fun _ => eauto).
 Ltac auto_star ::= try solve [ intuition (eauto with multiset) ].
- (*myauto ltac:(fun _ => intuition (eauto with multiset)). todo bin *)
 
 (** useful facts *)
 
@@ -99,11 +97,10 @@ Lemma min_of_prove : forall (X : OS.T) (E F : multiset OS.T),
   min_of ('{X} \u E \u F) X.
 Proof.
   introv H1 H2. split~. introv M. multiset_in M. 
-   apply le_refl. applys~ H1. applys~ H2.
+  apply le_refl. applys~ H1. applys~ H2.
 Qed.
 
 Hint Resolve min_of_prove.
-Hint Unfold removed_min.
 
 (** verification *)
 

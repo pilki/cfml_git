@@ -12,6 +12,13 @@ Instance bool_rep : Rep bool bool := eq.
 Instance list_rep : forall `{Rep a A}, Rep (list a) (list A) := 
   fun l L => Forall2 rep l L.
 
+Instance prod_rep : forall `{Rep a1 A1} `{Rep a2 A2},
+   Rep (a1 * a2) (A1 * A2) := 
+  fun p P => match p,P with (x,y),(X,Y) => rep x X /\ rep y Y end.
+
+Hint Extern 1 (@rep (prod _ _) _ _ _ _) => simpl.
+Hint Extern 1 (@rep (list _) _ _ _ _) => simpl.
+
 
 (************************************************************)
 (** Axiomatic specification of the primitive functions *)

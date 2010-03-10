@@ -3,7 +3,6 @@ Require Import FuncTactics LibCore Shared.
 Require Import OrderedSig_ml HeapSig_ml OrderedSig_proof HeapSig_proof.
 Require Import SplayHeap_ml.
 
-
 Module SplayHeapSpec (O:MLOrdered) (OS:OrderedSigSpec with Module O:=O)
   <: HeapSigSpec with Definition H.MLElement.t := O.t.
 
@@ -36,7 +35,6 @@ Inductive inv : heap -> multiset T -> Prop :=
 
 Instance heap_rep : Rep heap (multiset T) := inv.
 
-
 (** termination relation *)
 
 Fixpoint tree_size h :=
@@ -49,20 +47,17 @@ Lemma tree_size_pos : forall h,
   (tree_size h > 0%nat).
 Proof. destruct h; simpl; math. Qed.
 
-(*todo: bug dans la tactic math qui fait une anomalie
-  Hint Extern 1 (_ < _) => simpl; math.*)
-
 (** automation *)
 
 Hint Extern 1 (_ = _ :> multiset _) => permut_simpl : multiset.
 
 Definition U := multiset T.
 
-Ltac myauto cont := (*todo: copy to other heaps *)
+Ltac myauto cont := 
   match goal with 
   | |- _ = _ :> multiset T => try solve [ change (multiset T) with U; cont tt ]
   | |- _ => cont tt
-  end. (* todo: pour éviter un hint trop lent de hint-core avec eauto *)
+  end. 
 
 Ltac auto_tilde ::= myauto ltac:(fun _ => eauto).
 Ltac auto_star ::= try solve [ intuition (eauto with multiset) ].
@@ -78,7 +73,6 @@ Lemma foreach_gt_trans : forall (X Y : OS.T) (E : multiset OS.T),
 Proof. intros. apply~ foreach_weaken. intros_all. Admitted.
 
 Hint Resolve foreach_gt_trans.
-Hint Unfold removed_min. 
 
 Hint Extern 2 (_ <= ?X) =>
   match goal with H: foreach (is_le X) _ |- _ => eapply H end.

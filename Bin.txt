@@ -1,3 +1,65 @@
+Ltac name_around e x :=
+  pattern e; match goal with |- ?P _ => sets x: P end.
+
+Definition spec_hyp_2 (A1 A2 B : Type)
+  (P:A1->A2->Prop) (K:A1->A2->~~B->Prop) f :=
+  spec_2 (fun x1 x2 R => P x1 x2 -> K x1 x2 R) f.
+
+(*
+Lemma spec_hyp_size : forall (A1 A2 : Type) (mu:A1->A2->nat) (B : Type)
+  (P:A1->A2->Prop) (K:A1->A2->~~B->Prop) f,
+  is_spec
+  (forall n, spec_hyp_2 (fun x1 x2 => n = mu x1 x2) K f) ->
+  spec_2 K f.
+*)
+
+
+(*
+Inductive intbar :=
+  | intbar_int : int -> intbar
+  | intbar_inf : intbar.
+
+Instance intbar_le : Le intbar := fun (x y : intbar) => 
+  match x,y with
+  | intbar_int n, intbar_int m => n <= m
+  | intbar_inf, intbar_int n => False
+  | _, intbar_inf => True
+  end.
+
+(* todo: generic min *)
+
+Ltac simpl_intbar_le :=
+  repeat match goal with H: (@le intbar _ _ _) |- _ =>
+    simpl in H end.
+   
+Axiom min : int -> int -> int.
+
+Definition min_intbar (x y : intbar) :=
+  match x,y with
+  | intbar_int n, intbar_int m => intbar_int (min n m)
+  | intbar_int n, _ => intbar_int n
+  | _, intbar_int n => intbar_int n
+  | _,_ => intbar_inf
+  end.
+
+Axiom min_trans_elim : forall a b x y : int,
+  min a b <= x -> y <= a -> y <= b -> y <= x.
+  *)
+
+
+
+(*
+
+Coercion intbar_int : Z >-> intbar.
+Notation "'oo'" := intbar_inf.
+
+Definition Rank_hd (ts:heap) :=
+  match ts with
+  | nil => oo
+  | t::ts => Rank t
+  end.
+*)
+
 
 Definition rep_spec_2_hyp (a1 a2 A1 A2 B : Type)
   (rep1:a1->A1->Prop) (rep2:a2->A2->Prop) (P:A1->A2->Prop)

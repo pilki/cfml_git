@@ -3,47 +3,6 @@ Require Import FuncTactics LibCore.
 Require Import OrderedSig_ml HeapSig_ml OrderedSig_proof HeapSig_proof.
 Require Import BinomialHeap_ml.
 
-(*
-Inductive intbar :=
-  | intbar_int : int -> intbar
-  | intbar_inf : intbar.
-
-Instance intbar_le : Le intbar := fun (x y : intbar) => 
-  match x,y with
-  | intbar_int n, intbar_int m => n <= m
-  | intbar_inf, intbar_int n => False
-  | _, intbar_inf => True
-  end.
-
-(* todo: generic min *)
-
-Ltac simpl_intbar_le :=
-  repeat match goal with H: (@le intbar _ _ _) |- _ =>
-    simpl in H end.
-   
-Axiom min : int -> int -> int.
-
-Definition min_intbar (x y : intbar) :=
-  match x,y with
-  | intbar_int n, intbar_int m => intbar_int (min n m)
-  | intbar_int n, _ => intbar_int n
-  | _, intbar_int n => intbar_int n
-  | _,_ => intbar_inf
-  end.
-
-Axiom min_trans_elim : forall a b x y : int,
-  min a b <= x -> y <= a -> y <= b -> y <= x.
-  *)
-
-
-Tactic Notation "fset_inv" := 
-  match goal with
-  | |- \{} <> _ => let H := fresh in intro H; fset_inv H
-  | |- _ <> \{} => let H := fresh in intro H; fset_inv H
-  | H: \{} = _ |- _ => fset_inv H
-  | H: _ = \{} |- _ => fset_inv H
-  end.
-
 Module BinomialHeapSpec (O:MLOrdered) (OS:OrderedSigSpec with Module O:=O)
   <: HeapSigSpec with Definition H.MLElement.t := O.t.
 
@@ -72,7 +31,7 @@ Inductive btree : int -> tree -> multiset T -> Prop :=
       rep x X ->
       btree r t E ->
       btree r (Node r x ts) Es ->
-      foreach (is_ge X) E' -> (* todo: E suffirait *)
+      foreach (is_ge X) E' -> 
       r' =' r+1 ->
       E' =' E \u Es ->
       btree r' (Node r' x (t::ts)) E'.
@@ -93,44 +52,44 @@ Global Instance heap_rep : Rep heap (multiset T) := inv 0.
 
 (** automation *)
 
-Hint Extern 1 (_ < _) => simpl; math.
-
+Hint Extern 1 (@lt nat _ _ _) => rew_length; math.
+(* todo: bin ? Hint Extern 1 (_ < _) => simpl; math. *)
 Hint Extern 1 (_ = _ :> multiset _) => permut_simpl : multiset.
+Hint Unfold min_of.
 
 Definition U := multiset T.
 
 Ltac myauto cont :=
   match goal with 
-  | |- _ = _ :> LibSet.set ?T => try solve [ change (multiset T) with U; cont tt ]
+  | |- _ = _ :> multiset ?T => try solve [ change (multiset T) with U; cont tt ]
   | |- _ => cont tt
-  end. (* todo: pour éviter un hint trop lent de hint-core avec eauto *)
+  end. 
 
 Ltac auto_tilde ::= myauto ltac:(fun _ => eauto with maths).
 Ltac auto_star ::= try solve [ intuition (eauto with multiset) ].
- (*myauto ltac:(fun _ => intuition (eauto with multiset)). todo bin *)
-
-Ltac check_noevar :=
-  match goal with |- ?G => match G with G => idtac end end.
-
-Ltac math_0 ::= idtac.
-Ltac math_1 ::= intros; generalize_arith.
-Ltac math_2 ::= instantiate; check_noevar; intros.
-Ltac math_3 ::= rew_maths; nat_comp_to_peano; int_comp_to_zarith.
-Ltac math_4 ::= math_setup_goal.
-Ltac math_5 ::= omega.
-
-(** useful facts *)
 
 Hint Constructors inv.
 Hint Extern 1 (@rep heap _ _ _ _) => simpl.
+
+(** useful facts *)
+
+Definition Rank (t:tree) :=
+  let (r,x,c) := t in r.
+
+Definition Root (t:tree) :=
+  let (r,x,c) := t in x.
 
 Lemma foreach_ge_trans : forall (X Y : OS.T) (E : multiset OS.T),
   foreach (is_ge X) E -> Y <= X -> foreach (is_ge Y) E.
 Proof. intros. apply~ foreach_weaken. intros_all. apply* le_trans. Qed.
 
 Hint Resolve foreach_ge_trans.
-Hint Unfold removed_min.
 
+Lemma foreach_ge_single : forall X,
+  foreach (is_ge X) ('{X}:multiset T).
+Proof. introv H. hnf. multiset_in H. apply le_refl. Qed.
+
+Hint Resolve foreach_ge_single.
 
 Lemma btree_rank_pos : forall r t E, 
   btree r t E -> 0 <= r.
@@ -142,6 +101,60 @@ Proof. introv H. inverts~ H. Qed.
 
 Hint Resolve btree_rank_pos inv_rank_pos.
 
+Lemma btree_not_empty : forall E r t,
+  btree r t E -> E <> \{}.
+Proof.
+  introv H. induction H. fset_inv. rewrite H4. skip. (* fset *)
+Qed.
+
+Lemma btree_inv : forall E r r' x ts,
+  btree r (Node r' x ts) E -> 
+  r = r' /\ exists X, rep x X /\ foreach (is_ge X) E.
+Proof. (* todo: fix induction *)
+  introv H. sets_eq M: (Node r' x ts). gen x ts.
+  induction H; intros; inverts EQM; eauto.
+Qed.
+
+Lemma inv_smaller : forall rs rs' ts Es, 
+  inv rs ts Es -> 0 <= rs' -> rs' <= rs -> inv rs' ts Es.
+Proof. introv H P L. inverts~ H. Qed.
+
+Lemma inv_cons_inv : forall r' t ts E',
+  inv r' (t::ts) E' -> 
+  exists rs E Es,
+  btree (Rank t) t E /\
+  inv rs ts Es /\
+  Rank t < rs /\
+  r' <= Rank t /\
+  E' = E \u Es.
+Proof.
+  introv H. inverts H. exists rs E Es.
+  forwards~: (@rank_correct t). subst~.
+Qed.
+
+(* todo: redundant with inv_smaller *)
+Lemma inv_rank_smaller : forall r ts Es,
+  inv r ts Es -> inv 0 ts Es.
+Proof.
+  introv H. inverts H; simpl. auto~.
+  forwards~: (@rank_correct t).
+Qed.
+
+(* todo: check needed*)
+Lemma inv_rank_hd_cons : forall r t ts Es,
+  inv r (t::ts) Es -> inv (Rank t) (t::ts) Es.
+Proof.
+  introv H. inverts H; simpl.
+  forwards~: (@rank_correct t).
+Qed.
+
+Hint Resolve inv_rank_hd_cons.
+
+Lemma root_le_all : forall r t E,
+  btree r t E -> exists X, 
+    rep (Root t) X /\ 
+    foreach (is_ge X) E.
+Proof. introv H. inverts~ H. Qed.
 
 Lemma inv_rev_children : forall x X ts,
   rep x X -> forall r E r' ts' E',
@@ -163,168 +176,26 @@ Proof.
    rewrite rev_cons. rewrite app_last_sym. equates* 1.
    subst. permut_simpl.
 Qed.
-      
 
-
-Definition Rank (t:tree) :=
-  let (r,x,c) := t in r.
-
-Definition Root (t:tree) :=
-  let (r,x,c) := t in x.
-
-Lemma btree_not_empty : forall E r t,
-  btree r t E -> E <> \{}.
+Lemma inv_rev_children_final : forall x X ts r E,
+  rep x X ->
+  btree r (Node r x ts) E ->
+  exists E', rep (rev ts) E' /\ E = '{X} \u E'.
 Proof.
-  introv H. induction H. fset_inv. rewrite H4. skip. (* fset *)
+  introv RX RT. forwards~ (E'&R'&I'&EQ'): 
+    (>>> inv_rev_children x ts E r (nil:heap)).
+  rew_list in I'. rewrite union_empty_l in I'.
+  exists E'. split. simpl.
+  apply~ inv_smaller. eauto.  
 Qed.
 
-Lemma foreach_ge_single : forall X,
-  foreach (is_ge X) ('{X}:multiset T).
-Proof. introv H. hnf. multiset_in H. apply le_refl. Qed.
+(* todo: check needed next 5 *)
 
-Hint Resolve foreach_ge_single.
-
-Lemma btree_inv : forall E r r' x ts,
-  btree r (Node r' x ts) E -> 
-  r = r' /\ exists X, rep x X /\ foreach (is_ge X) E.
-Proof. (* todo: fix induction *)
-  introv H. sets_eq M: (Node r' x ts). gen x ts.
-  induction H; intros; inverts EQM; eauto.
-Qed.
-
-Lemma inv_nil_change : forall rs rs' Es, 
-  inv rs nil Es -> 0 <= rs' -> inv rs' nil Es.
-Proof. introv H P. inverts~ H. Qed.
-(*todo: use below instead?*)
-
-Lemma inv_smaller : forall rs rs' ts Es, 
-  inv rs ts Es -> 0 <= rs' -> rs' <= rs -> inv rs' ts Es.
-Proof. introv H P L. inverts~ H. Qed.
-  (* todo: math should be in auto~ but not if evars are there *)
-
-(**)
-  (* todo: math should be in auto~ but not if evars are there *)
-
-Lemma rank_correct : forall t r E,
-  btree r t E -> Rank t = r.
-Proof. introv H. inverts~ H. Qed.
-
-(** verification *)
-
-Lemma empty_spec : rep empty \{}.
-Proof. apply empty_cf. xret~. Qed.
-
-Hint Extern 1 (RegisterSpec empty) => Provide empty_spec.
-
-Lemma is_empty_spec : RepTotal is_empty (E;heap) >> 
-  bool_of (E = \{}).
-Proof.
-  xcf. intros e E RepE. inverts RepE; xgo. 
-  auto. intros K. false (btree_not_empty H). skip. (* fset *)
-Qed. 
-
-Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
-
-Lemma rank_spec : Total rank (t:tree) >> = Rank t.
-Proof. xgo*. Qed.
-
-Hint Extern 1 (RegisterSpec rank) => Provide rank_spec.
-
-Lemma root_spec : Total root (t:tree) >> = Root t.
-Proof. xgo*. Qed.
-
-Hint Extern 1 (RegisterSpec root) => Provide root_spec.
-
-Lemma link_spec : Spec link (t1:tree) (t2:tree) |R>> 
-  forall r E1 E2,
-  btree r t1 E1 -> btree r t2 E2 ->
-  R (fun t' => btree (r+1) t' (E1 \u E2)).
-Proof. 
-  xcf. intros (r1,x1,c1) (r2,x2,c2). introv R1 R2.
-  destruct (btree_inv R1) as (Er1&X1&Rx1&S1).
-  destruct (btree_inv R2) as (Er2&X2&Rx2&S2).
-  subst r1 r2. xgo~; subst t1 t2. 
-    constructors*.
-    applys_to P_x2 nle_to_sle. constructors*.
-Qed.
-
-Hint Extern 1 (RegisterSpec link) => Provide link_spec.
-
-Ltac auto_tilde ::= myauto ltac:(fun _ => eauto with maths).
-
-Ltac math_1 ::= intros.
-
-Hint Extern 1 (@lt nat _ _ _) => rew_length; math.
-
-Lemma ins_tree_spec : Spec ins_tree (t:tree) (ts:list tree) |R>> 
-  forall r rs E Es,
-  btree r t E -> inv rs ts Es -> r <= rs ->
-  R (fun ts' => exists rs', inv rs' ts' (E \u Es) /\ r <= rs').
-Proof. 
-  xinduction (fun (t:tree) (ts:list tree) => length ts).
-  xcf. intros t ts. introv IH Rt Rts Ran. 
-  forwards: (btree_rank_pos Rt). inverts keep Rts; xmatch. 
-  xgo. exists~ r. split. applys~ (@inv_node (r+1)). auto~.
-  xapp~. xapp~. (* todo: xapp~ on rank should fold partial eq in post condition *)
-  forwards~ K1: (@rank_correct t). forwards~ K2: (@rank_correct t0). 
-  rewrite K1,K2 in *. clear K1 K2. subst _x2 _x3. subst.
-  xif. xret. exists r. split. applys~ (@inv_node (r+1)). auto~.
-  asserts: (r = r0). math. subst r0.
-  xapp~. cbv beta in P_x4. xapp~. ximpl as ts' (rs'&Inv&Len).
-  exists rs'. split~. equates* 1.
-Qed.
-
-Hint Extern 1 (RegisterSpec ins_tree) => Provide ins_tree_spec.
-
-Hint Constructors btree.
-
-Lemma insert_spec : RepTotal insert (X;O.t) (E;heap) >>
-  \{X} \u E ; heap.
-Proof.
-  xcf. introv RepX RepE. simpl in RepE. xapp~.
-  ximpl as ts' (rs'&Inv&Pos). simpl. applys~ (inv_smaller). 
-Qed.
-
-Hint Extern 1 (RegisterSpec insert) => Provide insert_spec.
-
-(*
-
-Coercion intbar_int : Z >-> intbar.
-Notation "'oo'" := intbar_inf.
-
-Definition Rank_hd (ts:heap) :=
-  match ts with
-  | nil => oo
-  | t::ts => Rank t
-  end.
-*)
-
-Definition Rank_hd_or r (ts:heap) :=
-  match ts with
-  | nil => r
-  | t::ts => Rank t
-  end.
-
-(* todo: use above *)
 Definition Rank_hd (ts:heap) :=
   match ts with
   | nil => 0
   | t::ts => Rank t
   end.
-
-Lemma inv_cons_inv : forall r' t ts E',
-  inv r' (t::ts) E' -> 
-  exists rs E Es,
-  btree (Rank t) t E /\
-  inv rs ts Es /\
-  Rank t < rs /\
-  r' <= Rank t /\
-  E' = E \u Es.
-Proof.
-  introv H. inverts H. exists rs E Es.
-  forwards~: (@rank_correct t). subst~.
-Qed.
-
 
 Lemma inv_rank_hd : forall r ts Es,
   inv r ts Es -> inv (Rank_hd ts) ts Es.
@@ -368,45 +239,77 @@ Qed.
 Hint Resolve inv_rank_hd Rank_hd_comp Rank_hd_comp' Rank_hd_comp''.
 
 
-Lemma inv_smallest : forall rs ts Es,
-  inv rs ts Es -> 
-  exists rs',
-  inv rs' ts Es /\
-  rs' <= rs /\
-  (ts = nil -> rs' = 0).
+(** verification *)
+
+Lemma empty_spec : rep empty \{}.
+Proof. apply empty_cf. xret~. Qed.
+
+Hint Extern 1 (RegisterSpec empty) => Provide empty_spec.
+
+Lemma is_empty_spec : RepTotal is_empty (E;heap) >> 
+  bool_of (E = \{}).
 Proof.
-  introv H. inverts H. exists~ 0.
-  exists rs. splits. auto~. auto~. auto_false.
-Qed. (* todo: improve autofalse *)
+  xcf. intros e E RepE. inverts RepE; xgo. 
+  auto. intros K. false (btree_not_empty H). skip. (* fset *)
+Qed. 
 
+Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
 
-(*
-Lemma le_rank_hd_or_elim : forall r ts,
-  r <= Rank_hd_or r ts ->
-  r <= Rank_hd ts.
-Proof. intros. destruct ts.
-*)
+Lemma rank_spec : Total rank (t:tree) >> = Rank t.
+Proof. xgo*. Qed.
 
-Axiom min : int -> int -> int.
+Hint Extern 1 (RegisterSpec rank) => Provide rank_spec.
 
-Axiom min_trans_elim : forall a b x y : int,
-  min a b <= x -> y < a -> y < b -> y < x.
+Lemma root_spec : Total root (t:tree) >> = Root t.
+Proof. xgo*. Qed.
 
-Lemma inv_rank_hd_cons : forall r t ts Es,
-  inv r (t::ts) Es -> inv (Rank t) (t::ts) Es.
-Proof.
-  introv H. inverts H; simpl.
-  forwards~: (@rank_correct t).
+Hint Extern 1 (RegisterSpec root) => Provide root_spec.
+
+Lemma link_spec : Spec link (t1:tree) (t2:tree) |R>> 
+  forall r E1 E2,
+  btree r t1 E1 -> btree r t2 E2 ->
+  R (fun t' => btree (r+1) t' (E1 \u E2)).
+Proof. 
+  xcf. intros (r1,x1,c1) (r2,x2,c2). introv R1 R2.
+  destruct (btree_inv R1) as (Er1&X1&Rx1&S1).
+  destruct (btree_inv R2) as (Er2&X2&Rx2&S2).
+  subst r1 r2. xgo~; subst t1 t2. 
+    constructors*.
+    applys_to P_x2 nle_to_sle. constructors*.
 Qed.
-Hint Resolve inv_rank_hd_cons.
 
-Axiom min_self : forall x : int,
-  min x x = x.
+Hint Extern 1 (RegisterSpec link) => Provide link_spec.
 
-Axiom min_left : forall x y : int,
-  x <= y -> min x y = x.
-Axiom min_right : forall x y : int,
-  y <= x -> min x y = y.
+Lemma ins_tree_spec : Spec ins_tree (t:tree) (ts:list tree) |R>> 
+  forall r rs E Es,
+  btree r t E -> inv rs ts Es -> r <= rs ->
+  R (fun ts' => exists rs', inv rs' ts' (E \u Es) /\ r <= rs').
+Proof. 
+  xinduction (fun (t:tree) (ts:list tree) => length ts).
+  xcf. intros t ts. introv IH Rt Rts Ran. 
+  forwards: (btree_rank_pos Rt). inverts keep Rts; xmatch. 
+  xgo. exists~ r. split. applys~ (@inv_node (r+1)). auto~.
+  xapp~. xapp~. (* todo: xapp~ on rank should fold partial eq in post condition *)
+  forwards~ K1: (@rank_correct t). forwards~ K2: (@rank_correct t0). 
+  rewrite K1,K2 in *. clear K1 K2. subst _x2 _x3. subst.
+  xif. xret. exists r. split. applys~ (@inv_node (r+1)). auto~.
+  asserts: (r = r0). math. subst r0.
+  xapp~. cbv beta in P_x4. xapp~. ximpl as ts' (rs'&Inv&Len).
+  exists rs'. split~. equates* 1.
+Qed.
+
+Hint Extern 1 (RegisterSpec ins_tree) => Provide ins_tree_spec.
+
+Hint Constructors btree.
+
+Lemma insert_spec : RepTotal insert (X;O.t) (E;heap) >>
+  \{X} \u E ; heap.
+Proof.
+  xcf. introv RepX RepE. simpl in RepE. xapp~.
+  ximpl as ts' (rs'&Inv&Pos). simpl. applys~ (inv_smaller). 
+Qed.
+
+Hint Extern 1 (RegisterSpec insert) => Provide insert_spec.
 
 Lemma merge_spec : RepTotal merge (E1;heap) (E2;heap) >>
   E1 \u E2 ; heap.
@@ -490,12 +393,6 @@ Admitted.
 
 Hint Extern 1 (RegisterSpec merge) => Provide merge_spec.
 
-Lemma root_le_all : forall r t E,
-  btree r t E -> exists X, 
-    rep (Root t) X /\ 
-    foreach (is_ge X) E.
-Proof. introv H. inverts~ H. Qed.
-
 Lemma remove_min_tree_spec : Spec remove_min_tree (ts:heap) |R>>
   forall rs Es, inv rs ts Es -> Es <> \{} -> 
   R (fun o => let (t',ts') := o : tree * heap in
@@ -528,39 +425,16 @@ Qed.
 
 Hint Extern 1 (RegisterSpec remove_min_tree) => Provide remove_min_tree_spec.
 
-Hint Unfold min_of.
-
 Lemma find_min_spec : RepSpec find_min (E;heap) |R>>
   E <> \{} -> R (min_of E ;; O.t).
 Proof.
   xcf. intros e E RepE HasE. simpl in RepE. xgo~.
   destruct P_x0 as (E'&Es'&X&r'&rs'&Rt'&Rts'&EQ'&RX&MX&D).
-  ximpl as x Px. subst x. skip: (X \in E). eauto. (* todo: unique representation *)
+  ximpl as x Px. subst x. skip: (X \in E). eauto. 
+  (* todo: rep_unique to solve this *)
 Qed.
 
 Hint Extern 1 (RegisterSpec find_min) => Provide find_min_spec.
-
-Lemma inv_rank_smaller : forall r ts Es,
-  inv r ts Es -> inv 0 ts Es.
-Proof.
-  introv H. inverts H; simpl. auto~.
-  forwards~: (@rank_correct t).
-Qed.
-
-Lemma inv_rev_children_final : forall x X ts r E,
-  rep x X ->
-  btree r (Node r x ts) E ->
-  exists E', rep (rev ts) E' /\ E = '{X} \u E'.
-Proof.
-  introv RX RT. forwards~ (E'&R'&I'&EQ'): 
-    (>>> inv_rev_children x ts E r (nil:heap)).
-  rew_list in I'. rewrite union_empty_l in I'.
-  exists E'. split. simpl.
-  apply~ inv_smaller. eauto.  
-Qed.
-
-
-
 
 Lemma delete_min_spec : RepSpec delete_min (E;heap) |R>>
   E <> \{} -> R (removed_min E ;; heap).
@@ -581,3 +455,36 @@ Hint Extern 1 (RegisterSpec delete_min) => Provide delete_min_spec.
 End BinomialHeapSpec.
 
 
+
+(* bin:
+Lemma inv_nil_change : forall rs rs' Es, 
+  inv rs nil Es -> 0 <= rs' -> inv rs' nil Es.
+Proof. introv H P. inverts~ H. Qed.
+
+Lemma rank_correct : forall t r E,
+  btree r t E -> Rank t = r.
+Proof. introv H. inverts~ H. Qed.
+
+Definition Rank_hd_or r (ts:heap) :=
+  match ts with
+  | nil => r
+  | t::ts => Rank t
+  end.
+
+Lemma le_rank_hd_or_elim : forall r ts,
+  r <= Rank_hd_or r ts ->
+  r <= Rank_hd ts.
+Proof. intros. destruct ts.
+
+Lemma inv_smallest : forall rs ts Es,
+  inv rs ts Es -> 
+  exists rs',
+  inv rs' ts Es /\
+  rs' <= rs /\
+  (ts = nil -> rs' = 0).
+Proof.
+  introv H. inverts H. exists~ 0.
+  exists rs. splits. auto~. auto~. auto_false.
+Qed. (* todo: improve autofalse *)
+
+*)

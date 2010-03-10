@@ -259,12 +259,12 @@ Ltac check_not_a_tag tt :=
   | |- _ => idtac
   end.
 
-Ltac xauto_tilde_default cont := 
+Ltac xauto_common cont :=
   check_not_a_tag tt;  
-  try solve [ cont tt | substs; if_eq; solve [ cont tt | apply refl_equal ] ].
-Ltac xauto_star_default cont := 
-  check_not_a_tag tt; 
-  try solve [ cont tt | substs; if_eq; solve [ cont tt | apply refl_equal ] ].
+  try solve [ cont tt | solve [ apply refl_equal ] | substs; if_eq; solve [ cont tt | apply refl_equal ] ].
+
+Ltac xauto_tilde_default cont := xauto_common cont.
+Ltac xauto_star_default cont := xauto_common cont.
 
 Ltac xauto_tilde := xauto_tilde_default ltac:(fun _ => auto_tilde).
 Ltac xauto_star := xauto_star_default ltac:(fun _ => auto_star). 
@@ -287,7 +287,19 @@ Ltac xisspec_core :=
   solve [ intros_all; auto; auto* ].
 
 Tactic Notation "xisspec" :=
-  xisspec_core.
+  check_noevar_goal; xisspec_core.
+
+Tactic Notation "xisspec" constr(T1) :=
+  instantiate (1 := T1); instantiate; xisspec.
+
+Tactic Notation "xisspec" constr(T1) constr(T2) :=
+  instantiate (1 := T1); instantiate;
+  instantiate (2 := T2); instantiate; xisspec.
+
+Tactic Notation "xisspec" constr(T1) constr(T2) constr(T3) :=
+  instantiate (1 := T1); instantiate;
+  instantiate (2 := T2); instantiate;
+  instantiate (3 := T3); instantiate; xisspec.
 
 
 (*--------------------------------------------------------*)
@@ -300,12 +312,15 @@ Tactic Notation "xisspec" :=
 Ltac xcf_post tt :=
   cbv beta.
 
+Ltac solve_type :=
+  match goal with |- Type => exact unit end.
+
 Ltac xcf_for_core f :=
   ltac_database_get database_cf f;
   let H := fresh "TEMP" in intros H; 
   match type of H with
-  | tag tag_topfun _ _ => sapply H; [ try xisspec | ]
-  | _ => sapply H
+  | tag tag_topfun _ _ => sapply H; instantiate; try solve_type; [ try xisspec | ]
+  | _ => sapply H; try solve_type
   end; clear H; xcf_post tt.
 
 Ltac xcf_core :=
@@ -352,42 +367,6 @@ Tactic Notation "xfind" constr(f) :=
 
 Tactic Notation "xfind" := 
   let f := spec_goal_fun tt in xfind f.
-
-
-(*--------------------------------------------------------*)
-(* ** [xret], [xfail] *)
-
-(** [xret] simplifies a proof obligation of the form 
-    [Ret v P], which is in fact equivalent to [P v]. 
-    [xret_noclean] can be used to skip beautification phase. *)
-
-Tactic Notation "xret_noclean" := 
-  xuntag tag_ret.
-Tactic Notation "xret" := 
-  xret_noclean; xclean.
-Tactic Notation "xret" "~" :=  
-  xret; xauto~.
-Tactic Notation "xret" "*" :=  
-  xret; xauto*.
-
-(** [xfail] simplifies a proof obligation of the form [Fail],
-    which is in fact equivalent to [False].
-    [xfail_noclean] is also available. *)
-
-Tactic Notation "xfail_noclean" :=
-  xuntag tag_fail.
-Tactic Notation "xfail" := 
-  xfail_noclean; xclean.
-Tactic Notation "xfail" "~" :=  
-  xfail; xauto~.
-Tactic Notation "xfail" "*" :=  
-  xfail; xauto*.
-
-(** [xdone] proves a goal of the form [Done],
-    which is in fact equivalent to [True]. *)
-
-Tactic Notation "xdone" :=
-  xuntag tag_done; split.
 
 
 (*--------------------------------------------------------*)
@@ -543,6 +522,52 @@ Tactic Notation "xok" :=
   first [ apply_last_hyp | apply refl_equal ].
 *)
 
+
+(*--------------------------------------------------------*)
+(* ** [xret], [xfail], [xdone] *)
+
+(** [xret] simplifies a proof obligation of the form 
+    [Ret v P], which is in fact equivalent to [P v]. 
+    [xret_noclean] can be used to skip beautification phase. *)
+
+Ltac xret_core :=
+  xuntag tag_ret.
+
+Ltac xret_pre cont := 
+  match ltac_get_tag tt with
+  | tag_ret => cont tt
+  | tag_let => xlet; [ cont tt | instantiate ]
+  end.  
+
+Tactic Notation "xret_noclean" := 
+  xret_pre ltac:(fun _ => xret_core).
+Tactic Notation "xret" := 
+  xret_pre ltac:(fun _ => xret_core; xclean).
+Tactic Notation "xret" "~" :=  
+  xret; xauto~.
+Tactic Notation "xret" "*" :=  
+  xret; xauto*.
+
+
+(** [xfail] simplifies a proof obligation of the form [Fail],
+    which is in fact equivalent to [False].
+    [xfail_noclean] is also available. *)
+
+Tactic Notation "xfail_noclean" :=
+  xuntag tag_fail.
+Tactic Notation "xfail" := 
+  xfail_noclean; xclean.
+Tactic Notation "xfail" "~" :=  
+  xfail; xauto~.
+Tactic Notation "xfail" "*" :=  
+  xfail; xauto*.
+
+(** [xdone] proves a goal of the form [Done],
+    which is in fact equivalent to [True]. *)
+
+Tactic Notation "xdone" :=
+  xuntag tag_done; split.
+
 (*--------------------------------------------------------*)
 (* ** [ximpl] *)
 
@@ -690,6 +715,10 @@ Ltac xapp_with solver :=
    xapp_pre ltac:(fun _ => xapp_core ltac:(fun _ => xapp_cont_r_with (>>>) solver) ltac:(xapp_cont_w_auto)).
 Ltac xapp_args_with E solver :=
    xapp_pre ltac:(fun _ => xapp_core ltac:(fun _ => xapp_cont_r_with E solver) ltac:(xapp_cont_w_auto)).
+Ltac xapp_spec_with H solver :=
+   xapp_pre ltac:(fun _ => xapp_spec_core H ltac:(fun _ => xapp_cont_r_with (>>>) solver) ltac:(xapp_cont_w_auto)).
+Ltac xapp_spec_args_with H E solver :=
+   xapp_pre ltac:(fun _ => xapp_spec_core H ltac:(fun _ => xapp_cont_r_with E solver) ltac:(xapp_cont_w_auto)).
 
 (* todo: factorize xapp_pre *)
 
@@ -740,6 +769,15 @@ Tactic Notation "xapp" "*" constr(E1) constr(E2) := xapp* (>>> E1 E2).
 Tactic Notation "xapp" "*" constr(E1) constr(E2) constr(E3) := xapp* (>>> E1 E2 E3).
 Tactic Notation "xapp" "*" constr(E1) constr(E2) constr(E3) constr(E4) := xapp* (>>> E1 E2 E3 E4).
 Tactic Notation "xapp" "*" constr(E1) constr(E2) constr(E3) constr(E4) constr(E5) := xapp* (>>> E1 E2 E3 E4 E5).
+
+Tactic Notation "xapp_spec" "~" constr(H) := 
+  xapp_spec_with H ltac:(fun _ => xauto~); xauto~.
+Tactic Notation "xapp_spec" "~" constr(H) constr(E) := 
+  xapp_spec_args_with H E ltac:(fun _ => xauto~); xauto~.
+Tactic Notation "xapp_spec" "*" constr(H) := 
+  xapp_spec_with H ltac:(fun _ => xauto*); xauto*.
+Tactic Notation "xapp_spec" "*" constr(H) constr(E) := 
+  xapp_spec_args_with H E ltac:(fun _ => xauto*); xauto*.
 
 
 (*--------------------------------------------------------*)
@@ -1110,10 +1148,12 @@ Tactic Notation "xfunc" "as" "f" :=
     and [curried_n f], both of which are attempted to be 
     discharged automatically (using [xisspec] and [xcurried]) *)
 
-Ltac xintros_core cont1 cont2 cont3 :=
+Ltac xintros_core cont1 cont2 cont3 ::=
    let arity := spec_goal_arity tt in
    let lemma := get_spec_intro_x arity in
-   apply lemma; [ cont1 tt | cont2 tt | cont3 tt ]. 
+   apply lemma; [ instantiate; cont1 tt 
+                | instantiate; cont2 tt 
+                | instantiate; cont3 tt ]. 
 
 Tactic Notation "xintros" :=
   xintros_core ltac:(fun _ => try xisspec) 

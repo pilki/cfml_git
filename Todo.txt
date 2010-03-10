@@ -1,0 +1,35 @@
+*) Physicists queue, check_spec, avant xgo:
+   bug si l'hypothèse "True" est dans le contexte 
+
+*) "myauto" dans les set et les multiset,
+   pour contourner le bug de eauto sur des x = y :> TA
+
+*) SplayHeap_proof : réintroduire un hint
+   Hint Extern 1 ((_ < _)%nat) => simpl; math.*)
+
+*) UnbalancedSet : specialisé le hint simpl sur rep ?
+
+*) BottomUpMergeSort : Tactics to improve
+
+*) FuncTactics : ximpl_nointros => ximpl_refl
+
+*) Polymorhism 
+      Record RepType :=
+         { RepType_base :> Type;
+           RepType_model : Type;
+           RepType_rep : rep RepType_base RepType_model }.
+
+      Notation "'#' RT" := RepType_model RT
+
+*) BatchedQueue, tail_spec :
+   use ximpl for ( ; ) ==> ( ;; ) 
+
+
+*) Tactic if_eq : renommer et systématiser dans xclean ?
+
+*) todo: ImplicitQueueSpec: queue_rep: si on met queue a_, 
+   on n'a pas d'erreur de bound name !
+
+*) todo: xisspec loop if evars are in the goal 
+
+*) [inductions] that works
