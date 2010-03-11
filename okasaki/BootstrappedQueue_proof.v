@@ -140,35 +140,38 @@ Proof. intros. gen A H. apply (empty_cf a). xgo~. Qed.
 Hint Extern 1 (RegisterSpec empty) => Provide empty_spec.
 
 Lemma empty_inv : forall `{Rep a A},
-  inv _ empty nil.
+  inv true true _ empty nil.
 Proof. intros. apply empty_spec. Qed.
 
-Hint Extern 1 (inv _ empty _) => apply empty_inv.
+Hint Extern 1 (inv true true _ empty _) => apply empty_inv.
 
 Lemma is_empty_spec : forall `{Rep a A},
   RepTotal is_empty (Q;queue a) >> bool_of (Q = nil).
 Proof.
+  xcf. intros q Q RQ. xgo.
+  apply~ to_empty.
+  intro_subst_hyp. applys C. apply~ from_empty.
 Qed.
 
 Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
 
-Definition checkq_spec := forall `{Rep a A},
+Definition checkq_spec `{Rep a A} :=
+  Spec checkq (q:queue a) |R>>
+     forall Q, inv false false _ q Q -> R (Q ; queue a).
+
+Definition checkf_spec `{Rep a A} :=
+  RepSpec checkf (Q;queue a) |R>>
+     Q <> nil -> R (is_head Q ;; a).
+
+Definition head_spec `{Rep a A} :=
   RepSpec head (Q;queue a) |R>>
      Q <> nil -> R (is_head Q ;; a).
 
-Definition checkf_spec := forall `{Rep a A},
-  RepSpec head (Q;queue a) |R>>
-     Q <> nil -> R (is_head Q ;; a).
-
-Definition head_spec := forall `{Rep a A},
-  RepSpec head (Q;queue a) |R>>
-     Q <> nil -> R (is_head Q ;; a).
-
-Definition tail_spec := forall `{Rep a A},
+Definition tail_spec `{Rep a A} :=
   RepSpec tail (Q;queue a) |R>> 
      Q <> nil -> R (is_tail Q ;; queue a).
 
-Definition snoc_spec := forall `{Rep a A},
+Definition snoc_spec `{Rep a A} :=
   RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ; queue a.
 
 Lemma all_specs : 
