@@ -82,8 +82,10 @@ Inductive inv : bool -> bool -> forall `{Rep a A}, queue a -> list A -> Prop :=
      doubling true 1 Qms ->
      inv okb okf _ (Struct lenfm f m lenr r) Q.
      
+Implicit Arguments inv [[a] [A] [H]].
+
 Global Instance queue_rep `{Rep a A} : Rep (queue a) (list A) := 
-  inv true true H.
+  inv true true.
 
 (** automation *)
 Hint Constructors doubling inv Forall2.
@@ -140,10 +142,10 @@ Proof. intros. gen A H. apply (empty_cf a). xgo~. Qed.
 Hint Extern 1 (RegisterSpec empty) => Provide empty_spec.
 
 Lemma empty_inv : forall `{Rep a A},
-  inv true true _ empty nil.
+  inv true true empty nil.
 Proof. intros. apply empty_spec. Qed.
 
-Hint Extern 1 (inv true true _ empty _) => apply empty_inv.
+Hint Extern 1 (inv true true empty _) => apply empty_inv.
 
 Lemma is_empty_spec : forall `{Rep a A},
   RepTotal is_empty (Q;queue a) >> bool_of (Q = nil).
@@ -157,11 +159,11 @@ Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
 
 Definition checkq_spec `{Rep a A} :=
   Spec checkq (q:queue a) |R>>
-     forall Q, inv false false _ q Q -> R (Q ; queue a).
+     forall Q, inv false false q Q -> R (Q ; queue a).
 
 Definition checkf_spec `{Rep a A} :=
-  RepSpec checkf (Q;queue a) |R>>
-     Q <> nil -> R (is_head Q ;; a).
+  Spec checkf (q:queue a) |R>>
+     forall Q, inv true false q Q -> R (Q ; queue a).
 
 Definition head_spec `{Rep a A} :=
   RepSpec head (Q;queue a) |R>>
