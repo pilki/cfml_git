@@ -1,3 +1,5 @@
+*) rew_list doit checker les evars avant
+
 *) la récursion polymorphe doit accépter
     let rec f : 'a. 'a t -> 'a t = failwith "not implemented"
    et ne pas forcer

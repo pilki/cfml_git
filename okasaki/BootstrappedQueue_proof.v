@@ -69,12 +69,12 @@ Inductive doubling (A:Type) : bool -> int -> list (list A) -> Prop :=
 Inductive inv : bool -> bool -> forall `{Rep a A}, queue a -> list A -> Prop :=
   | inv_empty : forall `{Rep a A} okb okf,
      inv okb okf _ Empty nil
-  | inv_struct : forall `{Rep a A} (okb okf:bool) lenfm f m lenr r Qf Qr Qms Qm Q,
+  | inv_struct : forall `{Rep a A} (okb okf:bool) (lenfm:int) f m (lenr:int) r Qf Qr Qms Qm Q,
      rep f Qf ->
      rep r Qr ->
      inv true true _ m Qms ->
      Qm =' concat Qms ->
-     lenr =' length r ->
+     lenr =' length Qr ->
      lenfm =' length Qf + length Qm ->
      Q =' Qf ++ Qm ++ rev Qr ->
      (if okf then f <> nil else True) ->
@@ -138,6 +138,22 @@ Proof.
   constructors~. apply~ doubling_last_ind.
 Qed.
 
+Lemma doubling_weaken_n : forall A (ls:list (list A)) n m,
+  doubling false n ls -> m <= n -> doubling false m ls.
+Proof.
+  introv H. gen_eq b: false; gen_eq n':n. gen m n.
+  induction H; intros; subst.
+  auto.
+  constructors. subst. apply~ IHdoubling. math.
+Qed.
+
+Lemma doubling_weaken_f : forall A (ls:list (list A)),
+  doubling false 1 ls -> doubling true 1 ls.
+Proof.
+  introv H. inverts H. auto. constructors~.
+  apply~ doubling_weaken_n.
+Qed.
+
 (** verification *)
 
 Lemma empty_spec : forall `{Rep a A},
@@ -162,14 +178,21 @@ Qed.
 
 Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
 
+Coercion queue_of_body a (q:body a) : queue a :=
+  let '(lenfm,f,m,lenr,r) := q in
+  Struct lenfm f m lenr r.
+
+
 Definition checkq_spec `{Rep a A} :=
-  Spec checkq (q:queue a) |R>>
+  Spec checkq (q:body a) |R>>
      forall Q, inv false false q Q -> R (Q ; queue a).
 
 Definition checkf_spec `{Rep a A} :=
-  Spec checkf (q:queue a) |R>>
+  Spec checkf (q:body a) |R>>
      forall Q, inv true false q Q -> R (Q ; queue a).
 
+Definition snoc_spec `{Rep a A} :=
+  RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ; queue a.
 Definition head_spec `{Rep a A} :=
   RepSpec head (Q;queue a) |R>>
      Q <> nil -> R (is_head Q ;; a).
@@ -178,15 +201,108 @@ Definition tail_spec `{Rep a A} :=
   RepSpec tail (Q;queue a) |R>> 
      Q <> nil -> R (is_tail Q ;; queue a).
 
-Definition snoc_spec `{Rep a A} :=
-  RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ; queue a.
-
 Ltac all_specs_go :=
   unfolds; first [ xintros; instantiate;  
     [ xcf; auto; 
       try match goal with H: Rep ?a _ |- _ => instantiate (1 := a) end;
       try xisspec | ]
   | xintros ].
+
+Hint Extern 1 (@gt nat _ _ _) => simpl; math.
+
+Lemma list_rep_cons : forall `{Rep a A} l L x X,
+  rep l L -> rep x X -> rep (x::l) (X::L).
+Proof. intros. constructors~. Qed.
+Hint Resolve @list_rep_cons.
+
+Lemma cons_neq_nil : forall A (x:A) l, x::l <> nil.
+Proof. auto_false. Qed.
+Hint Immediate cons_neq_nil.
+
+Lemma Forall2_rev : forall A1 A2 (P:A1->A2->Prop) l1 l2,
+  Forall2 P l1 l2 -> Forall2 P (rev l1) (rev l2).
+Proof. induction l1; introv M; inverts M; rew_rev; auto. Qed.
+Hint Resolve Forall2_rev.
+
+
+Lemma all_specs : 
+  (forall `{Rep a A}, checkq_spec) /\ 
+  (forall `{Rep a A}, checkf_spec) /\ 
+  (forall `{Rep a A}, snoc_spec) /\
+  (forall `{Rep a A}, head_spec) /\
+  (forall `{Rep a A}, tail_spec).
+Proof.
+  eapply conj_strengthen_5; try intros M; intros; try all_specs_go.
+  intros q. intros. gen_eq n:((3 * depth q + 1)%nat). gen n a A q Q H0. apply M.
+  intros q. intros. gen_eq n:((3 * depth q)%nat). gen n a A q Q H0. apply M.
+  intros q x. intros. gen_eq n:((3 * depth q + 2)%nat). gen n a A q x Q X H0 H1. apply M.
+  intros q. intros. gen_eq n:((3 * depth q + 2)%nat). gen n a A q Q H0 H1. apply M.
+  intros q. intros. gen_eq n:((3 * depth q + 2)%nat). gen n a A q Q H0 H1. apply M.
+  forwards (H1&H2&H3&H4&H5): (eq_gt_induction_5);
+    try match goal with |- _ /\ _ /\ _ /\ _ /\ _ =>
+      splits; intros n; pattern (eq n);
+      [ apply H1 | apply H2 | apply H3 | apply H4 | apply H5 ] end;
+    auto~.
+  introv IHcheckq IHcheckf IHsnoc IHhead IHtail. simpls. splits.
+  (* verification of checkq *)
+  clear IHcheckq IHhead IHtail.
+  introv RQ N. subst n. xcf_app. xmatch. xif.
+  inverts RQ. subst q. xapp. constructors~. auto~.
+  inverts RQ. subst q. (* ? xapp (>>> (list a) Qms (rev Qr)). *)
+  specializes IHsnoc (>>> (list a) Qms (rev Qr)). xapp~. simpls.
+  xapp. constructors~. subst Qm. rew_list~. subst Q Qm. rew_list~.
+  apply~ doubling_last. subst Qm. rew_length~.
+  simpl. skip. (* décroissance pas bonne *)
+  (* verification of checkf *)
+  clear IHcheckq IHcheckf IHsnoc.
+  introv RQ N. subst n. xcf_app. xmatch. xmatch.
+  xgo. inverts RQ as. introv EQm LR LFM _ Le D RF RM RR EQ.
+   subst Qm. inverts RF. inverts RM. rew_list in LFM.
+    forwards~ M: (@length_zero_inv _ Qr). subst Qr. 
+    inverts RR. subst Q. rew_list. constructors~.
+  inverts RQ. inverts H9. 
+  specializes IHhead (>>> (list a) Qms). xapp~. clear IHhead.
+   intro_subst_hyp. applys C. fequals. apply~ @from_empty.
+  destruct P_x2 as (Hm'&RHm'&[Tm' EQms']). 
+  specializes IHtail (>>> (list a) Qms). xapp~. clear IHtail.
+  destruct P_x3 as (Tm&RHm&[Hm EQms]). 
+  subst Qms. injects EQms. subst Q Qm. xgo.
+  rew_list in H18. inverts H22 as K P. constructors~. rew_list~.
+   intro_subst_hyp. inverts RHm'. rew_list in P. math.
+   apply~ doubling_weaken_f.
+  xgo. inverts RQ. constructors~. intro_subst_hyp. inverts H10. false~ C0.
+  (* verification of snoc *)
+  clear IHcheckf IHsnoc IHhead IHtail.
+  introv RQ RX N. subst n. xcf_app. xgo.
+  inverts RQ. constructors~.
+  inverts RQ. constructors~. rew_list~. subst. rew_list~.
+  auto~.
+  (* verification of head *)
+  clear IHcheckf IHcheckq IHsnoc IHhead IHtail.
+  introv RQ NE N. subst n. xcf_app. xgo.
+  inverts RQ. false.
+  inverts RQ. inverts~ H9.
+  inverts RQ. false. destruct f; false.
+  (* verification of tail *)
+  clear IHcheckf IHsnoc IHhead IHtail.
+  introv RQ RX N. subst n. xcf_app. xgo.
+  inverts RQ. constructors~. 
+  inverts RQ. constructors~. rew_list~. subst. rew_list~.
+  auto~.
+Qed.
+
+Definition head_spec := proj53 all_specs.
+Definition tail_spec := proj54 all_specs.
+Definition snoc_spec := proj55 all_specs.
+
+Hint Extern 1 (RegisterSpec head) => Provide head_spec.
+Hint Extern 1 (RegisterSpec tail) => Provide tail_spec.
+Hint Extern 1 (RegisterSpec snoc) => Provide snoc_spec.
+
+End BootstrappedQueueSpec.
+
+(*
+
 
 Axiom factorize : forall (P1 P2 P3 P4 P5 : nat -> Prop),
   (forall n, P1 n /\ P2 n /\ P3 n /\ P4 n /\ P5 n) ->
@@ -222,35 +338,4 @@ Axiom go' :forall (P1 : (nat->Prop) -> Prop),
 Axiom go'' :forall f n  (P1 P2 : (nat->Prop) -> Prop),
  (f = eq n -> (P1 f /\ P2 f)).
 *)
-
-
-Lemma all_specs : 
-  (forall `{Rep a A}, checkq_spec) /\ 
-  (forall `{Rep a A}, checkf_spec) /\ 
-  (forall `{Rep a A}, head_spec) /\
-  (forall `{Rep a A}, tail_spec) /\
-  (forall `{Rep a A}, snoc_spec).
-Proof.
-  eapply conj_strengthen_5; try intros M; intros; try all_specs_go.
-  intros q. intros. gen_eq n:((2 * depth q + 1)%nat). gen n a A q Q H0. apply M.
-  intros q. intros. gen_eq n:((2 * depth q)%nat). gen n a A q Q H0. apply M.
-  intros q. intros. gen_eq n:((2 * depth q)%nat). gen n a A q Q H0 H1. apply M.
-  intros q. intros. gen_eq n:((2 * depth q)%nat). gen n a A q Q H0 H1. apply M.
-  intros q. intros. gen_eq n:((2 * depth q)%nat). gen n a A q Q H0 H1. apply M.
-  forwards (H1&H2&H3&H4&H5): (eq_gt_induction_5);
-    try match goal with |- _ /\ _ /\ _ /\ _ /\ _ =>
-      splits; intros n; pattern (eq n);
-      [ apply H1 | apply H2 | apply H3 | apply H4 | apply H5 ] end;
-    auto~.
-  
-Qed.
-
-Definition head_spec := proj53 all_specs.
-Definition tail_spec := proj54 all_specs.
-Definition snoc_spec := proj55 all_specs.
-
-Hint Extern 1 (RegisterSpec head) => Provide head_spec.
-Hint Extern 1 (RegisterSpec tail) => Provide tail_spec.
-Hint Extern 1 (RegisterSpec snoc) => Provide snoc_spec.
-
-End BootstrappedQueueSpec.
+*)
