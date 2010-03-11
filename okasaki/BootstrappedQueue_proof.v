@@ -100,13 +100,13 @@ Hint Extern 1 (@rep (queues _) _ _ _ _) => simpl.
 Ltac auto_tilde ::= eauto with maths.
 
 (** useful facts *)
-
+(*
 Fixpoint depth a (q:queue a) : nat :=
   match q with
   | Empty => 0%nat
   | Struct lenfm f m lenr r => (1 + depth m)%nat
   end.
-
+*)
 Lemma to_empty : forall `{Rep a A} Q,
   rep Empty Q -> Q = nil.
 Proof. introv RQ. set_eq Q': Q. inverts~ RQ. Qed.
@@ -224,6 +224,38 @@ Lemma Forall2_rev : forall A1 A2 (P:A1->A2->Prop) l1 l2,
 Proof. induction l1; introv M; inverts M; rew_rev; auto. Qed.
 Hint Resolve Forall2_rev.
 
+Lemma concat_doubling_length : forall A (Qms:list (list A)),
+  doubling true 1 Qms -> length Qms <= length (concat Qms).
+Proof.
+  introv D. sets_eq n:1. asserts~ M: (n >= 1). clear EQn.
+  gen M. induction D; intros; subst.
+  rew_length~. destruct first; rew_list in *.
+   forwards~: IHD. maths (2*n>=1). lets~: (IHD H0).
+Qed.
+
+Lemma decrease_r : forall A (Q Qf Qm Qr : list A) Qms,
+  Q = Qf ++ Qm ++ rev Qr ->
+  0 < length Qr -> 
+  Qm = concat Qms ->
+  doubling true 1 Qms ->
+  length Qms < length Q.
+Proof.
+  introv E L Em Dm. destruct Qr. gen L. rew_list~. 
+  forwards: (concat_doubling_length Dm).
+  subst Q Qm. rew_length~.
+Qed.
+
+Lemma decrease_f : forall `{Rep a A} f (Q Qf Qm Qr : list A) Qms,
+  Q = Qf ++ Qm ++ rev Qr ->
+  f <> nil -> rep f Qf ->
+  Qm = concat Qms ->
+  doubling true 1 Qms ->
+  length Qms < length Q.
+Proof.
+  introv E L R Em Dm. destruct f. false. inverts R.
+  forwards: (concat_doubling_length Dm).
+  subst Q Qm. rew_length~.
+Qed.
 
 Lemma all_specs : 
   (forall `{Rep a A}, checkq_spec) /\ 
@@ -233,11 +265,11 @@ Lemma all_specs :
   (forall `{Rep a A}, tail_spec).
 Proof.
   eapply conj_strengthen_5; try intros M; intros; try all_specs_go.
-  intros q. intros. gen_eq n:((3 * depth q + 1)%nat). gen n a A q Q H0. apply M.
-  intros q. intros. gen_eq n:((3 * depth q)%nat). gen n a A q Q H0. apply M.
-  intros q x. intros. gen_eq n:((3 * depth q + 2)%nat). gen n a A q x Q X H0 H1. apply M.
-  intros q. intros. gen_eq n:((3 * depth q + 2)%nat). gen n a A q Q H0 H1. apply M.
-  intros q. intros. gen_eq n:((3 * depth q + 2)%nat). gen n a A q Q H0 H1. apply M.
+  intros q. intros. gen_eq n:((3 * length Q + 1)%nat). gen n a A q Q H0. apply M.
+  intros q. intros. gen_eq n:((3 * length Q)%nat). gen n a A q Q H0. apply M.
+  intros q x. intros. gen_eq n:((3 * length Q + 2)%nat). gen n a A q x Q X H0 H1. apply M.
+  intros q. intros. gen_eq n:((3 * length Q + 2)%nat). gen n a A q Q H0 H1. apply M.
+  intros q. intros. gen_eq n:((3 * length Q + 2)%nat). gen n a A q Q H0 H1. apply M.
   forwards (H1&H2&H3&H4&H5): (eq_gt_induction_5);
     try match goal with |- _ /\ _ /\ _ /\ _ /\ _ =>
       splits; intros n; pattern (eq n);
@@ -249,7 +281,8 @@ Proof.
   introv RQ N. subst n. xcf_app. xmatch. xif.
   inverts RQ. subst q. xapp. constructors~. auto~.
   inverts RQ. subst q. (* ? xapp (>>> (list a) Qms (rev Qr)). *)
-  specializes IHsnoc (>>> (list a) Qms (rev Qr)). xapp~. simpls.
+  specializes IHsnoc (>>> (list a) Qms (rev Qr)). xapp~.
+   subst Qm. forwards~: (>>> decrease_r H19). simpls.
   xapp. constructors~. subst Qm. rew_list~. subst Q Qm. rew_list~.
   apply~ doubling_last. subst Qm. rew_length~.
   simpl. skip. (* décroissance pas bonne *)
@@ -263,8 +296,10 @@ Proof.
   inverts RQ. inverts H9. 
   specializes IHhead (>>> (list a) Qms). xapp~. clear IHhead.
    intro_subst_hyp. applys C. fequals. apply~ @from_empty.
+  subst Qm. skip.
   destruct P_x2 as (Hm'&RHm'&[Tm' EQms']). 
   specializes IHtail (>>> (list a) Qms). xapp~. clear IHtail.
+skip.
   destruct P_x3 as (Tm&RHm&[Hm EQms]). 
   subst Qms. injects EQms. subst Q Qm. xgo.
   rew_list in H18. inverts H22 as K P. constructors~. rew_list~.
@@ -276,7 +311,7 @@ Proof.
   introv RQ RX N. subst n. xcf_app. xgo.
   inverts RQ. constructors~.
   inverts RQ. constructors~. rew_list~. subst. rew_list~.
-  auto~.
+  rew_length~.
   (* verification of head *)
   clear IHcheckf IHcheckq IHsnoc IHhead IHtail.
   introv RQ NE N. subst n. xcf_app. xgo.
