@@ -12,11 +12,17 @@ Import MLBatchedQueue.
 
 (** invariant *)
 
-Global Instance queue_rep `{Rep a A} : Rep (queue a) (list A) :=
+Global Instance queue_rep `{Rep a A} : Rep (queue a) (list A).
+Proof. intros. apply (Build_Rep (
   fun (q:queue a) (Q:list A) =>
   let (f,r) := q in 
      Forall2 rep (f ++ rev r) Q
-  /\ (f = nil -> r = nil).
+  /\ (f = nil -> r = nil))).
+  destruct x; introv [? ?] [? ?].
+  asserts: (rep (l++rev l0) X). auto~.
+  asserts: (rep (l++rev l0) Y). auto~.
+  prove_rep. (* todo: improve *)
+Defined.
 
 (** automation *)
 

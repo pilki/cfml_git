@@ -20,6 +20,12 @@ Inductive invd `{Rep a A} : digit a -> list A -> Prop :=
   | invd_two : forall x X y Y,
      rep x X -> rep y Y -> invd (Two x y) (X::Y::nil).
 
+Global Instance digit_rep `{Rep a A} : Rep (digit a) (list A).
+Proof. 
+  intros. apply (Build_Rep invd).
+  destruct x; introv KX KY; inverts KX; inverts KY; prove_rep.
+Defined.
+
 Fixpoint splitin A (Q:list (A*A)) : list A :=
   match Q with
   | nil => nil
@@ -29,25 +35,30 @@ Fixpoint splitin A (Q:list (A*A)) : list A :=
 Inductive inv : forall `{Rep a A}, queue a -> list A -> Prop :=
   | inv_shallow : forall `{Rep a A} d Q,
      (match d with Two _ _ => False | _ => True end) ->
-     invd d Q ->
+     rep d Q ->
      inv _ (Shallow d) Q
   | inv_deep : forall `{Rep a A} df qm dr Qf Qr Qm Q,
-     invd df Qf ->
-     invd dr Qr ->
+     rep df Qf ->
+     rep dr Qr ->
      inv _ qm Qm ->
      (match df with Zero => False | _ => True end) ->
      (match dr with Two _ _ => False | _ => True end) ->
      Q =' Qf ++ splitin Qm ++ Qr ->
      inv _ (Deep df qm dr) Q.
-     
-Global Instance queue_rep `{Rep a A} : Rep (queue a) (list A) := 
-  inv H.
+
+Implicit Arguments inv [[a] [A] [H]].
+
+Global Instance queue_rep `{Rep a A} : Rep (queue a) (list A).
+Proof. 
+  intros. apply (Build_Rep inv).
+  introv KX. induction KX; introv KY; inverts KY; subst; prove_rep.
+Defined.
 
 (** automation *)
+
 Hint Constructors invd inv Forall2.
 Hint Resolve Forall2_last.
-Hint Extern 1 (@rep (queue _) _ _ _ _) => simpl.
-Hint Extern 1 (@rep (queues _) _ _ _ _) => simpl.
+Hint Extern 1 (rep _ _) => simpl.
 Ltac auto_tilde ::= eauto.
 
 (* todo: remove this *)
@@ -88,10 +99,10 @@ Proof. intros. gen A H. apply (empty_cf a). xgo~. Qed.
 Hint Extern 1 (RegisterSpec empty) => Provide empty_spec.
 
 Lemma empty_inv : forall `{Rep a A},
-  inv _ empty nil.
+  inv empty nil.
 Proof. intros. apply empty_spec. Qed.
 
-Hint Extern 1 (inv _ empty _) => apply empty_inv.
+Hint Extern 1 (inv empty _) => apply empty_inv.
 
 Lemma head_spec : forall `{Rep a A},
   RepSpec head (Q;queue a) |R>>
@@ -131,12 +142,12 @@ Proof.
   apply~ eq_gt_induction; clears n.
   introv IH. intros ? ? ? q Q RQ NE N. subst n. xcf_app. xmatch.
   xgo. apply NE. apply~ to_empty.
-  xgo. inverts RQ as _ M. inverts M. exists~ (@nil A).
+  xgo. inverts RQ as _ M. inverts M. exists~ (@nil A). 
   xgo. inverts RQ as M. inverts M. subst Q. rew_list. eauto 10.
   inverts RQ as Df ? ? ? ? EQ. inverts Df. 
    rew_list in EQ.
     xapp_spec~ (@is_empty_spec (a*a)%type _ _).
-   xif. xgo. subst. simpl. rew_list. eauto 10.
+   xif. xgo. subst. simpl. rew_list. eauto 7.
    xapp_spec~ (@head_spec (a*a)%type _ _).
    xcleanpat. xmatch. clear H0.
    xlet. applys~ (>>> IH ((a*a)%type) Qm). skip. clear IH.
@@ -158,9 +169,9 @@ Proof.
   introv IH. intros ? ? ? q y Q RQ N Y RY. subst n.
   xcf_app. xmatch. 
   xgo. inverts RQ as _ M. inverts M. rew_list~.
-  xgo. inverts RQ as _ M. inverts M. rew_list~.
+  xgo. inverts RQ as _ M. inverts M. rew_list~. eauto 7.
   xgo. inverts RQ as. introv Df Vf Rm _ Dr EQ.
-   inverts Dr. subst Q. rew_list~.
+   inverts Dr. subst Q. rew_list~. eauto 7.
   inverts RQ as. introv Df Vf Rm _ Dr EQ. 
    inverts Dr as RX. xlet.
     applys~ (>>> IH ((a*a)%type) (x,y) (X,Y)). skip.

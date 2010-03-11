@@ -37,7 +37,7 @@ Parameter tail_spec :
 
 End Polymorphic.
 
-End QueueSigSpec.
+End CatenableListSigSpec.
 
 
 

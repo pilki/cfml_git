@@ -29,6 +29,7 @@ OKACOD=\
 	okasaki/PhysicistsQueue_ml.v \
 	okasaki/RealTimeQueue_ml.v \
 	okasaki/ImplicitQueue_ml.v \
+	okasaki/BootstrappedQueue_ml.v \
 	okasaki/RedBlackSet_ml.v \
 	okasaki/LeftistHeap_ml.v \
 	okasaki/PairingHeap_ml.v \
@@ -37,7 +38,8 @@ OKACOD=\
 	okasaki/SplayHeap_ml.v \
 	okasaki/RedBlackSet_ml.v \
 	okasaki/UnbalancedSet_ml.v \
-	okasaki/BottomUpMergeSort_ml.v 
+	okasaki/BottomUpMergeSort_ml.v \
+	okasaki/Okasaki_ml.v 
 
 OKA=\
 	okasaki/QueueSig_proof.v \
@@ -51,6 +53,7 @@ OKA=\
 	okasaki/PhysicistsQueue_proof.v \
 	okasaki/RealTimeQueue_proof.v \
 	okasaki/ImplicitQueue_proof.v \
+	okasaki/BootstrappedQueue_proof.v \
 	okasaki/LeftistHeap_proof.v \
 	okasaki/PairingHeap_proof.v \
 	okasaki/LazyPairingHeap_proof.v \
@@ -60,9 +63,14 @@ OKA=\
 	okasaki/UnbalancedSet_proof.v \
 	okasaki/BottomUpMergeSort_proof.v 
 
-NEW=\
-	okasaki/BootstrappedQueue_ml.v \
-	okasaki/BootstrappedQueue_proof.v 
+NEW=
+
+
+#
+#	okasaki/CatenableListImpl_ml.v \
+#	okasaki/CatenableListImpl_proof.v 
+#
+
 
 #okasaki/PhysicistsQueue_ml.v 
  
@@ -101,6 +109,7 @@ ALL=$(TOOLS) $(DEMO) $(OKA) $(OKACOD)
 .SUFFIXES: .camldep .ml _ml.v _ml.vo _proof.v _proof.vo .v .vo 
 .SECONDARY: *.cmi okasaki/*.cmi demo/*.cmi
 .SECONDARY: *_ml.v okasaki/*_ml.v demo/*_ml.v
+.SECONDARY: *_ml.vo okasaki/*_ml.vo demo/*_ml.vo
 .SECONDARY: *.d okasaki/*.d demo/*.d *_ml.d okasaki/*_ml.d demo/*_ml.d
 
 def: all

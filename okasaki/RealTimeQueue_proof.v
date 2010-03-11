@@ -14,11 +14,15 @@ Import MLRealTimeQueue.
 
 Definition inv (d:int) `{Rep a A} (q:queue a) (Q:list A) :=
   let '(f,r,s) := q in 
-     Forall2 rep (f ++ rev r) Q
+     rep (f ++ rev r) Q
   /\ length s = length f - length r + d :> int.
 
-Global Instance queue_rep `{Rep a A} : Rep (queue a) (list A) :=
-  inv 0.
+Global Instance queue_rep `{Rep a A} : Rep (queue a) (list A).
+Proof. 
+  intros. apply (Build_Rep (inv 0)).
+  destruct x as ((f,r),s).
+  introv KX KY. intuit KX. intuit KY. prove_rep.
+Defined.
 
 (** automation *)
 

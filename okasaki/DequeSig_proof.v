@@ -1,7 +1,7 @@
 Set Implicit Arguments.
 Require Import FuncTactics DequeSig_ml LibCore.
 
-Module Type QueueSigSpec.
+Module Type DequeSigSpec.
 
 Declare Module Q : MLDeque.
 Import Q.
@@ -42,7 +42,7 @@ Parameter init_spec :
 
 End Polymorphic.
 
-End QueueSigSpec.
+End DequeSigSpec.
 
 
 

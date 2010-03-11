@@ -3,7 +3,6 @@ Require Import FuncTactics LibCore.
 Require Import QueueSig_ml QueueSig_proof.
 Require Import BankersQueue_ml.
 
-
 Module BankersQueueSpec <: QueueSigSpec.
 
 (** instantiations *)
@@ -15,14 +14,17 @@ Import MLBankersQueue.
 
 Definition inv (d:int) `{Rep a_ A} (q:queue a_) (Q:list A) :=
   let '(lenf,f,lenr,r) := q in 
-     Forall2 rep (f ++ rev r) Q
+     rep (f ++ rev r) Q
   /\ lenf = length f
   /\ lenr = length r
   /\ lenr <= lenf + d.
 
-Global Instance queue_rep `{Rep a_ A} : Rep (queue a_) (list A) :=
-  inv 0.
-
+Global Instance queue_rep `{Rep a_ A} : Rep (queue a_) (list A).
+Proof.
+  intros. apply (Build_Rep (inv 0)).
+  destruct x as (((lenf,f),lenr),r).
+  introv K1 K2. intuit K1. intuit K2. prove_rep.
+Defined.
 (** automation *)
 
 Hint Constructors Forall2.
@@ -30,7 +32,7 @@ Hint Resolve Forall2_last.
 Hint Extern 1 (@rep (queue _) _ _ _ _) => simpl.
 Hint Unfold inv.
 
-Ltac auto_tilde ::= eauto with maths.
+Ltac auto_tilde ::= eauto 7 with maths.
 
 Section Polymorphic.
 Variables (a_ A : Type) (RA:Rep a_ A).
@@ -50,7 +52,7 @@ Lemma empty_from_f : forall lenf lenr r Q,
   rep (lenf, nil, lenr, r) Q -> Q = nil.
 Proof.
   introv (H&LF&LR&LE). rew_list in LF. 
-  apply~ empty_from_lenf. 
+  apply~ empty_from_lenf. constructors~. 
 Qed.
 
 Lemma empty_to_lenf : forall lenf f lenr r,
@@ -97,7 +99,7 @@ Lemma snoc_spec :
   RepTotal snoc (Q;queue a_) (X;a_) >> (Q & X) ; queue a_.
 Proof.
   xcf. intros (((lenf,f),lenr),r) x. introv (H&LF&LR&LE) RX.
-  xgo~; ximpl_nointros. unfolds. rew_list. rewrite~ <- app_assoc. 
+  xgo~; ximpl_nointros. unfolds. rew_list. rewrite~ <- app_assoc.
 Qed.
 
 Hint Extern 1 (RegisterSpec snoc) => Provide snoc_spec.

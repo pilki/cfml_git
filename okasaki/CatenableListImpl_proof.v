@@ -1,9 +1,13 @@
-Set Implicit Arguments.
+Set Implicit Arguments. 
 Require Import FuncTactics LibCore.
-Require Import DequeSig_ml DequeSig_proof.
-Require Import BankersDeque_ml.
+Require Import QueueSig_ml QueueSig_proof.
+Require Import CatenableListImpl_ml.
+Require Import CatenableListSig_ml CatenableListSig_proof.
+Require Import BankersQueue_ml.
+Declare Module BankersQueueSpec : QueueSigSpec with Module Q := MLBankersQueue.
+Import BankersQueueSpec.
 
-Module CatenableListImplSpec (Q:MLQueue) (QS:QueueSigSpec with Module Q:=Q)
+Module CatenableListImplSpec (* (Q:MLQueue) (QS:QueueSigSpec with Module Q:=Q)*)
   <: CatenableListSigSpec.
 
 (** instantiations *)
@@ -13,19 +17,22 @@ Import MLCatenableListImpl.
 
 (** invariant *)
 
-Inductive inv `{Rep a A} (c:cat a) (L:list A) :=
-  | inv_empty :
-      inv Empty nil
-  | inv_struct : forall x q X Ls L,
+Inductive inv : forall `{Rep a A}, cat a -> list A -> Prop :=
+  | inv_empty : forall `{Rep a A},
+      inv _ Empty nil
+  | inv_struct : forall `{Rep a A} (x:a) (q:queue (cat a)) X Ls L,
       rep x X ->
-      rep (H := Build_Rep inv) q Ls ->
+      @rep _ _ (@queue_rep _ _ (B)) q Ls ->
       L =' X :: Ls ->
-      Forall (<> nil) Ls.
+      Forall (<> nil) Ls ->
+      inv _ (Struct x q) L.
       
+(Rep := Build_Rep (@inv _ _ _))
+
 Global Instance deque_rep `{Rep a A} : Rep (cat a) (list A) :=
   inv 0.
 
-(** automation *)
+(** automation  *)
 
 Hint Constructors Forall2.
 Hint Resolve Forall2_last.

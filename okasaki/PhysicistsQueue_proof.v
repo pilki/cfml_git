@@ -14,15 +14,19 @@ Import MLPhysicistsQueue.
 
 Definition inv (wok rok : bool) `{Rep a A} (q:queue a) (Q:list A) :=
   let '(w,lenf,f,lenr,r) := q in exists g,
-     Forall2 rep (f ++ rev r) Q
+     rep (f ++ rev r) Q
   /\ f = w ++ g 
   /\ lenf = length f
   /\ lenr = length r
   /\ lenr <= lenf + (if rok then 0 else 1)
   /\ if wok then (w = nil -> f = nil) else True.
 
-Global Instance repr `{Rep a A} : Rep (queue a) (list A) :=
-  inv true true.
+Global Instance queue_rep `{Rep a A} : Rep (queue a) (list A).
+Proof. 
+  intros. apply (Build_Rep (inv true true)).
+  destruct x as ((((w,lenf),f),lenr),r).
+  introv KX KY. intuit KX. intuit KY. prove_rep.
+Defined.
 
 (** automation *)
 
