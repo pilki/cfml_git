@@ -1,4 +1,7 @@
-
+*) la récursion polymorphe doit accépter
+    let rec f : 'a. 'a t -> 'a t = failwith "not implemented"
+   et ne pas forcer
+    let rec f : 'a. 'a t -> 'a t = fun _ -> failwith "not implemented"
 
 *) avoid copy-pasting statments by using definitions 
 

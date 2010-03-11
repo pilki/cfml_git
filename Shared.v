@@ -5,6 +5,7 @@ Require Import LibCore.
 Global Opaque LibInt.eqb_inst.
 Global Opaque LibNat.eqb_inst. (*etc..*)
 
+Hint Unfold pred_le.
 
 (* Another proof, based on the lemma [measure_induction]
   Proof.

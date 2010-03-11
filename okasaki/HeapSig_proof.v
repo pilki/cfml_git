@@ -1,6 +1,17 @@
 Set Implicit Arguments.
 Require Import FuncTactics HeapSig_ml OrderedSig_ml OrderedSig_proof.
 
+(* todo: move *)
+
+Definition min_of `{Le A} (E:multiset A) (X:A) := 
+  X \in E /\ forall_ Y \in E, X <= Y.
+
+Definition removed_min  `{Le A} (E E':multiset A) :=
+  exists X, min_of E X /\ E = \{X} \u E'.
+
+Hint Unfold removed_min.
+
+
 Module Type HeapSigSpec.
 
 Declare Module H : MLHeap.
@@ -8,21 +19,7 @@ Declare Module OS : OrderedSigSpec with Module O := H.MLElement.
 Import H MLElement OS. 
 
 Global Instance heap_rep : Rep heap (multiset T).
-
-(* todo: where to define these in order to avoid copy-paste ? 
-tester: min_of A `{Le A} (E:multiset A) (X:A).
-dans LibMultiset.
-*)
-
-Definition min_of (E:multiset T) (X:T) := 
-  X \in E /\ forall_ Y \in E, X <= Y.
-
-Definition removed_min (E E':multiset T) :=
-  exists X, min_of E X /\ E = \{X} \u E'.
-
-Hint Unfold removed_min.
-
-Parameter empty_spec : rep empty \{}.
+Parameter empty_spec : rep empty \{}.
 
 Parameter is_empty_spec : RepTotal is_empty (E;heap) >> 
   bool_of (E = \{}).

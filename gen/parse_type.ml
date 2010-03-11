@@ -119,14 +119,17 @@ let process_implementation_file ppf sourcefile =
           print_newline();
           raise e
       | Typecore.Error (loc,err) -> 
+          Location.print_error ppf loc;
           Typecore.report_error ppf err;
           print_newline();
           raise e
       | Typetexp.Error (loc,err) -> 
+          Location.print_error ppf loc;
           Typetexp.report_error ppf err;
           print_newline();
           raise e
       | Typemod.Error (loc,err) -> 
+          Location.print_error ppf loc;
           Typemod.report_error ppf err;
           print_newline();
           raise e
@@ -177,14 +180,17 @@ let typecheck_implementation_file ppf sourcefile parsetree =
           print_newline();
           raise e
       | Typetexp.Error (loc,err) -> 
+          Location.print_error ppf loc;
           Typetexp.report_error ppf err;
           print_newline();
           raise e
       | Typecore.Error (loc,err) -> 
+          Location.print_error ppf loc;
           Typecore.report_error ppf err; 
           print_newline();
           raise e
       | Typemod.Error (loc,err) -> 
+          Location.print_error ppf loc;
           Typemod.report_error ppf err;
           print_newline();
           raise e

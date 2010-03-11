@@ -1,1 +1,1 @@
-coqide -I lib $1
+coqide -I lib $1 &

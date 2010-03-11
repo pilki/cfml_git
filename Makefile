@@ -16,7 +16,7 @@ TOOLS=\
 	FuncPrim.v \
 	FuncTactics.v
 
-OKA=\
+OKACOD=\
 	okasaki/Okasaki_ml.v \
 	okasaki/QueueSig_ml.v \
 	okasaki/DequeSig_ml.v \
@@ -28,6 +28,7 @@ OKA=\
 	okasaki/BankersQueue_ml.v \
 	okasaki/PhysicistsQueue_ml.v \
 	okasaki/RealTimeQueue_ml.v \
+	okasaki/ImplicitQueue_ml.v \
 	okasaki/RedBlackSet_ml.v \
 	okasaki/LeftistHeap_ml.v \
 	okasaki/PairingHeap_ml.v \
@@ -36,7 +37,9 @@ OKA=\
 	okasaki/SplayHeap_ml.v \
 	okasaki/RedBlackSet_ml.v \
 	okasaki/UnbalancedSet_ml.v \
-	okasaki/BottomUpMergeSort_ml.v \
+	okasaki/BottomUpMergeSort_ml.v 
+
+OKA=\
 	okasaki/QueueSig_proof.v \
 	okasaki/DequeSig_proof.v \
 	okasaki/OrderedSig_proof.v \
@@ -47,6 +50,7 @@ OKA=\
 	okasaki/BankersQueue_proof.v \
 	okasaki/PhysicistsQueue_proof.v \
 	okasaki/RealTimeQueue_proof.v \
+	okasaki/ImplicitQueue_proof.v \
 	okasaki/LeftistHeap_proof.v \
 	okasaki/PairingHeap_proof.v \
 	okasaki/LazyPairingHeap_proof.v \
@@ -57,7 +61,8 @@ OKA=\
 	okasaki/BottomUpMergeSort_proof.v 
 
 NEW=\
-	okasaki/ImplicitQueue_ml.v 
+	okasaki/BootstrappedQueue_ml.v \
+	okasaki/BootstrappedQueue_proof.v 
 
 #okasaki/PhysicistsQueue_ml.v 
  
@@ -89,7 +94,7 @@ DEMO=\
 TEST=\
 	demo/test_ml.v \
 
-ALL=$(TOOLS) $(DEMO) $(OKA) 
+ALL=$(TOOLS) $(DEMO) $(OKA) $(OKACOD)
 # $(COD) $(DEV) $(TUTO) $(FORM) $(DEV) $(OKA) $(DEV:.v=.vo)
 
 .PHONY: all def clean cleanall dep tools tools demo oka new cod dvpt test gen lib none
@@ -103,7 +108,7 @@ all: full .camldep
 full: $(ALL:.v=.vo) 
 tools: $(TOOLS:.v=.vo) 
 demo: $(DEMO:.v=.vo)
-oka: $(OKA:.v=.vo)
+oka: $(OKA:.v=.vo) $(OKACOD:.v=.vo)
 new: $(NEW:.v=.vo) 
 cod: $(COD:.v=.vo) 
 dvpt: $(DEV:.v=.vo) 
@@ -186,7 +191,6 @@ COLD=clean cleanall dep new test gen .camldep
 ifeq ($(findstring $(MAKECMDGOALS),$(COLD)),)
 include $(ALL:.v=.d)
 endif
-
 
 ifneq ($(findstring $(MAKECMDGOALS),new),)
 include $(ALL:.v=.d) $(NEW:.v=.d)

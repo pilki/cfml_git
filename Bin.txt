@@ -1,3 +1,17 @@
+(* todo: where to define these in order to avoid copy-paste ? 
+tester: min_of A `{Le A} (E:multiset A) (X:A).
+dans LibMultiset.
+
+Definition min_of (E:multiset T) (X:T) := 
+  X \in E /\ forall_ Y \in E, X <= Y.
+
+Definition removed_min (E E':multiset T) :=
+  exists X, min_of E X /\ E = \{X} \u E'.
+
+Hint Unfold removed_min.
+*)
+
+
 Ltac name_around e x :=
   pattern e; match goal with |- ?P _ => sets x: P end.
 

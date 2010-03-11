@@ -40,8 +40,8 @@ struct
          let (x,y) = lookup (i/2) ps in
          if i mod 2 = 0 then x else y
 
-   let rec fupdate f i ts : 'a. ('a -> 'a) -> int -> 'a rlist -> 'a rlist = 
-      match i,ts with
+   let rec fupdate : 'a. ('a -> 'a) -> int -> 'a rlist -> 'a rlist = 
+      fun f i ts -> match i,ts with
       | i, Nil -> raise OutOfBound
       | 0, One (x, ps) -> One (f x, ps)
       | i, One (x, ps) -> cons x (fupdate f (i-1) (Zero ps))

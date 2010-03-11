@@ -1,7 +1,6 @@
 Set Implicit Arguments.
 Require Export LibCore LibEpsilon Shared.
 
-Definition xxx := 3.
 
 (********************************************************************)
 (* ** Axioms *)
@@ -523,7 +522,7 @@ Lemma spec_elim_1_1 : forall A1 B (K: A1 -> ~~B -> Prop) f,
 Proof.
   introv [S H] W. apply W.
     intros_all. apply* app_weaken_1.
-    applys* S. 
+    applys* S.
 Qed.
 
 Lemma spec_elim_1_2 : forall A1 A2 B (K: A1 -> ~~val -> Prop) f,

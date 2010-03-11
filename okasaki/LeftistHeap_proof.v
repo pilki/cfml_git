@@ -13,12 +13,6 @@ Module Import OS := OS.
 Existing Instance le_inst.
 Existing Instance le_order.
 
-Definition min_of (E:multiset T) (X:T) := 
-  X \in E /\ forall_ Y \in E, X <= Y.
-
-Definition removed_min (E E':multiset T) :=
-  exists X, min_of E X /\ E = \{X} \u E'.
-
 (** invariant *)
 
 Fixpoint Rank e : nat :=
