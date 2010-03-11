@@ -1,3 +1,86 @@
+
+Class Model (A:Type) := 
+  { model : Type }.
+
+Implicit Arguments model [[Model]].
+
+Notation "# A" := (model A) (at level 30).
+
+Class Rep `{Model A} := 
+  { rep : A -> model A -> Prop;
+    rep_unique : forall x X Y, rep x X -> rep x Y -> X = Y }.
+
+Implicit Arguments Rep [[H]].
+Implicit Arguments Build_Rep [A [H]].
+
+Instance nat_model : Model nat := nat.
+Hint Unfold nat_model.
+
+Definition k := #nat.
+Eval hnf in k.
+Parameter y : #nat.
+Check (y : nat).
+(*pas général
+Lemma convert : nat -> model nat.
+Proof. exact (@id _). Qed.
+Coercion convert : nat >-> model.
+*)
+Parameter x : nat.
+(* fails: Check (x : #nat). *)
+
+Lemma test : forall (x : nat) (X : nat), rep x X.
+
+Instance nat_rep : Rep nat.
+Proof. apply (Build_Rep (@eq _)). congruence. Defined.
+
+
+
+------------
+
+
+
+Record repr (A:Type) :=
+  { model :> Type;
+    rep : A -> model -> Prop;
+    rep_unique : forall x X Y, rep x X -> rep x Y -> X = Y }.
+
+Lemma nat_repr : @repr nat.
+Proof. apply (Build_repr (@eq _)). congruence. Defined.
+
+Canonical Structure nat_repr.
+
+Class Rep A := 
+  { repr_of : repr A }.
+
+Instance nat_rep : Rep nat := nat_repr.
+
+Notation "# A" := (@repr_of A _) (at level 30).
+
+Parameter y : #nat.
+Check (y: nat).
+
+Parameter x :nat.
+Check (x: #nat).
+
+
+Notation "# A" := (@model A _) (at level 30).
+
+
+
+Lemma test : int = #int :> Type. reflexivity. Qed.
+Parameter y :#int.
+Check (y: int).
+
+Parameter x :int.
+Check (x: #int).
+
+
+Program Lemma test' : forall (x:int) (X :#int), x = (X:int) :> int.
+
+
+
+
+
 (* todo: where to define these in order to avoid copy-paste ? 
 tester: min_of A `{Le A} (E:multiset A) (X:A).
 dans LibMultiset.

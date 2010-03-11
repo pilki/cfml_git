@@ -5,19 +5,47 @@ Open Scope comp_scope.
 (************************************************************)
 (** Representation for base types *)
 
-Instance int_rep : Rep int int := eq.
+Hint Resolve @rep_unique : rep.
 
-Instance bool_rep : Rep bool bool := eq.
+Ltac prove_rep := 
+  fequals_rec; 
+  try match goal with |- @eq (?T ?A) _ _ => let U := fresh in sets U:(T A) end;
+  intuition eauto with rep.
+  (* todo : appliquer directement rep_unique sur les buts ? *)
 
-Instance list_rep : forall `{Rep a A}, Rep (list a) (list A) := 
-  fun l L => Forall2 rep l L.
+Instance int_rep : Rep int int.
+Proof. apply (Build_Rep eq). congruence. Defined.
+
+Instance bool_rep : Rep bool bool.
+Proof. apply (Build_Rep eq). congruence. Defined.
+
+Instance list_rep : forall `{Rep a A}, Rep (list a) (list A).
+Proof.
+  intros. apply (Build_Rep (fun l L => Forall2 rep l L)).
+  induction x; introv H1 H2; inverts H1; inverts H2; prove_rep. 
+Defined.
 
 Instance prod_rep : forall `{Rep a1 A1} `{Rep a2 A2},
-   Rep (a1 * a2) (A1 * A2) := 
-  fun p P => match p,P with (x,y),(X,Y) => rep x X /\ rep y Y end.
+  Rep (a1 * a2) (A1 * A2).
+Proof.
+  intros. apply (Build_Rep (fun p P => match p,P with 
+   (x,y),(X,Y) => rep x X /\ rep y Y end)).
+  intros [x1 x2] [X1 X2] [Y1 Y2] H1 H2; prove_rep.
+Defined.
 
-Hint Extern 1 (@rep (prod _ _) _ _ _ _) => simpl.
+Instance option_rep : forall `{Rep a A},
+  Rep (option a) (option A).
+Proof.
+  intros. apply (Build_Rep (fun o O => match o,O with 
+    | None, None => True
+    | Some x, Some X => rep x X
+    | _,_ => False end)).
+  intros [x|] [X|] [Y|] H1 H2; prove_rep.
+Defined.
+
 Hint Extern 1 (@rep (list _) _ _ _ _) => simpl.
+Hint Extern 1 (@rep (prod _ _) _ _ _ _) => simpl.
+Hint Extern 1 (@rep (option _) _ _ _ _) => simpl.
 
 
 (************************************************************)

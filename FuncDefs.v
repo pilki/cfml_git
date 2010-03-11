@@ -1092,8 +1092,9 @@ Qed.
 (********************************************************************)
 (* ** Representation predicate *)
 
-Class Rep A B := 
-  { rep : A -> B -> Prop }.
+Class Rep a A := 
+  { rep : a -> A -> Prop;
+    rep_unique : forall x X Y, rep x X -> rep x Y -> X = Y }.
 
 
 

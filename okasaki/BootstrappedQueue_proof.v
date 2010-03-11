@@ -70,8 +70,8 @@ Inductive inv : bool -> bool -> forall `{Rep a A}, queue a -> list A -> Prop :=
   | inv_empty : forall `{Rep a A} okb okf,
      inv okb okf _ Empty nil
   | inv_struct : forall `{Rep a A} (okb okf:bool) lenfm f m lenr r Qf Qr Qms Qm Q,
-     Forall2 rep f Qf ->
-     Forall2 rep r Qr ->
+     rep f Qf ->
+     rep r Qr ->
      inv true true _ m Qms ->
      Qm =' concat Qms ->
      lenr =' length r ->
@@ -84,8 +84,13 @@ Inductive inv : bool -> bool -> forall `{Rep a A}, queue a -> list A -> Prop :=
      
 Implicit Arguments inv [[a] [A] [H]].
 
-Global Instance queue_rep `{Rep a A} : Rep (queue a) (list A) := 
-  inv true true.
+Global Instance queue_rep `{Rep a A} : Rep (queue a) (list A).
+Proof.
+  intros. apply (Build_Rep (inv true true)).
+  introv H1 H2. gen Y. induction H1; introv M.
+  set_eq Y': Y. inverts~ M.
+  set_eq Y': Y. inverts~ M. lets: (IHinv _ H20). subst. prove_rep.
+Defined.
 
 (** automation *)
 Hint Constructors doubling inv Forall2.
@@ -176,11 +181,68 @@ Definition tail_spec `{Rep a A} :=
 Definition snoc_spec `{Rep a A} :=
   RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ; queue a.
 
+Ltac all_specs_go :=
+  unfolds; first [ xintros; instantiate;  
+    [ xcf; auto; 
+      try match goal with H: Rep ?a _ |- _ => instantiate (1 := a) end;
+      try xisspec | ]
+  | xintros ].
+
+Axiom factorize : forall (P1 P2 P3 P4 P5 : nat -> Prop),
+  (forall n, P1 n /\ P2 n /\ P3 n /\ P4 n /\ P5 n) ->
+  (forall n, P1 (n)) /\ (forall n, P2 (n)) /\ (forall n, P3 (n))
+    /\ (forall n, P4 (n))  /\ (forall n, P5 (n)).
+
+Lemma eq_gt_induction_5' : forall (P1 P2 P3 P4 P5 : (nat->Prop) -> Prop),
+  eq_gt_implies P1 -> eq_gt_implies P2 -> eq_gt_implies P3 -> 
+  eq_gt_implies P4 -> eq_gt_implies P5 ->
+  (forall n, P1 (gt n) -> P2 (gt n) -> P3 (gt n) -> P4 (gt n) -> P5 (gt n) -> 
+    P1 (eq n) /\ P2 (eq n) /\ P3 (eq n) /\ P4 (eq n) /\ P5 (eq n)) ->
+  (forall n, P1 (eq n) /\ P2 (eq n) /\ P3 (eq n) /\ P4 (eq n) /\ P5 (eq n)).
+Proof. 
+  introv H1 H2 H3 H4 H5 R.
+  induction n using peano_induction. apply R;
+    match goal with K: eq_gt_implies ?Pi |- ?Pi _ =>
+      apply K; intros; forwards*: H; try math end.
+Qed. 
+
+Axiom go :forall (P1 P2 P3 P4 P5 : (nat->Prop) -> Prop),
+ (forall n, P1 (eq n) /\ P2 (eq n) /\ P3 (eq n) /\ P4 (eq n) /\ P5 (eq n)).
+(*
+Lemma conj_strengthen_5' : forall (Q1 Q2 Q3 Q4 Q5 P1 P2 P3 P4 P5 : (nat -> Prop) -> Prop),
+  (Q1 -> P1) -> (Q2 -> P2) -> (Q3 -> P3) -> (Q4 -> P4) -> (Q5 -> P5) ->
+  (Q1 /\ Q2 /\ Q3 /\ Q4 /\ Q5) -> (P1 /\ P2 /\ P3 /\ P4 /\ P5).
+Proof. auto*. Qed.
+*)
+
+(*
+Axiom go' :forall (P1 : (nat->Prop) -> Prop),
+ (forall n, P1 (eq n)).
+
+Axiom go'' :forall f n  (P1 P2 : (nat->Prop) -> Prop),
+ (f = eq n -> (P1 f /\ P2 f)).
+*)
+
+
 Lemma all_specs : 
-  checkq_spec /\ checkf_spec /\ head_spec /\ tail_spec /\ snoc_spec.
+  (forall `{Rep a A}, checkq_spec) /\ 
+  (forall `{Rep a A}, checkf_spec) /\ 
+  (forall `{Rep a A}, head_spec) /\
+  (forall `{Rep a A}, tail_spec) /\
+  (forall `{Rep a A}, snoc_spec).
 Proof.
-  eapply conj_strengthen_5.
-  apply eq_gt_induction_5.
+  eapply conj_strengthen_5; try intros M; intros; try all_specs_go.
+  intros q. intros. gen_eq n:((2 * depth q + 1)%nat). gen n a A q Q H0. apply M.
+  intros q. intros. gen_eq n:((2 * depth q)%nat). gen n a A q Q H0. apply M.
+  intros q. intros. gen_eq n:((2 * depth q)%nat). gen n a A q Q H0 H1. apply M.
+  intros q. intros. gen_eq n:((2 * depth q)%nat). gen n a A q Q H0 H1. apply M.
+  intros q. intros. gen_eq n:((2 * depth q)%nat). gen n a A q Q H0 H1. apply M.
+  forwards (H1&H2&H3&H4&H5): (eq_gt_induction_5);
+    try match goal with |- _ /\ _ /\ _ /\ _ /\ _ =>
+      splits; intros n; pattern (eq n);
+      [ apply H1 | apply H2 | apply H3 | apply H4 | apply H5 ] end;
+    auto~.
+  
 Qed.
 
 Definition head_spec := proj53 all_specs.
