@@ -285,10 +285,14 @@ Proof.
   inverts RQ. false. destruct f; false.
   (* verification of tail *)
   clear IHcheckf IHsnoc IHhead IHtail.
-  introv RQ RX N. subst n. xcf_app. xgo.
-  inverts RQ. constructors~. 
-  inverts RQ. constructors~. rew_list~. subst. rew_list~.
+  introv RQ RX N. subst n. xcf_app. xmatch.
+  xgo. inverts RQ. false.
+  inverts RQ. inverts H9. specializes IHcheckq a (l2 ++ Qm ++ rev Qr).
+  xapp. clear IHcheckq.
+   constructors~. subst. rew_list~.
   auto~.
+  ximpl~.
+  xgo. inverts RQ. false. destruct f; false.
 Qed.
 
 Definition head_spec := proj53 all_specs.
