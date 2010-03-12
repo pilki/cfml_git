@@ -44,9 +44,13 @@ Inductive inv : bool -> nat -> set -> LibSet.set T -> Prop :=
       (n =' case_color col m (S m)) ->
       inv rr n (Node col a y b) E.
 
-Instance set_rep : Rep set (LibSet.set T) := 
-  fun e E => 
-  exists n, inv true n e E /\ node_color e = Black.
+Global Instance set_rep : Rep set (LibSet.set T).
+Proof.
+  apply (Build_Rep (fun e E => 
+    exists n, inv true n e E /\ node_color e = Black)). 
+  introv (nx&HX&CX) (ny&HY&CY). clear CX CY. gen nx ny X Y.
+  induction x; introv HX HY; inverts HX; inverts HY; prove_rep. 
+Defined.
 
 (** termination relation *)
 (* we could use a size function as well *)
@@ -94,15 +98,6 @@ Lemma inv_strengthen : forall n E col a x b,
   inv true n (Node col a x b) E.
 Proof. introv RepE H. inverts* RepE. Qed.
 
-Lemma in_node_cases : forall (X Y : T) (A B : LibSet.set T),
-  X \in \{Y} \u A \u B -> 
-  X = Y \/ X \in A \/ X \in B.
-Proof.
-  introv H. destruct (in_union_inv H) as [H'|H'].
-    left. rewrite~ (in_single H').
-    right. destruct (in_union_inv H'); eauto.
-Qed.
-
 Lemma my_lt_trans : forall Y X Z, (* todo: should not be needed?*)
   X < Y -> Y < Z -> X < Z.
 Proof. intros Z HZ. eapply @lt_trans; typeclass. Qed.
@@ -146,11 +141,12 @@ Proof.
     forall rr n X E, rep x X -> inv rr n e E -> R (bool_of (X \in E))).
     xweaken. simpl. intros_all. destruct H3 as (n&Inv&_). eauto.
   xinduction (unproj22 elem subtree).  
-  xcf. intros x e IH rr n X E RepX InvE. inverts InvE; xgo~.  iff M. auto. destruct (in_node_cases M) as [N|[N|N]].
+  xcf. intros x e IH rr n X E RepX InvE. inverts InvE; xgo~.  
+  iff M. auto. set_in M.
     subst. false~ (lt_irrefl Y).
     auto.
     false. applys* (@foreach_gt_notin B).
-  iff M. auto. destruct (in_node_cases M) as [N|[N|N]].
+  iff M. auto. set_in M. 
     subst. false~ (lt_irrefl Y). 
     false. applys* (@foreach_lt_notin A).
     auto.
@@ -201,11 +197,11 @@ Proof.
     cuts Inv1' Inv2': (inv true n e1 E1 /\ inv true n e2 E2). econstructor; eauto.
     destruct Ixor as [[? ?]|[? ?]]; substb i1 i2; split.
       auto.
-      inversions keep Inv2. skip. apply~ inv_strengthen.
+      inversions keep Inv2. auto~. apply~ inv_strengthen.
         destruct~ col. right. split. 
           destruct~ a. destruct~ c. false~ C1.
           destruct~ b. destruct~ c. false~ C2.
-      inversions keep Inv1. skip. apply~ inv_strengthen.
+      inversions keep Inv1. auto~. apply~ inv_strengthen.
         destruct~ col. right. split.
           destruct~ a. destruct~ c. false~ C.
           destruct~ b. destruct~ c. false~ C0.

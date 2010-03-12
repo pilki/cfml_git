@@ -13,12 +13,6 @@ Module Import OS := OS.
 Existing Instance le_inst.
 Existing Instance le_order.
 
-Definition min_of (E:multiset T) (X:T) := 
-  X \in E /\ forall_ Y \in E, X <= Y.
-
-Definition removed_min (E E':multiset T) :=
-  exists X, min_of E X /\ E = \{X} \u E'.
-
 (** invariant *)
 
 Definition is_ge (X Y:T) := X <= Y.
@@ -48,7 +42,33 @@ Inductive inv : int -> heap -> multiset T -> Prop :=
       E' =' E \u Es ->
       inv r' (t::ts) E'.
 
-Global Instance heap_rep : Rep heap (multiset T) := inv 0.
+Fixpoint size (t:tree) : nat :=
+  let '(Node r x ts) := t in 
+  (1 + List.fold_right (fun t x => (x + size t)%nat) 0%nat ts)%nat.
+
+Lemma size_pos : forall t, size t > 0%nat.
+Proof. destruct t. simpl. math. Qed.
+
+Lemma btree_unique : forall t n1 n2 E1 E2, 
+  btree n1 t E1 -> btree n2 t E2 -> E1 = E2.
+Proof. 
+  intros t. gen_eq m: (size t). gen t.
+  induction m using peano_induction.
+  introv M HX HY. subst m.
+  inverts HX; inverts HY. prove_rep.
+  maths (r = r0). subst. fequals.
+  applys* H. simpl; math.
+  applys* H. simpl. forwards: (size_pos t0). math.
+Qed.
+
+Hint Resolve btree_unique : rep.
+
+Global Instance heap_rep : Rep heap (multiset T).
+Proof.
+  apply (Build_Rep (inv 0)). intros x.
+  set (n:=0) at 1. generalize 0. subst n. generalize 0.
+  induction x; introv HX HY; inverts HX; inverts HY; subst; prove_rep.
+Defined.
 
 (** automation *)
 
@@ -104,7 +124,8 @@ Hint Resolve btree_rank_pos inv_rank_pos.
 Lemma btree_not_empty : forall E r t,
   btree r t E -> E <> \{}.
 Proof.
-  introv H. induction H. fset_inv. rewrite H4. skip. (* fset *)
+  introv H. induction H. multiset_inv. rewrite H4.
+  skip. (* todo: E1 <> \{} -> E1 \u E2 <> \{} *)
 Qed.
 
 Lemma btree_inv : forall E r r' x ts,
@@ -118,6 +139,10 @@ Qed.
 Lemma inv_smaller : forall rs rs' ts Es, 
   inv rs ts Es -> 0 <= rs' -> rs' <= rs -> inv rs' ts Es.
 Proof. introv H P L. inverts~ H. Qed.
+
+Lemma rank_correct : forall t r E,
+  btree r t E -> Rank t = r.
+Proof. introv H. inverts~ H. Qed.
 
 Lemma inv_cons_inv : forall r' t ts E',
   inv r' (t::ts) E' -> 
@@ -171,7 +196,7 @@ Proof.
     splits*. rew_list. equates* 1.
   rename a into t.
   forwards (E''&r''&I''&EQ''): (>>> IHts __ r0 (t::ts') (E' \u E0)).
-    auto~. constructors*. auto~. auto~.
+    auto~. constructors*. auto~. auto~. auto~.
   exists (E0 \u E'') r''. split.
    rewrite rev_cons. rewrite app_last_sym. equates* 1.
    subst. permut_simpl.
@@ -461,9 +486,6 @@ Lemma inv_nil_change : forall rs rs' Es,
   inv rs nil Es -> 0 <= rs' -> inv rs' nil Es.
 Proof. introv H P. inverts~ H. Qed.
 
-Lemma rank_correct : forall t r E,
-  btree r t E -> Rank t = r.
-Proof. introv H. inverts~ H. Qed.
 
 Definition Rank_hd_or r (ts:heap) :=
   match ts with

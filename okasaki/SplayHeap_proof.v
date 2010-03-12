@@ -13,12 +13,6 @@ Module Import OS := OS.
 Existing Instance le_inst.
 Existing Instance le_order.
 
-Definition min_of (E:multiset T) (X:T) := 
-  X \in E /\ forall_ Y \in E, X <= Y.
-
-Definition removed_min (E E':multiset T) :=
-  exists X, min_of E X /\ E = \{X} \u E'.
-
 (** invariant *)
 
 Definition is_le (X Y:T) := Y <= X.
@@ -33,7 +27,11 @@ Inductive inv : heap -> multiset T -> Prop :=
       E = (\{Y} \u A \u B) ->
       inv (Node a y b) E.
 
-Instance heap_rep : Rep heap (multiset T) := inv.
+Instance heap_rep : Rep heap (multiset T).
+Proof.
+  apply (Build_Rep inv).
+  induction x; introv HX HY; inverts HX; inverts HY; prove_rep.
+Defined.
 
 (** termination relation *)
 

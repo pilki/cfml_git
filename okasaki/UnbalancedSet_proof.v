@@ -30,7 +30,11 @@ Inductive inv : set -> LibSet.set T -> Prop :=
       C =' (\{Y} \u A \u B) ->
       inv (Node a y b) C.
 
-Global Instance set_rep : Rep set (LibSet.set T) := inv.
+Global Instance set_rep : Rep set (LibSet.set T).
+Proof.
+  apply (Build_Rep inv).
+  induction x; introv HX HY; inverts HX; inverts HY; subst; prove_rep.
+Defined.
 
 (** termination relation *)
 
@@ -58,7 +62,7 @@ Ltac myauto cont :=
   match goal with 
   | |- _ = _ :> LibSet.set ?T => try solve [ change (LibSet.set T) with U; cont tt ]
   | |- _ => cont tt
-  end. (* todo: pour éviter un hint trop lent de hint-core avec eauto *)
+  end. 
 
 Ltac auto_tilde ::= myauto ltac:(fun _ => eauto).
 Ltac auto_star ::= try solve [ intuition (eauto with set) ].
@@ -67,17 +71,6 @@ Hint Extern 1 (rep _ _) => simpl.
 Hint Constructors inv.
 
 (** useful facts *)
-
-  (* todo : inversion for fset *)
-
-Lemma in_node_cases : forall (X Y : T) (A B : LibSet.set T),
-  X \in \{Y} \u A \u B -> 
-  X = Y \/ X \in A \/ X \in B.
-Proof.
-  introv H. destruct (in_union_inv H) as [H'|H'].
-    left. rewrite~ (in_single H').
-    right. destruct (in_union_inv H'); eauto.
-Qed.
 
 Lemma foreach_gt_notin : forall (A : LibSet.set T) (X Y : T),
   foreach (is_gt Y) A -> lt X Y -> X \notin A.
@@ -103,11 +96,11 @@ Proof.
   xcf. intros x e IH X E RepX RepE. inverts RepE as. 
   xgo. rewrite in_empty_eq. auto.
   introv IA IB RepY LtA GtB EqE. subst E. xgo~.
-  iff M. auto. destruct (in_node_cases M) as [N|[N|N]].
-    subst. false~ (lt_irrefl Y).
+  iff M. auto. set_in M.
+    false~ (lt_irrefl Y).
     auto.
     false. applys* (@foreach_gt_notin B).
-  iff M. auto. destruct (in_node_cases M) as [N|[N|N]].
+  iff M. auto. set_in M.
     subst. false~ (lt_irrefl Y).
     false. applys* (@foreach_lt_notin A).
     auto.

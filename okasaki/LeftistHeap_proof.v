@@ -33,7 +33,11 @@ Inductive inv : heap -> multiset T -> Prop :=
       (r =' 1 + Rank b) ->
       inv (Node r y a b) E.
 
-Instance heap_rep : Rep heap (multiset T) := inv.
+Instance heap_rep : Rep heap (multiset T).
+Proof.
+  apply (Build_Rep inv).
+  induction x; introv HX HY; inverts HX; inverts HY; prove_rep.
+Defined.
 
 (** termination relation *)
 

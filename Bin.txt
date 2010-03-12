@@ -1,4 +1,32 @@
 
+Definition min_of (E:multiset T) (X:T) := 
+  X \in E /\ forall_ Y \in E, X <= Y.
+
+Definition removed_min (E E':multiset T) :=
+  exists X, min_of E X /\ E = \{X} \u E'.
+
+  (* todo : inversion for fset 
+
+Lemma in_node_cases : forall (X Y : T) (A B : LibSet.set T),
+  X \in \{Y} \u A \u B -> 
+  X = Y \/ X \in A \/ X \in B.
+Proof.
+  introv H. destruct (in_union_inv H) as [H'|H'].
+    left. rewrite~ (in_single H').
+    right. destruct (in_union_inv H'); eauto.
+Qed.
+*)
+
+Lemma in_node_cases : forall (X Y : T) (A B : LibSet.set T),
+  X \in \{Y} \u A \u B -> 
+  X = Y \/ X \in A \/ X \in B.
+Proof.
+  introv H. destruct (in_union_inv H) as [H'|H'].
+    left. rewrite~ (in_single H').
+    right. destruct (in_union_inv H'); eauto.
+Qed.
+
+
 Class Model (A:Type) := 
   { model : Type }.
 

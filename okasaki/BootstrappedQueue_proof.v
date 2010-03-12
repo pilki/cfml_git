@@ -100,13 +100,13 @@ Hint Extern 1 (@rep (queues _) _ _ _ _) => simpl.
 Ltac auto_tilde ::= eauto with maths.
 
 (** useful facts *)
-(*
+
 Fixpoint depth a (q:queue a) : nat :=
   match q with
   | Empty => 0%nat
   | Struct lenfm f m lenr r => (1 + depth m)%nat
   end.
-*)
+
 Lemma to_empty : forall `{Rep a A} Q,
   rep Empty Q -> Q = nil.
 Proof. introv RQ. set_eq Q': Q. inverts~ RQ. Qed.
@@ -265,11 +265,11 @@ Lemma all_specs :
   (forall `{Rep a A}, tail_spec).
 Proof.
   eapply conj_strengthen_5; try intros M; intros; try all_specs_go.
-  intros q. intros. gen_eq n:((3 * length Q + 1)%nat). gen n a A q Q H0. apply M.
-  intros q. intros. gen_eq n:((3 * length Q)%nat). gen n a A q Q H0. apply M.
-  intros q x. intros. gen_eq n:((3 * length Q + 2)%nat). gen n a A q x Q X H0 H1. apply M.
-  intros q. intros. gen_eq n:((3 * length Q + 2)%nat). gen n a A q Q H0 H1. apply M.
-  intros q. intros. gen_eq n:((3 * length Q + 2)%nat). gen n a A q Q H0 H1. apply M.
+  intros q. intros. gen_eq n:((3 * depth q + 1)%nat). gen n a A q Q H0. apply M.
+  intros q. intros. gen_eq n:((3 * depth q)%nat). gen n a A q Q H0. apply M.
+  intros q x. intros. gen_eq n:((3 * depth q + 2)%nat). gen n a A q x Q X H0 H1. apply M.
+  intros q. intros. gen_eq n:((3 * depth q + 2)%nat). gen n a A q Q H0 H1. apply M.
+  intros q. intros. gen_eq n:((3 * depth q + 2)%nat). gen n a A q Q H0 H1. apply M.
   forwards (H1&H2&H3&H4&H5): (eq_gt_induction_5);
     try match goal with |- _ /\ _ /\ _ /\ _ /\ _ =>
       splits; intros n; pattern (eq n);
@@ -281,11 +281,11 @@ Proof.
   introv RQ N. subst n. xcf_app. xmatch. xif.
   inverts RQ. subst q. xapp. constructors~. auto~.
   inverts RQ. subst q. (* ? xapp (>>> (list a) Qms (rev Qr)). *)
-  specializes IHsnoc (>>> (list a) Qms (rev Qr)). xapp~.
-   subst Qm. forwards~: (>>> decrease_r H19). simpls.
+  specializes IHsnoc (>>> (list a) Qms (rev Qr)). xapp~. simpls.
+(*   subst Qm. forwards~: (>>> decrease_r H19). simpls.*)
   xapp. constructors~. subst Qm. rew_list~. subst Q Qm. rew_list~.
   apply~ doubling_last. subst Qm. rew_length~.
-  simpl. skip. (* décroissance pas bonne *)
+  simpl. math. skip. (* décroissance pas bonne *)
   (* verification of checkf *)
   clear IHcheckq IHcheckf IHsnoc.
   introv RQ N. subst n. xcf_app. xmatch. xmatch.
