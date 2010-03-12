@@ -57,7 +57,7 @@ Proof.
   gen_eq m: (@nil (list t)). induction HY; unfolds eq'; intros; subst; tryfalse; auto.
   eauto.
   gen_eq m: (s::ss). induction HY; introv EQ; unfolds eq'; intros; inverts EQ; subst; prove_rep.
-Qed.
+Defined.
 
 (** automation *)
 
@@ -131,11 +131,11 @@ Proof.
   xcleanpat. inverts keep Rs1 as Rx Sxs' Lx. 
   inverts keep Rs2 as Ry Sys' Ly. xapp*. xif.
   xapp. specializes HR __. unfold uncurry2. rew_list~.
-   fapplys HR; eauto. ximpl. (* todo: pb du simpl encore *)
+   fapplys HR; eauto. ximpl_nointros. (* todo: pb du simpl encore *)
    destruct P_x2 as [Sx2 Lx2].
    xret. split. subst E1 E2. constructors*. gen Lx2. rew_list~.
   xapp. specializes HR __. unfold uncurry2. rew_list~.
-   fapplys HR; eauto. ximpl. (* todo: pb du simpl encore *)
+   fapplys HR; eauto. ximpl_nointros. (* todo: pb du simpl encore *)
    destruct P_x1 as [Sx1 Lx1].
    xret. split. 
      subst E1 E2. applys_to P_x0 nle_to_sle. constructors*.
@@ -167,7 +167,7 @@ Proof.
       destruct P_x3 as [S3 L3]. xapp*. rew_length~. math. 
      ximpl as ss' M. applys~ inv_even. equates* 1. math.
   simpl in RepE. xapp~. rew_length. equates* 3.
-  constructors*. constructors*. ximpl.
+  constructors*. constructors*. ximpl_nointros.
   hnf in P_x8.
   xret. simpl. equates* 1 3.
 Qed.
