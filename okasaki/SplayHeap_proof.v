@@ -16,14 +16,14 @@ Existing Instance le_order.
 (** invariant *)
 
 Definition is_le (X Y:T) := Y <= X.
-Definition is_gt (X Y:T) := X < Y.
+Definition is_ge (X Y:T) := X <= Y.
 
 Inductive inv : heap -> multiset T -> Prop :=
   | inv_empty : 
       inv Empty \{} 
   | inv_node : forall a y b A Y B E,
       inv a A -> inv b B -> rep y Y ->
-      foreach (is_le Y) A -> foreach (is_gt Y) B ->
+      foreach (is_le Y) A -> foreach (is_ge Y) B ->
       E = (\{Y} \u A \u B) ->
       inv (Node a y b) E.
 
@@ -71,24 +71,28 @@ Lemma foreach_le_trans : forall (X Y : OS.T) (E : multiset OS.T),
   Y <= X -> foreach (is_le Y) E -> foreach (is_le X) E.
 Proof. intros. apply~ foreach_weaken. intros_all. apply~ le_trans. Qed.
 
-Lemma foreach_gt_trans : forall (X Y : OS.T) (E : multiset OS.T),
-  X <= Y -> foreach (is_gt Y) E -> foreach (is_gt X) E.
-Proof. intros. apply~ foreach_weaken. intros_all. apply~ le_lt_trans. Qed.
+Lemma foreach_ge_trans : forall (X Y : OS.T) (E : multiset OS.T),
+  X <= Y -> foreach (is_ge Y) E -> foreach (is_ge X) E.
+Proof. intros. apply~ foreach_weaken. intros_all. apply~ le_trans. Qed.
 
-Hint Extern 1 (foreach (is_le ?X) _) =>
+Hint Extern 1 (foreach (is_le ?X) ?E) =>
   let go Y := (apply (@foreach_le_trans X Y)) in
-  match goal with H: ?Y <= X |- _ => go Y | H: ?Y < X |- _ => go Y end.
-Hint Extern 1 (foreach (is_gt ?X) _) =>
-  let go Y := (apply (@foreach_gt_trans X Y)) in
-  match goal with H: X <= ?Y |- _ => go Y | H: X < ?Y |- _ => go Y end.
+  match goal with 
+  | H: ?Y <= X, H': foreach (is_le ?Y) E |- _ => go Y
+  | H: ?Y <= X |- _ => go Y | H: ?Y < X |- _ => go Y end.
 
+Hint Extern 1 (foreach (is_ge ?X) ?E) =>
+  let go Y := (apply (@foreach_ge_trans X Y)) in
+  match goal with
+  | H: X <= ?Y, H': foreach (is_ge ?Y) E |- _ => go Y
+  | H: X <= ?Y |- _ => go Y | H: X < ?Y |- _ => go Y end.
 
 Ltac norm :=
   repeat match goal with
   | H: foreach _ (_ \u _) |- _ => applys_to H foreach_union_inv; destruct H
   | H: foreach _ (\{_}) |- _ => rewrite foreach_single_eq in H
   | H: is_le ?X ?Y |- _ => unfold is_le in H
-  | H: is_gt ?X ?Y |- _ => unfold is_gt in H
+  | H: is_ge ?X ?Y |- _ => unfold is_ge in H
   end.
 
 (*
@@ -137,7 +141,7 @@ Lemma partition_spec : Spec partition p e |R>>
      exists E1 E2, rep e1 E1 /\ rep e2 E2 /\ 
      E = E1 \u E2 /\
      foreach (is_le P) E1 /\
-     foreach (is_gt P) E2 /\
+     foreach (is_ge P) E2 /\
      tree_size e1 <= tree_size e /\
      tree_size e2 <= tree_size e).
 Proof.
@@ -151,34 +155,24 @@ Proof.
   (* case left/left *)
   xapp~. clear IH. (* todo: xapp as *)
   destruct _x7 as [sma big]. intuit P_x7.
-  xgo. subst. norm. asserts: (Y < P). apply~ lt_le_trans.
-  exists___. splits; auto_plus. auto*.
+  xgo. subst. norm. exists___. splits; auto_plus. auto*.
   (* case left/right *)
-  xapp~. clear IH. applys_to P_x5 nle_to_slt. 
+  xapp~. clear IH. applys_to P_x5 nle_to_sle. 
   destruct _x6 as [sma big]. intuit P_x6.
-  xgo. subst. norm. asserts: (Y < Y0). apply~ le_lt_trans.
-  exists___. splits; auto_plus. auto*.
+  xgo. subst. norm. exists___. splits; auto_plus. auto*.
   (* case right *)
-  applys_to P_x1 nle_to_slt. xmatch. subst t. 
+  applys_to P_x1 nle_to_sle. xmatch. subst t. 
   xgo. inverts RA. exists___. splits*.
   inverts RA. xapp~. xif.
   (* case right/left *)
   xapp~. clear IH.
   destruct _x4 as [sma big]. intuit P_x4.
-  xgo. subst. norm. asserts: (Y0 < Y). eapply le_lt_trans. apply P_x2. eauto. (* todo *)
-  exists___. splits; auto_plus. auto*.
+  xgo. subst. norm. exists___. splits; auto_plus. auto*.
   (* case right/right *)
-  xapp~. clear IH. applys_to P_x2 nle_to_slt. 
+  xapp~. clear IH. applys_to P_x2 nle_to_sle. 
   destruct _x3 as [sma big]. intuit P_x3.
-  xgo. subst. norm. asserts: (P < Y). apply~ lt_le_trans.
-  exists___. splits; auto_plus. auto*.
-
-
-
- Qed.
-
-   (* constructors; try match goal with |- inv (Node _ _ _) _ => constructors end; eauto 7. *)
-
+  xgo. subst. norm. exists___. splits; auto_plus. auto*.
+Qed.
 
 Hint Extern 1 (RegisterSpec partition) => Provide partition_spec.
 
@@ -201,13 +195,13 @@ Lemma insert_spec : RepTotal insert (X;O.t) (E;heap) >>
   \{X} \u E ; heap.
 Proof.
   xcf. introv RepX RepE. xlet as. xapp~. 
-  intros [f1 f2] (F1&F2&R). xgo*.
+  intros [f1 f2] (F1&F2&R). intuit. xgo*.
 Qed.
 
 Hint Extern 1 (RegisterSpec insert) => Provide insert_spec.
 
 Lemma min_of_last : forall X A,
-   foreach (is_gt X) A -> min_of ('{X} \u \{} \u A) X.
+   foreach (is_ge X) A -> min_of ('{X} \u \{} \u A) X.
 Proof.
   introv H. split~. introv M. multiset_in M.
     apply le_refl.
@@ -239,20 +233,19 @@ Lemma delete_min_spec : RepSpec delete_min (E;heap) |R>>
 Proof. 
   xinduction tree_size. 
   xcf. intros IH e E RepE HasE. inverts RepE; xmatch_nocases.
-  xgo. inverts H. xgo. eauto 8 with multiset.
+  xgo. inverts H. xgo. esplit; split~. exists* __.
   xcase_one_real. inverts H4. xgo.
     exists ('{Y} \u B0 \u B). split. constructors~.
      rew_foreach* H2. exists Y0. esplit.
       split. auto.
         asserts: (Y0 <= Y). rew_foreach H2. destruct H2 as [M _]. apply~ M.
-        lets: (le_trans Y). introv M. multiset_in M.
+        lets: (le_trans Y). norm. introv M. multiset_in M.
           auto.
-          apply le_refl. 
-          apply~ lt_to_le.
-          apply~ H4. apply~ lt_to_le. 
+          apply le_refl.
+          apply~ H8.
+          apply~ le_trans. apply~ H3. 
       auto*.
-  xgo~. math.
-  intros K. multiset_inv. (* simplifies*)
+  xgo~. intros K. multiset_inv. (* simplifies*)
   destruct P_x1 as (A' & RepA' & X & InfX & EqX).
   exists ('{Y} \u ('{Y0} \u A' \u B0) \u B). split.
   equates 1. applys~ (>>> inv_node A' (\{Y} \u B0 \u B)).
