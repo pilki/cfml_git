@@ -1,4 +1,6 @@
-
+Axiom lt_to_le : forall x y : T,
+  x < y -> x <= y.
+Hint Immediate lt_to_le.
 (* todo: refaire sans ça 
 
 Definition rep_spec_2 (a1 a2 A1 A2 B : Type)
@@ -461,3 +463,57 @@ Proof.
   xgo. inverts Ro. constructors*. simpl in K.
   xgo~. xapp. constructors*.
 Qed.
+
+(*
+
+
+Axiom factorize : forall (P1 P2 P3 P4 P5 : nat -> Prop),
+  (forall n, P1 n /\ P2 n /\ P3 n /\ P4 n /\ P5 n) ->
+  (forall n, P1 (n)) /\ (forall n, P2 (n)) /\ (forall n, P3 (n))
+    /\ (forall n, P4 (n))  /\ (forall n, P5 (n)).
+
+Lemma eq_gt_induction_5' : forall (P1 P2 P3 P4 P5 : (nat->Prop) -> Prop),
+  eq_gt_implies P1 -> eq_gt_implies P2 -> eq_gt_implies P3 -> 
+  eq_gt_implies P4 -> eq_gt_implies P5 ->
+  (forall n, P1 (gt n) -> P2 (gt n) -> P3 (gt n) -> P4 (gt n) -> P5 (gt n) -> 
+    P1 (eq n) /\ P2 (eq n) /\ P3 (eq n) /\ P4 (eq n) /\ P5 (eq n)) ->
+  (forall n, P1 (eq n) /\ P2 (eq n) /\ P3 (eq n) /\ P4 (eq n) /\ P5 (eq n)).
+Proof. 
+  introv H1 H2 H3 H4 H5 R.
+  induction n using peano_induction. apply R;
+    match goal with K: eq_gt_implies ?Pi |- ?Pi _ =>
+      apply K; intros; forwards*: H; try math end.
+Qed. 
+
+Axiom go :forall (P1 P2 P3 P4 P5 : (nat->Prop) -> Prop),
+ (forall n, P1 (eq n) /\ P2 (eq n) /\ P3 (eq n) /\ P4 (eq n) /\ P5 (eq n)).
+(*
+Lemma conj_strengthen_5' : forall (Q1 Q2 Q3 Q4 Q5 P1 P2 P3 P4 P5 : (nat -> Prop) -> Prop),
+  (Q1 -> P1) -> (Q2 -> P2) -> (Q3 -> P3) -> (Q4 -> P4) -> (Q5 -> P5) ->
+  (Q1 /\ Q2 /\ Q3 /\ Q4 /\ Q5) -> (P1 /\ P2 /\ P3 /\ P4 /\ P5).
+Proof. auto*. Qed.
+*)
+
+(*
+Axiom go' :forall (P1 : (nat->Prop) -> Prop),
+ (forall n, P1 (eq n)).
+
+Axiom go'' :forall f n  (P1 P2 : (nat->Prop) -> Prop),
+ (f = eq n -> (P1 f /\ P2 f)).
+*)
+*)
+(* todo: move *)
+
+
+
+
+(*
+  eapply rep_induction_mut_2_2_2 with 
+   (mu1 := fun E1 E2 => (2 * (card E1 + card E2) + 1)%nat)
+   (mu2 := fun E1 E2 => (2 * (card E1 + card E2))%nat);
+   unfold rep_spec_2, rep_spec_2_hyp.
+*)
+
+(*
+Hint Extern 1 (@gt nat _ _ _) => check_noevar tt; simpl; rew_card; math.
+*)

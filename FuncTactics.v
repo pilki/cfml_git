@@ -1452,6 +1452,11 @@ Ltac xpat_post H :=
   try solve [ discriminate | false; congruence ]; 
   try (symmetry in H; inverts H).
 
+Tactic Notation "xpat" :=
+  let H := fresh in
+  xpat_core_new H ltac:(fun _ => idtac) ltac:(fun _ => idtac);
+  xpat_post H.
+
 (************************************************************)
 (* ** [xmatch] *)
 

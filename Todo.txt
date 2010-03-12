@@ -52,3 +52,6 @@
 *) todo : égalité polymorphe pour tester si les listes sont vides
 
 *) todo : vérification de types habités
+
+
+*) factoriser les : Hint Extern 1 (@rep (queue _) _ _ _ _) => simpl.

@@ -63,8 +63,10 @@ OKA=\
 	okasaki/UnbalancedSet_proof.v \
 	okasaki/BottomUpMergeSort_proof.v 
 
-NEW=
-
+NEW=\
+	okasaki/Okasaki_ml.v \
+	okasaki/AltBinaryRandomAccessList_ml.v \
+	okasaki/AltBinaryRandomAccessList_proof.v 
 
 #
 #	okasaki/CatenableListImpl_ml.v \

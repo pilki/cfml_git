@@ -31,6 +31,8 @@ let inlined_primitives_table =
    "Pervasives.<=", (2, "(fun _y _z => istrue (_y <= _z))");
    "Pervasives.>", (2, "(fun _y _z => istrue (_y > _z))");
    "Pervasives.>=", (2, "(fun _y _z => istrue (_y >= _z))");
+   "Pervasives.fst", (1, "(@fst _ _)");
+   "Pervasives.snd", (1, "(@snd _ _)");
    "Pervasives.@", (2, "LibList.append");
    "List.rev", (1, "LibList.rev"); 
    "List.append", (2, "LibList.append"); 

@@ -116,31 +116,8 @@ Proof.
 Qed. 
 
 Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
-(* todo: move *)
 
-Definition eq_gt_implies (P : (nat->Prop) -> Prop) :=
-  forall n, (forall m, n > m -> P (eq m)) -> P (gt n).
-
-Hint Unfold eq_gt_implies.
-
-Axiom eq_gt_induction_2 : forall (P1 P2 : (nat->Prop) -> Prop),
-  eq_gt_implies P1 -> eq_gt_implies P2 ->
-  (forall n, P1 (gt n) -> P2 (gt n) -> P1 (eq n) /\ P2 (eq n)) ->
-  (forall n, P1 (eq n)) /\ (forall n, P2 (eq n)).
-
-Axiom conj_strengthen_2 : forall (Q1 Q2 P1 P2 : Prop),
-  (Q1 -> P1) -> (Q2 -> P2) -> (Q1 /\ Q2) -> (P1 /\ P2).
-(*
-  eapply rep_induction_mut_2_2_2 with 
-   (mu1 := fun E1 E2 => (2 * (card E1 + card E2) + 1)%nat)
-   (mu2 := fun E1 E2 => (2 * (card E1 + card E2))%nat);
-   unfold rep_spec_2, rep_spec_2_hyp.
-*)
-
-(*
-Hint Extern 1 (@gt nat _ _ _) => check_noevar tt; simpl; rew_card; math.
-*)
-Ltac prove_card := simpl; rew_card; math.
+Ltac prove_card := simpl; rew_card; math. (* todo : work as hint *)
 
 Definition link_spec := RepSpec link (E1;heap) (E2;heap) |R>>
   forall X, foreach (is_ge X) E2 -> min_of E1 X -> 

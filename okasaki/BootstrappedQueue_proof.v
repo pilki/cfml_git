@@ -3,51 +3,6 @@ Require Import FuncTactics LibCore.
 Require Import QueueSig_ml QueueSig_proof.
 Require Import BootstrappedQueue_ml.
 
-(* todo: move, and try to prove implicit queues with it *)
-
-Definition eq_gt_implies (P : (nat->Prop) -> Prop) :=
-  forall n, (forall m, n > m -> P (eq m)) -> P (gt n).
-
-Hint Unfold eq_gt_implies.
-
-Lemma eq_gt_induction_2 : forall (P1 P2 : (nat->Prop) -> Prop),
-  eq_gt_implies P1 -> eq_gt_implies P2 ->
-  (forall n, P1 (gt n) -> P2 (gt n) -> P1 (eq n) /\ P2 (eq n)) ->
-  (forall n, P1 (eq n)) /\ (forall n, P2 (eq n)).
-Proof.
-  introv H1 H2 R.
-  cuts M: (forall n, P1 (eq n) /\ P2 (eq n)).
-    split; intros n; specializes M n; auto*.
-  induction n using peano_induction. apply R;
-    match goal with K: eq_gt_implies ?Pi |- ?Pi _ =>
-      apply K; intros; forwards*: H; try math end.
-Qed.
-
-Lemma conj_strengthen_2 : forall (Q1 Q2 P1 P2 : Prop),
-  (Q1 -> P1) -> (Q2 -> P2) -> (Q1 /\ Q2) -> (P1 /\ P2).
-Proof. auto*. Qed.
-
-Lemma eq_gt_induction_5 : forall (P1 P2 P3 P4 P5 : (nat->Prop) -> Prop),
-  eq_gt_implies P1 -> eq_gt_implies P2 -> eq_gt_implies P3 -> 
-  eq_gt_implies P4 -> eq_gt_implies P5 ->
-  (forall n, P1 (gt n) -> P2 (gt n) -> P3 (gt n) -> P4 (gt n) -> P5 (gt n) -> 
-    P1 (eq n) /\ P2 (eq n) /\ P3 (eq n) /\ P4 (eq n) /\ P5 (eq n)) ->
-  (forall n, P1 (eq n)) /\ (forall n, P2 (eq n)) /\ (forall n, P3 (eq n))
-    /\ (forall n, P4 (eq n))  /\ (forall n, P5 (eq n)).
-Proof. 
-  introv H1 H2 H3 H4 H5 R.
-  cuts M: (forall n, P1 (eq n) /\ P2 (eq n) /\ P3 (eq n) /\ P4 (eq n) /\ P5 (eq n)).
-    splits; intros n; specializes M n; auto*.
-  induction n using peano_induction. apply R;
-    match goal with K: eq_gt_implies ?Pi |- ?Pi _ =>
-      apply K; intros; forwards*: H; try math end.
-Qed. 
-
-Lemma conj_strengthen_5 : forall (Q1 Q2 Q3 Q4 Q5 P1 P2 P3 P4 P5 : Prop),
-  (Q1 -> P1) -> (Q2 -> P2) -> (Q3 -> P3) -> (Q4 -> P4) -> (Q5 -> P5) ->
-  (Q1 /\ Q2 /\ Q3 /\ Q4 /\ Q5) -> (P1 /\ P2 /\ P3 /\ P4 /\ P5).
-Proof. auto*. Qed.
-
 
 Module BootstrappedQueueSpec <: QueueSigSpec.
 
@@ -339,42 +294,3 @@ Hint Extern 1 (RegisterSpec tail) => Provide tail_spec.
 Hint Extern 1 (RegisterSpec snoc) => Provide snoc_spec.
 
 End BootstrappedQueueSpec.
-
-(*
-
-
-Axiom factorize : forall (P1 P2 P3 P4 P5 : nat -> Prop),
-  (forall n, P1 n /\ P2 n /\ P3 n /\ P4 n /\ P5 n) ->
-  (forall n, P1 (n)) /\ (forall n, P2 (n)) /\ (forall n, P3 (n))
-    /\ (forall n, P4 (n))  /\ (forall n, P5 (n)).
-
-Lemma eq_gt_induction_5' : forall (P1 P2 P3 P4 P5 : (nat->Prop) -> Prop),
-  eq_gt_implies P1 -> eq_gt_implies P2 -> eq_gt_implies P3 -> 
-  eq_gt_implies P4 -> eq_gt_implies P5 ->
-  (forall n, P1 (gt n) -> P2 (gt n) -> P3 (gt n) -> P4 (gt n) -> P5 (gt n) -> 
-    P1 (eq n) /\ P2 (eq n) /\ P3 (eq n) /\ P4 (eq n) /\ P5 (eq n)) ->
-  (forall n, P1 (eq n) /\ P2 (eq n) /\ P3 (eq n) /\ P4 (eq n) /\ P5 (eq n)).
-Proof. 
-  introv H1 H2 H3 H4 H5 R.
-  induction n using peano_induction. apply R;
-    match goal with K: eq_gt_implies ?Pi |- ?Pi _ =>
-      apply K; intros; forwards*: H; try math end.
-Qed. 
-
-Axiom go :forall (P1 P2 P3 P4 P5 : (nat->Prop) -> Prop),
- (forall n, P1 (eq n) /\ P2 (eq n) /\ P3 (eq n) /\ P4 (eq n) /\ P5 (eq n)).
-(*
-Lemma conj_strengthen_5' : forall (Q1 Q2 Q3 Q4 Q5 P1 P2 P3 P4 P5 : (nat -> Prop) -> Prop),
-  (Q1 -> P1) -> (Q2 -> P2) -> (Q3 -> P3) -> (Q4 -> P4) -> (Q5 -> P5) ->
-  (Q1 /\ Q2 /\ Q3 /\ Q4 /\ Q5) -> (P1 /\ P2 /\ P3 /\ P4 /\ P5).
-Proof. auto*. Qed.
-*)
-
-(*
-Axiom go' :forall (P1 : (nat->Prop) -> Prop),
- (forall n, P1 (eq n)).
-
-Axiom go'' :forall f n  (P1 P2 : (nat->Prop) -> Prop),
- (f = eq n -> (P1 f /\ P2 f)).
-*)
-*)

@@ -61,6 +61,9 @@ Ltac auto_tilde ::= myauto ltac:(fun _ => eauto).
 Ltac auto_star ::= try solve [ intuition (eauto with multiset) ].
 Ltac auto_plus := myauto ltac:(fun _ => eauto 10).
 
+Hint Extern 1 (@le nat _ _ _) => simpl; math. (*todo:needed?*)
+Hint Extern 1 (@lt nat _ _ _) => simpl; math.
+
 (** useful facts *)
 
 Hint Constructors inv.
@@ -79,13 +82,25 @@ Hint Extern 1 (foreach (is_le ?X) ?E) =>
   let go Y := (apply (@foreach_le_trans X Y)) in
   match goal with 
   | H: ?Y <= X, H': foreach (is_le ?Y) E |- _ => go Y
-  | H: ?Y <= X |- _ => go Y | H: ?Y < X |- _ => go Y end.
+  | H: ?Y <= X |- _ => go Y 
+  end.
 
 Hint Extern 1 (foreach (is_ge ?X) ?E) =>
   let go Y := (apply (@foreach_ge_trans X Y)) in
   match goal with
   | H: X <= ?Y, H': foreach (is_ge ?Y) E |- _ => go Y
-  | H: X <= ?Y |- _ => go Y | H: X < ?Y |- _ => go Y end.
+  | H: X <= ?Y |- _ => go Y
+  end.
+
+Lemma min_of_last : forall X A,
+   foreach (is_ge X) A -> min_of ('{X} \u \{} \u A) X.
+Proof.
+  introv H. split~. introv M. multiset_in M.
+    apply le_refl.
+    apply~ H.
+Qed.
+
+Hint Resolve min_of_last.
 
 Ltac norm :=
   repeat match goal with
@@ -94,13 +109,6 @@ Ltac norm :=
   | H: is_le ?X ?Y |- _ => unfold is_le in H
   | H: is_ge ?X ?Y |- _ => unfold is_ge in H
   end.
-
-(*
-Hint Extern 2 (_ <= ?X) =>
-  match goal with H: foreach (is_le X) _ |- _ => eapply H end.
-Hint Extern 2 (?X < _) =>
-  match goal with H: foreach (is_gt X) _ |- _ => eapply H end.
-*)
 
 (** verification *)
 
@@ -119,21 +127,6 @@ Proof.
 Qed.
 
 Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
-
-Hint Extern 1 (@le nat _ _ _) => simpl; math.
-Hint Extern 1 (@lt nat _ _ _) => simpl; math.
-
-Ltac my_intuit := 
-  repeat match goal with H: foreach _ (_ \u _) |- _ => rew_foreach H end;
-  intuit; try rewrite foreach_single_eq in *.
-
-Axiom lt_to_le : forall x y : T,
-  x < y -> x <= y.
-Hint Immediate lt_to_le.
-Hint Unfold is_le.
-
-Hint Extern 1 (foreach _ (_ \u _)) => apply foreach_union.
-Hint Extern 1 (foreach _ (\{_})) => apply foreach_single.
 
 Lemma partition_spec : Spec partition p e |R>>
   forall P E, rep p P -> rep e E -> 
@@ -183,9 +176,7 @@ Proof.
   xcf. introv IH Rep1 Rep2. xmatch.
   xgo. inverts Rep1. equates* 1.
   xcleanpat. inverts Rep1. xlet as. xapp~. (* todo *)
-   intros [f1 f2] (F1&F2&RepF1&RepF2&F12&Ord1&Ord2&Siz1&Siz2).
-      (* todo: déconstruire automatiquement *)
-    xgo~; try (simpl; math).
+   intros [f1 f2] H. intuit H. xgo~; try (simpl; math).
     constructors~. subst. permut_simpl.
 Qed.
    
@@ -195,20 +186,10 @@ Lemma insert_spec : RepTotal insert (X;O.t) (E;heap) >>
   \{X} \u E ; heap.
 Proof.
   xcf. introv RepX RepE. xlet as. xapp~. 
-  intros [f1 f2] (F1&F2&R). intuit. xgo*.
+  intros [f1 f2] H. intuit H. xgo*.
 Qed.
 
 Hint Extern 1 (RegisterSpec insert) => Provide insert_spec.
-
-Lemma min_of_last : forall X A,
-   foreach (is_ge X) A -> min_of ('{X} \u \{} \u A) X.
-Proof.
-  introv H. split~. introv M. multiset_in M.
-    apply le_refl.
-    apply~ H.
-Qed.
-
-Hint Resolve min_of_last.
 
 Lemma find_min_spec : RepSpec find_min (E;heap) |R>>
   E <> \{} -> R (min_of E ;; O.t).
@@ -227,11 +208,6 @@ Proof.
 Qed.
 
 Hint Extern 1 (RegisterSpec find_min) => Provide find_min_spec.
-
-Tactic Notation "xpat" :=
-  let H := fresh in
-  xpat_core_new H ltac:(fun _ => idtac) ltac:(fun _ => idtac);
-  xpat_post H.
 
 Lemma delete_min_spec : RepSpec delete_min (E;heap) |R>>
   E <> \{} -> R (removed_min E ;; heap).
