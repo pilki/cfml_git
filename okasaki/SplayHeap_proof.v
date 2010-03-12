@@ -228,33 +228,37 @@ Qed.
 
 Hint Extern 1 (RegisterSpec find_min) => Provide find_min_spec.
 
+Tactic Notation "xpat" :=
+  let H := fresh in
+  xpat_core_new H ltac:(fun _ => idtac) ltac:(fun _ => idtac);
+  xpat_post H.
+
 Lemma delete_min_spec : RepSpec delete_min (E;heap) |R>>
   E <> \{} -> R (removed_min E ;; heap).
 Proof. 
   xinduction tree_size. 
-  xcf. intros IH e E RepE HasE. inverts RepE; xmatch_nocases.
-  xgo. inverts H. xgo. esplit; split~. exists* __.
-  xcase_one_real. inverts H4. xgo.
-    exists ('{Y} \u B0 \u B). split. constructors~.
-     rew_foreach* H2. exists Y0. esplit.
-      split. auto.
-        asserts: (Y0 <= Y). rew_foreach H2. destruct H2 as [M _]. apply~ M.
-        lets: (le_trans Y). norm. introv M. multiset_in M.
-          auto.
-          apply le_refl.
-          apply~ H8.
-          apply~ le_trans. apply~ H3. 
-      auto*.
-  xgo~. intros K. multiset_inv. (* simplifies*)
-  destruct P_x1 as (A' & RepA' & X & InfX & EqX).
+  xcf. intros IH e E RepE HasE. xmatch_nocases.
+  inverts RepE as RA RB RY LA LB; xpat.
+  inverts RA as RC RD RX LC LD; xpat.
+  xgo. esplit; split~. exists* __.
+  xcase.
+  xgo. inverts RC. norm. esplit; split~.
+    exists Y0. splits~. split~. introv M. multiset_in M.
+      auto.
+      apply le_refl.
+      apply~ LD.
+      apply~ le_trans. apply~ LB.
+    auto*.
+  xgo~. intro_subst_hyp. inverts RC. false~ C. multiset_inv.
+  destruct P_x1 as (A' & RepA' & X & InfX & EqX). subst A0. norm.
   exists ('{Y} \u ('{Y0} \u A' \u B0) \u B). split.
   equates 1. applys~ (>>> inv_node A' (\{Y} \u B0 \u B)).
-   constructors~. skip. skip. skip. permut_simpl. rewrite union_comm. auto.
-  (* todo: bug in tactic*)
-   exists X. split. split. destruct InfX.
- skip.
-introv M. skip.
-  rewrite EqX. permut_simpl.
+    (* todo: bug in tactic*) permut_simpl. apply union_comm.
+  exists X. split. split~.
+   applys_to InfX proj2. introv M. multiset_in M; auto~.
+     eapply le_trans. apply H5. apply~ LD. 
+     apply~ le_trans. apply~ le_trans. apply~ LB.
+   auto*.
 Qed.
 
 Hint Extern 1 (RegisterSpec delete_min) => Provide delete_min_spec.
