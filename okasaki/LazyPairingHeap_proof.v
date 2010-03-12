@@ -13,12 +13,6 @@ Module Import OS := OS.
 Existing Instance le_inst.
 Existing Instance le_order.
 
-Definition min_of (E:multiset T) (X:T) := 
-  X \in E /\ forall_ Y \in E, X <= Y.
-
-Definition removed_min (E E':multiset T) :=
-  exists X, min_of E X /\ E = \{X} \u E'.
-
 (** invariant *)
 
 Definition is_ge (X Y:T) := X <= Y.
@@ -35,7 +29,11 @@ Inductive inv : heap -> multiset T -> Prop :=
       E' = \{X} \u Eo \u Es ->   
       inv (Node x ho hs) E'.
 
-Instance heap_rep : Rep heap (multiset T) := inv.
+Instance heap_rep : Rep heap (multiset T).
+Proof.
+  apply (Build_Rep inv). 
+  induction x; introv HX HY; inverts HX; inverts HY; prove_rep.
+Defined.
 
 (** automation *)
 
@@ -114,7 +112,7 @@ Lemma is_empty_spec : RepTotal is_empty (E;heap) >>
   bool_of (E = \{}).
 Proof.
   xcf. intros e E RepE. inverts RepE; xgo. 
-  auto. intros_all. fset_inv.
+  auto. intros_all. multiset_inv.
 Qed. 
 
 Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
@@ -155,31 +153,65 @@ introv IH. intros ? ? ? q Q RQ NE N. subst n.
 
 *)
 
+Definition eq_gt_implies (P : (nat->Prop) -> Prop) :=
+  forall n, (forall m, n > m -> P (eq m)) -> P (gt n).
+
+Hint Unfold eq_gt_implies.
+
+Axiom eq_gt_induction_2 : forall (P1 P2 : (nat->Prop) -> Prop),
+  eq_gt_implies P1 -> eq_gt_implies P2 ->
+  (forall n, P1 (gt n) -> P2 (gt n) -> P1 (eq n) /\ P2 (eq n)) ->
+  (forall n, P1 (eq n)) /\ (forall n, P2 (eq n)).
+
+Axiom conj_strengthen_2 : forall (Q1 Q2 P1 P2 : Prop),
+  (Q1 -> P1) -> (Q2 -> P2) -> (Q1 /\ Q2) -> (P1 /\ P2).
+(*
+  eapply rep_induction_mut_2_2_2 with 
+   (mu1 := fun E1 E2 => (2 * (card E1 + card E2) + 1)%nat)
+   (mu2 := fun E1 E2 => (2 * (card E1 + card E2))%nat);
+   unfold rep_spec_2, rep_spec_2_hyp.
+*)
+
+(*
+Hint Extern 1 (@gt nat _ _ _) => check_noevar tt; simpl; rew_card; math.
+*)
+Ltac prove_card := simpl; rew_card; math.
+
 Definition link_spec := RepSpec link (E1;heap) (E2;heap) |R>>
-  forall X, min_of E1 X -> foreach (is_ge X) E2 ->
+  forall X, foreach (is_ge X) E2 -> min_of E1 X -> 
   R (E1 \u E2 ; heap).
 
 Lemma merge_spec : RepTotal merge (E1;heap) (E2;heap) >>
   E1 \u E2 ; heap.
 Proof.
   applys (>>> proj1 __ link_spec).
-  eapply rep_induction_mut_2_2_2 with 
-   (mu1 := fun E1 E2 => (2 * (card E1 + card E2) + 1)%nat)
-   (mu2 := fun E1 E2 => (2 * (card E1 + card E2))%nat);
-   unfold rep_spec_2, rep_spec_2_hyp.
+  eapply conj_strengthen_2; try intros M.
+  xintros. intros. gen_eq n:((2*(card E1 + card E2) + 1)%nat). 
+   gen n x1 x2 E1 E2 H H0. apply M.
+  unfolds. xintros. intros. gen_eq n:((2*(card E1 + card E2))%nat).
+   gen n x1 x2 X E1 E2 H H0 H1 H2. apply M.
+  forwards (H1&H2): (eq_gt_induction_2);
+    try match goal with |- _ /\ _ =>
+      splits; intros n; pattern (eq n); [ apply H1 | apply H2 ] end; auto~.
+  introv IHmerge IHlink. simpl. split.
   (* verif merge *)
-  xcf. introv R1 R2 [_ IH]. xmatch; xcleanpat.
+  clear IHmerge. introv R1 R2 N. subst n. xcf_app. xmatch; xcleanpat.
   xgo. inverts R2. equates* 1.
   xgo. inverts R1. equates* 1.
   inverts R1. inverts R2. xapp~. xif.
-    xapp~.
-    applys_to P_x0 nle_to_sle. xapp~. ximpl. equates* 1.
+    xapp~. prove_card.
+    applys_to P_x0 nle_to_sle. equates 1. fapplys IHlink; auto~. (* todo! *)
+     prove_card. extens. intros h. iff M. equates* 1. equates* 1.
   (* verif link *)
-  xcf. intros h1 h2 E1 E2 R1 R2 [IH _] X MX GX. inverts R1. 
+  clear IHlink. intros h1 h2 X E1 E2 R1 R2 GX MX N. subst n.
+  xcf_app. inverts R1.
   xgo. applys_to MX proj1. eapply (in_empty X). eauto.
   xmatch.
   xgo. inverts H0. forwards~: (>>> min_of_eq MX). constructors*.
-  xgo~. forwards~: (>>> min_of_eq MX). constructors*.
+  xgo~.
+    fapplys IHmerge; auto~. prove_card. 
+    fapplys IHmerge; auto~. apply P_x1. prove_card. (* todo: cleanup*)
+   forwards~: (>>> min_of_eq MX). constructors*.
 Qed.
 
 Hint Extern 1 (RegisterSpec merge) => Provide merge_spec.

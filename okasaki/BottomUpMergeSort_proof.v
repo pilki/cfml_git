@@ -14,16 +14,9 @@ Module Import OS := OS.
 Existing Instance le_inst.
 Existing Instance le_order.
 
-Definition is_ge (X Y:T) := X <= Y.
-
-Inductive sorted : list T -> multiset T -> Prop :=
-  | sorted_nil : sorted nil \{}
-  | sorted_cons : forall S X E,
-      sorted S E ->
-      foreach (is_ge X) E ->
-      sorted (X::S) (\{X} \u E).
-
 (** invariant *)
+
+Notation "'is_ge'" := (@le T _).
 
 Inductive seg : list O.t -> multiset T -> Prop :=
   | seg_nil : seg nil \{}
@@ -33,6 +26,12 @@ Inductive seg : list O.t -> multiset T -> Prop :=
       foreach (is_ge X) E ->
       E' =' \{X} \u E ->
       seg (x::s) E'.
+
+Instance seg_rep : Rep (list O.t) (multiset T).
+Proof.
+  apply (Build_Rep seg).
+  induction x; introv HX HY; inverts HX; inverts HY; subst; prove_rep.
+Defined.
 
 Inductive inv : int -> int -> list (list O.t) -> multiset T -> Prop :=
   | inv_empty : forall p,
@@ -44,13 +43,21 @@ Inductive inv : int -> int -> list (list O.t) -> multiset T -> Prop :=
   | inv_odd : forall k n p s ss E Es E',
       inv k (2*p) ss Es ->
       n = 2 * k + 1 ->
-      seg s E ->
+      rep s E ->
       length s = p :> int ->
       E' =' E \u Es ->
       inv n p (s::ss) E'.
 
-Instance heap_rep : Rep sortable (multiset T) := 
-  fun p E => let (n,ss) := p in inv n 1 ss E.
+Instance heap_rep : Rep sortable (multiset T).
+Proof.
+  apply (Build_Rep (fun p E => let (n,ss) := p:sortable in inv n 1 ss E)).
+  cuts: (forall l n1 p1 E1, inv n1 p1 l E1 -> forall n2 p2 E2, inv n2 p2 l E2 -> E1 = E2).
+    intros. destruct* x.
+  introv HX. induction HX; introv HY; unfolds eq'.
+  gen_eq m: (@nil (list t)). induction HY; unfolds eq'; intros; subst; tryfalse; auto.
+  eauto.
+  gen_eq m: (s::ss). induction HY; introv EQ; unfolds eq'; intros; inverts EQ; subst; prove_rep.
+Qed.
 
 (** automation *)
 

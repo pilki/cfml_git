@@ -1,20 +1,20 @@
 Set Implicit Arguments.
 Require Import FuncTactics SortableSig_ml OrderedSig_ml OrderedSig_proof.
 
+
+Inductive sorted `{Le A} : list A -> multiset A -> Prop :=
+  | sorted_nil : sorted nil \{}
+  | sorted_cons : forall S X E,
+      sorted S E ->
+      foreach (le X) E ->
+      sorted (X::S) (\{X} \u E).
+
+
 Module Type SortableSigSpec.
 
 Declare Module H : MLSortable.
 Declare Module OS : OrderedSigSpec with Module O := H.MLElement.
 Import H MLElement OS. 
-
-Definition is_ge (X Y:T) := X <= Y.
-
-Inductive sorted : list T -> multiset T -> Prop :=
-  | sorted_nil : sorted nil \{}
-  | sorted_cons : forall S X E,
-      sorted S E ->
-      foreach (is_ge X) E ->
-      sorted (X::S) (\{X} \u E).
 
 Global Instance heap_rep : Rep sortable (multiset T).
 
