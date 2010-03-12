@@ -77,6 +77,25 @@ Proof.
 (* gen_eq L: (@nil A). induction RQ; intros; subst. TODO*)
 Admitted.
 
+Lemma inv_weaken : forall `{Rep a A} l L,
+  inv false l L -> inv true l L.
+Proof. introv M. inverts M; constructors~. Qed.
+
+Hint Resolve @inv_weaken.
+
+Lemma inv_strengthen : forall `{Rep a A} l X L b,
+  inv b l (X::L) -> inv false l (X::L).
+Proof. introv M. inverts~ M. Qed.
+
+Hint Resolve @inv_strengthen.
+
+Lemma inv_strengthen' : forall `{Rep a A} l L b,
+  inv b l L -> L <> nil -> inv false l L.
+Proof. introv M. inverts~ M. auto_false. Admitted. (*evars*)
+
+Hint Resolve @inv_strengthen.
+
+
 (* H int Resolve (@rep (rlist _) _ _ _) => exists true.*)
 
 
@@ -101,11 +120,53 @@ Qed.
 
 Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
 
+Lemma pair_rep : forall `{Rep a1 A1} `{Rep a2 A2} (x:a1) (y:a2) X Y,
+  rep x X -> rep y Y -> rep (x, y) (X,Y).
+Proof. auto. Qed.
+
+Hint Resolve @pair_rep.
+
+Hint Extern 1 (@gt nat _ _ _) => simpl; math.
+
+Lemma cons_spec : forall `{Rep a A},
+  RepTotal cons (X;a) (L;rlist a) >> (X::L) ; rlist a.
+Proof.
+  intros. xintros. (* todo: intros useless *)
+  intros x l. intros. gen_eq n: (size l). gen a A H x l X L.
+  apply~ eq_gt_induction; clears n.
+  introv IH RX RL N. subst n. xcf_app. xmatch.
+  xgo. rewrite~ (to_empty RL).
+  xgo. simpl. destruct RL as [b RL]. inverts~ RL.
+  destruct RL as [b RL]. inverts RL.
+   specializes IH ((a*a)%type) __ __. xlet. fapplys IH; auto~. (* todo *)
+   destruct P_x1 as (b'&K). lets: (inv_strengthen K).
+   xgo. exists~ true.
+Admitted. (*remains evar*)
+
+Hint Extern 1 (RegisterSpec cons) => Provide cons_spec.
+
+Lemma rep_null : forall `{Rep a A},
+  rep Null (@nil A).
+Proof. exists~ __. Qed.
+Hint Resolve @rep_null.
+
 Lemma uncons_spec : forall `{Rep a A},
   RepSpec uncons (L;rlist a) |R>>
      L <> nil -> R ((fun P => let (X,T) := P : A*list A in L = X::T) ;; a * rlist a).
 Proof.
-Admitted.
+  intros. xintros. instantiate (1 := (a * rlist a)%type).
+   instantiate (1 := rlist a). xcf; auto.
+  intros l. intros. gen_eq n: (size l). gen a A H l L.
+  apply~ eq_gt_induction; clears n.
+  introv IH RL NE N. subst n. xcf_app. xmatch.
+  xgo. applys NE. apply~ to_empty.
+  xgo. destruct RL as [b RL]. inverts RL. inverts H10. exists~ (X,@nil A).
+  xgo. destruct RL as [b RL]. inverts RL. exists~ (X,splitin Ls). splits~.
+   eapply pair_rep. eauto. exists __. constructors.
+  eapply @inv_strengthen'. eauto. intro_subst_hyp. 
+  asserts: (ps = Null). (* by working on inv *)
+
+Qed.
 
 Hint Extern 1 (RegisterSpec uncons) => Provide uncons_spec.
 
