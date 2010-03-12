@@ -66,14 +66,14 @@ Fixpoint size a (l:rlist a) : nat :=
   | One x ls => (2 * (size ls) + 1)%nat
   end.
 
-Lemma to_empty : forall `{Rep a A} L,
-  rep Null L -> L = nil.
-Proof. introv [b RL]. set_eq L':L. inverts~ RL. Qed.
+Lemma to_empty : forall `{Rep a A} L b,
+  inv b Null L -> L = nil.
+Proof. introv RL. set_eq L':L. inverts~ RL. Qed.
 
-Lemma from_empty : forall `{Rep a A} l,
-  rep l nil -> l = Null.
+Lemma from_empty : forall `{Rep a A} l b,
+  inv b l nil -> l = Null.
 Proof.
-  introv [b RL].  
+  introv.
 (* gen_eq L: (@nil A). induction RQ; intros; subst. TODO*)
 Admitted.
 
@@ -113,7 +113,7 @@ Hint Extern 1 (RegisterSpec empty) => Provide empty_spec.
 Lemma is_empty_spec : forall `{Rep a A},
   RepTotal is_empty (L;rlist a) >> bool_of (L = nil).
 Proof.
-  xcf. introv RL. xgo.
+  xcf. introv [b RL]. xgo.
   apply~ to_empty.
   intro_subst_hyp. applys C. apply~ from_empty.
 Qed.
@@ -134,21 +134,21 @@ Proof.
   intros. xintros. (* todo: intros useless *)
   intros x l. intros. gen_eq n: (size l). gen a A H x l X L.
   apply~ eq_gt_induction; clears n.
-  introv IH RX RL N. subst n. xcf_app. xmatch.
+  introv IH RX [b RL] N. subst n. xcf_app. xmatch.
   xgo. rewrite~ (to_empty RL).
-  xgo. simpl. destruct RL as [b RL]. inverts~ RL.
-  destruct RL as [b RL]. inverts RL.
+  xgo. simpl. inverts~ RL.
+  inverts RL.
    specializes IH ((a*a)%type) __ __. xlet. fapplys IH; auto~. (* todo *)
-   destruct P_x1 as (b'&K). lets: (inv_strengthen K).
-   xgo. exists~ true.
-Admitted. (*remains evar*)
+   destruct P_x1 as (b'&K). lets: (inv_strengthen K). xgo~.
+Qed.
 
 Hint Extern 1 (RegisterSpec cons) => Provide cons_spec.
-
+(*
 Lemma rep_null : forall `{Rep a A},
   rep Null (@nil A).
 Proof. exists~ __. Qed.
 Hint Resolve @rep_null.
+*)
 
 Lemma uncons_spec : forall `{Rep a A},
   RepSpec uncons (L;rlist a) |R>>
@@ -158,14 +158,20 @@ Proof.
    instantiate (1 := rlist a). xcf; auto.
   intros l. intros. gen_eq n: (size l). gen a A H l L.
   apply~ eq_gt_induction; clears n.
-  introv IH RL NE N. subst n. xcf_app. xmatch.
+  introv IH [b RL] NE N. subst n. xcf_app. xmatch.
   xgo. applys NE. apply~ to_empty.
-  xgo. destruct RL as [b RL]. inverts RL. inverts H10. exists~ (X,@nil A).
-  xgo. destruct RL as [b RL]. inverts RL. exists~ (X,splitin Ls). splits~.
+  xgo. inverts RL. inverts H10. exists~ (X,@nil A).
+  xgo. inverts RL. exists~ (X,splitin Ls). splits~.
    eapply pair_rep. eauto. exists __. constructors.
-  eapply @inv_strengthen'. eauto. intro_subst_hyp. 
-  asserts: (ps = Null). (* by working on inv *)
+  eapply @inv_strengthen'. eauto. intro_subst_hyp.
+  applys C0. rewrite~ (from_empty H10). auto. (* todo cleanup *)
 
+  inverts RL. specializes IH (a*a)%type __ __. xlet.
+  fapplys IH; eauto. (* todo: copy *) skip.
+  simpl. (* size pos when non empty *) skip.
+  xgo. destruct P_x1 as (((X,Y),Ls')&((RX&RY)&RLs')&EQL').
+  subst Ls. exists __. split~. apply~ @pair_rep. skip.
+  simpl. eauto. 
 Qed.
 
 Hint Extern 1 (RegisterSpec uncons) => Provide uncons_spec.
