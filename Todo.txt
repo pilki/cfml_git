@@ -1,6 +1,8 @@
+*) exists ___ ne doit pas ouvrir les /\
+
 *) rew_list doit checker les evars avant
 
-*) la récursion polymorphe doit accépter
+*) la rÃ©cursion polymorphe doit accÃ©pter
     let rec f : 'a. 'a t -> 'a t = failwith "not implemented"
    et ne pas forcer
     let rec f : 'a. 'a t -> 'a t = fun _ -> failwith "not implemented"
@@ -8,21 +10,21 @@
 *) avoid copy-pasting statments by using definitions 
 
 *) Physicists queue, check_spec, avant xgo:
-   bug si l'hypothèse "True" est dans le contexte 
+   bug si l'hypothÃ¨se "True" est dans le contexte 
 
 *) "myauto" dans les set et les multiset,
    pour contourner le bug de eauto sur des x = y :> TA
 
-*) SplayHeap_proof : réintroduire un hint
+*) SplayHeap_proof : rÃ©introduire un hint
    Hint Extern 1 ((_ < _)%nat) => simpl; math.*)
 
-*) UnbalancedSet : specialisé le hint simpl sur rep ?
+*) UnbalancedSet : specialisÃ© le hint simpl sur rep ?
 
 *) BottomUpMergeSort : Tactics to improve
 
 *) FuncTactics : ximpl_nointros => ximpl_refl
 
-*) Polymorhisme à essayer !!!
+*) Polymorhisme Ã  essayer !!!
       Record RepType :=
          { RepType_base :> Type;
            RepType_model : Type;
@@ -34,7 +36,7 @@
    use ximpl for ( ; ) ==> ( ;; ) 
 
 
-*) Tactic if_eq : renommer et systématiser dans xclean ?
+*) Tactic if_eq : renommer et systÃ©matiser dans xclean ?
 
 *) todo: ImplicitQueueSpec: queue_rep: si on met queue a_, 
    on n'a pas d'erreur de bound name !
@@ -43,10 +45,10 @@
 
 *) [inductions] that works
 
-*) todo: bug des variables nommées comme les types 
+*) todo: bug des variables nommÃ©es comme les types 
 
 *) SkewBinaryRandomAccesList slightly modified compared with original code;
 
-*) todo : égalité polymorphe pour tester si les listes sont vides
+*) todo : Ã©galitÃ© polymorphe pour tester si les listes sont vides
 
-*) todo : vérification de types habités
+*) todo : vÃ©rification de types habitÃ©s

@@ -47,7 +47,7 @@ Proof. destruct h; simpl; math. Qed.
 
 (** automation *)
 
-Hint Extern 1 (_ = _ :> multiset _) => permut_simpl : multiset.
+Hint Extern 1 (_ = _ :> multiset _) => check_noevar_goal; permut_simpl : multiset.
 
 Definition U := multiset T.
 
@@ -59,6 +59,7 @@ Ltac myauto cont :=
 
 Ltac auto_tilde ::= myauto ltac:(fun _ => eauto).
 Ltac auto_star ::= try solve [ intuition (eauto with multiset) ].
+Ltac auto_plus := myauto ltac:(fun _ => eauto 10).
 
 (** useful facts *)
 
@@ -66,17 +67,36 @@ Hint Constructors inv.
 Hint Extern 1 (@rep heap _ _ _ _) => simpl.
 Hint Extern 1 (@rep heaps _ _ _ _) => simpl.
 
+Lemma foreach_le_trans : forall (X Y : OS.T) (E : multiset OS.T),
+  Y <= X -> foreach (is_le Y) E -> foreach (is_le X) E.
+Proof. intros. apply~ foreach_weaken. intros_all. apply~ le_trans. Qed.
+
 Lemma foreach_gt_trans : forall (X Y : OS.T) (E : multiset OS.T),
-  foreach (is_gt Y) E -> X <= Y -> foreach (is_gt X) E.
-Proof. intros. apply~ foreach_weaken. intros_all. Admitted.
+  X <= Y -> foreach (is_gt Y) E -> foreach (is_gt X) E.
+Proof. intros. apply~ foreach_weaken. intros_all. apply~ le_lt_trans. Qed.
 
-Hint Resolve foreach_gt_trans.
+Hint Extern 1 (foreach (is_le ?X) _) =>
+  let go Y := (apply (@foreach_le_trans X Y)) in
+  match goal with H: ?Y <= X |- _ => go Y | H: ?Y < X |- _ => go Y end.
+Hint Extern 1 (foreach (is_gt ?X) _) =>
+  let go Y := (apply (@foreach_gt_trans X Y)) in
+  match goal with H: X <= ?Y |- _ => go Y | H: X < ?Y |- _ => go Y end.
 
+
+Ltac norm :=
+  repeat match goal with
+  | H: foreach _ (_ \u _) |- _ => applys_to H foreach_union_inv; destruct H
+  | H: foreach _ (\{_}) |- _ => rewrite foreach_single_eq in H
+  | H: is_le ?X ?Y |- _ => unfold is_le in H
+  | H: is_gt ?X ?Y |- _ => unfold is_gt in H
+  end.
+
+(*
 Hint Extern 2 (_ <= ?X) =>
   match goal with H: foreach (is_le X) _ |- _ => eapply H end.
-
 Hint Extern 2 (?X < _) =>
   match goal with H: foreach (is_gt X) _ |- _ => eapply H end.
+*)
 
 (** verification *)
 
@@ -91,10 +111,25 @@ Lemma is_empty_spec : RepTotal is_empty (E;heap) >>
   bool_of (E = \{}).
 Proof.
   xcf. intros e E RepE. inverts RepE; xgo. 
-  auto. intros_all. fset_inv.
+  auto. intros_all. multiset_inv.
 Qed.
 
 Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
+
+Hint Extern 1 (@le nat _ _ _) => simpl; math.
+Hint Extern 1 (@lt nat _ _ _) => simpl; math.
+
+Ltac my_intuit := 
+  repeat match goal with H: foreach _ (_ \u _) |- _ => rew_foreach H end;
+  intuit; try rewrite foreach_single_eq in *.
+
+Axiom lt_to_le : forall x y : T,
+  x < y -> x <= y.
+Hint Immediate lt_to_le.
+Hint Unfold is_le.
+
+Hint Extern 1 (foreach _ (_ \u _)) => apply foreach_union.
+Hint Extern 1 (foreach _ (\{_})) => apply foreach_single.
 
 Lemma partition_spec : Spec partition p e |R>>
   forall P E, rep p P -> rep e E -> 
@@ -105,7 +140,45 @@ Lemma partition_spec : Spec partition p e |R>>
      foreach (is_gt P) E2 /\
      tree_size e1 <= tree_size e /\
      tree_size e2 <= tree_size e).
-Proof. Admitted.
+Proof.
+  xinduction (fun (p:O.t) (e:heap) => tree_size e). (* todo: rename to size *)
+  xcf. intros p e IH P E RP RE. xmatch.
+  xgo. inverts RE. exists___. splits*.
+  inverts RE as RA RB RX. xapp~. xif.
+  (* case left *)
+   xmatch. subst t. xgo. inverts RB. exists___. splits*.
+  inverts RB. xapp~. xif.
+  (* case left/left *)
+  xapp~. clear IH. (* todo: xapp as *)
+  destruct _x7 as [sma big]. intuit P_x7.
+  xgo. subst. norm. asserts: (Y < P). apply~ lt_le_trans.
+  exists___. splits; auto_plus. auto*.
+  (* case left/right *)
+  xapp~. clear IH. applys_to P_x5 nle_to_slt. 
+  destruct _x6 as [sma big]. intuit P_x6.
+  xgo. subst. norm. asserts: (Y < Y0). apply~ le_lt_trans.
+  exists___. splits; auto_plus. auto*.
+  (* case right *)
+  applys_to P_x1 nle_to_slt. xmatch. subst t. 
+  xgo. inverts RA. exists___. splits*.
+  inverts RA. xapp~. xif.
+  (* case right/left *)
+  xapp~. clear IH.
+  destruct _x4 as [sma big]. intuit P_x4.
+  xgo. subst. norm. asserts: (Y0 < Y). eapply le_lt_trans. apply P_x2. eauto. (* todo *)
+  exists___. splits; auto_plus. auto*.
+  (* case right/right *)
+  xapp~. clear IH. applys_to P_x2 nle_to_slt. 
+  destruct _x3 as [sma big]. intuit P_x3.
+  xgo. subst. norm. asserts: (P < Y). apply~ lt_le_trans.
+  exists___. splits; auto_plus. auto*.
+
+
+
+ Qed.
+
+   (* constructors; try match goal with |- inv (Node _ _ _) _ => constructors end; eauto 7. *)
+
 
 Hint Extern 1 (RegisterSpec partition) => Provide partition_spec.
 
@@ -149,7 +222,7 @@ Proof.
   xinduction tree_size.
   xcf. intros e IH E RepE HasE. inverts RepE. xgo.
   inverts H. xgo. eauto.
-  xgo. math. constructors~. intros K. fset_inv.  
+  xgo. math. constructors~. intros K. multiset_inv.  
   ximpl as x (X&RepX&MinX). destruct MinX as (InXA&InfX).
    esplit. splits_all~. skip.
    asserts: (X <= Y). applys~ H2.
@@ -179,7 +252,7 @@ Proof.
           apply~ H4. apply~ lt_to_le. 
       auto*.
   xgo~. math.
-  intros K. fset_inv. (* simplifies*)
+  intros K. multiset_inv. (* simplifies*)
   destruct P_x1 as (A' & RepA' & X & InfX & EqX).
   exists ('{Y} \u ('{Y0} \u A' \u B0) \u B). split.
   equates 1. applys~ (>>> inv_node A' (\{Y} \u B0 \u B)).

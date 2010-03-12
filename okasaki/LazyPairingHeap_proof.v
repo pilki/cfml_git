@@ -116,42 +116,7 @@ Proof.
 Qed. 
 
 Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
-
-
-(* todo: refaire sans ça 
-
-Definition rep_spec_2 (a1 a2 A1 A2 B : Type)
-  (rep1:a1->A1->Prop) (rep2:a2->A2->Prop)
-  (RK:a1->a2->A1->A2->~~B->Prop) f :=
-  spec_2 (B:=B) (fun x1 x2 R => forall X1 X2, 
-    rep1 x1 X1 -> rep2 x2 X2 -> RK x1 x2 X1 X2 R) f.
-
-Definition rep_spec_2_hyp (a1 a2 A1 A2 B : Type)
-  (rep1:a1->A1->Prop) (rep2:a2->A2->Prop) (P:A1->A2->Prop)
-  (RK:a1->a2->A1->A2->~~B->Prop) f :=
-  spec_2 (B:=B) (fun x1 x2 R => forall X1 X2, 
-    rep1 x1 X1 -> rep2 x2 X2 -> P X1 X2 -> RK x1 x2 X1 X2 R) f.
-
-Axiom rep_induction_mut_2_2_2 : 
-  forall (a11 a12 A11 A12 B1 : Type)
-  (rep11:a11->A11->Prop) (rep12:a12->A12->Prop)
-  (mu1:A11->A12->nat) (RK1:a11->a12->A11->A12->~~B1->Prop) f1,
-  forall (a21 a22 A21 A22 B2 : Type)
-  (rep21:a21->A21->Prop) (rep22:a22->A22->Prop)
-  (mu2:A21->A22->nat) (RK2:a21->a22->A21->A22->~~B2->Prop) f2,
-  let IH := (fun n => 
-      rep_spec_2_hyp (B:=B1) rep11 rep12 (fun X11 X12 => (mu1 X11 X12 < n)%nat) RK1 f1
-   /\ rep_spec_2_hyp (B:=B2) rep21 rep22 (fun X21 X22 => (mu2 X21 X22 < n)%nat) RK2 f2) in
-  rep_spec_2_hyp (B:=B1) rep11 rep12 (fun X11 X12 => IH (mu1 X11 X12)) RK1 f1 -> 
-  rep_spec_2_hyp (B:=B2) rep21 rep22 (fun X21 X22 => IH (mu2 X21 X22)) RK2 f2 -> 
-     rep_spec_2 (B:=B1) rep11 rep12 RK1 f1 
-  /\ rep_spec_2 (B:=B2) rep21 rep22 RK2 f2.
-
-intros. sets_eq n: (length Q).
-gen a A H x1 Q. apply~ good_induct; clears n.
-introv IH. intros ? ? ? q Q RQ NE N. subst n.
-
-*)
+(* todo: move *)
 
 Definition eq_gt_implies (P : (nat->Prop) -> Prop) :=
   forall n, (forall m, n > m -> P (eq m)) -> P (gt n).
