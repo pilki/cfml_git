@@ -238,34 +238,25 @@ Proof. apply (Build_Rep eq). congruence. Defined.
 Lemma fupdate_spec : forall `{Rep a A},
   RepSpec fupdate (f;val) (i;int) (L;rlist a) |R>> 
      0 <= i -> i < length L -> 
-     forall F, (Total f (x:a) >> = F x) ->
+     forall F, (RepTotal f (x;a) >> = F x) ->
      R (FUpdate (abs i) F L ;; rlist a).
+Proof.
+ skip.
+Qed.
 
-
-Parameter update_spec :
+Lemma update_spec : forall `{Rep a A},
   RepSpec update (i;int) (X;a) (L;rlist a) |R>> 
      0 <= i -> i < length L -> R (Update (abs i) X L ;; rlist a).
-
-Lemma snoc_spec : forall `{Rep a A},
-  RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ; queue a.
 Proof.
-  intros. xintros. intros. sets_eq n: (length Q).
-  gen a A H x1 x2 Q X. apply~ eq_gt_induction; clears n.
-  introv IH. intros ? ? ? q y Q RQ N Y RY. subst n.
-  xcf_app. xmatch. 
-  xgo. inverts RQ as _ M. inverts M. rew_list~.
-  xgo. inverts RQ as _ M. inverts M. rew_list~. eauto 7.
-  xgo. inverts RQ as. introv Df Vf Rm _ Dr EQ.
-   inverts Dr. subst Q. rew_list~. eauto 7.
-  inverts RQ as. introv Df Vf Rm _ Dr EQ. 
-   inverts Dr as RX. xlet.
-    applys~ (>>> IH ((a*a)%type) (x,y) (X,Y)). skip.
-   xgo. hnf in P_x0. subst Q. constructors~.
-     rew_list. rewrite~ splitin_last.
-  xgo. inverts RQ. 
-    destruct d. applys~ C. applys~ C0. auto.
-    destruct dr. applys~ C1. applys~ C2. auto.
-Qed.
+  xcf. introv RI RX [b RL] L1 L2.
+  xfun_mg. simpls. xapp_spec fupdate_spec.
+  specializes~ HR (fun _:A => X). reflexivity. 
+  fapplys HR.
+  skip. ximpl as l' [L' [RL' G]].
+   exists L'. splits. apply RL'.
+   subst.
+  destruct G. split. eauto. applys H1. skip. (* used to be one *)
+Admitted.
 
 Hint Extern 1 (RegisterSpec snoc) => Provide snoc_spec.
 
