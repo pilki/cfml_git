@@ -1,4 +1,3 @@
-test
 Set Implicit Arguments. 
 Require Import FuncTactics LibCore.
 Require Import RandomAccessListSig_ml RandomAccessListSig_proof.
@@ -173,7 +172,7 @@ Proof.
   xgo. destruct P_x1 as (((X,Y),Ls')&((RX&RY)&RLs')&EQL').
   subst Ls. exists __. split~. apply~ @pair_rep. skip.
   simpl. eauto. 
-Qed.
+Admitted.
 
 Hint Extern 1 (RegisterSpec uncons) => Provide uncons_spec.
 
@@ -198,6 +197,54 @@ Proof.
 Qed.
 
 Hint Extern 1 (RegisterSpec tail) => Provide tail_spec.
+
+Lemma Nth_split : forall A (l:list (A*A)) (k r : nat) x y,
+  r < 2%nat ->
+  Nth (2*k) (splitin l) (if r '= 0%nat then x else y) <-> 
+  Nth k l (x,y).
+Admitted.
+
+Ltac auto_tilde ::= eauto with maths.
+
+Lemma lookup_spec : forall `{Rep a A},
+  RepSpec lookup (i;int) (L;rlist a) |R>>
+     0 <= i -> i < length L -> R (Nth (abs i) L ;; a).
+Proof.
+  intros. xintros. skip. intros i. gen_eq n: (abs i). gen a A H i.
+  apply~ eq_gt_induction; clears n.
+  introv IH. introv. introv N RI [b RL] Pos Len. inverts RI. subst n. 
+  xcf_app. xret~. destruct _x0 as (i,f). inverts P_x0. xmatch.
+  xgo. inverts RL. rew_length in Len. math.
+  xgo. inverts RL. esplit. split~. equates 3. constructors~. skip.
+  inverts RL. rew_length in Len. asserts: (i <> 0). intro_subst_hyp. false~ C0.
+  specializes IH (i-1) (splitin Ls). rewrite gt_is_flip_lt. apply~ Zabs_nat_lt. 
+   xapp. simpl. eauto. exists __. constructors~. apply~ @inv_strengthen'.
+    intro_subst_hyp. simpl in Len. rew_length in Len. math. math. math.
+   intros y (Y&RY&NY). exists Y. split~. equates 3. constructors~. apply~ abs_spos.
+  inverts RL. xlet. specializes IH (a*a)%type (i/2) ps (i/2) Ls. skip. 
+    xapp. simple~. eauto. skip. skip.
+  xmatch. destruct P_x2 as ([X Y]&[HX HY]&NXY).
+  xif. xgo. exists X. split~. skip.
+  xgo. exists Y. split~. skip.    
+Admitted.
+
+Definition FUpdate A (n:nat) (f:A->A) l l' :=
+     (forall y m, Nth m l y -> m <> n -> Nth m l' y)
+  /\ (forall y, Nth n l y -> Nth n l (f y)).
+
+Instance val_rep : Rep val val.
+Proof. apply (Build_Rep eq). congruence. Defined.
+
+Lemma fupdate_spec : forall `{Rep a A},
+  RepSpec fupdate (f;val) (i;int) (L;rlist a) |R>> 
+     0 <= i -> i < length L -> 
+     forall F, (Total f (x:a) >> = F x) ->
+     R (FUpdate (abs i) F L ;; rlist a).
+
+
+Parameter update_spec :
+  RepSpec update (i;int) (X;a) (L;rlist a) |R>> 
+     0 <= i -> i < length L -> R (Update (abs i) X L ;; rlist a).
 
 Lemma snoc_spec : forall `{Rep a A},
   RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ; queue a.
