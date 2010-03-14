@@ -123,11 +123,39 @@ Qed.
 
 Hint Extern 1 (RegisterSpec link) => Provide link_spec.
 
+
+Lemma to_empty' : forall l L,
+  rep l L -> l <> Empty -> L <> nil.
+Proof. introv H NE K. subst. apply NE. apply~ from_empty. Qed.
+
+Lemma concat_not_nil : forall A (ls: list (list A)), 
+  ls <> nil -> Forall (<> nil) ls -> concat ls <> nil.
+Proof.
+  introv NE NsE. destruct ls. false. inverts NsE.
+  rew_concat. destruct l. false. intros K. false.
+Qed.
+
 Lemma link_all_spec : 
   RepSpec link_all (Ls;queue (cat a)) |R>>
-    Ls <> nil -> R (concat Ls ; cat a).
+    Ls <> nil -> Forall (<> nil) Ls -> R (concat Ls ; cat a).
 Proof.
-  
+  xintros. (* todo: xintros should keep types *)
+  instantiate (1:=cat a). instantiate (1:= queue(cat a)). xcf; auto.
+  intros ls Ls RLs Ne Nn. gen_eq n: (length Ls). gen ls Ls RLs Ne Nn.
+  apply~ eq_gt_induction; clears n. introv IH RQ Ne Nn N. subst n.
+  xcf_app.  
+  xlet. xapp~. xret. eexact P_x0. (* todo: éviter l'éta expansion *) 
+  xlet. xapp~.
+  destruct Pt as (L&RL&(Q&EQLs)).
+  destruct Pq' as (Ls'&RLs'&(Q'&EQLs')).
+  rewrite EQLs' in EQLs. inverts EQLs.
+  xapp~. xif. xgo. subst. rew_concat. auto.
+  xlet. fapplys IH; auto~.
+    subst. inverts~ Nn.
+    subst. rew_length. math.
+  subst Ls. simpls. inverts Nn. inverts RQ. 
+  destruct P_x0 as (X&RX&(T'&EQLT')). inverts EQLT'.
+  xapp~. apply~ concat_not_nil.
 Qed.
 
 Hint Extern 1 (RegisterSpec link_all) => Provide link_all_spec.
@@ -135,21 +163,32 @@ Hint Extern 1 (RegisterSpec link_all) => Provide link_all_spec.
 Lemma append_spec : 
   RepTotal append (L1;cat a) (L2;cat a) >> (L1++L2) ; cat a.
 Proof.
+  xcf. introv RL1 RL2. xmatch.
+  xgo. inverts RL1. rew_list~.
+  xgo. inverts RL2. rew_list~.
+  xapp~.
+    applys~ to_empty'. intro_subst_hyp. false~ C.
+    applys~ to_empty'. intro_subst_hyp. false~ C0.
 Qed.
 
 Hint Extern 1 (RegisterSpec append) => Provide append_spec.
 
+Hint Constructors Forall.
+
+Lemma Q_empty_spec : Forall2 inv Q.empty nil.
+Proof. lets H: (@QS.empty_spec (cats a) _ _). apply H. Qed.
+
+Hint Resolve Q_empty_spec.
+
 Lemma cons_spec : 
   RepTotal cons (X;a) (L;cat a) >> (X::L) ; cat a.
-Proof.
-Qed.
+Proof. xgo~. Qed.
 
 Hint Extern 1 (RegisterSpec cons) => Provide cons_spec.
 
 Lemma snoc_spec : 
   RepTotal snoc (L;cat a) (X;a) >> (L&X) ; cat a.
-Proof.
-Qed.
+Proof. xgo~. Qed.
 
 Hint Extern 1 (RegisterSpec snoc) => Provide snoc_spec.
 
@@ -157,6 +196,7 @@ Lemma head_spec :
   RepSpec head (L;cat a) |R>>
      L <> nil -> R (is_head L ;; a).
 Proof.
+  xcf. introv RL NE. inverts RL. false. xgo~.
 Qed.
 
 Hint Extern 1 (RegisterSpec head) => Provide head_spec.
@@ -165,6 +205,9 @@ Lemma tail_spec :
   RepSpec tail (L;cat a) |R>> 
      L <> nil -> R (is_tail L ;; cat a).
 Proof.
+  xcf. introv RL NE. inverts RL. false. xgo~.
+  subst. eauto 8. 
+  subst. ximpl~.
 Qed.
 
 Hint Extern 1 (RegisterSpec tail) => Provide tail_spec.
@@ -172,4 +215,5 @@ Hint Extern 1 (RegisterSpec tail) => Provide tail_spec.
 End Polymorphic.
 
 End CatenableListImplSpec.
+
 
