@@ -1,14 +1,11 @@
 open Okasaki
 open CatenableListSig
 open QueueSig
-open BankersQueue
 
-(*module Q = BatchedQueue*)
-
-module CatenableListImpl : CatenableList =
+module CatenableListImpl (Q : QueueBis) : CatenableList =
 struct
 
-   type 'a cats = Empty | Struct of 'a * 'a cats Lazy.t BankersQueue.queue
+   type 'a cats = Empty | Struct of 'a * 'a cats Lazy.t Q.queue
    type 'a cat = 'a cats
 
    let empty = Empty
@@ -20,12 +17,12 @@ struct
    let link xs s =
       match xs with
       | Empty -> raise BrokenInvariant
-      | Struct (x, q) -> Struct (x, BankersQueue.snoc q s)
+      | Struct (x, q) -> Struct (x, Q.snoc q s)
    
    let rec link_all q =
-      let t = !$ (BankersQueue.head q) in
-      let q' = BankersQueue.tail q in
-      if BankersQueue.is_empty q' 
+      let t = !$ (Q.head q) in
+      let q' = Q.tail q in
+      if Q.is_empty q' 
          then t 
          else link t (lazy (link_all q'))
 
@@ -36,10 +33,10 @@ struct
       | _ -> link xs1 (lazy xs2)
 
    let cons x xs = 
-      append (Struct (x, BankersQueue.empty)) xs
+      append (Struct (x, Q.empty)) xs
    
    let snoc xs x =
-      append xs (Struct (x, BankersQueue.empty))
+      append xs (Struct (x, Q.empty))
 
    let head = function
       | Empty -> raise EmptyStructure
@@ -48,7 +45,7 @@ struct
    let tail = function
       | Empty -> raise EmptyStructure
       | Struct (x, q) -> 
-         if BankersQueue.is_empty q then Empty else link_all q
+         if Q.is_empty q then Empty else link_all q
    
 end
 
