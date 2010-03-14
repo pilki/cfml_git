@@ -8,35 +8,38 @@ Module BinaryRandomAccessListSpec <: RandomAccessListSigSpec.
 (** instantiations *)
 
 Module Import C <: MLRandomAccessList := MLBinaryRandomAccessList. 
-Import MLAltBinaryRandomAccesList.
+Import MLBinaryRandomAccessList.
 
 (** invariant *)
 
-Inductive btree : int -> tree -> multiset T -> Prop :=
+Section Polymorphic.
+Variables (a A : Type) (RA:Rep a A).
+
+Inductive btree : int -> tree a -> list A -> Prop :=
   | btree_nil : forall x X,
       rep x X ->
-      btree 0 (Node 0 x nil) \{X}
-  | btree_cons : forall r r' x X t ts E Es E',
-      rep x X ->
-      btree r t E ->
-      btree r (Node r x ts) Es ->
-      foreach (is_ge X) E' -> 
-      r' =' r+1 ->
-      E' =' E \u Es ->
-      btree r' (Node r' x (t::ts)) E'.
+      btree 0 (Leaf x) (X::nil)
+  | btree_cons : forall p p' n t1 t2 L1 L2 L',
+      btree p t1 L1 ->
+      btree p t2 L2 ->
+      p' =' p+1 ->
+      n =' 2^p' ->
+      L' =' L1 ++ L2 ->
+      btree p' (Node n t1 t2) L'.
 
-Inductive inv : int -> heap -> multiset T -> Prop :=
-  | inv_nil : forall r,
-      0 <= r -> inv r nil \{} 
-  | inv_node : forall rs r r' t ts E Es E',
-      btree r t E ->
-      inv rs ts Es ->
-      0 <= r' ->
-      r' <= r ->
-      r < rs ->
-      E' =' E \u Es ->
-      inv r' (t::ts) E'.
+Inductive inv : bool -> int -> rlist a -> list A -> Prop :=
+  | inv_nil : forall p,
+      inv true p nil nil
+  | inv_zero : forall z p ts L,
+      inv false (p+1) ts L ->
+      inv z p (Zero :: ts) L
+  | inv_one : forall z p t ts L L' T,
+      btree p t T ->
+      inv true (p+1) ts L ->
+      L' =' T ++ L ->
+      inv z p (One t :: ts) L'.
 
+(*
 Fixpoint size (t:tree) : nat :=
   let '(Node r x ts) := t in 
   (1 + List.fold_right (fun t x => (x + size t)%nat) 0%nat ts)%nat.
@@ -57,60 +60,136 @@ Proof.
 Qed.
 
 Hint Resolve btree_unique : rep.
+*)
 
-Global Instance heap_rep : Rep heap (multiset T).
+Global Instance rlist_rep : Rep (rlist a) (list A).
 Proof.
-  apply (Build_Rep (inv 0)). intros x.
-  set (n:=0) at 1. generalize 0. subst n. generalize 0.
-  induction x; introv HX HY; inverts HX; inverts HY; subst; prove_rep.
+  apply (Build_Rep (inv true 0)). skip.
 Defined.
 
-Global Instance queue_rep `{Rep a A} : Rep (queue a) (list A).
-Proof. intros. apply (Build_Rep (
-  fun (q:queue a) (Q:list A) =>
-  let (f,r) := q in 
-     Forall2 rep (f ++ rev r) Q
-  /\ (f = nil -> r = nil))).
-  destruct x; introv [? ?] [? ?].
-  asserts: (rep (l++rev l0) X). auto~.
-  asserts: (rep (l++rev l0) Y). auto~.
-  prove_rep. (* todo: improve *)
-Defined.
+End Polymorphic.
 
 (** automation *)
 
-Hint Constructors Forall2.
-Hint Resolve Forall2_last.
 Hint Extern 1 (@rep (rlist _) _ _ _ _) => simpl.
-Ltac auto_tilde ::= eauto.
+Ltac auto_tilde ::= eauto with maths.
+Hint Constructors btree inv.
 
 (** useful facts *)
 
-(** verification *)
-
-Section Polymorphic.
+Section Polymorphic'.
 Variables (a A : Type) (RA:Rep a A).
+
+Definition Size (t:tree a) :=
+  match t with
+  | Leaf _ => 1
+  | Node w _ _ => w
+  end.
+
+(** verification *)
 
 Lemma empty_spec : 
   rep (@empty a) (@nil A).
-Proof.
-  generalizes RA A. apply (empty_cf a). xgo.
-  intros. simpl. rew_list~. 
-Qed.
+Proof. generalizes RA A. apply (empty_cf a). xgo~. Qed.
+
+Hint Extern 1 (RegisterSpec empty) => Provide empty_spec.
 
 Lemma is_empty_spec : 
   RepTotal is_empty (L;rlist a) >> bool_of (L = nil).
 Proof.
-  xcf. intros (f0,r0) l [H M]. xgo.
-  rewrite~ M in H. inverts~ H.
-  intro_subst_hyp. inverts H as K.
-   destruct (nil_eq_app_rev_inv K). false.
+  xcf. introv RL. xgo.
+  skip. (* see binominal *)
+  skip.
 Qed.
+
+Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
+
+Lemma size_spec : 
+  Total size (t:tree a) >> = Size t.
+Proof. xgo~. Qed.
+
+Hint Extern 1 (RegisterSpec size) => Provide size_spec.
+
+Implicit Arguments btree [[a] [A] [RA]].
+
+Axiom pow2_succ : forall n, 2^(n+1) = 2*2^n.
+
+Lemma size_correct : forall p t L,
+  btree p t L -> Size t = 2^p.
+Proof. introv Rt. inverts~ Rt. Qed.
+Hint Resolve size_correct.
+
+Lemma length_correct : forall p t L,
+  btree p t L -> length L = 2^p :> int.
+Proof.
+  introv Rt. induction Rt. auto. 
+  unfolds eq'. subst. rew_length. rewrite~ pow2_succ.
+Qed.
+
+Lemma btree_not_empty : forall p t L,
+  btree p t L -> L <> nil.
+Proof.
+  introv Rt. lets: (length_correct Rt). intro_subst_hyp. 
+  rew_length in H. skip. (* pow > 0 *)
+Qed.
+
+Lemma link_spec : 
+  Spec link (t1:tree a) (t2:tree a) |R>>
+    forall p L1 L2, btree p t1 L1 -> btree p t2 L2 ->
+    R (fun t' => btree (p+1) t' (L1++L2)).
+Proof.
+  xgo. subst. constructors~.
+  do 2 (erewrite size_correct;eauto).
+  rewrite~ pow2_succ.
+Qed.
+
+Hint Extern 1 (RegisterSpec link) => Provide link_spec.
+
+Implicit Arguments inv [[a] [A] [RA]].
+
+Lemma inv_weaken : forall p ts L,
+  inv false p ts L -> inv true p ts L.
+Proof. introv M. inverts M; constructors~. Qed.
+
+Hint Resolve @inv_weaken.
+
+Lemma inv_strengthen : forall p ts L T,
+  inv true p ts (T++L) -> T <> nil -> inv false p ts (T++L).
+Proof.
+  introv M. gen_eq L':(T++L). gen T L. induction M; intros; subst.
+  false H0. destruct~ (nil_eq_app_inv H).
+  constructors~.
+  constructors~.
+Qed.
+
+Hint Resolve @btree_not_empty.
+Hint Resolve @inv_strengthen.
+
+
+Lemma cons_tree_spec : 
+  Spec cons_tree (t:tree a) (ts:rlist a) |R>> 
+    forall z p T L, btree p t T -> inv z p ts L ->
+    R (fun ts' => inv z p ts' (T++L)).
+Proof.
+  skip_goal.
+  xcf. introv Rt Rts. inverts Rts; xgo~.
+  subst. constructors. rew_list in P_x1. applys~ inv_strengthen.
+Qed.
+
+Hint Extern 1 (RegisterSpec cons_tree) => Provide cons_tree_spec.
 
 Lemma cons_spec : 
   RepTotal cons (X;a) (L;rlist a) >> (X::L) ; rlist a.
-Proof.
-Qed.
+Proof. xcf. introv RX RL. simpl in RL. xgo~. Qed.
+
+Hint Extern 1 (RegisterSpec cons) => Provide cons_spec.
+
+
+
+Hint Extern 1 (RegisterSpec uncons) => Provide uncons_spec.
+Hint Extern 1 (RegisterSpec head) => Provide head_spec.
+Hint Extern 1 (RegisterSpec tail) => Provide tail_spec.
+
 
 Lemma head_spec : 
   RepSpec head (L;rlist a) |R>>
@@ -136,6 +215,6 @@ Lemma update_spec :
 Proof.
 Qed.
 
-End Polymorphic.
+End Polymorphic'.
 
 End BatchedQueueSpec.

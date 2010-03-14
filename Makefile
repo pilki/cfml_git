@@ -39,6 +39,7 @@ OKACOD=\
 	okasaki/RedBlackSet_ml.v \
 	okasaki/UnbalancedSet_ml.v \
 	okasaki/BottomUpMergeSort_ml.v \
+	okasaki/AltBinaryRandomAccessList_ml.v \
 	okasaki/Okasaki_ml.v 
 
 OKA=\
@@ -61,13 +62,14 @@ OKA=\
 	okasaki/SplayHeap_proof.v \
 	okasaki/RedBlackSet_proof.v \
 	okasaki/UnbalancedSet_proof.v \
-	okasaki/BottomUpMergeSort_proof.v 
+	okasaki/BottomUpMergeSort_proof.v \
+	okasaki/AltBinaryRandomAccessList_proof.v 
 
 NEW=\
 	okasaki/Okasaki_ml.v \
 	okasaki/RandomAccessListSig_proof.v \
-	okasaki/AltBinaryRandomAccessList_ml.v \
-	okasaki/AltBinaryRandomAccessList_proof.v 
+	okasaki/BinaryRandomAccessList_ml.v \
+	okasaki/BinaryRandomAccessList_proof.v 
 
 #
 #	okasaki/CatenableListImpl_ml.v \
