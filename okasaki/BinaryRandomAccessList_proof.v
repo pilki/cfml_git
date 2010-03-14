@@ -3,6 +3,46 @@ Require Import FuncTactics LibCore.
 Require Import RandomAccessListSig_ml RandomAccessListSig_proof.
 Require Import BinaryRandomAccessList_ml.
 
+Ltac xrep_in_core H I1 I2 I3 :=
+  destruct H as (I1&I2&I3).
+
+Tactic Notation "xrep" "in" hyp(H) "as" 
+  simple_intropattern(I1) simple_intropattern(I2) simple_intropattern(I3) :=
+  xrep_in_core H I1 I2 I3. 
+Tactic Notation "xrep" "in" hyp(H) "as" simple_intropattern(I1) :=
+  let I2 := fresh "R" I1 in let I3 := fresh "P" I1 in
+  xrep in H as I1 I2 I3.
+Tactic Notation "xrep" "in" hyp(H) :=
+  let X := fresh "X" in xrep in H as X.
+
+Ltac xrep_core_using E cont1 cont2 := 
+  exists E; split; [ cont1 tt | cont2 tt ].
+Ltac xrep_core cont1 cont2 := 
+  esplit; split; [ cont1 tt | cont2 tt ].
+Ltac xrep_core_post tt :=
+  try assumption.
+Ltac idtacs tt :=
+  idtac.
+Ltac xrep_core_using_with E solver := 
+  xrep_core_using E ltac:(fun _ => xrep_core_post tt; solver tt) ltac:(solver).
+Ltac xrep_core_with solver := 
+  xrep_core_using ltac:(fun _ => xrep_core_post tt; solver tt) ltac:(solver).
+
+Tactic Notation "xrep" constr(E) :=
+  xrep_core_using E ltac:(xrep_core_post) ltac:(idtacs).
+Tactic Notation "xrep" :=
+  xrep_core ltac:(xrep_core_post) ltac:(idtacs).
+Tactic Notation "xrep" "~" constr(E) :=
+  xrep_core_using_with E ltac:(fun _ => xauto_tilde).
+Tactic Notation "xrep" "~" :=
+  xrep_core_with ltac:(fun _ => xauto_tilde).
+Tactic Notation "xrep" "*" constr(E) :=
+  xrep_core_using_with E ltac:(fun _ => xauto_star).
+Tactic Notation "xrep" "*" :=
+  xrep_core_with ltac:(fun _ => xauto_star).
+
+
+
 Module BinaryRandomAccessListSpec <: RandomAccessListSigSpec.
 
 (** instantiations *)
@@ -153,6 +193,7 @@ Proof. introv M. inverts M; constructors~. Qed.
 
 Hint Resolve @inv_weaken.
 
+(* todo: use next one *)
 Lemma inv_strengthen : forall p ts L T,
   inv true p ts (T++L) -> T <> nil -> inv false p ts (T++L).
 Proof.
@@ -162,18 +203,36 @@ Proof.
   constructors~.
 Qed.
 
-Hint Resolve @btree_not_empty.
-Hint Resolve @inv_strengthen.
+Lemma inv_strengthen' : forall p ts L,
+  inv true p ts L -> L <> nil -> inv false p ts L.
+Proof.
+  introv M. induction M; intros; subst; tryfalse; auto~.
+Qed.
 
+
+Lemma inv_strengthen'' : forall p ts L,
+  inv true p ts L -> ts <> nil -> inv false p ts L.
+Proof.
+  introv M. induction M; intros; subst; tryfalse; auto~.
+Qed.
+
+
+
+Hint Resolve @btree_not_empty.
+(*Hint Resolve @inv_strengthen.*)
+
+Hint Extern 1 (@lt nat _ _ _) => rew_list; math.
 
 Lemma cons_tree_spec : 
   Spec cons_tree (t:tree a) (ts:rlist a) |R>> 
     forall z p T L, btree p t T -> inv z p ts L ->
     R (fun ts' => inv z p ts' (T++L)).
 Proof.
-  skip_goal.
-  xcf. introv Rt Rts. inverts Rts; xgo~.
-  subst. constructors. rew_list in P_x1. applys~ inv_strengthen.
+  xinduction (fun (t:tree a) (ts:rlist a) => length ts).
+  xcf. introv IH Rt Rts. inverts Rts; xgo~.
+  subst. constructors. rew_list in P_x1. applys inv_strengthen'.
+   auto. intros K. destruct (app_eq_nil_inv K).  
+   asserts: (T<>nil). auto~. (* todo: "down" *) false.
 Qed.
 
 Hint Extern 1 (RegisterSpec cons_tree) => Provide cons_tree_spec.
@@ -184,24 +243,57 @@ Proof. xcf. introv RX RL. simpl in RL. xgo~. Qed.
 
 Hint Extern 1 (RegisterSpec cons) => Provide cons_spec.
 
+Lemma uncons_tree_spec : 
+  Spec uncons_tree (ts:rlist a) |R>> 
+    forall z p L, inv z p ts L -> ts <> nil ->
+    R (fun r => let (t',ts') := r : tree a * rlist a in
+       exists T' L', btree p t' T' /\ inv true p ts' L' /\ L = T' ++ L').
+Proof.
+  xinduction (fun (ts:rlist a) => length ts).
+  xcf. introv IH Rts Ne. xmatch.
+  xgo. inverts Rts. inverts H5. subst. exists___. splits~.
+  xgo. inverts Rts. subst. exists___. splits~. 
+    constructors. applys~ inv_strengthen''. intro_subst_hyp. apply~ C0.
+  inverts Rts. xapp~. intro_subst_hyp. inverts H3. xgo.
+  intuit P_x1. inverts H1. maths (p = p0). subst p0.
+  exists___. splits; eauto. (* todo: eq on list à protéger *)
+  subst. rew_list~.
+ intuit _x1. (* todo : intuit H ne doit s'appeler que sur les sousbuts*)
+  (* todo: récupérer ça *) skip:(p>=0). inverts H1. math.
+   applys~ C2.
+Qed.
 
+Hint Extern 1 (RegisterSpec uncons_tree) => Provide uncons_tree_spec.
 
-Hint Extern 1 (RegisterSpec uncons) => Provide uncons_spec.
-Hint Extern 1 (RegisterSpec head) => Provide head_spec.
-Hint Extern 1 (RegisterSpec tail) => Provide tail_spec.
-
+Ltac xrep_core_post tt ::= try eassumption.
 
 Lemma head_spec : 
   RepSpec head (L;rlist a) |R>>
-     L <> nil -> R (is_head L ;; a).
+    L <> nil -> R (is_head L ;; a).
 Proof.
+  xcf. introv RL NE. simpl in RL. xgo~.
+  inverts RL; auto_false.
+  destruct P_x0 as (T'&L'&RT'&RL'&E). inverts RT'. rew_list in E. 
+  (* bug xrep~. *) xrep. eauto.
+  intuit _x0. inverts H0. applys~ C.
+  skip: (p >= 0). math.
 Qed.
+
+Hint Extern 1 (RegisterSpec head) => Provide head_spec.
 
 Lemma tail_spec :
   RepSpec tail (L;rlist a) |R>> 
      L <> nil -> R (is_tail L ;; rlist a).
 Proof.
+  xcf. introv RL NE. simpl in RL. xgo~.
+  inverts RL; auto_false.
+  (* todo: modify source to avoid snd destruct P_x0 as (T'&L'&RT'&RL'&E). *)
+  skip.
 Qed.
+
+Hint Extern 1 (RegisterSpec tail) => Provide tail_spec.
+
+(* modifier le code de lookupTree aussi pour utiliser un if *)
 
 Lemma lookup_spec : 
   RepSpec lookup (i;int) (L;rlist a) |R>>
