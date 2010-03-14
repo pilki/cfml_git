@@ -65,6 +65,7 @@ OKA=\
 
 NEW=\
 	okasaki/Okasaki_ml.v \
+	okasaki/RandomAccessListSig_proof.v \
 	okasaki/AltBinaryRandomAccessList_ml.v \
 	okasaki/AltBinaryRandomAccessList_proof.v 
 

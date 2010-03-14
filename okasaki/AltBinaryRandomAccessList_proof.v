@@ -150,6 +150,12 @@ Proof. exists~ __. Qed.
 Hint Resolve @rep_null.
 *)
 
+
+Lemma inv_weaken' : forall `{Rep a A} b l L,
+  inv b l L -> inv true l L.
+Proof. introv M. inverts M; constructors~. Qed.
+
+
 Lemma uncons_spec : forall `{Rep a A},
   RepSpec uncons (L;rlist a) |R>>
      L <> nil -> R ((fun P => let (X,T) := P : A*list A in L = X::T) ;; a * rlist a).
@@ -169,8 +175,9 @@ Proof.
   inverts RL. specializes IH (a*a)%type __ __. xlet.
   fapplys IH; eauto. (* todo: copy *) skip.
   simpl. (* size pos when non empty *) skip.
-  xgo. destruct P_x1 as (((X,Y),Ls')&((RX&RY)&RLs')&EQL').
-  subst Ls. exists __. split~. apply~ @pair_rep. skip.
+  xgo. destruct P_x1 as (((X,Y),Ls')&((RX&RY)&[b' RLs'])&EQL').
+  subst Ls. exists __. split~. apply~ @pair_rep.
+  exists __. constructors~. eapply @inv_weaken'; eauto.
   simpl. eauto. 
 Admitted.
 
@@ -198,64 +205,140 @@ Qed.
 
 Hint Extern 1 (RegisterSpec tail) => Provide tail_spec.
 
-Lemma Nth_split : forall A (l:list (A*A)) (k r : nat) x y,
-  r < 2%nat ->
-  Nth (2*k) (splitin l) (if r '= 0%nat then x else y) <-> 
-  Nth k l (x,y).
+Lemma ZNth_split : forall A (l:list (A*A)) i x y,
+  ZNth i (splitin l) (if i mod 2 '= 0%nat then x else y) <-> 
+  ZNth (i/2) l (x,y).
 Admitted.
 
 Ltac auto_tilde ::= eauto with maths.
 
+Lemma ZInbound_splitin : forall A i j (ls:list (A*A)),
+  ZInbound j (splitin ls) -> i= j/2 -> ZInbound i ls.
+Admitted.
+
+Lemma ZNth_splitin : forall A i (ls:list (A*A)) x y,
+  ZNth (i / 2) ls (x,y) ->
+  ZNth i (splitin ls) (if i mod 2 '= 0 then x else y).
+Admitted.
+
 Lemma lookup_spec : forall `{Rep a A},
   RepSpec lookup (i;int) (L;rlist a) |R>>
-     0 <= i -> i < length L -> R (Nth (abs i) L ;; a).
+     ZInbound i L -> R (ZNth i L ;; a).
 Proof.
   intros. xintros. skip. intros i. gen_eq n: (abs i). gen a A H i.
   apply~ eq_gt_induction; clears n.
-  introv IH. introv. introv N RI [b RL] Pos Len. inverts RI. subst n. 
+  introv IH. introv. introv N RI [b RL] Bi. inverts RI. subst n. 
   xcf_app. xret~. destruct _x0 as (i,f). inverts P_x0. xmatch.
-  xgo. inverts RL. rew_length in Len. math.
-  xgo. inverts RL. esplit. split~. equates 3. constructors~. skip.
-  inverts RL. rew_length in Len. asserts: (i <> 0). intro_subst_hyp. false~ C0.
-  specializes IH (i-1) (splitin Ls). rewrite gt_is_flip_lt. apply~ Zabs_nat_lt. 
+  xgo. inverts RL. apply~ ZInbound_nil_inv.
+  xgo. inverts RL. esplit. split~. apply~ ZNth_here.
+  inverts RL.
+    asserts: (i <> 0). intro_subst_hyp. false~ C0.
+    forwards~ Bi': (ZInbound_cons_pos_inv Bi).
+  specializes IH (i-1) (splitin Ls). 
+   destruct Bi'. rewrite gt_is_flip_lt. apply~ Zabs_nat_lt. 
+   (* todo: induction on int *)
    xapp. simpl. eauto. exists __. constructors~. apply~ @inv_strengthen'.
-    intro_subst_hyp. simpl in Len. rew_length in Len. math. math. math.
-   intros y (Y&RY&NY). exists Y. split~. equates 3. constructors~. apply~ abs_spos.
+    intro_subst_hyp. apply~ ZInbound_nil_inv. auto.
+   intros y (Y&RY&NY). exists Y. split~. apply~ ZNth_next.
   inverts RL. xlet. specializes IH (a*a)%type (i/2) ps (i/2) Ls. skip. 
-    xapp. simple~. eauto. skip. skip.
+    xapp. simple~. eauto. apply~ ZInbound_splitin. 
   xmatch. destruct P_x2 as ([X Y]&[HX HY]&NXY).
-  xif. xgo. exists X. split~. skip.
-  xgo. exists Y. split~. skip.    
+  applys_to NXY ZNth_splitin.
+  xif; case_if in NXY; tryfalse. xgo~. xgo~.
 Admitted.
 
-Definition FUpdate A (n:nat) (f:A->A) l l' :=
-     (forall y m, Nth m l y -> m <> n -> Nth m l' y)
-  /\ (forall y, Nth n l y -> Nth n l (f y)).
+Definition FUpdate A (n:int) (f:A->A) l l' :=
+     (length l = length l')
+  /\ (forall y m, ZNth m l y -> m <> n -> ZNth m l' y)
+  /\ (forall y, ZNth n l y -> ZNth n l (f y)).
+
+Lemma FUpdate_here : forall A (x:A) f l,
+  FUpdate 0 f (x::l) (f x :: l).
+Admitted.
+
+Lemma FUpdate_next : forall A i j (x:A) f l l',
+   FUpdate j f l l' ->
+   j = i-1 ->
+   FUpdate i f (x::l) (x::l').
+Admitted.
+
+Lemma FUpdate_splitin : forall A i j f f' (l l':list (A*A)),
+  FUpdate j f' l l' -> j = i/2 ->
+  (forall x y, f' (x,y) = if i mod 2 '= 0 then (f x, y) else (x, f y)) ->
+  FUpdate i f (splitin l) (splitin l').
+Admitted.
 
 Instance val_rep : Rep val val.
 Proof. apply (Build_Rep eq). congruence. Defined.
 
 Lemma fupdate_spec : forall `{Rep a A},
   RepSpec fupdate (f;val) (i;int) (L;rlist a) |R>> 
-     0 <= i -> i < length L -> 
-     forall F, (RepTotal f (x;a) >> = F x) ->
-     R (FUpdate (abs i) F L ;; rlist a).
+     ZInbound i L ->
+     forall F, (RepTotal f (x;a) >> (= F x ;; a)) ->
+     R (FUpdate i F L ;; rlist a).
 Proof.
- skip.
-Qed.
+  intros. xintros. skip. intros f i. gen_eq n: (abs i). gen a A H i f.
+  apply~ eq_gt_induction; clears n.
+  introv IH. introv. introv N RF RI [b RL] Bi SF.
+  inverts RI. inverts RF. subst n.
+  xcf_app. xret~. destruct _x0 as (i,f). inverts P_x0. xmatch.
+  xgo. inverts RL. apply~ ZInbound_nil_inv.
+  inverts RL. xgo~. destruct P_x1 as (Y&RY&FY). subst.
+  esplit. split~. apply FUpdate_here.
+  inverts RL.
+    asserts: (i <> 0). intro_subst_hyp. false~ C0.
+    forwards~ Bi': (ZInbound_cons_pos_inv Bi). 
+  xlet. specializes IH (i-1). fapplys IH; eauto.
+   skip. (* induction int *)
+   reflexivity. (* automate *)
+   reflexivity.
+   exists __. constructors~. eapply inv_strengthen'. eauto.
+    skip. (* Ls<>nil si (ZInbound i (splitin ls) *)
+   destruct P_x2 as (Ls'&RLs'&PLs').
+   xapp_spec~ (@cons_spec a _ _). 
+   ximpl as L. (* todo Hx -> HL *)
+   esplit. split~. (*tactic*) applys~ FUpdate_next.
+
+  (* last *)
+  inverts RL. xfun_mg. simpl in Sf'. xlet.
+  specializes IH (a*a)%type (i/2) f'
+    (fun P:A*A => let (x,y) := P in
+     if i mod 2 '= 0 then (F x, y) else (x, F y)); auto~.
+   skip. reflexivity. reflexivity. apply~ ZInbound_splitin.
+   eapply IH.
+ 
+  apply Sf'. xisspec. clear IH Sf'. clear C C0 C1.
+  intros [x y] [X Y] [RX RY]. xmatch.
+  xif. xapp~. destruct P_x8 as (X'&RX'&PX').
+  xgo. exists (X',Y). split~. case_if; tryfalse. subst~.
+  xapp~. destruct P_x7 as (Y'&RY'&PY').
+  xgo. exists (X,Y'). split~. case_if; tryfalse. subst~.
+
+  destruct P_x9 as (L'&[b' RL']&PL').
+  xgo. exists (splitin L'). split.
+   exists __. constructors~. eapply inv_strengthen'. eauto. skip.
+   apply~ (FUpdate_splitin). 
+Admitted.
+
+
+Lemma FUpdate_ZUpdate : forall i x l l',
+  FUpdate i (fun _ => x) l l' -> ZUpdate i x l l'.
+Admitted.
+
 
 Lemma update_spec : forall `{Rep a A},
   RepSpec update (i;int) (X;a) (L;rlist a) |R>> 
-     0 <= i -> i < length L -> R (Update (abs i) X L ;; rlist a).
+    ZInbound i L -> R (ZUpdate i X L ;; rlist a).
 Proof.
-  xcf. introv RI RX [b RL] L1 L2.
+  xcf. introv RI RX [b RL] Bi.
+  (*
+  xfun (fun f => RepTotal f (y;a) >> (= X ; a)).*)
   xfun_mg. simpls. xapp_spec fupdate_spec.
-  specializes~ HR (fun _:A => X). reflexivity. 
-  fapplys HR.
-  skip. ximpl as l' [L' [RL' G]].
-   exists L'. splits. apply RL'.
-   subst.
-  destruct G. split. eauto. applys H1. skip. (* used to be one *)
+  specializes~ HR (fun _:A => X). reflexivity.
+  fapplys HR. apply S_f0. xisspec. (* todo: xbody_exploit *)
+   introv RY. xgo~.
+  ximpl as l' [L' [RL' G]].
+   exists L'. splits. apply RL'. apply~ FUpdate_ZUpdate.
 Admitted.
 
 Hint Extern 1 (RegisterSpec snoc) => Provide snoc_spec.

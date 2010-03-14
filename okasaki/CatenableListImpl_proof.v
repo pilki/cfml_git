@@ -212,7 +212,7 @@ Qed.
 
 Hint Extern 1 (RegisterSpec tail) => Provide tail_spec.
 
-End Polymorphic.
+End Polymorphic'.
 
 End CatenableListImplSpec.
 
