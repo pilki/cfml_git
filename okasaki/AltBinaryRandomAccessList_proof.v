@@ -22,7 +22,7 @@ Module AltBinaryRandomAccessListSpec <: RandomAccessListSigSpec.
 
 (** instantiations *)
 
-Module Import C <: MLRandomAccessList := MLAltBinaryRandomAccesList. (* todo: missing "s" *)
+Module Import C <: MLRandomAccessList := MLAltBinaryRandomAccessList.
 Import MLAltBinaryRandomAccesList.
 
 (** invariant *)

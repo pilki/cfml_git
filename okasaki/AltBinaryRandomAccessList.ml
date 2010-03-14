@@ -1,7 +1,7 @@
 open Okasaki
 open RandomAccessListSig
 
-module AltBinaryRandomAccesList : RandomAccessList =
+module AltBinaryRandomAccessList : RandomAccessList =
 struct
 
    (* todo: name conflict with Nil *)

@@ -1,7 +1,7 @@
 open Okasaki
 open RandomAccessListSig
 
-module BinaryRandomAccesList : RandomAccessList =
+module BinaryRandomAccessList : RandomAccessList =
 struct
 
    type 'a tree = Leaf of 'a | Node of int * 'a tree * 'a tree

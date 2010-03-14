@@ -1,10 +1,6 @@
 Set Implicit Arguments.
 Require Import FuncTactics RandomAccessListSig_ml LibCore.
 
-Definition Update A (n:nat) (x:A) l l' :=
-     (forall y m, Nth m l y -> m <> n -> Nth m l' y)
-  /\ Nth n l x.
-
 Module Type RandomAccessListSigSpec.
 
 Declare Module R : MLRandomAccessList.
