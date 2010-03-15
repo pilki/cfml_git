@@ -1398,6 +1398,46 @@ Tactic Notation "xif" :=
 
 
 (************************************************************)
+(* ** [xrep] -- TODO: doc *)
+
+Ltac xrep_in_core H I1 I2 I3 :=
+  destruct H as (I1&I2&I3).
+
+Tactic Notation "xrep" "in" hyp(H) "as" 
+  simple_intropattern(I1) simple_intropattern(I2) simple_intropattern(I3) :=
+  xrep_in_core H I1 I2 I3. 
+Tactic Notation "xrep" "in" hyp(H) "as" simple_intropattern(I1) :=
+  let I2 := fresh "R" I1 in let I3 := fresh "P" I1 in
+  xrep in H as I1 I2 I3.
+Tactic Notation "xrep" "in" hyp(H) :=
+  let X := fresh "X" in xrep in H as X.
+
+Ltac xrep_core_using E cont1 cont2 := 
+  exists E; split; [ cont1 tt | cont2 tt ].
+Ltac xrep_core cont1 cont2 := 
+  esplit; split; [ cont1 tt | cont2 tt ].
+Ltac xrep_core_post tt :=
+  try eassumption.
+Ltac xrep_core_using_with E solver := 
+  xrep_core_using E ltac:(fun _ => xrep_core_post tt; solver tt) ltac:(solver).
+Ltac xrep_core_with solver := 
+  xrep_core ltac:(fun _ => xrep_core_post tt; solver tt) ltac:(solver).
+
+Tactic Notation "xrep" constr(E) :=
+  xrep_core_using E ltac:(xrep_core_post) ltac:(idtacs).
+Tactic Notation "xrep" :=
+  xrep_core ltac:(xrep_core_post) ltac:(idtacs).
+Tactic Notation "xrep" "~" constr(E) :=
+  xrep_core_using_with E ltac:(fun _ => xauto_tilde).
+Tactic Notation "xrep" "~" :=
+  xrep_core_with ltac:(fun _ => xauto_tilde).
+Tactic Notation "xrep" "*" constr(E) :=
+  xrep_core_using_with E ltac:(fun _ => xauto_star).
+Tactic Notation "xrep" "*" :=
+  xrep_core_with ltac:(fun _ => xauto_star).
+
+
+(************************************************************)
 (* ** [xcmp] -- TODO: doc *)
 
 Tactic Notation "xcmp" "as" ident(x) :=

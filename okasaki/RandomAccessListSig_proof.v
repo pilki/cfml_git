@@ -31,11 +31,11 @@ Parameter tail_spec :
 
 Parameter lookup_spec : 
   RepSpec lookup (i;int) (L;rlist a) |R>>
-     0 <= i -> i < length L -> R (Nth (abs i) L ;; a).
+     ZInbound i L -> R (ZNth i L ;; a).
 
-Parameter update_spec :
+Parameter update_spec : 
   RepSpec update (i;int) (X;a) (L;rlist a) |R>> 
-     0 <= i -> i < length L -> R (Update (abs i) X L ;; rlist a).
+    ZInbound i L -> R (ZUpdate i X L ;; rlist a).
 
 End Polymorphic.
 

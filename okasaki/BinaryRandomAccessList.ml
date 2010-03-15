@@ -44,22 +44,18 @@ struct
       | _ -> raise BrokenInvariant
 
    let tail ts = 
-      snd (uncons_tree ts)
+       let (_,ts') = uncons_tree ts in ts'
 
-   let rec lookup_tree i t =
-      match i, t with
-      | 0, Leaf x -> x
-      | i, Leaf x -> raise OutOfBound
-      | i, Node (w, t1, t2) ->
+   let rec lookup_tree i = function
+      | Leaf x -> if i = 0 then x else raise OutOfBound 
+      | Node (w, t1, t2) ->
           if i < w/2  
             then lookup_tree i t1
             else lookup_tree (i - w/2) t2
 
-   let rec update_tree i y t = 
-      match i, t with
-      | 0, Leaf x -> Leaf y
-      | _, Leaf x -> raise OutOfBound
-      | _, Node (w, t1, t2) ->
+   let rec update_tree i y = function
+      | Leaf x -> if i = 0 then Leaf y else raise OutOfBound
+      | Node (w, t1, t2) ->
           if i < w/2 
             then Node (w, update_tree i y t1, t2)
             else Node (w, t1, update_tree (i - w/2) y t2)
@@ -82,3 +78,25 @@ struct
 
 end
 
+
+(* Original code : 
+
+   let rec lookup_tree i t =
+      match i, t with
+      | 0, Leaf x -> x
+      | i, Leaf x -> raise OutOfBound
+      | i, Node (w, t1, t2) ->
+          if i < w/2  
+            then lookup_tree i t1
+            else lookup_tree (i - w/2) t2
+
+   let rec update_tree i y t = 
+      match i, t with
+      | 0, Leaf x -> Leaf y
+      | _, Leaf x -> raise OutOfBound
+      | _, Node (w, t1, t2) ->
+          if i < w/2 
+            then Node (w, update_tree i y t1, t2)
+            else Node (w, t1, update_tree (i - w/2) y t2)
+
+*)

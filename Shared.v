@@ -14,6 +14,9 @@ Hint Unfold pred_le.
   Defined.
 *)
 
+Ltac idtacs tt :=
+  idtac.
+
 
 Ltac intuit_core :=
   repeat match goal with
