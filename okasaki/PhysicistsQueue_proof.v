@@ -8,7 +8,6 @@ Module PhysicistsQueueSpec <: QueueSigSpec.
 (** instantiations *)
 
 Module Import Q <: MLQueue := MLPhysicistsQueue.
-Import MLPhysicistsQueue.
 
 (** invariant *)
 
@@ -20,6 +19,8 @@ Definition inv (wok rok : bool) `{Rep a A} (q:queue a) (Q:list A) :=
   /\ lenr = length r
   /\ lenr <= lenf + (if rok then 0 else 1)
   /\ if wok then (w = nil -> f = nil) else True.
+
+(** model *)
 
 Global Instance queue_rep `{Rep a A} : Rep (queue a) (list A).
 Proof. 
@@ -131,16 +132,10 @@ Proof.
   xcf. intros ((((w,lenf),f),lenr),r) Q RQ NE.
   xmatch.
   xgo. forwards*: rep_not_nil.
-  xcleanpat. intuit RQ. rew_list in *.
+  xcleanpat. intuit RQ. subst f. rew_list in *. inverts H.
    xapp_noapply. fapplys HR; eauto. ximpl*.
-   xapp~.
-  
-
-
-  forwards*: rep_not_nil. destruct Q. false. intuit RQ.
-  subst f. xmatch. xcleanpat. rew_list in *. xapp~. xclean.
-  subst. xapp~. (* todo: pb de xauto qui fait reflequal *)
-  inverts H0. exists x. rewrite app_assoc. splits*. rew_length~. ximpl*.
+   xapp~. subst. exists x0. splits~. rewrite* app_assoc. rew_list~.
+   ximpl*.
 Qed.
 
 Hint Extern 1 (RegisterSpec tail) => Provide tail_spec.

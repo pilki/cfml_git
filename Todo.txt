@@ -55,3 +55,11 @@
 
 
 *) factoriser les : Hint Extern 1 (@rep (queue _) _ _ _ _) => simpl.
+
+*) todo: bug dispaly let '(f,r,s) := q in 
+
+*) todo: tactic wf :: rotate_spec -> realtimequeue
+
+*) todo: remove::  instantiate (1:=a); xisspec_core. 
+
+*) todo: bootstrapped_queue to_empty -- bug de inversion ! 

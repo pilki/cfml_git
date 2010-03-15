@@ -165,7 +165,7 @@ Definition curried_4 (A1 A2 A3:Type) f :=
   total_3 (fun (x1:A1) (x2:A2) (x3:A3) (y:val) => True) f.
 
 (********************************************************************)
-(* ** Introduction axioms *)
+(* ** Introduction lemmas *)
 
 Lemma spec_intro_1 : forall A1 B f (K:A1->~~B->Prop),
   is_spec_1 K ->
@@ -873,6 +873,39 @@ Lemma curried_prove_4 : forall A1 A2 A3 A4 B f,
   spec_4 (fun (x1:A1) (x2:A2) (x3:A3) (x4:A4) (R:~~B) => True) f ->
   curried_4 A1 A2 A3 f.
 Proof. intros. apply (spec_curried_4 H). Qed.
+
+
+(********************************************************************)
+(* ** Introduction lemmas' TODO *)
+
+Lemma spec_intro_1' : forall A1 B f (K:A1->~~B->Prop),
+  is_spec_1 K ->
+  spec_1 (fun (x1:A1) (R:~~B) => True) f ->
+  (forall x1, K x1 (app_1 f x1)) ->
+  spec_1 K f.
+Proof. intros. applys~ spec_intro_1. applys* curried_prove_1. Qed.
+
+Lemma spec_intro_2' : forall A1 A2 B f (K:A1->A2->~~B->Prop),
+  is_spec_2 K ->
+  spec_2 (fun (x1:A1) (x2:A2) (R:~~B) => True) f ->
+  (forall x1 x2, K x1 x2 (app_2 f x1 x2)) ->
+  spec_2 K f.
+Proof. intros. applys~ spec_intro_2. applys* curried_prove_2. Qed.
+
+Lemma spec_intro_3' : forall A1 A2 A3 B f (K:A1->A2->A3->~~B->Prop),
+  is_spec_3 K ->
+  spec_3 (fun (x1:A1) (x2:A2) (x3:A3) (R:~~B) => True) f ->
+  (forall x1 x2 x3, K x1 x2 x3 (app_3 f x1 x2 x3)) ->
+  spec_3 K f.
+Proof. intros. applys~ spec_intro_3. applys* curried_prove_3. Qed.
+
+Lemma spec_intro_4' : forall A1 A2 A3 A4 B f (K:A1->A2->A3->A4->~~B->Prop),
+  is_spec_4 K ->
+  spec_4 (fun (x1:A1) (x2:A2) (x3:A3) (x4:A4) (R:~~B) => True) f ->
+  (forall x1 x2 x3 x4, K x1 x2 x3 x4 (app_4 f x1 x2 x3 x4)) ->
+  spec_4 K f.
+Proof. intros. applys~ spec_intro_4. applys* curried_prove_4. Qed.
+
 
 (********************************************************************)
 (* ** Extraction of is_spec from spec *)

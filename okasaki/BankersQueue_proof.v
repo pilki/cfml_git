@@ -8,7 +8,6 @@ Module BankersQueueSpec <: QueueSigSpec.
 (** instantiations *)
 
 Module Import Q <: MLQueue := MLBankersQueue.
-Import MLBankersQueue.
 
 (** invariant *)
 
@@ -18,6 +17,8 @@ Definition inv (d:int) `{Rep a A} (q:queue a) (Q:list A) :=
   /\ lenf = length f
   /\ lenr = length r
   /\ lenr <= lenf + d.
+
+(** model *)
 
 Global Instance queue_rep `{Rep a A} : Rep (queue a) (list A).
 Proof.

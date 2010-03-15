@@ -3,6 +3,23 @@ Require Import FuncTactics LibCore.
 Require Import QueueSig_ml QueueSig_proof.
 Require Import BootstrappedQueue_ml.
 
+Lemma list_rep_cons : forall `{Rep a A} l L x X,
+  rep l L -> rep x X -> rep (x::l) (X::L).
+Proof. intros. constructors~. Qed.
+Hint Resolve @list_rep_cons.
+
+Lemma cons_neq_nil : forall A (x:A) l, x::l <> nil.
+Proof. auto_false. Qed.
+Hint Immediate cons_neq_nil.
+
+Hint Constructors Forall2.
+Hint Resolve Forall2_last.
+Lemma Forall2_rev : forall A1 A2 (P:A1->A2->Prop) l1 l2,
+  Forall2 P l1 l2 -> Forall2 P (rev l1) (rev l2).
+Proof. induction l1; introv M; inverts M; rew_rev; auto. Qed.
+
+
+
 
 Module BootstrappedQueueSpec <: QueueSigSpec.
 
@@ -36,7 +53,9 @@ Inductive inv : bool -> bool -> forall `{Rep a A}, queue a -> list A -> Prop :=
      (lenr:int) <= lenfm + (if okb then 0 else 1)->
      doubling true 1 Qms ->
      inv okb okf _ (Struct lenfm f m lenr r) Q.
-     
+ 
+(** model *)
+    
 Implicit Arguments inv [[a] [A] [H]].
 
 Global Instance queue_rep `{Rep a A} : Rep (queue a) (list A).
@@ -48,11 +67,11 @@ Proof.
 Defined.
 
 (** automation *)
+
 Hint Constructors doubling inv Forall2.
-Hint Resolve Forall2_last.
-Hint Extern 1 (@rep (queue _) _ _ _ _) => simpl.
-Hint Extern 1 (@rep (queues _) _ _ _ _) => simpl.
+Hint Resolve Forall2_last Forall2_rev.
 Ltac auto_tilde ::= eauto with maths.
+Hint Extern 1 (@gt nat _ _ _) => simpl; math.
 
 (** useful facts *)
 
@@ -62,10 +81,13 @@ Fixpoint depth a (q:queue a) : nat :=
   | Struct lenfm f m lenr r => (1 + depth m)%nat
   end.
 
+Coercion queue_of_body a (q:body a) : queue a :=
+  let '(lenfm,f,m,lenr,r) := q in
+  Struct lenfm f m lenr r.
+
 Lemma to_empty : forall `{Rep a A} Q,
   rep Empty Q -> Q = nil.
 Proof. introv RQ. set_eq Q': Q. inverts~ RQ. Qed.
-  (*todo: bug de inversion ! *)  
 
 Lemma from_empty : forall `{Rep a A} q,
   rep q nil -> q = Empty.
@@ -109,76 +131,6 @@ Proof.
   apply~ doubling_weaken_n.
 Qed.
 
-(** verification *)
-
-Lemma empty_spec : forall `{Rep a A},
-  rep (@empty a) (@nil A).
-Proof. intros. gen A H. apply (empty_cf a). xgo~. Qed.
-
-Hint Extern 1 (RegisterSpec empty) => Provide empty_spec.
-
-Lemma empty_inv : forall `{Rep a A},
-  inv true true empty nil.
-Proof. intros. apply empty_spec. Qed.
-
-Hint Extern 1 (inv true true empty _) => apply empty_inv.
-
-Lemma is_empty_spec : forall `{Rep a A},
-  RepTotal is_empty (Q;queue a) >> bool_of (Q = nil).
-Proof.
-  xcf. intros q Q RQ. xgo.
-  apply~ to_empty.
-  intro_subst_hyp. applys C. apply~ from_empty.
-Qed.
-
-Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
-
-Coercion queue_of_body a (q:body a) : queue a :=
-  let '(lenfm,f,m,lenr,r) := q in
-  Struct lenfm f m lenr r.
-
-
-Definition checkq_spec `{Rep a A} :=
-  Spec checkq (q:body a) |R>>
-     forall Q, inv false false q Q -> R (Q ; queue a).
-
-Definition checkf_spec `{Rep a A} :=
-  Spec checkf (q:body a) |R>>
-     forall Q, inv true false q Q -> R (Q ; queue a).
-
-Definition snoc_spec `{Rep a A} :=
-  RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ; queue a.
-Definition head_spec `{Rep a A} :=
-  RepSpec head (Q;queue a) |R>>
-     Q <> nil -> R (is_head Q ;; a).
-
-Definition tail_spec `{Rep a A} :=
-  RepSpec tail (Q;queue a) |R>> 
-     Q <> nil -> R (is_tail Q ;; queue a).
-
-Ltac all_specs_go :=
-  unfolds; first [ xintros; instantiate;  
-    [ xcf; auto; 
-      try match goal with H: Rep ?a _ |- _ => instantiate (1 := a) end;
-      try xisspec | ]
-  | xintros ].
-
-Hint Extern 1 (@gt nat _ _ _) => simpl; math.
-
-Lemma list_rep_cons : forall `{Rep a A} l L x X,
-  rep l L -> rep x X -> rep (x::l) (X::L).
-Proof. intros. constructors~. Qed.
-Hint Resolve @list_rep_cons.
-
-Lemma cons_neq_nil : forall A (x:A) l, x::l <> nil.
-Proof. auto_false. Qed.
-Hint Immediate cons_neq_nil.
-
-Lemma Forall2_rev : forall A1 A2 (P:A1->A2->Prop) l1 l2,
-  Forall2 P l1 l2 -> Forall2 P (rev l1) (rev l2).
-Proof. induction l1; introv M; inverts M; rew_rev; auto. Qed.
-Hint Resolve Forall2_rev.
-
 Lemma concat_doubling_length : forall A (Qms:list (list A)),
   doubling true 1 Qms -> length Qms <= length (concat Qms).
 Proof.
@@ -187,6 +139,8 @@ Proof.
   rew_length~. destruct first; rew_list in *.
    forwards~: IHD. maths (2*n>=1). lets~: (IHD H0).
 Qed.
+
+(* todo: check needed *)
 
 Lemma decrease_r : forall A (Q Qf Qm Qr : list A) Qms,
   Q = Qf ++ Qm ++ rev Qr ->
@@ -212,6 +166,48 @@ Proof.
   subst Q Qm. rew_length~.
 Qed.
 
+(** verification *)
+
+Lemma empty_spec : forall `{Rep a A},
+  rep (@empty a) (@nil A).
+Proof. intros. gen A H. apply (empty_cf a). xgo~. Qed.
+
+Hint Extern 1 (RegisterSpec empty) => Provide empty_spec.
+
+Lemma empty_inv : forall `{Rep a A},
+  inv true true empty nil.
+Proof. intros. apply empty_spec. Qed.
+
+Hint Extern 1 (inv true true empty _) => apply empty_inv.
+
+Lemma is_empty_spec : forall `{Rep a A},
+  RepTotal is_empty (Q;queue a) >> bool_of (Q = nil).
+Proof.
+  xcf. intros q Q RQ. xgo.
+  apply~ to_empty.
+  intro_subst_hyp. applys C. apply~ from_empty.
+Qed.
+
+Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
+
+Definition checkq_spec `{Rep a A} :=
+  Spec checkq (q:body a) |R>>
+     forall Q, inv false false q Q -> R (Q ; queue a).
+
+Definition checkf_spec `{Rep a A} :=
+  Spec checkf (q:body a) |R>>
+     forall Q, inv true false q Q -> R (Q ; queue a).
+
+Definition snoc_spec `{Rep a A} :=
+  RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ; queue a.
+Definition head_spec `{Rep a A} :=
+  RepSpec head (Q;queue a) |R>>
+     Q <> nil -> R (is_head Q ;; a).
+
+Definition tail_spec `{Rep a A} :=
+  RepSpec tail (Q;queue a) |R>> 
+     Q <> nil -> R (is_tail Q ;; queue a).
+
 Lemma all_specs : 
   (forall `{Rep a A}, checkq_spec) /\ 
   (forall `{Rep a A}, checkf_spec) /\ 
@@ -219,7 +215,7 @@ Lemma all_specs :
   (forall `{Rep a A}, head_spec) /\
   (forall `{Rep a A}, tail_spec).
 Proof.
-  eapply conj_strengthen_5; try intros M; intros; try all_specs_go.
+  eapply conj_strengthen_5; try intros M; intros; try (unfolds; xintros).
   intros q. intros. gen_eq n:((3 * depth q + 1)%nat). gen n a A q Q H0. apply M.
   intros q. intros. gen_eq n:((3 * depth q)%nat). gen n a A q Q H0. apply M.
   intros q x. intros. gen_eq n:((3 * depth q + 2)%nat). gen n a A q x Q X H0 H1. apply M.

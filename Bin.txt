@@ -521,3 +521,25 @@ Axiom go'' :forall f n  (P1 P2 : (nat->Prop) -> Prop),
 (*
 Hint Extern 1 (@gt nat _ _ _) => check_noevar tt; simpl; rew_card; math.
 *)
+
+
+(*
+Ltac all_specs_go :=
+  unfolds; first [ xintros; instantiate;  
+    [ xcf; auto; 
+      try match goal with H: Rep ?a _ |- _ => instantiate (1 := a) end;
+      try xisspec | ]
+  | xintros ].
+*)
+
+
+
+
+
+(* todo: remove this
+Ltac xcurried_core ::=
+  let arity := spec_goal_arity tt in
+  let lemma := get_curried_prove_x arity in
+  eapply lemma; try solve [ xcf; auto; instantiate; 
+    try (check_noevar_goal; xisspec) ].
+ *)

@@ -46,6 +46,8 @@ Inductive inv : forall `{Rep a A}, queue a -> list A -> Prop :=
      Q =' Qf ++ splitin Qm ++ Qr ->
      inv _ (Deep df qm dr) Q.
 
+(** model *)
+
 Implicit Arguments inv [[a] [A] [H]].
 
 Global Instance queue_rep `{Rep a A} : Rep (queue a) (list A).
@@ -58,18 +60,16 @@ Defined.
 
 Hint Constructors invd inv Forall2.
 Hint Resolve Forall2_last.
-Hint Extern 1 (rep _ _) => simpl.
 Ltac auto_tilde ::= eauto.
-
-(* todo: remove this *)
-Ltac xcurried_core ::=
-  let arity := spec_goal_arity tt in
-  let lemma := get_curried_prove_x arity in
-  eapply lemma; try solve [ xcf; auto; instantiate; 
-    try (check_noevar_goal; xisspec) ].
-
+Hint Extern 1 (@gt nat _ _ _) => simpl; math.
 
 (** useful facts *)
+
+Fixpoint depth a (q:queue a) : nat :=
+  match q with
+  | Shallow _ => 0%nat
+  | Deep _ m _ => (1 + depth m)%nat
+  end.
 
 Lemma to_empty : forall `{Rep a A} Q,
   rep (Shallow Zero) Q -> Q = nil.
@@ -104,14 +104,44 @@ Proof. intros. apply empty_spec. Qed.
 
 Hint Extern 1 (inv empty _) => apply empty_inv.
 
+Lemma is_empty_spec : forall `{Rep a A},
+  RepTotal is_empty (Q;queue a) >> bool_of (Q = nil).
+Proof.
+  xcf. introv RQ. xgo.
+  apply~ to_empty.
+  intro_subst_hyp. applys C. apply~ from_empty.
+Qed.
+
+Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
+
+Lemma snoc_spec : forall `{Rep a A},
+  RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ; queue a.
+Proof.
+  intros. xintros. intros q y Q Y RQ RY.
+  sets_eq n: (depth q). gen a A H y q Q Y EQn.
+  apply~ eq_gt_induction; clears n.
+  introv IH. intros. subst n. xcf_app. xmatch. 
+  xgo. inverts RQ as _ M. inverts M. rew_list~.
+  xgo. inverts RQ as _ M. inverts M. rew_list~. eauto 7.
+  xgo. inverts RQ as. introv Df Vf Rm _ Dr EQ.
+   inverts Dr. subst Q. rew_list~. eauto 7.
+  inverts RQ as. introv Df Vf Rm _ Dr EQ. 
+   inverts Dr as RX. xlet.
+    applys~ (>>> IH ((a*a)%type) (x,y) (X,Y)). 
+   xgo. hnf in P_x0. subst Q. constructors~.
+     rew_list. rewrite~ splitin_last.
+  xgo. inverts RQ. 
+    destruct d. applys~ C. applys~ C0. auto.
+    destruct dr. applys~ C1. applys~ C2. auto.
+Qed.
+
+Hint Extern 1 (RegisterSpec snoc) => Provide snoc_spec.
+
 Lemma head_spec : forall `{Rep a A},
   RepSpec head (Q;queue a) |R>>
      Q <> nil -> R (is_head Q ;; a).
 Proof.
-  xcf. intros. sets_eq n: (length Q).
-  gen _x0 Q. gen a A. apply~ eq_gt_induction; clears n.
-  introv IH. intros ? ? ? q Q RQ NE N. subst n.
-  xgo. 
+  xcf. intros q Q RQ NE. xgo. 
   apply NE. apply~ to_empty.
   inverts RQ as _ M. inverts~ M.
   inverts RQ as M. inverts M. subst Q. rew_list~.
@@ -123,24 +153,14 @@ Qed.
 
 Hint Extern 1 (RegisterSpec head) => Provide head_spec.
 
-Lemma is_empty_spec : forall `{Rep a A},
-  RepTotal is_empty (Q;queue a) >> bool_of (Q = nil).
-Proof.
-  xcf. introv RQ. xgo.
-  apply~ to_empty.
-  intro_subst_hyp. applys C. apply~ from_empty.
-Qed.
-
-Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
-
 Lemma tail_spec : forall `{Rep a A},
   RepSpec tail (Q;queue a) |R>> 
      Q <> nil -> R (is_tail Q ;; queue a).
 Proof.
-  intros. xintros. xcf; auto. instantiate (1:=a); xisspec_core. (* todo*)
-  intros. sets_eq n: (length Q). gen x1 Q. gen a A.
+  intros. xintros. intros q Q RQ NE.
+  sets_eq n: (depth q). gen a A H q Q EQn.
   apply~ eq_gt_induction; clears n.
-  introv IH. intros ? ? ? q Q RQ NE N. subst n. xcf_app. xmatch.
+  introv IH. intros. subst n. xcf_app. xmatch. 
   xgo. apply NE. apply~ to_empty.
   xgo. inverts RQ as _ M. inverts M. exists~ (@nil A). 
   xgo. inverts RQ as M. inverts M. subst Q. rew_list. eauto 10.
@@ -150,38 +170,16 @@ Proof.
    xif. xgo. subst. simpl. rew_list. eauto 7.
    xapp_spec~ (@head_spec (a*a)%type _ _).
    xcleanpat. xmatch. clear H0.
-   xlet. applys~ (>>> IH ((a*a)%type) Qm). skip. clear IH.
+   xlet. applys~ (>>> IH ((a*a)%type) Qm). 
+     subst Q. clear IH.
    destruct P_x2 as ([Y Z]&[RY RZ]&[Zm EQm]).
    destruct P_x3 as (Qm'&RQm'&[Tm' EQm']).
-   subst Qm. inverts EQm'. xgo. subst Q. eauto 10.
+   subst Qm. inverts EQm'. xgo. eauto 10.
    xgo. inverts RQ. 
      destruct d. applys~ C. applys~ C0. auto.
      destruct df. auto. applys~ C2. applys~ C1.
 Qed.
 
 Hint Extern 1 (RegisterSpec tail) => Provide tail_spec.
-
-Lemma snoc_spec : forall `{Rep a A},
-  RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ; queue a.
-Proof.
-  intros. xintros. intros. sets_eq n: (length Q).
-  gen a A H x1 x2 Q X. apply~ eq_gt_induction; clears n.
-  introv IH. intros ? ? ? q y Q RQ N Y RY. subst n.
-  xcf_app. xmatch. 
-  xgo. inverts RQ as _ M. inverts M. rew_list~.
-  xgo. inverts RQ as _ M. inverts M. rew_list~. eauto 7.
-  xgo. inverts RQ as. introv Df Vf Rm _ Dr EQ.
-   inverts Dr. subst Q. rew_list~. eauto 7.
-  inverts RQ as. introv Df Vf Rm _ Dr EQ. 
-   inverts Dr as RX. xlet.
-    applys~ (>>> IH ((a*a)%type) (x,y) (X,Y)). skip.
-   xgo. hnf in P_x0. subst Q. constructors~.
-     rew_list. rewrite~ splitin_last.
-  xgo. inverts RQ. 
-    destruct d. applys~ C. applys~ C0. auto.
-    destruct dr. applys~ C1. applys~ C2. auto.
-Qed.
-
-Hint Extern 1 (RegisterSpec snoc) => Provide snoc_spec.
 
 End ImplicitQueueSpec.

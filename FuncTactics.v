@@ -1,8 +1,7 @@
 Set Implicit Arguments.
 Require Export FuncDefs FuncPrint FuncPrim.
 
-
-Hint Extern 1 (rep _ _) => simpl.
+Hint Extern 1 (@rep _ _ _ _ _) => simpl.
 
 (* todo: move to libtactics *)
 
@@ -169,10 +168,10 @@ Ltac get_new_spec_elim_x_y x y := (* todo: temp *)
 
 Ltac get_spec_intro_x x :=
   match x with
-     | 1%nat => constr:(spec_intro_1)
-     | 2%nat => constr:(spec_intro_2)
-     | 3%nat => constr:(spec_intro_3)
-     | 4%nat => constr:(spec_intro_4)
+     | 1%nat => constr:(spec_intro_1')
+     | 2%nat => constr:(spec_intro_2')
+     | 3%nat => constr:(spec_intro_3')
+     | 4%nat => constr:(spec_intro_4')
   end.
 
 (** Returns the lemma [spec_weaken_n] *)
@@ -1159,11 +1158,39 @@ Ltac xintros_core cont1 cont2 cont3 :=
 
 Tactic Notation "xintros" :=
   xintros_core ltac:(fun _ => try xisspec) 
-               ltac:(fun _ => try xcurried) 
+               ltac:(fun _ => try solve [ xcf; auto ]) 
                ltac:(fun _ => idtac).
 
 Tactic Notation "xintros_noauto" :=
   xintros_core ltac:(fun _ => idtac) 
+               ltac:(fun _ => idtac) 
+               ltac:(fun _ => idtac).
+
+
+(* todo bin: old versions *)
+
+Ltac old_get_spec_intro_x x :=
+  match x with
+     | 1%nat => constr:(spec_intro_1)
+     | 2%nat => constr:(spec_intro_2)
+     | 3%nat => constr:(spec_intro_3)
+     | 4%nat => constr:(spec_intro_4)
+  end.
+
+Ltac old_xintros_core cont1 cont2 cont3 :=
+   let arity := spec_goal_arity tt in
+   let lemma := old_get_spec_intro_x arity in
+   apply lemma; [ instantiate; cont1 tt 
+                | instantiate; cont2 tt 
+                | instantiate; cont3 tt ]. 
+
+Tactic Notation "old_xintros" :=
+  old_xintros_core ltac:(fun _ => try xisspec) 
+               ltac:(fun _ => try xcurried) 
+               ltac:(fun _ => idtac).
+
+Tactic Notation "old_xintros_noauto" :=
+  old_xintros_core ltac:(fun _ => idtac) 
                ltac:(fun _ => idtac) 
                ltac:(fun _ => idtac).
 
