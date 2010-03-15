@@ -33,29 +33,15 @@ Inductive inv : heap -> multiset T -> Prop :=
       (r =' 1 + Rank b) ->
       inv (Node r y a b) E.
 
+(** model *)
+
 Instance heap_rep : Rep heap (multiset T).
 Proof.
   apply (Build_Rep inv).
   induction x; introv HX HY; inverts HX; inverts HY; prove_rep.
 Defined.
 
-(** termination relation *)
-
-Fixpoint tree_size h :=
-  match h with
-  | Empty => 1%nat
-  | Node r x a b => (1 + tree_size a + tree_size b)%nat
-  end.
-
-Lemma tree_size_pos : forall h,
-  (tree_size h > 0%nat).
-Proof. destruct h; simpl; math. Qed.
-
-Hint Extern 1 (_ < _) => simpl; math.
-
 (** automation *)
-
-Hint Extern 1 (_ = _ :> multiset _) => permut_simpl : multiset.
 
 Definition U := multiset T.
 
@@ -68,11 +54,22 @@ Ltac myauto cont :=
 Ltac auto_tilde ::= myauto ltac:(fun _ => eauto).
 Ltac auto_star ::= try solve [ intuition (eauto with multiset) ].
 
-(** useful facts *)
+Hint Extern 1 (_ = _ :> multiset _) => permut_simpl : multiset.
+Hint Extern 1 (_ < _) => simpl; math.
 
 Hint Constructors inv.
-Hint Extern 1 (@rep heap _ _ _ _) => simpl.
-Hint Extern 1 (@rep heaps _ _ _ _) => simpl.
+
+(** useful facts *)
+
+Fixpoint tree_size h :=
+  match h with
+  | Empty => 1%nat
+  | Node r x a b => (1 + tree_size a + tree_size b)%nat
+  end.
+
+Lemma tree_size_pos : forall h,
+  (tree_size h > 0%nat).
+Proof. destruct h; simpl; math. Qed.
 
 Definition node_rank e :=
   match e with
@@ -113,8 +110,9 @@ Lemma is_empty_spec : RepTotal is_empty (E;heap) >>
   bool_of (E = \{}).
 Proof.
   xcf. intros e E RepE. inverts RepE; xgo. 
-  auto. intros_all. fset_inv.
+  auto. multiset_inv.
 Qed. 
+
 Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
 
 Lemma rank_spec : Total rank h >> (= node_rank h).
@@ -167,8 +165,7 @@ Hint Extern 1 (RegisterSpec find_min) => Provide find_min_spec.
 Lemma delete_min_spec : RepSpec delete_min (E;heap) |R>>
   E <> \{} -> R (removed_min E ;; heap).
 Proof. 
-  xcf. intros e E RepE HasE. inverts RepE; xgo~. 
-   unfolds. eauto 8.
+  xcf. intros e E RepE HasE. inverts RepE; xgo~. ximpl. xrep~.
 Qed.
 
 Hint Extern 1 (RegisterSpec delete_min) => Provide delete_min_spec.

@@ -3,17 +3,6 @@ Require Import FuncTactics LibCore.
 Require Import OrderedSig_ml HeapSig_ml OrderedSig_proof HeapSig_proof.
 Require Import PairingHeap_ml.
 
-(* todo: move *)
-Lemma Forall2_unique : forall A1 A2 (P:A1->A2->Prop) l L1 L2,
-  (forall x X Y, P x X -> P x Y -> X = Y) -> 
-  Forall2 P l L1 -> Forall2 P l L2 -> L1 = L2.
-Proof.
-  induction l; introv H H1 H2; inverts H1; inverts H2; prove_rep.
-Qed.
-
-Hint Resolve Forall2_unique : rep.
-
-
 Module PairingHeapSpec (O:MLOrdered) (OS:OrderedSigSpec with Module O:=O)
   <: HeapSigSpec with Definition H.MLElement.t := O.t.
 
@@ -23,12 +12,6 @@ Module Import H <: MLHeap := MLPairingHeap O.
 Module Import OS := OS.
 Existing Instance le_inst.
 Existing Instance le_order.
-
-Definition min_of (E:multiset T) (X:T) := 
-  X \in E /\ forall_ Y \in E, X <= Y.
-
-Definition removed_min (E E':multiset T) :=
-  exists X, min_of E X /\ E = \{X} \u E'.
 
 (** invariant *)
 
@@ -47,6 +30,8 @@ Inductive inv : heap -> multiset T -> Prop :=
       Forall (foreach (is_ge X)) Hs ->
       E = \{X} \u list_union Hs ->   
       inv (Node x hs) E.
+
+(** model *)
 
 Fixpoint size (t:heap) : nat :=
   match t with
@@ -81,11 +66,9 @@ Ltac myauto cont :=
 Ltac auto_tilde ::= myauto ltac:(fun _ => eauto).
 Ltac auto_star ::= try solve [ intuition (eauto with multiset) ].
 
-(** useful facts *)
-
 Hint Constructors inv Forall Forall2.
-Hint Extern 1 (@rep heap _ _ _ _) => simpl.
-Hint Extern 1 (@rep heaps _ _ _ _) => simpl.
+
+(** useful facts *)
 
 Lemma foreach_ge_trans : forall (X Y : OS.T) (E : multiset OS.T),
   foreach (is_ge X) E -> Y <= X -> foreach (is_ge Y) E.
@@ -119,7 +102,7 @@ Lemma is_empty_spec : RepTotal is_empty (E;heap) >>
   bool_of (E = \{}).
 Proof.
   xcf. intros e E RepE. inverts RepE; xgo. 
-  auto. intros_all. multiset_inv.
+  auto. multiset_inv.
 Qed. 
 
 Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
@@ -134,26 +117,22 @@ Proof.
     constructors.
       eauto.
       eauto. 
-      constructors~. intros H. multiset_inv.
-      constructors. eauto. rew_foreach. splits~.
-       applys foreach_weaken (is_ge X0).
-         unfold list_union. clear H6 H7 Rep2. (* todo: clear above *) 
-          induction Hs0; simpl. auto. inverts~ H8.
+      constructors~. multiset_inv.
+      clear H6 H7 Rep2. constructors. eauto. rew_foreach. splits~.
+       applys (@foreach_weaken _ (is_ge X0)).
+         unfold list_union. induction Hs0; simpl. auto. inverts~ H8.
          intros_all. applys~ le_trans.
-    unfold list_union. simpl. permut_simpl.
-    constructors.
+    unfold list_union. simple*.
+    lets: (nle_to_sle P_x0). constructors.
       eauto.
       eauto. 
-      constructors~. intros H. multiset_inv.
-      constructors. eauto. rew_foreach. splits~.
-       skip.
-       lets: (nle_to_sle P_x0).
-       (*applys_to P_x0 nle_to_sle.*) applys foreach_weaken (is_ge X).
-         unfold list_union. clear H2 H3 Rep1. (* todo: clear above *) 
-          induction Hs; simpl. auto. inverts~ H4.
+      constructors~. multiset_inv.
+      clear H2 H3 Rep1. constructors. eauto. rew_foreach. splits~.
+       applys (@foreach_weaken _ (is_ge X)).
+         unfold list_union. induction Hs; simpl. auto. inverts~ H4.
          intros_all. applys~ le_trans.
     unfold list_union. simpl. permut_simpl.
-Admitted. (* remains evars *)
+Qed.
 
 Hint Extern 1 (RegisterSpec merge) => Provide merge_spec.
 
@@ -162,7 +141,7 @@ Lemma insert_spec : RepTotal insert (X;O.t) (E;heap) >>
 Proof.
   xcf. introv RepX RepE. xapp~ (>>> \{X} E).
   applys~ (>>> inv_node X (@nil (multiset T))).
-  unfolds list_union. simpl. permut_simpl. 
+  unfolds list_union. simple*.
 Qed.
 
 Hint Extern 1 (RegisterSpec insert) => Provide insert_spec.
@@ -177,7 +156,7 @@ Proof.
   xgo. inverts~ RepH.
   xgo. inverts RepH. inverts H2. unfolds list_union. simpls. equates* 1.
   xcleanpat. inverts RepH. inverts H2. inverts NE. inverts H2.
-   xgo~. intros_all. equates* 1.
+   xgo~. ximpl. equates* 1.
 Qed.
 
 Hint Extern 1 (RegisterSpec merge_pairs) => Provide merge_pairs_spec.
@@ -193,8 +172,7 @@ Hint Extern 1 (RegisterSpec find_min) => Provide find_min_spec.
 Lemma delete_min_spec : RepSpec delete_min (E;heap) |R>>
   E <> \{} -> R (removed_min E ;; heap).
 Proof. 
-  xcf. intros e E RepE HasE. inverts RepE; xgo~.
-  unfolds. eauto 10.
+  xcf. intros e E RepE HasE. inverts RepE; xgo~. ximpl. xrep~.
 Qed.
 
 Hint Extern 1 (RegisterSpec delete_min) => Provide delete_min_spec.

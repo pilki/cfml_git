@@ -63,3 +63,15 @@
 *) todo: remove::  instantiate (1:=a); xisspec_core. 
 
 *) todo: bootstrapped_queue to_empty -- bug de inversion ! 
+
+*) Pairing heap !  applys (@foreach_weaken _ (is_ge X0)).
+   avec applys ça laisse des evars
+
+*) rew_card. de lazy pairing: move
+   and improve  merge_spec
+
+
+*) binominal heap:
+ ( todo: E1 <> \{} -> E1 \u E2 <> \{} 
+
+*) splay heap: beautify merge_spec, bug in permutsimpl

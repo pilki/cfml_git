@@ -29,6 +29,8 @@ Inductive inv : heap -> multiset T -> Prop :=
       E' = \{X} \u Eo \u Es ->   
       inv (Node x ho hs) E'.
 
+(** model *)
+
 Instance heap_rep : Rep heap (multiset T).
 Proof.
   apply (Build_Rep inv). 
@@ -54,16 +56,15 @@ Ltac auto_star ::= try solve [ intuition (eauto with multiset) ].
 
 Hint Rewrite (card_empty (T:=multiset T)) (card_single (T:=multiset T))
   (card_union (T:=multiset T)) : rew_card.
+
 Ltac rew_card := autorewrite with rew_card.
-
 Hint Extern 1 ((_ < _)%nat) => simpl; rew_card; math.
-(* todo: changer ça *)
 
-(** useful facts *)
+Ltac prove_card := simpl; rew_card; math. (* todo : work as hint *)
 
 Hint Constructors inv Forall Forall2.
-Hint Extern 1 (@rep heap _ _ _ _) => simpl.
-Hint Extern 1 (@rep heaps _ _ _ _) => simpl.
+
+(** useful facts *)
 
 Lemma is_ge_refl : forall x, is_ge x x.
 Proof. intros. apply le_refl. Qed.
@@ -73,12 +74,6 @@ Lemma foreach_ge_trans : forall (X Y : OS.T) (E : multiset OS.T),
 Proof. intros. apply~ foreach_weaken. intros_all. apply* le_trans. Qed.
 
 Hint Resolve is_ge_refl foreach_ge_trans.
-
-Fixpoint size h :=
-  match h with
-  | Empty => 1%nat
-  | Node a ho hs => (1 + size ho + size hs)%nat
-  end.
 
 Lemma min_of_prove : forall X Eo Es,
   foreach (is_ge X) Eo ->
@@ -112,12 +107,10 @@ Lemma is_empty_spec : RepTotal is_empty (E;heap) >>
   bool_of (E = \{}).
 Proof.
   xcf. intros e E RepE. inverts RepE; xgo. 
-  auto. intros_all. multiset_inv.
+  auto. multiset_inv.
 Qed. 
 
 Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
-
-Ltac prove_card := simpl; rew_card; math. (* todo : work as hint *)
 
 Definition link_spec := RepSpec link (E1;heap) (E2;heap) |R>>
   forall X, foreach (is_ge X) E2 -> min_of E1 X -> 
@@ -142,7 +135,7 @@ Proof.
   xgo. inverts R1. equates* 1.
   inverts R1. inverts R2. xapp~. xif.
     xapp~. prove_card.
-    applys_to P_x0 nle_to_sle. equates 1. fapplys IHlink; auto~. (* todo! *)
+    applys_to P_x0 nle_to_sle. equates 1. fapplys IHlink; auto~.
      prove_card. extens. intros h. iff M. equates* 1. equates* 1.
   (* verif link *)
   clear IHlink. intros h1 h2 X E1 E2 R1 R2 GX MX N. subst n.
@@ -152,7 +145,7 @@ Proof.
   xgo. inverts H0. forwards~: (>>> min_of_eq MX). constructors*.
   xgo~.
     fapplys IHmerge; auto~. prove_card. 
-    fapplys IHmerge; auto~. apply P_x1. prove_card. (* todo: cleanup*)
+    fapplys IHmerge; auto~. apply P_x1. prove_card. 
    forwards~: (>>> min_of_eq MX). constructors*.
 Qed.
 
@@ -173,8 +166,7 @@ Hint Extern 1 (RegisterSpec find_min) => Provide find_min_spec.
 Lemma delete_min_spec : RepSpec delete_min (E;heap) |R>>
   E <> \{} -> R (removed_min E ;; heap).
 Proof. 
-  xcf. intros e E RepE HasE. inverts RepE; xgo~.
-  unfolds. eauto 8.
+  xcf. intros e E RepE HasE. inverts RepE; xgo~. ximpl. xrep~. Qed.
 Qed.
 
 Hint Extern 1 (RegisterSpec delete_min) => Provide delete_min_spec.

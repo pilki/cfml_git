@@ -27,23 +27,13 @@ Inductive inv : heap -> multiset T -> Prop :=
       E = (\{Y} \u A \u B) ->
       inv (Node a y b) E.
 
+(** model *)
+
 Instance heap_rep : Rep heap (multiset T).
 Proof.
   apply (Build_Rep inv).
   induction x; introv HX HY; inverts HX; inverts HY; prove_rep.
 Defined.
-
-(** termination relation *)
-
-Fixpoint tree_size h :=
-  match h with
-  | Empty => 1%nat
-  | Node a x b => (1 + tree_size a + tree_size b)%nat
-  end.
-
-Lemma tree_size_pos : forall h,
-  (tree_size h > 0%nat).
-Proof. destruct h; simpl; math. Qed.
 
 (** automation *)
 
@@ -63,12 +53,19 @@ Ltac auto_plus := myauto ltac:(fun _ => eauto 10).
 
 Hint Extern 1 (@le nat _ _ _) => simpl; math. (*todo:needed?*)
 Hint Extern 1 (@lt nat _ _ _) => simpl; math.
+Hint Constructors inv.
 
 (** useful facts *)
 
-Hint Constructors inv.
-Hint Extern 1 (@rep heap _ _ _ _) => simpl.
-Hint Extern 1 (@rep heaps _ _ _ _) => simpl.
+Fixpoint size h :=
+  match h with
+  | Empty => 1%nat
+  | Node a x b => (1 + size a + size b)%nat
+  end.
+
+Lemma size_pos : forall h,
+  (size h > 0%nat).
+Proof. destruct h; simpl; math. Qed.
 
 Lemma foreach_le_trans : forall (X Y : OS.T) (E : multiset OS.T),
   Y <= X -> foreach (is_le Y) E -> foreach (is_le X) E.
@@ -123,7 +120,7 @@ Lemma is_empty_spec : RepTotal is_empty (E;heap) >>
   bool_of (E = \{}).
 Proof.
   xcf. intros e E RepE. inverts RepE; xgo. 
-  auto. intros_all. multiset_inv.
+  auto. multiset_inv.
 Qed.
 
 Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
@@ -135,10 +132,10 @@ Lemma partition_spec : Spec partition p e |R>>
      E = E1 \u E2 /\
      foreach (is_le P) E1 /\
      foreach (is_ge P) E2 /\
-     tree_size e1 <= tree_size e /\
-     tree_size e2 <= tree_size e).
+     size e1 <= size e /\
+     size e2 <= size e).
 Proof.
-  xinduction (fun (p:O.t) (e:heap) => tree_size e). (* todo: rename to size *)
+  xinduction (fun (p:O.t) (e:heap) => size e). 
   xcf. intros p e IH P E RP RE. xmatch.
   xgo. inverts RE. exists___. splits*.
   inverts RE as RA RB RX. xapp~. xif.
@@ -172,10 +169,10 @@ Hint Extern 1 (RegisterSpec partition) => Provide partition_spec.
 Lemma merge_spec : RepTotal merge (E1;heap) (E2;heap) >>
   E1 \u E2 ; heap.
 Proof.
-  xinduction (fun e1 e2 => (tree_size e1 + tree_size e2)%nat).
+  xinduction (fun e1 e2 => (size e1 + size e2)%nat).
   xcf. introv IH Rep1 Rep2. xmatch.
   xgo. inverts Rep1. equates* 1.
-  xcleanpat. inverts Rep1. xlet as. xapp~. (* todo *)
+  xcleanpat. inverts Rep1. xlet as. xapp~. 
    intros [f1 f2] H. intuit H. xgo~; try (simpl; math).
     constructors~. subst. permut_simpl.
 Qed.
@@ -194,12 +191,12 @@ Hint Extern 1 (RegisterSpec insert) => Provide insert_spec.
 Lemma find_min_spec : RepSpec find_min (E;heap) |R>>
   E <> \{} -> R (min_of E ;; O.t).
 Proof.
-  xinduction tree_size.
+  xinduction size.
   xcf. intros e IH E RepE HasE. inverts RepE. xgo.
   inverts H. xgo. eauto.
   xgo. math. constructors~. intros K. multiset_inv.  
   ximpl as x (X&RepX&MinX). destruct MinX as (InXA&InfX).
-   esplit. splits_all~. skip.
+   esplit. splits_all~. multiset_in InXA; auto.
    asserts: (X <= Y). applys~ H2.
    intros Z HZ. sets_eq A: (\{Y0} \u A0 \u B0). multiset_in HZ. 
      auto.
@@ -212,7 +209,7 @@ Hint Extern 1 (RegisterSpec find_min) => Provide find_min_spec.
 Lemma delete_min_spec : RepSpec delete_min (E;heap) |R>>
   E <> \{} -> R (removed_min E ;; heap).
 Proof. 
-  xinduction tree_size. 
+  xinduction size. 
   xcf. intros IH e E RepE HasE. xmatch_nocases.
   inverts RepE as RA RB RY LA LB; xpat.
   inverts RA as RC RD RX LC LD; xpat.

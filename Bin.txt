@@ -543,3 +543,109 @@ Ltac xcurried_core ::=
   eapply lemma; try solve [ xcf; auto; instantiate; 
     try (check_noevar_goal; xisspec) ].
  *)
+
+
+
+(* todo: move *)
+Lemma Forall2_unique : forall A1 A2 (P:A1->A2->Prop) l L1 L2,
+  (forall x X Y, P x X -> P x Y -> X = Y) -> 
+  Forall2 P l L1 -> Forall2 P l L2 -> L1 = L2.
+Proof.
+  induction l; introv H H1 H2; inverts H1; inverts H2; prove_rep.
+Qed.
+
+Hint Resolve Forall2_unique : rep.
+
+
+
+
+
+(* bin:
+Lemma inv_nil_change : forall rs rs' Es, 
+  inv rs nil Es -> 0 <= rs' -> inv rs' nil Es.
+Proof. introv H P. inverts~ H. Qed.
+
+
+Definition Rank_hd_or r (ts:heap) :=
+  match ts with
+  | nil => r
+  | t::ts => Rank t
+  end.
+
+Lemma le_rank_hd_or_elim : forall r ts,
+  r <= Rank_hd_or r ts ->
+  r <= Rank_hd ts.
+Proof. intros. destruct ts.
+
+Lemma inv_smallest : forall rs ts Es,
+  inv rs ts Es -> 
+  exists rs',
+  inv rs' ts Es /\
+  rs' <= rs /\
+  (ts = nil -> rs' = 0).
+Proof.
+  introv H. inverts H. exists~ 0.
+  exists rs. splits. auto~. auto~. auto_false.
+Qed. (* todo: improve autofalse *)
+
+
+Lemma remove_min_tree_spec : Spec remove_min_tree (ts:heap) |R>>
+  forall rs Es, inv rs ts Es -> Es <> \{} -> 
+  R (fun o => let (t',ts') := o : tree * heap in
+     exists E' Es' X r' rs', 
+       btree r' t' E' /\
+       inv rs' ts' Es' /\
+       Es = E' \u Es' /\
+       rep (Root t') X /\
+       foreach (is_ge X) Es /\ 
+       rs <= rs').
+Proof.
+(*
+  xinduction (@List.length tree). xcf. introv IH RH NE. xmatch.
+  xgo. inverts RH. false.
+  xgo. inverts RH as Rt R0. inverts R0. 
+    lets (X&RX&MX): (root_le_all Rt). subst Es. exists~ ___.
+  lets (rs0&E0&Ez&Rt&Rts&K1&K2&EQ): (inv_cons_inv RH). clear RH.
+  asserts: (Ez <> \{}). intro_subst_hyp.
+    destruct ts. inverts Rts. false. inverts Rts as BT. lets: (btree_not_empty BT).
+    skip. (*fsetinv*)
+  xapp~. destruct _x1 as [t' ts'].
+   destruct P_x1 as (E'&Es'&X&r'&rs'&Rt'&Rts'&EQ'&RX&MX&D).
+  xmatch. xapp~. xapp~. cbv beta in *. subst _x3 _x4. 
+  lets (Y&RY&MY): (root_le_all Rt). xgo~.
+  subst Es. exists~ ___.
+  subst Es Ez. applys_to P_x2 nle_to_sle. 
+    exists E' (E0 \u Es') __ __ __. splits~. permut_simpl.
+*) skip.
+Qed.
+
+Hint Extern 1 (RegisterSpec remove_min_tree) => Provide remove_min_tree_spec.
+
+Lemma find_min_spec : RepSpec find_min (E;heap) |R>>
+  E <> \{} -> R (min_of E ;; O.t).
+Proof.
+  xcf. intros e E RepE HasE. simpl in RepE. xgo~.
+  destruct P_x0 as (E'&Es'&X&r'&rs'&Rt'&Rts'&EQ'&RX&MX&D).
+  ximpl as x Px. subst x. skip: (X \in E). eauto. 
+  (* todo: rep_unique to solve this *)
+Qed.
+
+Hint Extern 1 (RegisterSpec find_min) => Provide find_min_spec.
+
+Lemma delete_min_spec : RepSpec delete_min (E;heap) |R>>
+  E <> \{} -> R (removed_min E ;; heap).
+Proof. 
+  xcf. introv Rts NE. simpl in Rts. xapp~. xmatch.
+  destruct P_x0 as (E'&Es'&X&r'&rs'&Rt'&Rts'&EQ'&RX&MX&D).
+  simpl in RX. clear H.
+  asserts: (_p0 = r'). inverts~ Rt'. subst.
+    forwards~ (Er&I'&EQ'): (>>> inv_rev_children_final x ts1).
+  xapp~.  
+    sapply~ inv_rank_smaller.
+    ximpl as h Ph.
+  exists (Er \u Es'). split~. subst E'. exists* X.
+Qed.
+
+Hint Extern
+
+*)
