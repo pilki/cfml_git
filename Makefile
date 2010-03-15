@@ -44,6 +44,7 @@ OKACOD=\
 	okasaki/BottomUpMergeSort_ml.v \
 	okasaki/BinaryRandomAccessList_ml.v \
 	okasaki/AltBinaryRandomAccessList_ml.v \
+	okasaki/CatenableListImpl_ml.v \
 	okasaki/Okasaki_ml.v 
 
 OKAS=\

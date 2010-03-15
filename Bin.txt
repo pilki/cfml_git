@@ -684,3 +684,19 @@ Qed.
 Hint Resolve subtree_wf : wf.
 
   xinduction (unproj22 elem subtree).  
+
+
+(* todo: move *)
+Lemma Forall2_unique : forall A1 A2 (P:A1->A2->Prop) l L1 L2,
+  (forall x X Y, P x X -> P x Y -> X = Y) -> 
+  Forall2 P l L1 -> Forall2 P l L2 -> L1 = L2.
+Proof.
+  induction l; introv H H1 H2; inverts H1; inverts H2; prove_rep.
+Qed.
+
+Hint Resolve Forall2_unique : rep.
+
+(*todo:move
+Definition rep_from_eq : forall A, Rep A A.
+Proof. intros. apply (Build_Rep eq). congruence. Defined.
+*)

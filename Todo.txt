@@ -84,3 +84,5 @@
 *) Bottom_up : mrg_spec pb du cbv beta sur l'hyp d'ind
 
 *) xmatch leaving [X = X] should clear hyp
+
+*) catenable: comment récupérer les hints de queue_sig
