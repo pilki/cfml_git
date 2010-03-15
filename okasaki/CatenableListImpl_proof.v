@@ -43,6 +43,8 @@ Inductive inv : cat a -> list A -> Prop :=
       inv (Struct x q) L.
       
 End Polymorphic.
+(** model *)
+
 
 Global Instance cat_rep `{Rep a A} : Rep (cat a) (list A).
 Proof.

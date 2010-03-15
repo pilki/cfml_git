@@ -75,3 +75,12 @@
  ( todo: E1 <> \{} -> E1 \u E2 <> \{} 
 
 *) splay heap: beautify merge_spec, bug in permutsimpl
+
+*) induction sur nat pour éviter les %nat; ou bien 
+   typeclass pour + sur nat.
+
+*) Redblackset proof: check my_lt_trans  needed?
+
+*) Bottom_up : mrg_spec pb du cbv beta sur l'hyp d'ind
+
+*) xmatch leaving [X = X] should clear hyp

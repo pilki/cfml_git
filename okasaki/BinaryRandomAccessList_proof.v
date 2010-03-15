@@ -65,6 +65,8 @@ Qed.
 Hint Resolve btree_unique : rep.
 *)
 
+(** model *)
+
 Global Instance rlist_rep : Rep (rlist a) (list A).
 Proof.
   apply (Build_Rep (inv 0)). skip.

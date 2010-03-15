@@ -649,3 +649,38 @@ Qed.
 Hint Extern
 
 *)
+
+
+(** termination relation *)
+(* we could use a size function as well *)
+
+Inductive subtree : set -> set -> Prop :=
+  | subtree_left : forall col a x b, subtree a (Node col a x b)
+  | subtree_right : forall col a x b, subtree b (Node col a x b).
+
+Hint Constructors subtree.
+
+Lemma subtree_wf : wf subtree.
+Proof.
+  intros e. induction e;
+    constructor; introv H; inversions~ H.
+Qed.
+
+Hint Resolve subtree_wf : wf.
+
+
+Inductive subtree : set -> set -> Prop :=
+  | subtree_left : forall a x b, subtree a (Node a x b)
+  | subtree_right : forall a x b, subtree b (Node a x b).
+
+Hint Constructors subtree.
+
+Lemma subtree_wf : wf subtree.
+Proof.
+  intros e. induction e;
+    constructor; introv H; inversions~ H.
+Qed.
+
+Hint Resolve subtree_wf : wf.
+
+  xinduction (unproj22 elem subtree).  

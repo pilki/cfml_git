@@ -40,6 +40,8 @@ Inductive inv : bool -> forall `{Rep a A}, rlist a -> list A -> Prop :=
       L' = X :: splitin Ls ->
       inv canstop _ (One x ls) L'.
 
+(** model *)
+
 Implicit Arguments inv [[a] [A] [H]].
 
 Global Instance rlist_rep `{Rep a A} : Rep (rlist a) (list A).

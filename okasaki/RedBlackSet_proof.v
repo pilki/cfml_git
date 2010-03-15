@@ -44,6 +44,8 @@ Inductive inv : bool -> nat -> set -> LibSet.set T -> Prop :=
       (n =' case_color col m (S m)) ->
       inv rr n (Node col a y b) E.
 
+(** model *)
+
 Global Instance set_rep : Rep set (LibSet.set T).
 Proof.
   apply (Build_Rep (fun e E => 
@@ -51,23 +53,6 @@ Proof.
   introv (nx&HX&CX) (ny&HY&CY). clear CX CY. gen nx ny X Y.
   induction x; introv HX HY; inverts HX; inverts HY; prove_rep. 
 Defined.
-
-(** termination relation *)
-(* we could use a size function as well *)
-
-Inductive subtree : set -> set -> Prop :=
-  | subtree_left : forall col a x b, subtree a (Node col a x b)
-  | subtree_right : forall col a x b, subtree b (Node col a x b).
-
-Hint Constructors subtree.
-
-Lemma subtree_wf : wf subtree.
-Proof.
-  intros e. induction e;
-    constructor; introv H; inversions~ H.
-Qed.
-
-Hint Resolve subtree_wf : wf.
 
 (** automation *)
 
@@ -81,12 +66,19 @@ Ltac myauto cont :=
   match goal with 
   | |- _ = _ :> LibSet.set ?T => try solve [ change (LibSet.set T) with U; cont tt ]
   | |- _ => cont tt
-  end. (* todo: pour éviter un hint trop lent de hint-core avec eauto *)
+  end. 
 
 Ltac auto_tilde ::= myauto ltac:(fun _ => eauto).
 Ltac auto_star ::= try solve [ intuition (eauto with set) ].
+Hint Extern 1 (@lt nat _ _ _) => simpl; math.
 
 (** useful facts *)
+
+Fixpoint size t :=
+  match t with
+  | Empty => 0%nat
+  | Node _ a _ b => (1 + size a + size b)%nat
+  end.
 
 Lemma inv_weaken : forall n E e,
   inv true n e E -> inv false n e E.
@@ -98,7 +90,7 @@ Lemma inv_strengthen : forall n E col a x b,
   inv true n (Node col a x b) E.
 Proof. introv RepE H. inverts* RepE. Qed.
 
-Lemma my_lt_trans : forall Y X Z, (* todo: should not be needed?*)
+Lemma my_lt_trans : forall Y X Z, 
   X < Y -> Y < Z -> X < Z.
 Proof. intros Z HZ. eapply @lt_trans; typeclass. Qed.
 
@@ -140,8 +132,8 @@ Proof.
   cuts: (Spec member x e |R>>
     forall rr n X E, rep x X -> inv rr n e E -> R (bool_of (X \in E))).
     xweaken. simpl. intros_all. destruct H3 as (n&Inv&_). eauto.
-  xinduction (unproj22 elem subtree).  
-  xcf. intros x e IH rr n X E RepX InvE. inverts InvE; xgo~.  
+  xinduction (fun (x:elem) e => size e).  
+  xcf. intros x e IH rr n X E RepX InvE. inverts InvE; xgo~.
   iff M. auto. set_in M.
     subst. false~ (lt_irrefl Y).
     auto.
@@ -217,7 +209,7 @@ Proof.
   xfun_induction_nointro (fun ins => Spec ins e |R>>
     forall n E, inv true n e E -> 
     R (fun e' => inv (case_color (node_color e) false true) n e' (\{X} \u E)))
-      subtree.
+   size.
     clears s n E. intros e IH n E InvE. inverts InvE as.
     xgo*.
     introv InvA InvB RepY GtY LtY Cinv Ninv.

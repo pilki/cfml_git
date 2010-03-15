@@ -31,6 +31,7 @@ Inductive inv : heap -> multiset T -> Prop :=
       foreach (is_ge Y) A -> foreach (is_ge Y) B ->
       E = (\{Y} \u A \u B) ->
       (r =' 1 + Rank b) ->
+      Rank a >= Rank b ->
       inv (Node r y a b) E.
 
 (** model *)
@@ -51,8 +52,8 @@ Ltac myauto cont :=
   | |- _ => cont tt
   end. 
 
-Ltac auto_tilde ::= myauto ltac:(fun _ => eauto).
-Ltac auto_star ::= try solve [ intuition (eauto with multiset) ].
+Ltac auto_tilde ::= myauto ltac:(fun _ => eauto with maths).
+Ltac auto_star ::= try solve [ intuition (eauto 7 with multiset) ].
 
 Hint Extern 1 (_ = _ :> multiset _) => permut_simpl : multiset.
 Hint Extern 1 (_ < _) => simpl; math.
@@ -121,11 +122,14 @@ Proof. xgo~. Qed.
 Hint Extern 1 (RegisterSpec rank) => Provide rank_spec.
 
 Lemma make_node_spec : RepSpec make_node (X;O.t) (A;heap) (B;heap) |R>>
-  foreach (is_ge X) A -> foreach (is_ge X) B -> R (\{X} \u A \u B ; heap).
+  foreach (is_ge X) A -> foreach (is_ge X) B ->
+  R (\{X} \u A \u B ; heap).
 Proof.
-  xcf. introv RepX RepA RepB GeA GeB. xgo~.
-  constructors*. forwards~: (@rank_correct b). math.
-  constructors*. forwards~: (@rank_correct a). math.  
+  xcf. introv RepX RepA RepB GeA GeB.
+  forwards~: (@rank_correct a). forwards~: (@rank_correct b).
+  xgo; subst.
+    constructors~.
+    constructors~. auto*.
 Qed.
 
 Hint Extern 1 (RegisterSpec make_node) => Provide make_node_spec.
@@ -150,6 +154,7 @@ Lemma insert_spec : RepTotal insert (X;O.t) (E;heap) >>
   \{X} \u E ; heap.
 Proof.
   xcf. introv RepX RepE. xapp* (>>> \{X} E).
+   constructors~. auto*.
 Qed.
 
 Hint Extern 1 (RegisterSpec insert) => Provide insert_spec.

@@ -27,11 +27,15 @@ Inductive seg : list O.t -> multiset T -> Prop :=
       E' =' \{X} \u E ->
       seg (x::s) E'.
 
+(** model *)
+
 Instance seg_rep : Rep (list O.t) (multiset T).
 Proof.
   apply (Build_Rep seg).
   induction x; introv HX HY; inverts HX; inverts HY; subst; prove_rep.
 Defined.
+
+(** invariant *)
 
 Inductive inv : int -> int -> list (list O.t) -> multiset T -> Prop :=
   | inv_empty : forall p,
@@ -48,6 +52,8 @@ Inductive inv : int -> int -> list (list O.t) -> multiset T -> Prop :=
       E' =' E \u Es ->
       inv n p (s::ss) E'.
 
+(** model *)
+
 Instance heap_rep : Rep sortable (multiset T).
 Proof.
   apply (Build_Rep (fun p E => let (n,ss) := p:sortable in inv n 1 ss E)).
@@ -61,7 +67,6 @@ Defined.
 
 (** automation *)
 
-Hint Extern 1 (_ < _) => simpl; math.
 Hint Extern 1 (_ = _ :> multiset _) => permut_simpl : multiset.
 Definition U := multiset T.
 
@@ -71,14 +76,12 @@ Ltac myauto cont :=
   | |- _ => cont tt
   end. 
 
-Ltac auto_tilde ::= myauto ltac:(fun _ => auto with maths).
+Ltac auto_tilde ::= myauto ltac:(fun _ => eauto with maths).
 Ltac auto_star ::= try solve [ intuition (eauto with multiset) ].
+Hint Extern 1 (@lt nat _ _ _) => simpl; math.
+Hint Constructors inv sorted Forall2.
 
 (** useful facts *)
-
-Hint Constructors inv sorted Forall2.
-Hint Extern 1 (@rep sortable _ _ _ _) => simpl.
-Hint Extern 1 (@rep (list t) _ _ _ _) => simpl.
 
 Lemma inv_n_pos : forall n p ss E, 
   inv n p ss E -> n >= 0.
@@ -128,18 +131,14 @@ Proof.
   xcf. introv IH Rs1 Rs2. xmatch.
   xgo. inverts Rs1. split. equates* 1. rew_list~. 
   xgo. inverts Rs2. split. equates* 1. rew_list~. 
-  xcleanpat. inverts keep Rs1 as Rx Sxs' Lx. 
-  inverts keep Rs2 as Ry Sys' Ly. xapp*. xif.
-  xapp. specializes HR __. unfold uncurry2. rew_list~.
-   fapplys HR; eauto. ximpl_nointros. (* todo: pb du simpl encore *)
-   destruct P_x2 as [Sx2 Lx2].
-   xret. split. subst E1 E2. constructors*. gen Lx2. rew_list~.
-  xapp. specializes HR __. unfold uncurry2. rew_list~.
-   fapplys HR; eauto. ximpl_nointros. (* todo: pb du simpl encore *)
-   destruct P_x1 as [Sx1 Lx1].
-   xret. split. 
-     subst E1 E2. applys_to P_x0 nle_to_sle. constructors*.
-     gen Lx1. rew_list~.
+  xcleanpat. unfold uncurry2 in IH. rew_length in IH.
+  inverts keep Rs1 as Rx Sxs' Lx. 
+  inverts keep Rs2 as Ry Sys' Ly. xapp*. xif.  
+  xgo~. rew_length~. 
+    intuit. rew_list in *. split~. subst. constructors*.
+  xapp. rew_list in HR. fapplys HR; eauto. math. ximpl_nointros.
+   xgo. intuit P_x1. applys_to P_x0 nle_to_sle. rew_length.
+     split~. subst. constructors*.
 Qed.
 
 Hint Extern 1 (RegisterSpec mrg) => Provide mrg_spec.
@@ -152,27 +151,23 @@ Hint Extern 1 (RegisterSpec empty) => Provide empty_spec.
 Lemma add_spec : RepTotal add (X;t) (E;sortable) >>
   \{X} \u E ; sortable.
 Proof.
-  xcf. introv RepX RepE. xmatch. unfold id in *. (* todo not generate id *)
-  (*todo: xmatch leaving [X = X] should clear hyp*)
+  xcf. introv RepX RepE. xmatch.
   xfun_induction_nointro
     (fun f => Spec f s ss n |R>>
        forall p E Es, inv n p ss Es -> seg s E -> length s = p :> int -> 
        R (fun ss' => inv (n+1) p ss' (E \u Es)))
     (fun (_:list t) (segs:list (list t)) (_:int) => length segs).
-   clear x X RepE RepX H E size segs. (* todo: bug dans clear *)
+   clear x X RepE RepX H E size segs.
    intros s ss n IH. introv Rss Rs Ls. inverts Rss; rew_parity; eauto; xif.
      xgo. apply* inv_odd.
      xgo. apply* inv_odd.
-     xapp~. xapp*. xapp*. calc_partial_eq tt. subst. (* todo: xapp as *)
+     xapp~. xapp*. xapp*. xclean. subst.
       destruct P_x3 as [S3 L3]. xapp*. rew_length~. math. 
      ximpl as ss' M. applys~ inv_even. equates* 1. math.
-  simpl in RepE. xapp~. rew_length. equates* 3.
+  simpl in RepE. xapp~.
   constructors*. constructors*. ximpl_nointros.
-  hnf in P_x8.
-  xret. simpl. equates* 1 3.
+  simpls. xret. equates* 1 3.
 Qed.
-(* todo: un xappnoauto avec ?_ ===> ?_ comme sous but devient refl;
-   oui si interactif mais pas ok dans xgo... *)
 
 Hint Extern 1 (RegisterSpec add) => Provide add_spec.
 
@@ -189,8 +184,7 @@ Proof.
    lets (n'&p'&ss'&E'&Es'&Rss'&RE): (inv_cons_inv Rss).
    subst Es. xgo*. rew_length~. ximpl as l Hl. equates* 1.
   simpl in RepE. xapp*. constructors*.
-  ximpl as l Hl. (* todo: ximpl l *)
-  apply seg_to_sorted. equates* 1.
+  ximpl. apply seg_to_sorted. equates* 1.
 Qed.
 
 Hint Extern 1 (RegisterSpec sort) => Provide sort_spec.

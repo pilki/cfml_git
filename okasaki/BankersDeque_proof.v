@@ -19,14 +19,20 @@ Import MLBankersDeque.
 
 Definition inv (d:int) `{Rep a A} (q:deque a) (Q:list A) :=
   let '(lenf,f,lenr,r) := q in 
-     Forall2 rep (f ++ rev r) Q
+     rep (f ++ rev r) Q
   /\ lenf = length f
   /\ lenr = length r
   /\ lenf <= C*lenr + 1 + d
   /\ lenr <= C*lenf + 1 + d.
 
-Global Instance deque_rep `{Rep a A} : Rep (deque a) (list A) :=
-  inv 0.
+(** model *)
+
+Global Instance deque_rep `{Rep a A} : Rep (deque a) (list A).
+Proof.
+  intros. apply (Build_Rep (inv 0)).
+  destruct x as (((lenf,f),lenr),r).
+  introv K1 K2. intuit K1. intuit K2. prove_rep.
+Defined.
 
 (** automation *)
 
@@ -38,7 +44,6 @@ Hint Rewrite C_val2 c_val2 : rew_maths.
 
 Hint Constructors Forall2.
 Hint Resolve Forall2_last.
-Hint Extern 1 (@rep (deque _) _ _ _ _) => simpl.
 Hint Unfold inv.
 
 Ltac auto_tilde ::= eauto with maths.
@@ -111,7 +116,7 @@ Proof.
   (* rebalance left *) 
   xret~. xret~.
   lets (B1&B2): (div2_bounds (eq_sym Pi)).
-  math: (0 <= i /\ i <= length f).
+  maths (0 <= i /\ i <= length f).
   xgo~. forwards~ (Ef&Lf'&Lx14): take_and_drop. apply~ abs_pos_le.
   lets: (nat_int_eq Lf'). hnf. splits.
     gen H. rewrite Ef. rewrite <- Pr'. rew_list~.
@@ -122,7 +127,7 @@ Proof.
   (* rebalance right *)
   xret~. xret~.
   lets (B1&B2): (div2_bounds (eq_sym Pi)).
-  math: (0 <= i /\ i <= length r).
+  maths (0 <= i /\ i <= length r).
   xgo~. forwards~ (Er&Lr'&Lx10): take_and_drop. apply~ abs_pos_le.
   lets: (nat_int_eq Lr'). hnf. splits.
     gen H. rewrite Er. rewrite <- Pf'. rew_list~.

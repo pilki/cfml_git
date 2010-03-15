@@ -20,11 +20,15 @@ Inductive invd `{Rep a A} : digit a -> list A -> Prop :=
   | invd_two : forall x X y Y,
      rep x X -> rep y Y -> invd (Two x y) (X::Y::nil).
 
+(** model *)
+
 Global Instance digit_rep `{Rep a A} : Rep (digit a) (list A).
 Proof. 
   intros. apply (Build_Rep invd).
   destruct x; introv KX KY; inverts KX; inverts KY; prove_rep.
 Defined.
+
+(** invariant *)
 
 Fixpoint splitin A (Q:list (A*A)) : list A :=
   match Q with

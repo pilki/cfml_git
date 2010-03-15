@@ -30,27 +30,13 @@ Inductive inv : set -> LibSet.set T -> Prop :=
       C =' (\{Y} \u A \u B) ->
       inv (Node a y b) C.
 
+(** model *)
+
 Global Instance set_rep : Rep set (LibSet.set T).
 Proof.
   apply (Build_Rep inv).
   induction x; introv HX HY; inverts HX; inverts HY; subst; prove_rep.
 Defined.
-
-(** termination relation *)
-
-Inductive subtree : set -> set -> Prop :=
-  | subtree_left : forall a x b, subtree a (Node a x b)
-  | subtree_right : forall a x b, subtree b (Node a x b).
-
-Hint Constructors subtree.
-
-Lemma subtree_wf : wf subtree.
-Proof.
-  intros e. induction e;
-    constructor; introv H; inversions~ H.
-Qed.
-
-Hint Resolve subtree_wf : wf.
 
 (** automation *)
 
@@ -66,11 +52,15 @@ Ltac myauto cont :=
 
 Ltac auto_tilde ::= myauto ltac:(fun _ => eauto).
 Ltac auto_star ::= try solve [ intuition (eauto with set) ].
-
-Hint Extern 1 (rep _ _) => simpl. 
+Hint Extern 1 (@lt nat _ _ _) => simpl; math.
 Hint Constructors inv.
 
 (** useful facts *)
+Fixpoint size t :=
+  match t with
+  | Empty => 0%nat
+  | Node a _ b => (1 + size a + size b)%nat
+  end.
 
 Lemma foreach_gt_notin : forall (A : LibSet.set T) (X Y : T),
   foreach (is_gt Y) A -> lt X Y -> X \notin A.
@@ -92,7 +82,7 @@ Hint Extern 1 (RegisterSpec empty) => Provide empty_spec.
 Lemma member_spec : RepTotal member (X;elem) (E;set) >> 
   bool_of (X \in E).
 Proof.
-  xinduction (unproj22 elem subtree).  
+  xinduction (fun (x:elem) e => size e).  
   xcf. intros x e IH X E RepX RepE. inverts RepE as. 
   xgo. rewrite in_empty_eq. auto.
   introv IA IB RepY LtA GtB EqE. subst E. xgo~.
@@ -112,7 +102,7 @@ Hint Extern 1 (RegisterSpec member) => Provide member_spec.
 Lemma insert_spec : RepTotal insert (X;elem) (E;set) >>
   \{X} \u E ; set.
 Proof.
-  xinduction (unproj22 elem subtree).  
+  xinduction (fun (x:elem) e => size e).  
   xcf. intros x e IH X E RepX RepE. 
   inverts RepE; [| subst E]; xgo~ '_m1 XsubstAlias.
   applys* inv_node.

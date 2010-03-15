@@ -32,6 +32,7 @@ OKACOD=\
 	okasaki/RealTimeQueue_ml.v \
 	okasaki/ImplicitQueue_ml.v \
 	okasaki/BootstrappedQueue_ml.v \
+	okasaki/BankersDeque_ml.v \
 	okasaki/RedBlackSet_ml.v \
 	okasaki/LeftistHeap_ml.v \
 	okasaki/PairingHeap_ml.v \
@@ -61,7 +62,8 @@ OKAQ=\
 	okasaki/PhysicistsQueue_proof.v \
 	okasaki/RealTimeQueue_proof.v \
 	okasaki/ImplicitQueue_proof.v \
-	okasaki/BootstrappedQueue_proof.v 
+	okasaki/BootstrappedQueue_proof.v \
+	okasaki/BankersDeque_proof.v 
 
 OKAH=\
 	okasaki/LeftistHeap_proof.v \
