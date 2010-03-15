@@ -7,28 +7,27 @@ Module BatchedQueueSpec <: QueueSigSpec.
 
 (** instantiations *)
 
-Module Import Q <: MLQueue := MLBatchedQueue.
-Import MLBatchedQueue.
-
+Module Import Q <: MLQueue := MLBatchedQueue.
 (** invariant *)
 
-Global Instance queue_rep `{Rep a A} : Rep (queue a) (list A).
-Proof. intros. apply (Build_Rep (
-  fun (q:queue a) (Q:list A) =>
+Definition inv `{Rep a A} (q:queue a) (Q:list A) :=
   let (f,r) := q in 
-     Forall2 rep (f ++ rev r) Q
-  /\ (f = nil -> r = nil))).
-  destruct x; introv [? ?] [? ?].
-  asserts: (rep (l++rev l0) X). auto~.
-  asserts: (rep (l++rev l0) Y). auto~.
-  prove_rep. (* todo: improve *)
+     rep (f ++ rev r) Q
+  /\ (f = nil -> r = nil).
+
+(** model *)
+
+Global Instance queue_rep `{Rep a A} : Rep (queue a) (list A).
+Proof. 
+  intros. apply (Build_Rep inv).
+  destruct x; introv [? ?] [? ?]. prove_rep.
 Defined.
 
 (** automation *)
 
+Hint Unfold inv.
 Hint Constructors Forall2.
 Hint Resolve Forall2_last.
-Hint Extern 1 (@rep (queue _) _ _ _ _) => simpl.
 Ltac auto_tilde ::= eauto.
 
 (** useful facts *)
@@ -60,7 +59,7 @@ Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
 
 Lemma checkf_spec : 
   Spec checkf (q:queue a) |R>>
-    forall Q, (let (f,r) := q in Forall2 rep (f ++ rev r) Q) ->
+    forall Q, (let (f,r) := q in rep (f ++ rev r) Q) ->
     R (Q ; queue a).
 Proof.
   xcf. intros (f,r) l K. xgo; rew_list in K.
@@ -72,7 +71,7 @@ Hint Extern 1 (RegisterSpec checkf) => Provide checkf_spec.
 Lemma snoc_spec : 
   RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ; queue a.
 Proof.
-  xcf. intros [f r] x. introv [H M] RX. xgo~. 
+  xcf. intros [f r] x. introv [H M] RX. simpl in H. xgo~. 
   rewrite~ app_rev_cons. ximpl~.
 Qed.
 

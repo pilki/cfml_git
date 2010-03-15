@@ -1,16 +1,20 @@
 Set Implicit Arguments.
 Require Import FuncTactics HeapSig_ml OrderedSig_ml OrderedSig_proof.
 
-(* todo: move *)
+(** Definition of the minimum of a multiset *)
 
 Definition min_of `{Le A} (E:multiset A) (X:A) := 
   X \in E /\ forall_ Y \in E, X <= Y.
+
+(** Definition of the removal of the minimum from a multiset *)
 
 Definition removed_min  `{Le A} (E E':multiset A) :=
   exists X, min_of E X /\ E = \{X} \u E'.
 
 Hint Unfold removed_min.
 
+
+(* Signature for heaps *)
 
 Module Type HeapSigSpec.
 

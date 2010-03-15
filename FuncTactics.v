@@ -2,7 +2,7 @@ Set Implicit Arguments.
 Require Export FuncDefs FuncPrint FuncPrim.
 
 
-
+Hint Extern 1 (rep _ _) => simpl.
 
 (* todo: move to libtactics *)
 
@@ -613,6 +613,8 @@ Tactic Notation "ximpl" "~" :=
   ximpl; xauto_tilde.
 Tactic Notation "ximpl" "*" :=
   ximpl; xauto_star.
+
+
 
 
 (*--------------------------------------------------------*)
@@ -1435,6 +1437,18 @@ Tactic Notation "xrep" "*" constr(E) :=
   xrep_core_using_with E ltac:(fun _ => xauto_star).
 Tactic Notation "xrep" "*" :=
   xrep_core_with ltac:(fun _ => xauto_star).
+
+Tactic Notation "ximpl_rep" :=
+   let x := fresh "x" in let H := fresh "H" x in
+   intros x H; xrep in H; xrep.
+Tactic Notation "ximpl_rep" "as" simple_intropattern(x) :=
+   let H := fresh "H" x in
+   intros x H; xrep in H; xrep.
+Tactic Notation "ximpl_rep" "as" simple_intropattern(PX):=
+   let x := fresh "x" in let H := fresh "H" x in 
+   let X := fresh "X" in let RX := fresh "R" X in
+   intros x H; xrep in H as X RX PX; xrep.
+
 
 
 (************************************************************)

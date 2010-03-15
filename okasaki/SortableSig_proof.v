@@ -1,6 +1,7 @@
 Set Implicit Arguments.
 Require Import FuncTactics SortableSig_ml OrderedSig_ml OrderedSig_proof.
 
+(** Definition of a sorted list *)
 
 Inductive sorted `{Le A} : list A -> multiset A -> Prop :=
   | sorted_nil : sorted nil \{}
@@ -9,6 +10,8 @@ Inductive sorted `{Le A} : list A -> multiset A -> Prop :=
       foreach (le X) E ->
       sorted (X::S) (\{X} \u E).
 
+
+(** Signature for sortable collections *)
 
 Module Type SortableSigSpec.
 

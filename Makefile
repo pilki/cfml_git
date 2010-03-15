@@ -24,6 +24,8 @@ OKACOD=\
 	okasaki/FsetSig_ml.v \
 	okasaki/HeapSig_ml.v \
 	okasaki/SortableSig_ml.v \
+	okasaki/RandomAccessListSig_ml.v \
+	okasaki/CatenableListSig_ml.v \
 	okasaki/BatchedQueue_ml.v \
 	okasaki/BankersQueue_ml.v \
 	okasaki/PhysicistsQueue_ml.v \
@@ -39,42 +41,49 @@ OKACOD=\
 	okasaki/RedBlackSet_ml.v \
 	okasaki/UnbalancedSet_ml.v \
 	okasaki/BottomUpMergeSort_ml.v \
+	okasaki/BinaryRandomAccessList_ml.v \
 	okasaki/AltBinaryRandomAccessList_ml.v \
 	okasaki/Okasaki_ml.v 
 
-OKA=\
+OKAS=\
 	okasaki/QueueSig_proof.v \
 	okasaki/DequeSig_proof.v \
 	okasaki/OrderedSig_proof.v \
 	okasaki/FsetSig_proof.v \
 	okasaki/HeapSig_proof.v \
 	okasaki/SortableSig_proof.v \
+	okasaki/RandomAccessListSig_proof.v \
+	okasaki/CatenableListSig_proof.v 
+
+OKAQ=\
 	okasaki/BatchedQueue_proof.v \
 	okasaki/BankersQueue_proof.v \
 	okasaki/PhysicistsQueue_proof.v \
 	okasaki/RealTimeQueue_proof.v \
 	okasaki/ImplicitQueue_proof.v \
-	okasaki/BootstrappedQueue_proof.v \
+	okasaki/BootstrappedQueue_proof.v 
+
+OKAH=\
 	okasaki/LeftistHeap_proof.v \
 	okasaki/PairingHeap_proof.v \
 	okasaki/LazyPairingHeap_proof.v \
 	okasaki/BinomialHeap_proof.v \
-	okasaki/SplayHeap_proof.v \
+	okasaki/SplayHeap_proof.v 
+
+OKAO=\
 	okasaki/RedBlackSet_proof.v \
 	okasaki/UnbalancedSet_proof.v \
 	okasaki/BottomUpMergeSort_proof.v \
-	okasaki/AltBinaryRandomAccessList_proof.v 
+	okasaki/BinaryRandomAccessList_proof.v \
+	okasaki/AltBinaryRandomAccessList_proof.v \
+	okasaki/CatenableListImpl_proof.v 
+
+OKA=$(OKAS) $(OKAQ) $(OKAH) $(OKAO)
 
 NEW=\
 	okasaki/Okasaki_ml.v \
-	okasaki/RandomAccessListSig_proof.v \
 	okasaki/BinaryRandomAccessList_ml.v \
-	okasaki/BinaryRandomAccessList_proof.v 
 
-#
-#	okasaki/CatenableListImpl_ml.v \
-#	okasaki/CatenableListImpl_proof.v 
-#
 
 
 #okasaki/PhysicistsQueue_ml.v 
@@ -122,7 +131,14 @@ all: full .camldep
 full: $(ALL:.v=.vo) 
 tools: $(TOOLS:.v=.vo) 
 demo: $(DEMO:.v=.vo)
+
 oka: $(OKA:.v=.vo) $(OKACOD:.v=.vo)
+okac: $(OKACOD:.v=.vo)
+okaq: $(OKAQ:.v=.vo)
+okao: $(OKAO:.v=.vo)
+okah: $(OKAG:.v=.vo)
+okas: $(OKAS:.v=.vo)
+
 new: $(NEW:.v=.vo) 
 cod: $(COD:.v=.vo) 
 dvpt: $(DEV:.v=.vo) 
@@ -131,6 +147,15 @@ gen:
 	make -C gen
 dep: .camldep $(ALL:.v=.d)
 none:
+
+editq:
+	coqide -I lib $(OKAQ) &
+edito:
+	coqide -I lib $(OKAO) &
+edith:
+	coqide -I lib $(OKAH) &
+edits:
+	coqide -I lib $(OKAS) &
 
 libcompile:
 	make lib -C lib

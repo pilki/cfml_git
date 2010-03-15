@@ -34,10 +34,10 @@ End Polymorphic.
 End QueueSigSpec.
 
 
-
-
-Definition rep_from_eq : forall A, Rep A A.
-Proof. intros. apply (Build_Rep eq). congruence. Defined.
+(** The same signature, but with an explicit type for
+    the implementation of Queue, to work around the fact
+    that Coq does not carry "positivity" information 
+    about type constructors in signatures. *)
 
 Module Type QueueBisSigSpec.
 

@@ -12,11 +12,13 @@ Global Instance set_rep : Rep set (LibSet.set T).
 
 Parameter empty_spec : rep empty \{}.
 
-Parameter insert_spec : RepTotal insert (X;elem) (E;set) >>
-  \{X} \u E ; set.
+Parameter insert_spec : 
+  RepTotal insert (X;elem) (E;set) >>
+    \{X} \u E ; set.
 
-Parameter member_spec : RepTotal member (X;elem) (E;set) >> 
-  bool_of (X \in E).
+Parameter member_spec : 
+  RepTotal member (X;elem) (E;set) >> 
+    bool_of (X \in E).
 
 End FsetSigSpec.
 

@@ -1,3 +1,7 @@
+Definition rep_from_eq : forall A, Rep A A.
+Proof. intros. apply (Build_Rep eq). congruence. Defined.
+
+
 Axiom lt_to_le : forall x y : T,
   x < y -> x <= y.
 Hint Immediate lt_to_le.

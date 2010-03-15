@@ -32,7 +32,6 @@ Defined.
 
 Hint Constructors Forall2.
 Hint Resolve Forall2_last.
-Hint Extern 1 (@rep (queue _) _ _ _ _) => simpl.
 Hint Unfold inv.
 
 Ltac auto_tilde ::= auto 8 with maths.
@@ -93,8 +92,7 @@ Hint Extern 1 (RegisterSpec checkw) => Provide checkw_spec.
 
 Lemma check_spec : 
   Spec check (q:queue a) |R>>
-    forall Q, inv false false q Q ->
-    R (Q ; queue a).
+    forall Q, inv false false q Q -> R (Q ; queue a).
 Proof.
   xcf. intros ((((w,lenf),f),lenr),r) Q (g&RQ&DF&LF&LR&LE&_).
   xgo; try ximpl; eauto.
@@ -131,8 +129,16 @@ Lemma tail_spec :
      Q <> nil -> R (is_tail Q ;; queue a).
 Proof.
   xcf. intros ((((w,lenf),f),lenr),r) Q RQ NE.
+  xmatch.
+  xgo. forwards*: rep_not_nil.
+  xcleanpat. intuit RQ. rew_list in *.
+   xapp_noapply. fapplys HR; eauto. ximpl*.
+   xapp~.
+  
+
+
   forwards*: rep_not_nil. destruct Q. false. intuit RQ.
-  subst f. xmatch. xcleanpat. rew_list in *. xapp~. calc_partial_eq tt.
+  subst f. xmatch. xcleanpat. rew_list in *. xapp~. xclean.
   subst. xapp~. (* todo: pb de xauto qui fait reflequal *)
   inverts H0. exists x. rewrite app_assoc. splits*. rew_length~. ximpl*.
 Qed.
