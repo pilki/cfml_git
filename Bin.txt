@@ -700,3 +700,10 @@ Hint Resolve Forall2_unique : rep.
 Definition rep_from_eq : forall A, Rep A A.
 Proof. intros. apply (Build_Rep eq). congruence. Defined.
 *)
+
+(*
+Lemma rep_null : forall `{Rep a A},
+  rep Null (@nil A).
+Proof. exists~ __. Qed.
+Hint Resolve @rep_null.
+*)
