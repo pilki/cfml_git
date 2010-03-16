@@ -1,3 +1,4 @@
+open Okasaki
 open OrderedSig
 open FsetSig
 
@@ -18,12 +19,9 @@ struct
          else true
 
    let balance = function
-     | (Black, Node (Red, Node (Red, a, x, b), y, c), z, d) ->
-       Node (Red, Node (Black, a, x, b), y, Node (Black, c, z, d))
-     | (Black, Node (Red, a, x, Node (Red, b, y, c)), z, d) ->
-       Node (Red, Node (Black, a, x, b), y, Node (Black, c, z, d))
-     | (Black, a, x, Node (Red, Node (Red, b, y, c), z, d)) ->
-       Node (Red, Node (Black, a, x, b), y, Node (Black, c, z, d))
+     | (Black, Node (Red, Node (Red, a, x, b), y, c), z, d)
+     | (Black, Node (Red, a, x, Node (Red, b, y, c)), z, d) 
+     | (Black, a, x, Node (Red, Node (Red, b, y, c), z, d))
      | (Black, a, x, Node (Red, b, y, Node (Red, c, z, d))) ->
        Node (Red, Node (Black, a, x, b), y, Node (Black, c, z, d))
      | (c,a,x,y) -> Node (c,a,x,y)
@@ -37,7 +35,7 @@ struct
             else s
          in
       match ins s with
-      | Empty -> failwith "impossible"
+      | Empty -> raise BrokenInvariant
       | Node (_, a, y, b) -> Node (Black, a, y, b)
 end
 

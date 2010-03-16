@@ -99,7 +99,9 @@ Qed.
 (** verification *)
 
 Lemma empty_spec : rep empty \{}.
-Proof. apply empty_cf. xret~. Qed.
+Proof. 
+  apply empty_cf. xret~. 
+Qed.
 
 Hint Extern 1 (RegisterSpec empty) => Provide empty_spec.
 
@@ -153,13 +155,17 @@ Hint Extern 1 (RegisterSpec merge) => Provide merge_spec.
 
 Lemma insert_spec : RepTotal insert (X;O.t) (E;heap) >>
   \{X} \u E ; heap.
-Proof. xgo~. ximpl. equates* 1. Qed.
+Proof. 
+  xgo~. ximpl. equates* 1. 
+Qed.
 
 Hint Extern 1 (RegisterSpec insert) => Provide insert_spec.
 
 Lemma find_min_spec : RepSpec find_min (E;heap) |R>>
   E <> \{} -> R (min_of E ;; O.t).
-Proof. xcf. intros e E RepE HasE. inverts RepE; xgo*. Qed.
+Proof. 
+  xcf. intros e E RepE HasE. inverts RepE; xgo*.
+Qed.
 
 Hint Extern 1 (RegisterSpec find_min) => Provide find_min_spec.
 

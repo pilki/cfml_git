@@ -25,6 +25,8 @@ Inductive inv `{Rep a A} : cat a -> list A -> Prop :=
       Forall (<> nil) Ls ->
       inv (Struct x q) L.
 
+(** model *)
+
 Global Instance cat_rep `{Rep a A} : Rep (cat a) (list A).
 Proof.
   intros. apply (Build_Rep inv).

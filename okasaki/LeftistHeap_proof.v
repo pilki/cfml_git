@@ -117,7 +117,9 @@ Qed.
 Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
 
 Lemma rank_spec : Total rank h >> (= node_rank h).
-Proof. xgo~. Qed.
+Proof.  
+  xgo~. 
+Qed.
 
 Hint Extern 1 (RegisterSpec rank) => Provide rank_spec.
 

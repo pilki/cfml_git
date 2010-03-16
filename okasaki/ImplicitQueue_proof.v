@@ -98,7 +98,9 @@ Qed.
 
 Lemma empty_spec : forall `{Rep a A},
   rep (@empty a) (@nil A).
-Proof. intros. gen A H. apply (empty_cf a). xgo~. Qed.
+Proof. 
+  intros. gen A H. apply (empty_cf a). xgo~.
+Qed.
 
 Hint Extern 1 (RegisterSpec empty) => Provide empty_spec.
 

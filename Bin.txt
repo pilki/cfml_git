@@ -506,7 +506,8 @@ Axiom go'' :forall f n  (P1 P2 : (nat->Prop) -> Prop),
  (f = eq n -> (P1 f /\ P2 f)).
 *)
 *)
-(* todo: move *)
+
+(* todo: move *)
 
 
 
@@ -707,3 +708,19 @@ Lemma rep_null : forall `{Rep a A},
 Proof. exists~ __. Qed.
 Hint Resolve @rep_null.
 *)
+
+
+     (* todo : or patterns 
+        let balance = function
+     | (Black, Node (Red, Node (Red, a, x, b), y, c), z, d) ->
+       Node (Red, Node (Black, a, x, b), y, Node (Black, c, z, d))
+     | (Black, Node (Red, a, x, Node (Red, b, y, c)), z, d) ->
+       Node (Red, Node (Black, a, x, b), y, Node (Black, c, z, d))
+     | (Black, a, x, Node (Red, Node (Red, b, y, c), z, d)) ->
+       Node (Red, Node (Black, a, x, b), y, Node (Black, c, z, d))
+     | (Black, a, x, Node (Red, b, y, Node (Red, c, z, d))) ->
+       Node (Red, Node (Black, a, x, b), y, Node (Black, c, z, d))
+     | (c,a,x,y) -> Node (c,a,x,y)
+
+*)
+

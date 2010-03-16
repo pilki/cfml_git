@@ -56,6 +56,7 @@ Hint Extern 1 (@lt nat _ _ _) => simpl; math.
 Hint Constructors inv.
 
 (** useful facts *)
+
 Fixpoint size t :=
   match t with
   | Empty => 0%nat
@@ -104,11 +105,12 @@ Lemma insert_spec : RepTotal insert (X;elem) (E;set) >>
 Proof.
   xinduction (fun (x:elem) e => size e).  
   xcf. intros x e IH X E RepX RepE. 
-  inverts RepE; [| subst E]; xgo~ '_m1 XsubstAlias.
+  inverts RepE; [| subst E]; xgo~.
   applys* inv_node.
   applys* inv_node.
   applys* inv_node. 
-  asserts_rewrite (X = Y). applys~ nlt_nslt_to_eq. applys* inv_node. 
+  asserts_rewrite (X = Y). applys~ nlt_nslt_to_eq. 
+   subst. applys* inv_node. 
 Qed.
  
 Hint Extern 1 (RegisterSpec insert) => Provide insert_spec.

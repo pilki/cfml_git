@@ -160,8 +160,13 @@ edith:
 edits:
 	coqide -I lib $(OKAS) &
 
+stats:
+	@php -f stats.php $(OKAQ) $(OKAH) $(OKAO) $(OKAS) > stats.txt
+	@echo "STAT COMPUTED"
+
 libcompile:
 	make lib -C lib
+
 #cp lib/*.vo .
 
 lib: libcompile
@@ -224,12 +229,12 @@ $(MYOCAMLDEP):
 include .camldep
 #include .libdep
 
-ifeq ($(findstring $(MAKECMDGOALS),clean gen dep .camldep),)
+ifeq ($(findstring $(MAKECMDGOALS),stats clean gen dep .camldep),)
 include .camldep
 include .libdep
 endif
 
-COLD=clean cleanall dep new test gen .camldep
+COLD=clean cleanall dep new test gen stats .camldep
 ifeq ($(findstring $(MAKECMDGOALS),$(COLD)),)
 include $(ALL:.v=.d)
 endif

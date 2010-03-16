@@ -193,7 +193,7 @@ Lemma lookup_spec : forall `{Rep a A},
   RepSpec lookup (i;int) (L;rlist a) |R>>
      ZInbound i L -> R (ZNth i L ;; a).
 Proof.
-  intros. xintros. skip. intros i. gen_eq n: (abs i). gen a A H i.
+  intros. xintros. intros i. gen_eq n: (abs i). gen a A H i.
   apply~ eq_gt_induction; clears n.
   introv IH. introv. introv N RI [b RL] Bi. inverts RI. subst n. 
   xcf_app. xret~. destruct _x0 as (i,f). inverts P_x0. xmatch.
