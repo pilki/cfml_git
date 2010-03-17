@@ -26,6 +26,30 @@ Require Import FuncTactics LibInt.
 
 Require Import half_ml. 
 
+(* TODO
+Lemma half_specif : forall n x,
+  n >= 0 -> x = 2 * n -> app_1 half x (= n).
+Proof.
+  induction n using peano_induction.
+  apply half_cf. (* apply the characteristic formula *)
+  repeat intro. auto. (* prove [is_spec_1] for the specification *)
+  intros n IH k Pos Eq. (* introduces arguments and pre-conditions *)
+  split; intros C1; fold_bool; fold_prop. (* case analysis on [n = 0] *)
+  hnf. math. (* prove [n = k + k] and [n = 0] implies [k = 0] *)
+  split; intros C2; fold_bool; fold_prop. (* case analysis on [n = 1] *)
+  hnf. math. (* prove that [n = 1] is absurd considering [n = k + k] *)
+  esplit. split. (* reason on the let binding *)
+  (* --reasoning on the recursive call-- *)
+  apply (spec_elim_1_1 IH). (* apply the elimination lemma *)
+  intros R WR HR. apply HR with (k:=k-1). (* start proving its hypothesis *)
+    unfolds. math. (* show that the measure decreases *)
+    math. (* check [k-1 >= 0] *)
+    math. (* check [n-2 = k-1 + k-1] *)
+  (* --reasong on the addition [_x21+1]-- *)
+  intros k' Hk'. (* use the name [k'] in place of [_x21] *)
+  hnf. math. (* concludes by showing [k' = k-1] implies [1+k' = k] *)
+Qed.
+*)
 
 (** This file first contains an axiom to describe the function [half].
 
@@ -107,19 +131,42 @@ Ltac math_0 ::= unfold downto in *.
     until we can rely on an efficient decision procedure with
     support for multiplication. *)
 
-Lemma half_spec_1 : Spec_1 half (fun n R => 
-   forall k:int, k >= 0 -> n = 2* k -> R (= k)).
-
-
 
 (************************************************************)
 (* ** Verification: step 1 *)
+
+Lemma half_spec_0 : Spec_1 half (fun x R => 
+   forall n:int, n >= 0 -> x = 2*n -> R (= n)).
+Proof.
+  apply (spec_induction_1 (int_downto_wf 0)). 
+  apply half_cf. repeat intro; auto. (* characteristic formula *)
+  intros x IH n Pos Eq. 
+  split; intros C1; fold_bool; fold_prop. (* case analysis on n *)
+  hnf. math. (* prove [x = 2*n] and [x = 0] implies [n = 0] *)
+  split; intros C2; fold_bool; fold_prop. (* case analysis on n *)
+  hnf. math. (* prove that [x = 1] is absurd since [x = 2*n] *)
+  esplit. split. (* reason on the let binding *)
+  (* --reasoning on the recursive call-- *)
+  eapply (spec_elim_1_1' IH). (* apply the elimination lemma *)
+  intros R HR. apply HR with (n:=n-1). (* prove premises *)
+    unfolds. math. (* show that the measure decreases *)
+    math. (* check [n-1 >= 0] *)
+    math. (* check [x-2 = 2*(n-1) *)
+    apply pred_le_refl. (* post condition is infered *)
+  (* --reasong on the addition [_x21+1]-- *)
+  intros n' Hn'. (* use the name [n'] in place of [_x21] *)
+  hnf. math. (* concludes: [n' = n-1] implies [1+n' = n] *)
+Qed.
+
+
 
 (** The proof of this lemma can be carried out using 
     only standard Coq tactics. ([math] is an optimized
     version of [omega], the linear-arithmetic decision
     procedure. *)
 
+Lemma half_spec_1 : Spec_1 half (fun n R => 
+   forall k:int, k >= 0 -> n = 2* k -> R (= k)).
 Proof.
   apply (spec_induction_1 (int_downto_wf 0)). (* set up the induction *)
   apply half_cf. (* apply the characteristic formula *)
@@ -131,11 +178,12 @@ Proof.
   hnf. math. (* prove that [n = 1] is absurd considering [n = k + k] *)
   esplit. split. (* reason on the let binding *)
   (* --reasoning on the recursive call-- *)
-  apply (spec_elim_1_1 IH). (* apply the elimination lemma *)
-  intros R WR HR. apply HR with (k:=k-1). (* start proving its hypothesis *)
+  eapply (spec_elim_1_1' IH). (* apply the elimination lemma *)
+  intros R HR. apply HR with (k:=k-1). (* start proving its hypothesis *)
     unfolds. math. (* show that the measure decreases *)
     math. (* check [k-1 >= 0] *)
     math. (* check [n-2 = k-1 + k-1] *)
+    apply pred_le_refl. (* post condition is infered *)
   (* --reasong on the addition [_x21+1]-- *)
   intros k' Hk'. (* use the name [k'] in place of [_x21] *)
   hnf. math. (* concludes by showing [k' = k-1] implies [1+k' = k] *)
@@ -154,19 +202,18 @@ Qed.
     with the keyword [Spec] and binding the arguments and the
     predicate [R] without an explicit [fun] construction. *)
 
-Lemma half_spec_2 : Spec half n |R>>
-    forall k:int, k >= 0 -> n = 2*k -> R (= k).
+Lemma half_spec_2 : Spec half x |R>>
+    forall n:int, n >= 0 -> x = 2*n -> R (= n).
 Proof.
   xinduction (int_downto_wf 0). (* set up the induction *)
   xcf. (* apply the characteristic formula *)
   introv IH Pos Eq. (* name pre-conditions explicitly *)
-  xcase. (* case analysis following if/else-if/else structure *)
+  xcase. (* case analysis following if/else-if/else *)
   xret. math. (* completes the case [n = 0] *)
   xfail. math. (* completes the case [n = 1] *)
   xlet as k'. (* reason on the let binding *)
-  xapp_noapply. applys HR (k-1); math. apply pred_le_refl. 
-    (* reason on recursive call *)
-  xret. math.
+  xapp (n-1); math. (* reason on recursive call *)
+  xret. math. (* conclude *)
 Qed.
 
 
@@ -223,11 +270,11 @@ Qed.
 
 Ltac auto_tilde ::= try solve [ auto | math ].
 
-Lemma half_spec_5 : Spec half n |R>>
-  forall k:int, k >= 0 -> n = 2*k -> R (= k).
+Lemma half_spec_5 : Spec half x |R>>
+  forall n:int, n >= 0 -> x = 2*n -> R (= n).
 Proof.
   xinduction (int_downto_wf 0). 
-  xcf. intros. xgo~ '_x2 (Xargs (k-1)).
+  xcf. intros. xgo~ '_x2 (Xargs (n-1)).
 Qed.
 
 

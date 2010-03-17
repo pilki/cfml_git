@@ -10,10 +10,10 @@
 
 
 
-let rec half n = 
-   if n = 0 then 0
-   else if n = 1 then failwith "error"
-   else 1 + half (n-2)
+let rec half x = 
+   if x = 0 then 0
+   else if x = 1 then failwith "error"
+   else 1 + half (x-2)
 
 
 

@@ -89,3 +89,4 @@
 
 *) replace   intros. xintros.  with   xintros
 
+*) Splay heap : use repspec for partition_spec 
