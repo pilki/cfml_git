@@ -177,7 +177,7 @@ Proof.
   rew_foreach H6. rew_foreach LtX. my_intuit.
   applys* (>>> inv_node (\{X} \u E1 \u A0) Y0 (\{Y} \u B0 \u B)). 
   destruct H12 as [|[? ?]]; auto_false.
-  (* balance 3 *) 
+  (* balance 4 *) 
   xcleanpat. inverts Inv2. inverts H4. simpls. subst.
   destruct Ixor as [[? ?]|[? ?]]; substb i1 i2.
   rew_foreach H10. rew_foreach LtX. my_intuit.

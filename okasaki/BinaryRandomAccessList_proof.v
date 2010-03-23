@@ -7,7 +7,8 @@ Module BinaryRandomAccessListSpec <: RandomAccessListSigSpec.
 
 (** instantiations *)
 
-Module Import R <: MLRandomAccessList := MLBinaryRandomAccessList. 
+Module Import R <: MLRandomAccessList := MLBinaryRandomAccessList. Import MLBinaryRandomAccessList.
+
 (** invariant *)
 
 Section Polymorphic.
@@ -42,34 +43,24 @@ Inductive inv : int -> rlist a -> list A -> Prop :=
       p >= 0 ->
       inv p (One t :: ts) L'.
 
-(*
-Fixpoint size (t:tree) : nat :=
-  let '(Node r x ts) := t in 
-  (1 + List.fold_right (fun t x => (x + size t)%nat) 0%nat ts)%nat.
-
-Lemma size_pos : forall t, size t > 0%nat.
-Proof. destruct t. simpl. math. Qed.
+(** model *)
 
 Lemma btree_unique : forall t n1 n2 E1 E2, 
   btree n1 t E1 -> btree n2 t E2 -> E1 = E2.
 Proof. 
-  intros t. gen_eq m: (size t). gen t.
-  induction m using peano_induction.
-  introv M HX HY. subst m.
-  inverts HX; inverts HY. prove_rep.
-  maths (r = r0). subst. fequals.
-  applys* H. simpl; math.
-  applys* H. simpl. forwards: (size_pos t0). math.
+  introv H1. gen n2 E2.
+  induction H1; introv H2; inverts H2; subst; prove_rep.
 Qed.
 
 Hint Resolve btree_unique : rep.
-*)
-
-(** model *)
 
 Global Instance rlist_rep : Rep (rlist a) (list A).
 Proof.
-  apply (Build_Rep (inv 0)). skip.
+  apply (Build_Rep (inv 0)).
+  cuts*: (forall ts p1 p2 E1 E2, 
+    inv p1 ts E1 -> inv p2 ts E2 -> E1 = E2).
+  introv K1. gen p2 E2. 
+  induction K1; introv K2; inverts K2; subst; prove_rep.
 Defined.
 
 End Polymorphic.
@@ -79,9 +70,11 @@ Implicit Arguments inv [[a] [A] [RA]].
 
 (** automation *)
 
-Hint Extern 1 (@rep (rlist _) _ _ _ _) => simpl.
 Hint Constructors btree inv.
 Hint Extern 1 (@lt nat _ _ _) => rew_list; math.
+Hint Extern 1 (@rep Z _ _ _ _) => reflexivity.
+Hint Resolve ZNth_zero ZUpdate_here ZUpdate_not_nil.
+Hint Resolve app_not_empty_l app_not_empty_r.
 
 Section Polymorphic'.
 Variables (a A : Type) (RA:Rep a A).
@@ -110,8 +103,6 @@ Definition Size (t:tree a) :=
   | Node w _ _ => w
   end.
 
-Axiom pow2_succ : forall n, 2^(n+1) = 2*2^n.
-
 Lemma btree_size_correct : forall p t L,
   btree p t L -> Size t = 2^p.
 Proof. introv Rt. inverts~ Rt. Qed.
@@ -124,27 +115,11 @@ Proof.
   unfolds eq'. subst. rew_length. rewrite~ pow2_succ.
 Qed.
 
-
 Lemma btree_size_pos : forall p t L,
   btree p t L -> p >= 0.
 Proof. introv Rt. induction Rt; unfolds eq'; math. Qed.
-Hint Resolve btree_size_pos.
 
-(*
-Lemma inv_size_pos : forall p ts L,
-  inv p ts L -> p >= 0.
-Proof. introv Rts. induction Rts; unfolds eq'. auto. math.  Qed.
 Hint Resolve btree_size_pos.
-*)
-
-(* needed?
-Lemma btree_zero_inv : forall t L,
-  btree 0 t L -> exists x, t = Leaf x.
-Proof. 
-  introv H. inverts H. eauto.
-  lets: (btree_size_pos H0). math.
-Qed.
-*)
 
 Lemma to_empty : forall p L,
   inv p nil L -> L = nil.
@@ -154,9 +129,6 @@ Lemma from_empty : forall p ts,
   inv p ts nil -> ts = nil.
 Proof. introv RL. inverts RL; auto_false. Qed.
 
-Axiom pow2_pos : forall n, n >= 0 -> 2^n >= 1. 
-
-(* todo: needed?*)
 Lemma btree_not_empty : forall p t L,
   btree p t L -> L <> nil.
 Proof.
@@ -164,16 +136,7 @@ Proof.
   rew_length in H. forwards~: (@pow2_pos p). math.
 Qed.
 
-Lemma app_not_empty_l : forall A (L1 L2:list A),
-  L1 <> nil -> L1 ++ L2 <> nil.
-Proof. introv NE K. apply NE. destruct~ (app_eq_nil_inv K). Qed.
-
-Lemma app_not_empty_r : forall A (L1 L2:list A),
-  L2 <> nil -> L1 ++ L2 <> nil.
-Proof. introv NE K. apply NE. destruct~ (app_eq_nil_inv K). Qed.
-
-Hint Resolve btree_not_empty app_not_empty_l app_not_empty_r.
-
+Hint Resolve btree_not_empty.
 
 (** verification *)
 
@@ -188,7 +151,7 @@ Lemma is_empty_spec :
 Proof.
   xcf. introv RL. simpl in RL. xgo.
   apply~ to_empty.
-  intro_subst_hyp. applys C. apply~ from_empty. (* todo: down C *) 
+  intro_subst_hyp. applys C. apply~ from_empty. 
 Qed.
 
 Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
@@ -238,7 +201,7 @@ Lemma uncons_tree_spec :
 Proof.
   xinduction (fun (ts:rlist a) => length ts).
   xcf. introv IH Rts Ne. xmatch.
-  xgo. inverts Rts as RT RL. inverts RL. subst. exists___; auto~. (* todo! exists~*)
+  xgo. inverts Rts as RT RL. inverts RL. subst. exists___; auto~. 
   xgo. inverts Rts.
    asserts: (L0 <> nil). intro_subst_hyp. eapply C0. fequals. apply~ from_empty.
    subst. exists___; auto~. 
@@ -278,41 +241,6 @@ Qed.
 
 Hint Extern 1 (RegisterSpec tail) => Provide tail_spec.
 
-Section Zindices.
-Implicit Types x : A.
-Implicit Types l : list A.
-Implicit Types i : int.
-
-Axiom ZNth_zero : forall x l,
-  ZNth 0 (x::l) x.
-
-Lemma ZInbound_one_pos_inv : forall i x,
-  ZInbound i (x::nil) -> i <> 0 -> False.
-Proof.
-  intros. eapply ZInbound_nil_inv. apply~ ZInbound_cons_pos_inv.
-Qed.
-
-(*
-Axiom ZInbound_app_l : forall i l1 l2,
-  ZInbound i l1 -> ZInbound i (l1++l2).
-
-Axiom ZInbound_app_r : forall i j l1 l2,
-  ZInbound j l2 -> i = length l1 + j -> ZInbound i (l1++l2).
-*)
-
-Axiom ZInbound_app_l_inv : forall i l1 l2,
-  ZInbound i (l1++l2) -> i < length l1 -> ZInbound i l1.
-
-Axiom ZInbound_app_r_inv : forall i j l1 l2,
-  ZInbound j (l1++l2) -> j = length l1 + i -> ZInbound i l2.
-(*ZInbound_app_l_inv ZInbound_app_r_inv*)
-
-
-
-End Zindices.
-
-Hint Resolve ZNth_zero .
-
 Lemma lookup_tree_spec : 
   Spec lookup_tree (i:int) (t:tree a) |R>>
     forall p L, btree p t L -> ZInbound i L -> R (ZNth i L ;; a).
@@ -322,19 +250,37 @@ Proof.
   xgo. auto~. apply~ ZInbound_one_pos_inv.
   xif. subst. rewrite pow2_succ in C0. rewrite div2_odd in C0. xapp~. 
     subst. apply~ ZInbound_app_l_inv. rewrite~ (length_correct H).
-    ximpl as l. xrep in Hx. xrep. (* todo: ximpl_rep *) 
+    ximpl as l. xrep in Hx. xrep. 
      apply~ ZNth_app_l.
   subst. rewrite pow2_succ in C0. rewrite div2_odd in C0.
    rewrite pow2_succ. rewrite div2_odd. xapp~. 
     apply~ ZInbound_app_r_inv. rewrite~ (length_correct H).
-    ximpl as l. xrep in Hx. xrep. (* todo: ximpl_rep *) 
+    ximpl as l. xrep in Hx. xrep. 
      apply~ ZNth_app_r. rewrite~ (length_correct H).
-  (*todo: cleanup *)
 Qed.
 
-Hint Extern 1 (@rep Z _ _ _ _) => reflexivity.
-
 Hint Extern 1 (RegisterSpec lookup_tree) => Provide lookup_tree_spec.
+
+Lemma update_tree_spec : 
+  Spec update_tree (i:int) (x:a) (t:tree a) |R>>
+    forall p X L, rep x X -> btree p t L -> ZInbound i L -> 
+    R (fun t' => exists L', btree p t' L' /\ ZUpdate i X L L').
+Proof.
+  xinduction (fun (i:int) (x:a) t => tree_size t).
+  xcf. intros i x t. introv IH Rx Rt Bi. inverts Rt; xmatch.
+  xgo. xrep~. apply~ ZInbound_one_pos_inv.
+  xif. subst. rewrite pow2_succ in C0. rewrite div2_odd in C0. xapp~. 
+    subst. apply~ ZInbound_app_l_inv. rewrite~ (length_correct H).
+    xret. xrep in P_x7. xrep~. apply~ ZUpdate_app_l.
+  subst. rewrite pow2_succ in C0. rewrite div2_odd in C0.
+   rewrite pow2_succ. rewrite div2_odd. xapp~. 
+    apply~ ZInbound_app_r_inv. rewrite~ (length_correct H).
+    xret. xrep in P_x4. xrep~. 
+      constructors~. rewrite~ pow2_succ.
+      apply~ ZUpdate_app_r. rewrite~ (length_correct H). 
+Qed.
+
+Hint Extern 1 (RegisterSpec update_tree) => Provide update_tree_spec.
 
 Lemma lookup_spec_ind : 
   Spec lookup (i:int) (ts:rlist a) |R>>
@@ -356,56 +302,35 @@ Lemma lookup_spec :
   RepSpec lookup (i;int) (L;rlist a) |R>>
      ZInbound i L -> R (ZNth i L ;; a).
 Proof.
-  xweaken lookup_spec_ind. intros. inverts H1. simpl in H2.
-  applys H. fapplys H0; auto~. ximpl_nointros.  
+  xweaken lookup_spec_ind. introv W H Ri Rts Bi.
+  inverts Ri. simpl in Rts. apply~ H.
 Qed.
 
-(* todo: similarly *)
-Lemma update_spec : 
+Lemma update_spec_ind : 
+  Spec update (i:int) (x:a) (ts:rlist a) |R>>
+    forall p X L, rep x X -> inv p ts L -> ZInbound i L -> 
+    R (fun ts' => exists L', inv p ts' L' /\ ZUpdate i X L L').
+Proof.
+  xinduction (fun (i:int) (x:a) (ts:rlist a) => length ts).
+  xcf. intros i x ts. introv IH Rx Rts Bi. xmatch; inverts Rts.
+  xgo. apply~ ZInbound_nil_inv.
+  xgo~. xrep in P_x1 as L'. xrep~. 
+  forwards~: (@length_correct t).
+   forwards~: (>>> btree_size_correct t). xgo~.
+    subst. apply~ ZInbound_app_l_inv.
+    xrep in P_x7. xrep~. subst. apply~ ZUpdate_app_l.
+    subst. apply~ ZInbound_app_r_inv.
+    xrep in P_x4. xrep~. subst. apply~ ZUpdate_app_r.
+Qed.
+Lemma update_spec : 
   RepSpec update (i;int) (X;a) (L;rlist a) |R>> 
     ZInbound i L -> R (ZUpdate i X L ;; rlist a).
-Proof. skip.
+Proof.
+  xweaken update_spec_ind. introv W H Ri Rx Rts Bi.
+  inverts Ri. simpl in Rts. applys~ H.
 Qed.
 
 End Polymorphic'.
 
 End BinaryRandomAccessListSpec.
 
-
-(*
-
-Lemma inv_weaken : forall p ts L,
-  inv false p ts L -> inv true p ts L.
-Proof. introv M. inverts M; constructors~. Qed.
-
-Hint Resolve @inv_weaken.
-
-(* todo: use next one *)
-Lemma inv_strengthen : forall p ts L T,
-  inv true p ts (T++L) -> T <> nil -> inv false p ts (T++L).
-Proof.
-  introv M. gen_eq L':(T++L). gen T L. induction M; intros; subst.
-  false H0. destruct~ (nil_eq_app_inv H).
-  constructors~.
-  constructors~.
-Qed.
-
-Lemma inv_strengthen' : forall p ts L,
-  inv true p ts L -> L <> nil -> inv false p ts L.
-Proof.
-  introv M. induction M; intros; subst; tryfalse; auto~.
-Qed.
-
-
-Lemma inv_strengthen'' : forall p ts L,
-  inv true p ts L -> ts <> nil -> inv false p ts L.
-Proof.
-  introv M. induction M; intros; subst; tryfalse; auto~.
-Qed.
-
-
-
-Hint Resolve @btree_not_empty.
-(*Hint Resolve @inv_strengthen.*)
-
-*)

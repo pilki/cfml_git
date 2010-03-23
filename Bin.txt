@@ -724,3 +724,62 @@ Hint Resolve @rep_null.
 
 *)
 
+
+
+
+(*
+
+Lemma inv_weaken : forall p ts L,
+  inv false p ts L -> inv true p ts L.
+Proof. introv M. inverts M; constructors~. Qed.
+
+Hint Resolve @inv_weaken.
+
+(* todo: use next one *)
+Lemma inv_strengthen : forall p ts L T,
+  inv true p ts (T++L) -> T <> nil -> inv false p ts (T++L).
+Proof.
+  introv M. gen_eq L':(T++L). gen T L. induction M; intros; subst.
+  false H0. destruct~ (nil_eq_app_inv H).
+  constructors~.
+  constructors~.
+Qed.
+
+Lemma inv_strengthen' : forall p ts L,
+  inv true p ts L -> L <> nil -> inv false p ts L.
+Proof.
+  introv M. induction M; intros; subst; tryfalse; auto~.
+Qed.
+
+
+Lemma inv_strengthen'' : forall p ts L,
+  inv true p ts L -> ts <> nil -> inv false p ts L.
+Proof.
+  introv M. induction M; intros; subst; tryfalse; auto~.
+Qed.
+
+
+
+Hint Resolve @btree_not_empty.
+(*Hint Resolve @inv_strengthen.*)
+
+*)
+Hint Extern 1 (@rep (rlist _) _ _ _ _) => simpl.
+
+
+
+(*
+Lemma inv_size_pos : forall p ts L,
+  inv p ts L -> p >= 0.
+Proof. introv Rts. induction Rts; unfolds eq'. auto. math.  Qed.
+Hint Resolve btree_size_pos.
+*)
+
+(* needed?
+Lemma btree_zero_inv : forall t L,
+  btree 0 t L -> exists x, t = Leaf x.
+Proof. 
+  introv H. inverts H. eauto.
+  lets: (btree_size_pos H0). math.
+Qed.
+*)

@@ -90,3 +90,14 @@
 *) replace   intros. xintros.  with   xintros
 
 *) Splay heap : use repspec for partition_spec 
+
+*) Binominal heap : false~ 
+   xapp. specializes HR __. unfold uncurry2. auto~. (*todo: un simpl en trop! *)
+    ins_tree_spec : (* todo: xapp~ on rank should fold partial eq in post condition *)
+   (*  btree_inv: fix induction *)
+
+*) Binary ral
+  (*todo: cleanup lookup_tree_spec *)
+   is_empty_spec todo: down C *) 
+  (* todo! exists___; auto~ =>  exists~*)
+  (* todo: ximpl_rep *) 

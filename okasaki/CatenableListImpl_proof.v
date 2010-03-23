@@ -27,13 +27,23 @@ Inductive inv `{Rep a A} : cat a -> list A -> Prop :=
 
 (** model *)
 
+Fixpoint size a (c:cat a) : nat :=
+  match c with
+  | Empty => 0%nat
+  | Struct _ q => (1 + List.fold_right (fun c x => (x + size c)%nat) 0%nat q)%nat
+  end.
+
 Global Instance cat_rep `{Rep a A} : Rep (cat a) (list A).
 Proof.
   intros. apply (Build_Rep inv).
-  induction x; introv HX HY; inverts HX; inverts HY;
-   unfolds eq'; subst; try solve [prove_rep].
-  (*todo:inductino on size or depth ! *)
-skip.
+  intros c. gen_eq n: (size c). gen a A H.  induction n using peano_induction. introv N K1 K2. subst n.
+  inverts K1; inverts K2. prove_rep.
+  subst. fequals. prove_rep. clears X0 X1. clear H4 H11.
+  simpl in H.
+  gen Ls0. induction H2; introv M; inverts M.
+   auto. rew_concat. simpl in H. fequals.
+   apply* H. math.
+   apply~ IHForall2. intros. apply* H. math.
 Defined.
 
 (** automation  *)

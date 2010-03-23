@@ -104,8 +104,8 @@ Lemma insert_spec : RepTotal insert (X;elem) (E;set) >>
   \{X} \u E ; set.
 Proof.
   xinduction (fun (x:elem) e => size e).  
-  xcf. intros x e IH X E RepX RepE. 
-  inverts RepE; [| subst E]; xgo~.
+  xcf. intros x e IH X E RepX RepE.
+  inverts RepE; [| subst E]; xgo~. 
   applys* inv_node.
   applys* inv_node.
   applys* inv_node. 

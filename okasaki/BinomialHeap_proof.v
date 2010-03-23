@@ -123,14 +123,14 @@ Hint Resolve btree_rank_pos inv_rank_pos.
 Lemma btree_not_empty : forall E r t,
   btree r t E -> E <> \{}.
 Proof.
-  introv H. induction H. multiset_inv. rewrite H4.
-  skip. (* todo: E1 <> \{} -> E1 \u E2 <> \{} *)
+  introv H. induction H. multiset_inv.
+  rewrite H4. multiset_empty.
 Qed.
 
 Lemma btree_inv : forall E r r' x ts,
   btree r (Node r' x ts) E -> 
   r = r' /\ exists X, rep x X /\ foreach (is_ge X) E.
-Proof. (* todo: fix induction *)
+Proof. 
   introv H. sets_eq M: (Node r' x ts). gen x ts.
   induction H; intros; inverts EQM; eauto.
 Qed.
@@ -156,15 +156,6 @@ Proof.
   forwards~: (@rank_correct t). subst~.
 Qed.
 
-(* todo: redundant with inv_smaller *)
-Lemma inv_rank_smaller : forall r ts Es,
-  inv r ts Es -> inv 0 ts Es.
-Proof.
-  introv H. inverts H; simpl. auto~.
-  forwards~: (@rank_correct t).
-Qed.
-
-(* todo: check needed*)
 Lemma inv_rank_hd_cons : forall r t ts Es,
   inv r (t::ts) Es -> inv (Rank t) (t::ts) Es.
 Proof.
@@ -212,8 +203,6 @@ Proof.
   apply~ inv_smaller. eauto.  
 Qed.
 
-(* todo: check needed next 5 *)
-
 Definition Rank_hd (ts:heap) :=
   match ts with
   | nil => 0
@@ -227,41 +216,14 @@ Proof.
   forwards~: (@rank_correct t).
 Qed.
 
-Lemma Rank_hd_comp : forall r ts Es,
-  inv r ts Es -> 0 <= Rank_hd ts.
-Proof.
-  introv H. inverts H; simpl. math. 
-  forwards~: (@rank_correct t).
-Qed.
+Hint Resolve inv_rank_hd.
 
-Lemma Rank_hd_comp' : forall r ts Es,
-  inv r ts Es -> 
-  (ts = nil -> r = 0) ->
-  r <= Rank_hd ts.
-Proof.
-  introv H P. inverts H; simpl.
-  rewrite~ P. 
-  forwards~: (@rank_correct t).
-Qed.
-
-Lemma Rank_hd_comp'' : forall r ts Es,
-  inv r ts Es -> ts <> nil ->
-  r <= Rank_hd ts.
-Proof.
-  introv H P. inverts H; simpl. false. 
-  forwards~: (@rank_correct t).
-Qed.
-
-Lemma Rank_hd_comp''' : forall r t ts Es,
+Lemma Rank_hd_comp : forall r t ts Es,
   inv r (t::ts) Es -> r <= Rank t.
 Proof.
   introv H. inverts H; simpl. 
   forwards~: (@rank_correct t).
-Qed.
-
-Hint Resolve inv_rank_hd Rank_hd_comp Rank_hd_comp' Rank_hd_comp''.
-
-
+Qed.
 (** verification *)
 
 Lemma empty_spec : rep empty \{}.
@@ -273,7 +235,8 @@ Lemma is_empty_spec : RepTotal is_empty (E;heap) >>
   bool_of (E = \{}).
 Proof.
   xcf. intros e E RepE. inverts RepE; xgo. 
-  auto. intros K. false (btree_not_empty H). skip. (* fset *)
+  auto. intros K. subst E. multiset_empty in K.
+  false (btree_not_empty H); auto. 
 Qed. 
 
 Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
@@ -312,7 +275,7 @@ Proof.
   xcf. intros t ts. introv IH Rt Rts Ran. 
   forwards: (btree_rank_pos Rt). inverts keep Rts; xmatch. 
   xgo. exists~ r. split. applys~ (@inv_node (r+1)). auto~.
-  xapp~. xapp~. (* todo: xapp~ on rank should fold partial eq in post condition *)
+  xapp~. xapp~. 
   forwards~ K1: (@rank_correct t). forwards~ K2: (@rank_correct t0). 
   rewrite K1,K2 in *. clear K1 K2. subst _x2 _x3. subst.
   xif. xret. exists r. split. applys~ (@inv_node (r+1)). auto~.
@@ -335,7 +298,8 @@ Qed.
 Hint Extern 1 (RegisterSpec insert) => Provide insert_spec.
 
 Lemma merge_spec : RepTotal merge (E1;heap) (E2;heap) >>
-  E1 \u E2 ; heap.Proof.
+  E1 \u E2 ; heap.
+Proof. 
   cuts H: (Spec merge (ts1:heap) (ts2:heap) |R>>
     forall r1 r2 Es1 Es2,
       inv r1 ts1 Es1 -> inv r2 ts2 Es2 -> 
@@ -360,28 +324,28 @@ Lemma merge_spec : RepTotal merge (E1;heap) (E2;heap) >>
 
   xif. 
    asserts: (inv (Rank t2) (t2::ts2') Es2). subst Es2. constructors~.
-   xapp. specializes HR __. unfold uncurry2. auto~. (*todo: un simpl en trop! *)
+   xapp. specializes HR __. unfold uncurry2. auto~. 
    fapplys HR; eauto. ximpl_nointros. 
    destruct P_x9 as (r'&I'&P).
    xret. subst Es1. 
    asserts: (Rank t1 < r').
      destruct ts1'. math.
-     lets: (Rank_hd_comp''' I1).
+     lets: (Rank_hd_comp I1).
      forwards: (@min_trans_elim _ _ _ (Rank t1) P); math.
    exists (Rank t1). split.
      equates 1. constructors~. permut_simpl.
      rewrite~ min_left.
 
   xapp~. xapp~. calc_partial_eq tt. subst _x4 _x5.
- xif. 
+   xif. 
    asserts: (inv (Rank t1) (t1::ts1') Es1). subst Es1. constructors~.
-   xapp. specializes HR __. unfold uncurry2. auto~. (*todo: un simpl en trop! *)
+   xapp. specializes HR __. unfold uncurry2. auto~. 
    fapplys HR; eauto. ximpl_nointros. 
    destruct P_x8 as (r'&I'&P).
    xret. subst Es2. 
    asserts: (Rank t2 < r').
      destruct ts2'. math.
-     lets: (Rank_hd_comp''' I2).
+     lets: (Rank_hd_comp I2).
      forwards: (@min_trans_elim _ _ _ (Rank t2) P); math.
    exists (Rank t2). split.
      equates 1. constructors~. permut_simpl.
@@ -389,7 +353,7 @@ Lemma merge_spec : RepTotal merge (E1;heap) (E2;heap) >>
 
   asserts: (Rank t1 = Rank t2). eapply nlt_nslt_to_eq; eauto. clear C C0.
   rewrite <- H in *. clear H.
-  xapp~. xapp. specializes HR __. unfold uncurry2. auto~. (*todo: un simpl en trop! *)
+  xapp~. xapp. specializes HR __. unfold uncurry2. auto~. 
    fapplys HR; eauto. ximpl_nointros.
   cbv beta in *. destruct P_x7 as (r'&I'&P). subst.
   destruct ts1'; destruct ts2'; try destruct P; subst.
@@ -403,12 +367,14 @@ Lemma merge_spec : RepTotal merge (E1;heap) (E2;heap) >>
      ximpl as ts' (rs'&Inv&Ri). 
      exists rs'. split. equates* 1. rewrite min_self. math.
    xapp~. 
-    lets: (Rank_hd_comp''' I1).
-    lets: (Rank_hd_comp''' I2). 
+    lets: (Rank_hd_comp I1).
+    lets: (Rank_hd_comp I2). 
      forwards: (@min_trans_elim _ _ _ (Rank t1) P); math.
      ximpl as ts' (rs'&Inv&Ri). 
       exists rs'. split. equates* 1. rewrite min_self. math.
 Qed.
+(*
+Admitted.*)
 
 Hint Extern 1 (RegisterSpec merge) => Provide merge_spec.
 
@@ -429,8 +395,8 @@ Proof.
     lets (X&RX&MX): (root_le_all Rt). subst Es. exists~ ___.
   lets (rs0&E0&Ez&Rt&Rts&K1&K2&EQ): (inv_cons_inv RH). clear RH.
   asserts: (Ez <> \{}). intro_subst_hyp.
-    destruct ts. inverts Rts. false. inverts Rts as BT. lets: (btree_not_empty BT).
-    skip. (*fsetinv*)
+    destruct ts. inverts Rts. false. inverts Rts as BT ? ? ? ? M.
+     multiset_empty in M. false (btree_not_empty BT); auto.
   xapp~. destruct _x1 as [t' ts'].
    destruct P_x1 as (E'&Es'&X&r'&rs'&Rt'&Rts'&EQ'&RX&MX&D).
   xmatch. xapp~. xapp~. cbv beta in *. subst _x3 _x4. 
@@ -469,7 +435,7 @@ Proof.
   asserts: (_p0 = r'). inverts~ Rt'. subst.
   forwards~ (Er&I'&EQ'): (>>> inv_rev_children_final x ts1).
   xapp~.  
-    sapply~ inv_rank_smaller.
+    sapply~ inv_smaller.
     ximpl as h Ph. xrep (Er \u Es'). subst E'. exists* X.
 Qed.
 

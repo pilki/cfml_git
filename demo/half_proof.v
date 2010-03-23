@@ -23,8 +23,8 @@ Require Import FuncTactics LibInt.
 
 (** The characteristic formula generator produces a file
      called [half_ml.v] *)
-
 Require Import half_ml. 
+
 
 (* TODO
 Lemma half_specif : forall n x,
@@ -154,8 +154,8 @@ Proof.
     math. (* check [x-2 = 2*(n-1) *)
     apply pred_le_refl. (* post condition is infered *)
   (* --reasong on the addition [_x21+1]-- *)
-  intros n' Hn'. (* use the name [n'] in place of [_x21] *)
-  hnf. math. (* concludes: [n' = n-1] implies [1+n' = n] *)
+  intros y Hy. (* use the name [n'] in place of [_x21] *)
+  hnf. hnf in Hy. math. (* concludes: [n' = n-1] implies [1+n' = n] *)
 Qed.
 
 
