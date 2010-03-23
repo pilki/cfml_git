@@ -19,7 +19,6 @@
    Hint Extern 1 ((_ < _)%nat) => simpl; math.*)
 
 *) UnbalancedSet : specialisé le hint simpl sur rep ?
-
 *) BottomUpMergeSort : Tactics to improve
 
 *) FuncTactics : ximpl_nointros => ximpl_refl
@@ -79,7 +78,9 @@
 *) induction sur nat pour éviter les %nat; ou bien 
    typeclass pour + sur nat.
 
-*) Redblackset proof: check my_lt_trans  needed?
+*) Redblackset proof:
+  - check my_lt_trans  needed?
+  - avoid xisspec by automatic tuple destruction
 
 *) Bottom_up : mrg_spec pb du cbv beta sur l'hyp d'ind
 
@@ -101,3 +102,32 @@
    is_empty_spec todo: down C *) 
   (* todo! exists___; auto~ =>  exists~*)
   (* todo: ximpl_rep *) 
+
+
+*) CatenableListImpl : xret. eexact P_x0. (* todo: éviter l'éta expansion *) 
+
+
+
+
+
+(* Original code : "b r a l"
+
+   let rec lookup_tree i t =
+      match i, t with
+      | 0, Leaf x -> x
+      | i, Leaf x -> raise OutOfBound
+      | i, Node (w, t1, t2) ->
+          if i < w/2  
+            then lookup_tree i t1
+            else lookup_tree (i - w/2) t2
+
+   let rec update_tree i y t = 
+      match i, t with
+      | 0, Leaf x -> Leaf y
+      | _, Leaf x -> raise OutOfBound
+      | _, Node (w, t1, t2) ->
+          if i < w/2 
+            then Node (w, update_tree i y t1, t2)
+            else Node (w, t1, update_tree (i - w/2) y t2)
+
+*)

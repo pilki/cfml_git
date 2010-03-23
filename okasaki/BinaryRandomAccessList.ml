@@ -77,26 +77,3 @@ struct
             else One t :: update (i - size t) y ts
 
 end
-
-
-(* Original code : 
-
-   let rec lookup_tree i t =
-      match i, t with
-      | 0, Leaf x -> x
-      | i, Leaf x -> raise OutOfBound
-      | i, Node (w, t1, t2) ->
-          if i < w/2  
-            then lookup_tree i t1
-            else lookup_tree (i - w/2) t2
-
-   let rec update_tree i y t = 
-      match i, t with
-      | 0, Leaf x -> Leaf y
-      | _, Leaf x -> raise OutOfBound
-      | _, Node (w, t1, t2) ->
-          if i < w/2 
-            then Node (w, update_tree i y t1, t2)
-            else Node (w, t1, update_tree (i - w/2) y t2)
-
-*)

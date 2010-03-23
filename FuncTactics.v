@@ -1104,14 +1104,14 @@ Tactic Notation "xfun" constr(s1) constr(s2) :=
        donc le défaut pourrait etre nointro, ou un mode "as" *)
   (* --todo: xfun_induction I S *)
 
-Ltac unfolds_to_spec tt := (* todo: test *)
+Ltac unfolds_to_spec tt := 
   match goal with 
   | |- spec_1 _ ?f => idtac
   | |- spec_2 _ ?f => idtac
   | |- spec_3 _ ?f => idtac
   | |- spec_4 _ ?f => idtac
-  | _ => progress(unfolds); unfolds_to_spec
-  end.
+  | _ => progress(unfolds); unfolds_to_spec tt
+  end. 
 
 Tactic Notation "xfun_induction" constr(S) constr(I) :=
   xfun_core S ltac:(fun _ => 

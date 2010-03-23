@@ -36,7 +36,8 @@ Fixpoint size a (c:cat a) : nat :=
 Global Instance cat_rep `{Rep a A} : Rep (cat a) (list A).
 Proof.
   intros. apply (Build_Rep inv).
-  intros c. gen_eq n: (size c). gen a A H.  induction n using peano_induction. introv N K1 K2. subst n.
+  intros c. gen_eq n: (size c). gen a A H.
+  induction n using peano_induction. introv N K1 K2. subst n.
   inverts K1; inverts K2. prove_rep.
   subst. fequals. prove_rep. clears X0 X1. clear H4 H11.
   simpl in H.
@@ -54,8 +55,6 @@ Hint Constructors inv.
 
 Ltac auto_tilde ::= eauto. 
 
-(** useful facts *)
-
 Section Polymorphic.
 Variables (a A : Type) (RA:Rep a A).
 
@@ -64,6 +63,8 @@ Hint Extern 1 (RegisterSpec Q.is_empty) => Provide (@QS.is_empty_spec (cats a) _
 Hint Extern 1 (RegisterSpec Q.snoc) => Provide (@QS.snoc_spec (cats a) _ _).
 Hint Extern 1 (RegisterSpec Q.head) => Provide (@QS.head_spec (cats a) _ _).
 Hint Extern 1 (RegisterSpec Q.tail) => Provide (@QS.tail_spec (cats a) _ _).
+
+(** useful facts *)
 
 Lemma to_empty : forall L,
   rep Empty L -> L = nil.
@@ -130,7 +131,7 @@ Proof.
   intros ls Ls RLs Ne Nn. gen_eq n: (length Ls). gen ls Ls RLs Ne Nn.
   apply~ eq_gt_induction; clears n. introv IH RQ Ne Nn N. subst n.
   xcf_app.  
-  xlet. xapp~. xret. eexact P_x0. (* todo: éviter l'éta expansion *) 
+  xlet. xapp~. xret. eexact P_x0. 
   xlet. xapp~.
   destruct Pt as (L&RL&(Q&EQLs)).
   destruct Pq' as (Ls'&RLs'&(Q'&EQLs')).

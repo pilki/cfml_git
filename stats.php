@@ -44,7 +44,7 @@ class dvpt
    public $name, $vFile, $mlFile;
    public $codeSize = 0, $codeSizeNe = 0;
    public $fullSize = 0, $fullSizeNe = 0;
-   public $invSize = 0, $specSize = 0, $verifSize = 0;
+   public $invSize = 0, $specSize = 0, $factsSize = 0, $verifSize = 0;
 
    public function __construct($name = '') 
    {
@@ -82,11 +82,13 @@ class dvpt
       '(** invariant *)',
       '(** model *)',
       '(** automation *)',
-      '(** verification *)');
+      '(** verification *)',
+      '(** useful facts *)');
       $tagIndex = array_flip($proofTags);
       $vLines = file_get_lines($this->vFile, $proofTags);
       $this->invSize = 0;
       $this->specSize = 0;
+      $this->factsSize = 0;
       $this->verifSize = 0;
       $this->fullSize = 0;
       $tag = -1;
@@ -108,9 +110,14 @@ class dvpt
          {  
             $this->invSize++;
          }
+         if ($tag == $tagIndex['(** useful facts *)'])
+         {  
+            $this->factsSize++;
+         }
          else if ($tag == $tagIndex['(** verification *)'])
          {
-            if (strlen($line) >= 6 && substr($line,0,5) == 'Lemma') 
+            if ((strlen($line) >= 5 && substr($line,0,5) == 'Lemma') ||
+                (strlen($line) >= 10 && substr($line,0,10) == 'Definition'))
                { $bSpec = true; $this->specSize++; } 
             else if (strlen($line) >= 6 && substr($line,0,6) == 'Proof.') 
                { $bSpec = false; $bProof = true; }
@@ -126,11 +133,11 @@ class dvpt
 
    public function printInfos()
    {
-      printf("%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n", 
+      printf("%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n", 
           $this->name,
           $this->codeSize, $this->codeSizeNe,
           $this->fullSize, $this->fullSizeNe, 
-          $this->invSize, $this->specSize, $this->verifSize);
+          $this->invSize, $this->factsSize, $this->specSize, $this->verifSize);
    }
 
    public function addFigures($dev)
@@ -140,6 +147,7 @@ class dvpt
        $this->fullSize  += $dev->fullSize;
        $this->fullSizeNe += $dev->fullSizeNe; 
        $this->invSize += $dev->invSize;
+       $this->factsSize += $dev->factsSize;
        $this->specSize += $dev->specSize;
        $this->verifSize += $dev->verifSize;
    }
@@ -150,8 +158,8 @@ $files = $argv;
 unset($files[0]);
 // var_dump($files);
 
-printf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
-   'dvpt', 'ml', 'real ml', 'v', 'real v', 'inv', 'spec', 'verif');
+printf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+   'dvpt', 'ml', 'real ml', 'coq', 'real coq', 'inv', 'facts', 'spec', 'verif');
 
 $all = new dvpt('Total');
 

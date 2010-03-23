@@ -223,7 +223,17 @@ Lemma Rank_hd_comp : forall r t ts Es,
 Proof.
   introv H. inverts H; simpl. 
   forwards~: (@rank_correct t).
-Qed.
+Qed.
+
+Lemma root_in : forall X t r E,
+  rep (Root t) X -> btree r t E -> X \in E.
+Proof.
+  introv RX RT. gen_eq t':t. gen t RX. 
+  induction RT; intros; unfolds eq'; subst; simpls.
+  forwards~: (>>> rep_unique RX H). subst~.
+  forwards~: IHRT2.
+Qed.
+
 (** verification *)
 
 Lemma empty_spec : rep empty \{}.
@@ -297,10 +307,8 @@ Qed.
 
 Hint Extern 1 (RegisterSpec insert) => Provide insert_spec.
 
-Lemma merge_spec : RepTotal merge (E1;heap) (E2;heap) >>
-  E1 \u E2 ; heap.
-Proof. 
-  cuts H: (Spec merge (ts1:heap) (ts2:heap) |R>>
+Definition merge_spec_aux :=
+  Spec merge (ts1:heap) (ts2:heap) |R>>
     forall r1 r2 Es1 Es2,
       inv r1 ts1 Es1 -> inv r2 ts2 Es2 -> 
       R (fun ts' => exists r', inv r' ts' (Es1 \u Es2) 
@@ -308,8 +316,13 @@ Proof.
               | nil,nil => ts' = nil /\ r' = 0
               | t1::_,nil => ts' = ts1 /\ r' = Rank t1 
               | nil,t2::_ => ts' = ts2 /\ r' = Rank t2 
-              | t1::_,t2::_ => min (Rank t1) (Rank t2) <= r' end)).
-    xweaken. clear H. simpl. introv WR H I1 I2. applys WR.
+              | t1::_,t2::_ => min (Rank t1) (Rank t2) <= r' end).
+
+Lemma merge_spec : RepTotal merge (E1;heap) (E2;heap) >>
+  E1 \u E2 ; heap.
+Proof. 
+  cuts H: merge_spec_aux.
+    xweaken H. clear H. simpl. introv WR H I1 I2. applys WR.
     forwards~: H. ximpl as ts' (r'&Inv&P2). applys~ inv_smaller.
   xinduction (fun ts1 ts2 : heap => (length ts1 + length ts2)%nat).
   xcf. introv IH Rep1 Rep2. xmatch.
@@ -367,14 +380,11 @@ Proof.
      ximpl as ts' (rs'&Inv&Ri). 
      exists rs'. split. equates* 1. rewrite min_self. math.
    xapp~. 
-    lets: (Rank_hd_comp I1).
-    lets: (Rank_hd_comp I2). 
+    lets: (Rank_hd_comp I1). lets: (Rank_hd_comp I2). 
      forwards: (@min_trans_elim _ _ _ (Rank t1) P); math.
      ximpl as ts' (rs'&Inv&Ri). 
       exists rs'. split. equates* 1. rewrite min_self. math.
 Qed.
-(*
-Admitted.*)
 
 Hint Extern 1 (RegisterSpec merge) => Provide merge_spec.
 
@@ -407,15 +417,6 @@ Proof.
 Qed.
 
 Hint Extern 1 (RegisterSpec remove_min_tree) => Provide remove_min_tree_spec.
-
-Lemma root_in : forall X t r E,
-  rep (Root t) X -> btree r t E -> X \in E.
-Proof.
-  introv RX RT. gen_eq t':t. gen t RX. 
-  induction RT; intros; unfolds eq'; subst; simpls.
-  forwards~: (>>> rep_unique RX H). subst~.
-  forwards~: IHRT2.
-Qed.
 
 Lemma find_min_spec : RepSpec find_min (E;heap) |R>>
   E <> \{} -> R (min_of E ;; O.t).
