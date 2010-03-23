@@ -198,8 +198,12 @@ Definition checkf_spec `{Rep a A} :=
   Spec checkf (q:body a) |R>>
      forall Q, inv true false q Q -> R (Q ; queue a).
 
-Definition snoc_spec `{Rep a A} :=
-  RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ; queue a.
+Definition snoc_spec_aux `{Rep a A} :=
+  Spec snoc (q:queue a) (x:a)|R>>
+     forall X Q, rep x X -> rep q Q ->
+     R (fun q' => rep q' (Q&X) 
+        /\ (q <> Empty -> depth q' = depth q)
+        /\ (q = Empty -> q' = Struct 1 (x::nil) Empty 0 nil)).
 Definition head_spec `{Rep a A} :=
   RepSpec head (Q;queue a) |R>>
      Q <> nil -> R (is_head Q ;; a).
@@ -211,7 +215,7 @@ Definition tail_spec `{Rep a A} :=
 Lemma all_specs : 
   (forall `{Rep a A}, checkq_spec) /\ 
   (forall `{Rep a A}, checkf_spec) /\ 
-  (forall `{Rep a A}, snoc_spec) /\
+  (forall `{Rep a A}, snoc_spec_aux) /\
   (forall `{Rep a A}, head_spec) /\
   (forall `{Rep a A}, tail_spec).
 Proof.
@@ -219,7 +223,7 @@ Proof.
   intros q. intros. gen_eq n:((3 * depth q + 1)%nat). gen n a A q Q H0. apply M.
   intros q. intros. gen_eq n:((3 * depth q)%nat). gen n a A q Q H0. apply M.
   intros q x. intros. gen_eq n:((3 * depth q + 2)%nat). gen n a A q x Q X H0 H1. apply M.
-  intros q. intros. gen_eq n:((3 * depth q + 2)%nat). gen n a A q Q H0 H1. apply M.
+  intros q. intros. gen_eq n:(0%nat). gen n a A q Q H0 H1. apply M.
   intros q. intros. gen_eq n:((3 * depth q + 2)%nat). gen n a A q Q H0 H1. apply M.
   forwards (H1&H2&H3&H4&H5): (eq_gt_induction_5);
     try match goal with |- _ /\ _ /\ _ /\ _ /\ _ =>
@@ -228,15 +232,38 @@ Proof.
     auto~.
   introv IHcheckq IHcheckf IHsnoc IHhead IHtail. simpls. splits.
   (* verification of checkq *)
-  clear IHcheckq IHhead IHtail.
+  clear IHcheckq IHtail.
   introv RQ N. subst n. xcf_app. xmatch. xif.
   inverts RQ. subst q. xapp. constructors~. auto~.
   inverts RQ. subst q. (* ? xapp (>>> (list a) Qms (rev Qr)). *)
   specializes IHsnoc (>>> (list a) Qms (rev Qr)). xapp~. simpls.
-(*   subst Qm. forwards~: (>>> decrease_r H19). simpls.*)
-  xapp. constructors~. subst Qm. rew_list~. subst Q Qm. rew_list~.
-  apply~ doubling_last. subst Qm. rew_length~.
-  simpl. math. skip. (* décroissance pas bonne *)
+  destruct P_x3 as (P3&PN3&PE3).
+  destruct (classic (m = Empty)). 
+    (* case empty *)
+    clear PN3 IHsnoc. subst m Qm. inverts H11. 
+    rew_concat in *. rew_length in H18. 
+    apply app_spec_1. apply~ checkf_cf. xisspec.
+    intros b B. subst b. xmatch. xmatch.
+      xret. inverts H9. inverts P3.
+      specializes IHhead (>>> (list a) (rev Qr :: nil)). xapp~. clear IHhead.
+      xlet (= Empty (A:=list a)). apply app_spec_1. apply~ tail_cf. xisspec.
+       intros b B. subst b. rewrite~ PE3. xmatch.
+      apply app_spec_1. apply~ checkq_cf. xisspec.
+       intros b B. subst b. xmatch. xif; try math.
+      apply app_spec_1. apply~ checkf_cf. xisspec.
+       intros b B. subst b q. xmatch. xmatch. xret~. false~ C3.
+      subst _x0. xret. xrep in P_x2. inverts H9. subst Q.
+       rew_list. rew_length in *. inverts PX as M. inverts M.
+         constructors~. rew_length~. rew_list~. simpl in RX.
+         intro_subst_hyp. inverts RX as M. applys_to M nil_eq_rev_inv.
+          subst Qr. rew_length in *. math.
+      xret. constructors~. rew_list~. rew_list~. intro_subst_hyp. false~ C1.
+       apply~ doubling_cons. rew_length~.
+    (* case not empty *)
+    clear PE3 IHhead. 
+    xapp. constructors~. subst Qm. rew_list~. subst Q Qm. rew_list~.
+    apply~ doubling_last. subst Qm. rew_length~.
+    simpl. rewrite~ PN3.
   (* verification of checkf *)
   clear IHcheckq IHcheckf IHsnoc.
   introv RQ N. subst n. xcf_app. xmatch. xmatch.
@@ -247,10 +274,8 @@ Proof.
   inverts RQ. inverts H9. 
   specializes IHhead (>>> (list a) Qms). xapp~. clear IHhead.
    intro_subst_hyp. applys C. fequals. apply~ @from_empty.
-  subst Qm. skip.
   destruct P_x2 as (Hm'&RHm'&[Tm' EQms']). 
   specializes IHtail (>>> (list a) Qms). xapp~. clear IHtail.
-skip.
   destruct P_x3 as (Tm&RHm&[Hm EQms]). 
   subst Qms. injects EQms. subst Q Qm. xgo.
   rew_list in H18. inverts H22 as K P. constructors~. rew_list~.
@@ -259,9 +284,16 @@ skip.
   xgo. inverts RQ. constructors~. intro_subst_hyp. inverts H10. false~ C0.
   (* verification of snoc *)
   clear IHcheckf IHsnoc IHhead IHtail.
-  introv RQ RX N. subst n. xcf_app. xgo.
-  inverts RQ. constructors~.
-  inverts RQ. constructors~. rew_list~. subst. rew_list~.
+  introv RX RQ N. subst n. xcf_app. xgo.
+  inverts RQ. splits; auto_false. constructors~.
+  inverts RQ. 
+  specializes IHcheckq a __ __. eapply app_weaken_1.
+  fapplys IHcheckq. constructors~. rew_list~. simple~.
+   ximpl as q'. subst Q. splits; auto_false.
+     applys_eq Hx 1. rew_list~.
+     introv K. simpl.
+xapp~. clear IHtail.
+xapp~. constructors~. rew_list~. subst. rew_list~.
   rew_length~.
   (* verification of head *)
   clear IHcheckf IHcheckq IHsnoc IHhead IHtail.
@@ -280,6 +312,9 @@ skip.
   ximpl~.
   xgo. inverts RQ. false. destruct f; false.
 Qed.
+
+Definition snoc_spec `{Rep a A} :=
+  RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ; queue a.
 
 Definition head_spec := proj53 all_specs.
 Definition tail_spec := proj54 all_specs.
