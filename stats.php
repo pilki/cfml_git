@@ -45,6 +45,7 @@ class dvpt
    public $codeSize = 0, $codeSizeNe = 0;
    public $fullSize = 0, $fullSizeNe = 0;
    public $invSize = 0, $specSize = 0, $factsSize = 0, $verifSize = 0;
+   public $time = 0;
 
    public function __construct($name = '') 
    {
@@ -133,11 +134,22 @@ class dvpt
 
    public function printInfos()
    {
-      printf("%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n", 
+      printf("%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\n", 
           $this->name,
           $this->codeSize, $this->codeSizeNe,
           $this->fullSize, $this->fullSizeNe, 
-          $this->invSize, $this->factsSize, $this->specSize, $this->verifSize);
+          $this->invSize, $this->factsSize, $this->specSize, $this->verifSize, $this->time);
+   }
+
+   public function measureTime()
+   {
+       $res = 0;
+       $output = array();
+       $cmd = "time -o time.txt -f %U coqc -I lib -I okasaki $this->vFile";
+       fwrite(STDERR, "Timing $this->vFile \n$cmd \n"); 
+       // echo "cmd = ".$cmd."\n";
+       @exec($cmd, $output, $res);
+       $this->time = file_get_contents("time.txt");
    }
 
    public function addFigures($dev)
@@ -150,16 +162,23 @@ class dvpt
        $this->factsSize += $dev->factsSize;
        $this->specSize += $dev->specSize;
        $this->verifSize += $dev->verifSize;
+       $this->time += $dev->time;
    }
 
 } 
 
 $files = $argv;
 unset($files[0]);
+$times = false;
+if ($files[1] == 'time')
+{
+   unset($files[1]);
+   $times = true;
+}
 // var_dump($files);
 
-printf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
-   'dvpt', 'ml', 'real ml', 'coq', 'real coq', 'inv', 'facts', 'spec', 'verif');
+printf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+   'dvpt', 'ml', 'real ml', 'coq', 'real coq', 'inv', 'facts', 'spec', 'verif', 'time');
 
 $all = new dvpt('Total');
 
@@ -167,10 +186,13 @@ foreach ($files as $file)
 {
    $dev = new dvpt;
    $dev->load($file);
+   if ($times)
+      $dev->measureTime();
    $dev->printInfos();
    $all->addFigures($dev);
 }
 $all->printInfos();
+
 
 /*
 $x = file_get_lines('demo/half.ml');

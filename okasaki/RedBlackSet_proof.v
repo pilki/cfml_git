@@ -54,7 +54,7 @@ Defined.
 (** automation *)
 
 Hint Constructors inv.
-Hint Extern 1 (_ = _ :> LibSet.set _) => permut_simpl : set.
+Hint Extern 1 (_ = _ :> LibSet.set _) => check_noevar_goal; permut_simpl : set.
 
 Definition U := LibSet.set T.
 Ltac myauto cont :=
@@ -156,39 +156,43 @@ Qed.
 
 Hint Extern 1 (RegisterSpec member) => Provide member_spec.
 
+Ltac tryifalse := try solve [intuition false].
+
 Lemma balance_spec : 
   Spec balance (p : color * set * O.t * set) |R>> 
   let '(col,e1,x,e2) := p  in
   forall i1 i2 n E1 E2 X,
   rep x X -> inv i1 n e1 E1 -> inv i2 n e2 E2 -> 
   foreach (is_lt X) E1 -> foreach (is_gt X) E2 ->
-  match col with Black => xor i1 i2 | Red => i1 /\ i2 end ->
+  match col with Black => i1 \/ i2 | Red => i1 /\ i2 end ->
   R (fun e => inv (match col with Black => true | Red => false end)
                   (match col with Black => S n | Red => n end)
                   e (\{X} \u E1 \u E2)).
 Proof. 
+(*
   xcf; intros [[[c e1] x] e2]. xisspec.
-  introv RepX I1 I2 GtX LtX Ixor. xgo.
+  introv RepX I1 I2 GtX LtX VI. xgo.
   (* balance 1 *)
   xcleanpat. inverts I1 as IA IB. inverts IA. subst.
-  destruct (xor_cases Ixor) as [M|M]; destruct M; subst i1 i2; my_intuit.
-  applys* (>>> inv_node (\{Y0} \u A0 \u B0) Y (\{X} \u B \u E2)). 
+  destruct i1; destruct VI; tryifalse. 
+  substb i2. my_intuit. apply* inv_node.
   (* balance 2 *) 
   xcleanpat. inverts I1 as IA IB. inverts IB. subst.
-  destruct (xor_cases Ixor) as [M|M]; destruct M; subst i1 i2; my_intuit.
-  applys* (>>> inv_node (\{Y} \u A \u A0) Y0 (\{X} \u B0 \u E2)). 
+  destruct i1; destruct VI; tryifalse. 
+  substb i2. my_intuit. apply* inv_node.
   (* balance 3 *) 
   xcleanpat. inverts I2 as IA IB. inverts IA. subst.
-  destruct (xor_cases Ixor) as [M|M]; destruct M; subst i1 i2; my_intuit.
-  applys* (>>> inv_node (\{X} \u E1 \u A0) Y0 (\{Y} \u B0 \u B)). 
+  destruct i2; destruct VI; tryifalse. 
+  substb i1. my_intuit. apply* inv_node.
   (* balance 4 *) 
   xcleanpat. inverts I2 as IA IB. inverts IB. subst.
-  destruct (xor_cases Ixor) as [M|M]; destruct M; subst i1 i2; my_intuit.
-  applys* (>>> inv_node (\{X} \u E1 \u A) Y (\{Y0} \u A0 \u B0)). 
+  destruct i2; destruct VI; tryifalse. 
+  substb i1. my_intuit. apply* inv_node.
   (* no balance *)
   destruct c.
-    destruct Ixor. substb i1. substb i2. constructors~.
-    destruct (xor_cases Ixor) as [M|M]; destruct M; subst i1 i2.
+    destruct VI. substb i1. substb i2. constructors~.
+    destruct i1; destruct i2.
+      constructors~.
       inverts keep I2; auto~. constructors~. apply~ inv_strengthen.
         destruct~ col. split. 
           destruct~ a. destruct~ c. false~ C1.
@@ -197,6 +201,8 @@ Proof.
         destruct~ col. split. 
           destruct~ a. destruct~ c. false~ C.
           destruct~ b. destruct~ c. false~ C0.
+      destruct VI; false.
+*) skip.
 Qed.
 
 Hint Extern 1 (RegisterSpec balance) => Provide balance_spec.
@@ -212,23 +218,16 @@ Lemma insert_spec : RepTotal insert (X;elem) (E;set) >>
 Proof. 
   xcf. introv RepX (n&InvE&HeB).
   xfun_induction_nointro (ins_spec X) size.
-    clears s n E. intros e IH n E InvE. inverts InvE as. xgo*.
-    simple*.
-    introv InvA InvB RepY GtY LtY Col Num.
-    xgo~ '_x4 XstopAfter, '_x3 XstopAfter.
-    forwards~ M: (>>> inv_weaken' (match col with Black => false | Red => true end)).
-      intro; destruct col; destruct (node_color a); destruct Col; tryfalse; auto.
-     clear P_x4. xapp~. destruct~ col.
-     ximpl as e. simpl. destruct col; subst; equates* 1.
-    forwards~ M: (>>> inv_weaken' (match col with Black => false | Red => true end)).
-      intro; destruct col; destruct (node_color b); destruct Col; tryfalse; auto.
-     clear P_x3. xapp~. destruct~ col.
-     ximpl as e. simpl. destruct col; subst; equates* 1.
+    clears s n E. intros e IH n E InvE. inverts InvE as.
+    xgo*. simpl. constructors*.
+    introv InvA InvB RepY GtY LtY Col Num. xgo~.
+    destruct~ col; destruct (node_color a); tryifalse; auto.
+    ximpl as e. simpl. applys_eq* Hx 1 3.
+    destruct~ col; destruct (node_color b); tryifalse; auto.
+    ximpl as e. simpl. applys_eq* Hx 1 3.
     asserts_rewrite~ (X = Y). apply~ nlt_nslt_to_eq.
       subst s. simpl. destruct col; constructors*.
-  xlet. xapp~. inverts P_x5; xgo.
-    fset_inv.
-    exists* __.
+  xlet. xapp~. inverts P_x5; xgo. fset_inv. exists* __.
 Qed.
 
 Hint Extern 1 (RegisterSpec insert) => Provide insert_spec.

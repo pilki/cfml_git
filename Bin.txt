@@ -783,3 +783,21 @@ Proof.
   lets: (btree_size_pos H0). math.
 Qed.
 *)
+
+  (* applys* (>>> inv_node (\{Y0} \u A0 \u B0) Y (\{X} \u B \u E2)).*)
+(*  applys* (>>> inv_node (\{Y} \u A \u A0) Y0 (\{X} \u B0 \u E2)). *)
+
+
+
+    xgo~ '_x4 XstopAfter, '_x3 XstopAfter.
+    xapp~. destruct~ col; destruct (node_color a); tryifalse; auto.
+    ximpl as e. simpl. destruct col. subst. equates* 1.
+
+    forwards~ M: (>>> inv_weaken' (match col with Black => false | Red => true end)).
+      intro; destruct col; destruct (node_color a); destruct Col; tryfalse; auto.
+     clear P_x4. xapp~. destruct~ col.
+     ximpl as e. simpl. destruct col; subst; equates* 1.
+    forwards~ M: (>>> inv_weaken' (match col with Black => false | Red => true end)).
+      intro; destruct col; destruct (node_color b); destruct Col; tryfalse; auto.
+     clear P_x3. xapp~. destruct~ col.
+     ximpl as e. simpl. destruct col; subst; equates* 1.

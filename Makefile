@@ -164,6 +164,10 @@ stats:
 	@php -f stats.php $(OKAQ) $(OKAH) $(OKAO) $(OKAS) > stats.txt
 	@echo "STAT COMPUTED"
 
+statstime:
+	@php -f stats.php time $(OKAQ) $(OKAH) $(OKAO) $(OKAS) > stats.txt
+	@echo "STAT COMPUTED"
+
 libcompile:
 	make lib -C lib
 
