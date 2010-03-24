@@ -149,7 +149,7 @@ class dvpt
        fwrite(STDERR, "Timing $this->vFile \n$cmd \n"); 
        // echo "cmd = ".$cmd."\n";
        @exec($cmd, $output, $res);
-       $this->time = file_get_contents("time.txt");
+       $this->time = trim(file_get_contents("time.txt"));
    }
 
    public function addFigures($dev)
@@ -178,7 +178,7 @@ if ($files[1] == 'time')
 // var_dump($files);
 
 printf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
-   'dvpt', 'ml', 'real ml', 'coq', 'real coq', 'inv', 'facts', 'spec', 'verif', 'time');
+   'dvpt', 'ml', 'real_ml', 'coq', 'real_coq', 'inv', 'facts', 'spec', 'verif', 'time');
 
 $all = new dvpt('Total');
 

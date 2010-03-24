@@ -74,8 +74,8 @@ OKAH=\
 	okasaki/SplayHeap_proof.v 
 
 OKAO=\
-	okasaki/RedBlackSet_proof.v \
 	okasaki/UnbalancedSet_proof.v \
+	okasaki/RedBlackSet_proof.v \
 	okasaki/BottomUpMergeSort_proof.v \
 	okasaki/BinaryRandomAccessList_proof.v \
 	okasaki/AltBinaryRandomAccessList_proof.v \

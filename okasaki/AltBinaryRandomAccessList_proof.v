@@ -3,6 +3,8 @@ Require Import FuncTactics LibCore.
 Require Import RandomAccessListSig_ml RandomAccessListSig_proof.
 Require Import AltBinaryRandomAccessList_ml.
 
+(*
+
 (* todo: move *)
 
 Lemma pair_rep : forall `{Rep a1 A1} `{Rep a2 A2} (x:a1) (y:a2) X Y,
@@ -193,9 +195,10 @@ Lemma lookup_spec : forall `{Rep a A},
   RepSpec lookup (i;int) (L;rlist a) |R>>
      ZInbound i L -> R (ZNth i L ;; a).
 Proof.
+(*
   intros. xintros. intros i. gen_eq n: (abs i). gen a A H i.
   apply~ eq_gt_induction; clears n.
-  introv IH. introv. introv N RI [b RL] Bi. inverts RI. subst n. 
+  introv IH. introv. introv N RI RL Bi. inverts RI. subst n. 
   xcf_app. xret~. destruct _x0 as (i,f). inverts P_x0. xmatch.
   xgo. inverts RL. apply~ ZInbound_nil_inv.
   xgo. inverts RL. esplit. split~. apply~ ZNth_here.
@@ -213,6 +216,7 @@ Proof.
   xmatch. destruct P_x2 as ([X Y]&[HX HY]&NXY).
   applys_to NXY ZNth_splitin.
   xif; case_if in NXY; tryfalse. xgo~. xgo~.
+*)
 Admitted.
 
 Definition FUpdate A (n:int) (f:A->A) l l' :=
@@ -245,7 +249,8 @@ Lemma fupdate_spec : forall `{Rep a A},
      forall F, (RepTotal f (x;a) >> (= F x ;; a)) ->
      R (FUpdate i F L ;; rlist a).
 Proof.
-  intros. xintros. skip. intros f i. gen_eq n: (abs i). gen a A H i f.
+(*
+  intros. xintros. intros f i. gen_eq n: (abs i). gen a A H i f.
   apply~ eq_gt_induction; clears n.
   introv IH. introv. introv N RF RI [b RL] Bi SF.
   inverts RI. inverts RF. subst n.
@@ -286,18 +291,20 @@ Proof.
   xgo. exists (splitin L'). split.
    exists __. constructors~. eapply inv_strengthen'. eauto. skip.
    apply~ (FUpdate_splitin). 
+*)
 Admitted.
 
-
+(*
 Lemma FUpdate_ZUpdate : forall i x l l',
   FUpdate i (fun _ => x) l l' -> ZUpdate i x l l'.
 Admitted.
-
+*)
 
 Lemma update_spec : forall `{Rep a A},
   RepSpec update (i;int) (X;a) (L;rlist a) |R>> 
     ZInbound i L -> R (ZUpdate i X L ;; rlist a).
 Proof.
+(*
   xcf. introv RI RX [b RL] Bi.
   (*
   xfun (fun f => RepTotal f (y;a) >> (= X ; a)).*)
@@ -307,9 +314,12 @@ Proof.
    introv RY. xgo~.
   ximpl as l' [L' [RL' G]].
    exists L'. splits. apply RL'. apply~ FUpdate_ZUpdate.
+*)
 Admitted.
 
-Hint Extern 1 (RegisterSpec snoc) => Provide snoc_spec.
+Hint Extern 1 (RegisterSpec update) => Provide update_spec.
 
 End AltBinaryRandomAccessListSpec.
 
+
+*)

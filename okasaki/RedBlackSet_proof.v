@@ -70,6 +70,8 @@ Hint Extern 1 (@lt nat _ _ _) => simpl; math.
 Ltac my_intuit := 
   rew_foreach in *; intuit; tryfalse.
 
+Ltac tryifalse := try solve [intuition false].
+
 (** useful facts *)
 
 Fixpoint size t :=
@@ -135,12 +137,14 @@ Qed.
 
 Hint Extern 1 (RegisterSpec empty) => Provide empty_spec.
 
+Definition member_spec_ind := Spec member x e |R>>
+  forall rr n X E, rep x X -> inv rr n e E -> R (bool_of (X \in E)).
+
 Lemma member_spec : RepTotal member (X;elem) (E;set) >> 
   bool_of (X \in E).
 Proof.
-  cuts: (Spec member x e |R>>
-    forall rr n X E, rep x X -> inv rr n e E -> R (bool_of (X \in E))).
-    xweaken. simpl. intros_all. destruct H3 as (n&Inv&_). eauto.
+  cuts: member_spec_ind. 
+    xweaken H. simpl. introv W S RX RT. destruct~ RT as (n&Inv&_).
   xinduction (fun (x:elem) e => size e).  
   xcf. intros x e IH rr n X E RepX InvE. inverts InvE; xgo~.
   iff M. auto. set_in M.
@@ -156,8 +160,6 @@ Qed.
 
 Hint Extern 1 (RegisterSpec member) => Provide member_spec.
 
-Ltac tryifalse := try solve [intuition false].
-
 Lemma balance_spec : 
   Spec balance (p : color * set * O.t * set) |R>> 
   let '(col,e1,x,e2) := p  in
@@ -169,7 +171,6 @@ Lemma balance_spec :
                   (match col with Black => S n | Red => n end)
                   e (\{X} \u E1 \u E2)).
 Proof. 
-(*
   xcf; intros [[[c e1] x] e2]. xisspec.
   introv RepX I1 I2 GtX LtX VI. xgo.
   (* balance 1 *)
@@ -202,7 +203,6 @@ Proof.
           destruct~ a. destruct~ c. false~ C.
           destruct~ b. destruct~ c. false~ C0.
       destruct VI; false.
-*) skip.
 Qed.
 
 Hint Extern 1 (RegisterSpec balance) => Provide balance_spec.

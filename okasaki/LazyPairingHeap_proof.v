@@ -172,7 +172,7 @@ Hint Extern 1 (RegisterSpec find_min) => Provide find_min_spec.
 Lemma delete_min_spec : RepSpec delete_min (E;heap) |R>>
   E <> \{} -> R (removed_min E ;; heap).
 Proof. 
-  xcf. intros e E RepE HasE. inverts RepE; xgo~. ximpl. xrep~. Qed.
+  xcf. intros e E RepE HasE. inverts RepE; xgo~. ximpl. xrep~. 
 Qed.
 
 Hint Extern 1 (RegisterSpec delete_min) => Provide delete_min_spec.
