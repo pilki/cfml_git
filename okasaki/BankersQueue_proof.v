@@ -78,7 +78,7 @@ Lemma is_empty_spec :
   RepTotal is_empty (Q;queue a) >> bool_of (Q = nil).
 Proof.
   xcf. intros (((lenf,f),lenr),r) Q RQ. xgo.
-  unfolds. extens. iff Z; fold_prop; subst.
+  unfolds. iff Z; fold_prop; subst.
   apply~ empty_from_lenf. apply~ empty_to_lenf.
 Qed. 
 

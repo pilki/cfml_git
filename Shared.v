@@ -189,6 +189,9 @@ Proof. unfold bool_of. intros. subst~. Qed.
 Lemma bool_of_False : bool_of P b -> ~ P -> !b.
 Proof. unfold bool_of. intros. subst~. Qed.
 
+Lemma bool_of_prove : (b <-> P) -> bool_of P b.
+Proof. intros. extens*. Qed.
+
 (* todo: add  isTrue true = P to fold_prop *)
 End BoolOf.
 
@@ -207,6 +210,10 @@ Lemma elim_isTrue_false : forall (b:bool) (P:Prop),
   !b -> (isTrue b = P) -> ~ P.
 Proof. intros_all. subst~. destruct b; simpls; false. Qed.
 
+
+Hint Rewrite isTrue_istrue istrue_isTrue : rew_istrue.
+Ltac rew_istrue := autorewrite with rew_istrue.
+
 Ltac fix_bool_of_known tt := 
   match goal with 
   | H: bool_of ?P true |- _ => 
@@ -221,7 +228,10 @@ Ltac fix_bool_of_known tt :=
      apply bool_of_true_in_forw
   | |- bool_of ?P false => 
      apply bool_of_false_in_forw
+  | |- bool_of ?P ?b =>
+     apply bool_of_prove; rew_istrue
   end.
+
 
 Lemma pred_le_bool_of : forall (P Q : Prop), 
   (P <-> Q) -> (pred_le (bool_of P) (bool_of Q)).

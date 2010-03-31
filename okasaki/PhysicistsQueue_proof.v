@@ -67,7 +67,7 @@ Lemma is_empty_spec :
   RepTotal is_empty (Q;queue a) >> bool_of (Q = nil).
 Proof.
   xcf. intros ((((w,lenf),f),lenr),r) Q (g&RQ&DF&LF&LR&LE&LZ). xgo.
-  unfolds. extens. iff Z; fold_prop.
+  unfolds. iff Z; fold_prop.
   subst f lenf. rew_length in LF.
   rewrite~ (@length_zero_inv _ r) in RQ.
    rewrite~ (@length_zero_inv _ g) in RQ.

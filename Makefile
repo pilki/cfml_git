@@ -32,6 +32,7 @@ OKACOD=\
 	okasaki/RealTimeQueue_ml.v \
 	okasaki/ImplicitQueue_ml.v \
 	okasaki/BootstrappedQueue_ml.v \
+	okasaki/HoodMelvilleQueue_ml.v \
 	okasaki/BankersDeque_ml.v \
 	okasaki/RedBlackSet_ml.v \
 	okasaki/LeftistHeap_ml.v \
@@ -64,6 +65,7 @@ OKAQ=\
 	okasaki/RealTimeQueue_proof.v \
 	okasaki/ImplicitQueue_proof.v \
 	okasaki/BootstrappedQueue_proof.v \
+	okasaki/HoodMelvilleQueue_proof.v \
 	okasaki/BankersDeque_proof.v 
 
 OKAH=\
@@ -85,9 +87,9 @@ OKAO=\
 OKA=$(OKAS) $(OKAQ) $(OKAH) $(OKAO)
 
 NEW=\
-	okasaki/Okasaki_ml.v \
-	okasaki/HoodMelvilleQueue_ml.v \
-	okasaki/HoodMelvilleQueue_proof.v 
+	okasaki/Okasaki_ml.v 
+
+
 
 #	okasaki/BinaryRandomAccessList_ml.v \
 
@@ -143,7 +145,7 @@ oka: $(OKA:.v=.vo) $(OKACOD:.v=.vo)
 okac: $(OKACOD:.v=.vo)
 okaq: $(OKAQ:.v=.vo)
 okao: $(OKAO:.v=.vo)
-okah: $(OKAG:.v=.vo)
+okah: $(OKAH:.v=.vo)
 okas: $(OKAS:.v=.vo)
 
 new: $(NEW:.v=.vo) 

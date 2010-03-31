@@ -99,7 +99,7 @@ Lemma is_empty_spec :
   RepTotal is_empty (Q;deque a) >> bool_of (Q = nil).
 Proof.
   xcf. intros (((lenf,f),lenr),r) Q RQ. xgo.
-  unfolds. extens. iff Z; fold_prop; subst.
+  unfolds. iff Z; fold_prop; subst.
   apply~ empty_from_len.
   intuit RQ. inverts H. destruct (nil_eq_app_rev_inv H5). subst~.
 Qed. 

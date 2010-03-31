@@ -301,11 +301,6 @@ Qed.
 
 Hint Extern 1 (RegisterSpec exec2) => Provide exec2_spec.
 
-Lemma Forall2_take : forall A1 A2 (P:A1->A2->Prop) n l t,
-  Forall2 P l t ->
-  Forall2 P (take n l) (take n t).
-Proof. induction n; introv H; inverts H; simple~. Qed.
-
 Lemma check_spec : 
   Spec check (q:queue a) |R>>
     forall Q, check_precondition q Q -> R (Q ;- queue a).
@@ -333,37 +328,6 @@ Proof.
 Qed.
 
 Hint Extern 1 (RegisterSpec empty) => Provide empty_spec.
-
-(* todo move *)
-Section BoolOf.
-Variables (b:bool) (P:Prop).
-
-Lemma bool_of_prove : (b <-> P) -> bool_of P b.
-Proof. intros. extens*. Qed.
-End BoolOf.
-
-Hint Rewrite isTrue_istrue istrue_isTrue : rew_istrue.
-Ltac rew_istrue := autorewrite with rew_istrue.
-
-
-Ltac fix_bool_of_known tt ::= 
-  match goal with 
-  | H: bool_of ?P true |- _ => 
-     applys_to H bool_of_true_in
-  | H: bool_of ?P false |- _ => 
-     applys_to H bool_of_false_in
-  | H: bool_of ?P ?b, Hb: isTrue ?b |- _ => 
-     applys_to H (@bool_of_true_back b P Hb); clear Hb
-  | H: bool_of ?P ?b, Hb: isTrue (! ?b) |- _ => 
-     applys_to H (@bool_of_false_back b P Hb); clear Hb 
-  | |- bool_of ?P true => 
-     apply bool_of_true_in_forw
-  | |- bool_of ?P false => 
-     apply bool_of_false_in_forw
-  | |- bool_of ?P ?b =>
-     apply bool_of_prove; rew_istrue
-  end.
-
 
 Lemma is_empty_spec : 
   RepTotal is_empty (Q;queue a) >> bool_of (Q = nil).
@@ -395,11 +359,6 @@ Proof.
 Qed.
 
 Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty.
-
-Lemma Forall2_length : forall A1 A2 (P:A1->A2->Prop) l t,
-  Forall2 P l t -> length l = length t.
-Proof. introv H. induction H. simple~. rew_length~. Qed.
-
 
 Lemma snoc_spec : 
   RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ;- queue a.
