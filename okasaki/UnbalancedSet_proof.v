@@ -101,7 +101,7 @@ Qed.
 Hint Extern 1 (RegisterSpec member) => Provide member_spec.
 
 Lemma insert_spec : RepTotal insert (X;elem) (E;set) >>
-  \{X} \u E ; set.
+  \{X} \u E ;- set.
 Proof.
   xinduction (fun (x:elem) e => size e).  
   xcf. intros x e IH X E RepX RepE.

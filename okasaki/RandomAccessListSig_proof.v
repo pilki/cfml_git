@@ -19,7 +19,7 @@ Parameter is_empty_spec :
   RepTotal is_empty (L;rlist a) >> bool_of (L = nil).
 
 Parameter cons_spec : 
-  RepTotal cons (X;a) (L;rlist a) >> (X::L) ; rlist a.
+  RepTotal cons (X;a) (L;rlist a) >> (X::L) ;- rlist a.
 
 Parameter head_spec : 
   RepSpec head (L;rlist a) |R>>

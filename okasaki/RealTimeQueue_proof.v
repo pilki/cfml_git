@@ -7,7 +7,7 @@ Module RealTimeQueueSpec <: QueueSigSpec.
 
 (** instantiations *)
 
-Module Import Q <: MLQueue := MLRealTimeQueue.
+Module Import Q <: MLQueue := MLRealTimeQueue.
 (** invariant *)
 
 Definition inv (d:int) `{Rep a A} (q:queue a) (Q:list A) :=
@@ -93,7 +93,7 @@ Hint Extern 1 (RegisterSpec rotate) => Provide rotate_spec.
 Lemma exec_spec : 
   Spec exec (q:queue a) |R>>
     forall Q, inv 1 q Q -> 
-    R (Q ; queue a).
+    R (Q ;- queue a).
 Proof.
   xcf. intros ((f0,r0),s0) l [H M].
   xgo; rew_length in M; auto~.
@@ -103,7 +103,7 @@ Qed.
 Hint Extern 1 (RegisterSpec exec) => Provide exec_spec.
 
 Lemma snoc_spec : 
-  RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ; queue a.
+  RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ;- queue a.
 Proof.
   xcf. introv RQ RX. xmatch. xapp (Q & X). inverts RQ. constructor.
   rew_list. rewrite~ <- app_assoc.

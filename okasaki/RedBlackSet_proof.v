@@ -214,7 +214,7 @@ Definition ins_spec X ins :=
                      n e' (\{X} \u E)).
 
 Lemma insert_spec : RepTotal insert (X;elem) (E;set) >>
-  \{X} \u E ; set.
+  \{X} \u E ;- set.
 Proof. 
   xcf. introv RepX (n&InvE&HeB).
   xfun_induction_nointro (ins_spec X) size.
@@ -227,7 +227,7 @@ Proof.
     ximpl as e. simpl. applys_eq* Hx 1 3.
     asserts_rewrite~ (X = Y). apply~ nlt_nslt_to_eq.
       subst s. simpl. destruct col; constructors*.
-  xlet. xapp~. inverts P_x5; xgo. fset_inv. exists* __.
+  xlet as r. xapp~. inverts Pr; xgo. fset_inv. exists* __.
 Qed.
 
 Hint Extern 1 (RegisterSpec insert) => Provide insert_spec.

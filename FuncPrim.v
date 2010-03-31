@@ -85,10 +85,10 @@ Hint Extern 1 (RegisterSpec ml_list_tl) => Provide ml_list_tl_spec.
 
 Parameter ml_list_hd_repspec : forall `{Rep a A},
   RepSpec ml_list_hd (L;list a) |R>>
-    forall X T, L = X::T -> R(X ; a).
+    forall X T, L = X::T -> R(X ;- a).
 Parameter ml_list_tl_repspec : forall `{Rep a A},
   RepSpec ml_list_tl (L;list a) |R>>
-    forall X T, L = X::T -> R(T ; list a).
+    forall X T, L = X::T -> R(T ;- list a).
 
 
 Parameter ml_plus : val.

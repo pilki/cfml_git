@@ -109,7 +109,7 @@ Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
 Lemma check_spec : 
   Spec check (q:deque a) |R>>
     forall Q, inv 2 q Q ->
-    R (Q ; deque a).
+    R (Q ;- deque a).
 Proof.
   xcf. intros (((lenf,f),lenr),r) Q (H&LF&LR&CF&CR).
   xmatch. xcases.
@@ -142,7 +142,7 @@ Qed.
 Hint Extern 1 (RegisterSpec check) => Provide check_spec.
 
 Lemma cons_spec : 
-  RepTotal cons (X;a) (Q;deque a) >> (X::Q) ; deque a.
+  RepTotal cons (X;a) (Q;deque a) >> (X::Q) ;- deque a.
 Proof.
   xcf. intros x (((lenf,f),lenr),r) X Q RX RQ. 
   xgo; ximpl_nointros. intuit RQ. splits~; rew_list~. 
@@ -178,7 +178,7 @@ Qed.
 Hint Extern 1 (RegisterSpec tail) => Provide tail_spec.
 
 Lemma snoc_spec : 
-  RepTotal snoc (Q;deque a) (X;a) >> (Q & X) ; deque a.
+  RepTotal snoc (Q;deque a) (X;a) >> (Q & X) ;- deque a.
 Proof.
   xcf. intros (((lenf,f),lenr),r) x Q X RQ RX.
   xgo; ximpl_nointros. intuit RQ. splits~; rew_list~.

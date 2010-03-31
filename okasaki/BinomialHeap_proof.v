@@ -299,7 +299,7 @@ Hint Extern 1 (RegisterSpec ins_tree) => Provide ins_tree_spec.
 Hint Constructors btree.
 
 Lemma insert_spec : RepTotal insert (X;O.t) (E;heap) >>
-  \{X} \u E ; heap.
+  \{X} \u E ;- heap.
 Proof.
   xcf. introv RepX RepE. simpl in RepE. xapp~.
   ximpl as ts' (rs'&Inv&Pos). simpl. applys~ (inv_smaller). 
@@ -319,7 +319,7 @@ Definition merge_spec_aux :=
               | t1::_,t2::_ => min (Rank t1) (Rank t2) <= r' end).
 
 Lemma merge_spec : RepTotal merge (E1;heap) (E2;heap) >>
-  E1 \u E2 ; heap.
+  E1 \u E2 ;- heap.
 Proof. 
   cuts H: merge_spec_aux.
     xweaken H. clear H. simpl. introv WR H I1 I2. applys WR.

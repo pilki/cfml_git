@@ -3,30 +3,30 @@ open QueueSig
 
 module HoodMelvilleQueue : Queue = struct
 
-   type 'a state = 
+   type 'a status = 
      | Idle
      | Reversing of int * 'a list * 'a list * 'a list * 'a list
      | Appending of int * 'a list * 'a list 
-     | Done of 'a list
+     | Finished of 'a list 
 
-   type 'a queue = int * 'a list * 'a state * int * 'a list 
+   type 'a queue = int * 'a list * 'a status * int * 'a list 
 
    let exec = function
      | Reversing (ok, x::f, f', y::r, r') -> Reversing (ok+1, f, x::f', r, y::r')
      | Reversing (ok, [], f', [y], r') -> Appending (ok, f', y::r')
-     | Appending (0, f', r') -> Done r'
+     | Appending (0, f', r') -> Finished r'
      | Appending (ok, x::f', r') -> Appending (ok-1, f', x::r')
      | s -> s
 
    let invalidate = function
      | Reversing (ok, f, f', r, r') -> Reversing (ok-1, f, f', r, r')
-     | Appending (0, f', x::r') -> Done r'
+     | Appending (0, f', x::r') -> Finished r'
      | Appending (ok, f', r') -> Appending (ok-1, f', r')
      | s -> s
 
    let exec2 (lenf, f, state, lenr, r) = 
      match exec (exec state) with
-     | Done newf -> (lenf, newf, Idle, lenr, r)
+     | Finished newf -> (lenf, newf, Idle, lenr, r)
      | newstate -> (lenf, f, newstate, lenr, r)
 
    let check ((lenf, f, state, lenr, r) as q) = 
@@ -35,7 +35,7 @@ module HoodMelvilleQueue : Queue = struct
         else let newstate = Reversing (0, f, [], r, []) in
              exec2 (lenf+lenr, f, newstate, 0, [])
 
-   let empty = (0, [], Idle, 0, [])
+   let empty : 'a queue = (0, [], Idle, 0, [])
 
    let is_empty (lenf, _, _, _, _) = (lenf = 0)
 

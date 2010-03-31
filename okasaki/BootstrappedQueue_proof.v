@@ -192,18 +192,18 @@ Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
 
 Definition checkq_specs `{Rep a A} :=
   Spec checkq (q:body a) |R>>
-     forall Q, inv false false q Q -> R (Q ; queue a).
+     forall Q, inv false false q Q -> R (Q ;- queue a).
 
 Definition checkf_specs `{Rep a A} :=
   Spec checkf (q:body a) |R>>
-     forall Q, inv true false q Q -> R (Q ; queue a).
+     forall Q, inv true false q Q -> R (Q ;- queue a).
 
 Definition snoc_specs_aux `{Rep a A} :=
   Spec snoc (q:queue a) (x:a)|R>>
      forall X Q, rep x X -> rep q Q ->
      R (fun q' => rep q' (Q&X) 
         /\ (q <> Empty -> depth q' = depth q)
-        /\ (q = Empty -> q' = Struct 1 (x::nil) Empty 0 nil)).
+        /\ (q = Empty -> q' = Struct 1 (x::nil) Empty 0 nil)).
 Definition head_specs `{Rep a A} :=
   RepSpec head (Q;queue a) |R>>
      Q <> nil -> R (is_head Q ;; a).
@@ -318,7 +318,7 @@ Qed.
 Admitted.
 
 Definition snoc_specs `{Rep a A} :=
-  RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ; queue a.
+  RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ;- queue a.
 
 
 (*

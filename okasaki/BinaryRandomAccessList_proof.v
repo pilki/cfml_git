@@ -7,7 +7,8 @@ Module BinaryRandomAccessListSpec <: RandomAccessListSigSpec.
 
 (** instantiations *)
 
-Module Import R <: MLRandomAccessList := MLBinaryRandomAccessList. Import MLBinaryRandomAccessList.
+Module Import R <: MLRandomAccessList := MLBinaryRandomAccessList. 
+Import MLBinaryRandomAccessList.
 
 (** invariant *)
 
@@ -188,7 +189,7 @@ Qed.
 Hint Extern 1 (RegisterSpec cons_tree) => Provide cons_tree_spec.
 
 Lemma cons_spec : 
-  RepTotal cons (X;a) (L;rlist a) >> (X::L) ; rlist a.
+  RepTotal cons (X;a) (L;rlist a) >> (X::L) ;- rlist a.
 Proof. xcf. introv RX RL. simpl in RL. xgo~. Qed.
 
 Hint Extern 1 (RegisterSpec cons) => Provide cons_spec.
@@ -322,7 +323,8 @@ Proof.
     subst. apply~ ZInbound_app_r_inv.
     xrep in P_x4. xrep~. subst. apply~ ZUpdate_app_r.
 Qed.
-Lemma update_spec : 
+
+Lemma update_spec : 
   RepSpec update (i;int) (X;a) (L;rlist a) |R>> 
     ZInbound i L -> R (ZUpdate i X L ;; rlist a).
 Proof.

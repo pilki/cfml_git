@@ -113,7 +113,7 @@ Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
 
 Lemma link_spec : 
   RepSpec link (L1;cat a) (L2;cat a) |R>>
-    L1 <> nil -> L2 <> nil -> R (L1 ++ L2 ; cat a).
+    L1 <> nil -> L2 <> nil -> R (L1 ++ L2 ;- cat a).
 Proof.
   xcf. introv RL1 RL2 N1 N2. xmatch.
   xgo. apply N1. apply~ to_empty.
@@ -125,7 +125,7 @@ Hint Extern 1 (RegisterSpec link) => Provide link_spec.
 
 Lemma link_all_spec : 
   RepSpec link_all (Ls;queue (cat a)) |R>>
-    Ls <> nil -> Forall (<> nil) Ls -> R (concat Ls ; cat a).
+    Ls <> nil -> Forall (<> nil) Ls -> R (concat Ls ;- cat a).
 Proof.
   xintros. 
   intros ls Ls RLs Ne Nn. gen_eq n: (length Ls). gen ls Ls RLs Ne Nn.
@@ -148,7 +148,7 @@ Qed.
 Hint Extern 1 (RegisterSpec link_all) => Provide link_all_spec.
 
 Lemma append_spec : 
-  RepTotal append (L1;cat a) (L2;cat a) >> (L1++L2) ; cat a.
+  RepTotal append (L1;cat a) (L2;cat a) >> (L1++L2) ;- cat a.
 Proof.
   xcf. introv RL1 RL2. xmatch.
   xgo. inverts RL1. rew_list~.
@@ -168,13 +168,13 @@ Proof. lets H: (@QS.empty_spec (cats a) _ _). apply H. Qed.
 Hint Resolve Q_empty_spec.
 
 Lemma cons_spec : 
-  RepTotal cons (X;a) (L;cat a) >> (X::L) ; cat a.
+  RepTotal cons (X;a) (L;cat a) >> (X::L) ;- cat a.
 Proof. xgo~. Qed.
 
 Hint Extern 1 (RegisterSpec cons) => Provide cons_spec.
 
 Lemma snoc_spec : 
-  RepTotal snoc (L;cat a) (X;a) >> (L&X) ; cat a.
+  RepTotal snoc (L;cat a) (X;a) >> (L&X) ;- cat a.
 Proof. xgo~. Qed.
 
 Hint Extern 1 (RegisterSpec snoc) => Provide snoc_spec.

@@ -108,7 +108,7 @@ Qed.
 Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
 
 Lemma merge_spec : RepTotal merge (E1;heap) (E2;heap) >>
-  E1 \u E2 ; heap.
+  E1 \u E2 ;- heap.
 Proof.
   xcf. introv Rep1 Rep2. xmatch.
   xgo. inverts Rep2. equates* 1.
@@ -137,7 +137,7 @@ Qed.
 Hint Extern 1 (RegisterSpec merge) => Provide merge_spec.
 
 Lemma insert_spec : RepTotal insert (X;O.t) (E;heap) >>
-  \{X} \u E ; heap.
+  \{X} \u E ;- heap.
 Proof.
   xcf. introv RepX RepE. xapp~ (>>> \{X} E).
   applys~ (>>> inv_node X (@nil (multiset T))).
@@ -150,7 +150,7 @@ Lemma merge_pairs_spec : Spec merge_pairs hs |R>>
   forall Hs, 
   Forall2 inv hs Hs ->
   Forall (fun H => H <> \{}) Hs -> 
-  R (list_union Hs ; heap).
+  R (list_union Hs ;- heap).
 Proof.
   xinduction (@List.length heap). xcf. introv IH RepH NE. xmatch.
   xgo. inverts~ RepH.

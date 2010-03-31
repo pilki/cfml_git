@@ -82,7 +82,7 @@ Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
 Lemma checkw_spec : 
   Spec checkw (q:queue a) |R>>
     forall Q, inv false true q Q ->
-    R (Q ; queue a).
+    R (Q ;- queue a).
 Proof.
   xcf. intros ((((w,lenf),f),lenr),r) Q K. xgo.
   intuit K. exists (@nil a). rew_list in *. substs~.
@@ -93,7 +93,7 @@ Hint Extern 1 (RegisterSpec checkw) => Provide checkw_spec.
 
 Lemma check_spec : 
   Spec check (q:queue a) |R>>
-    forall Q, inv false false q Q -> R (Q ; queue a).
+    forall Q, inv false false q Q -> R (Q ;- queue a).
 Proof.
   xcf. intros ((((w,lenf),f),lenr),r) Q (g&RQ&DF&LF&LR&LE&_).
   xgo; try ximpl; eauto.
@@ -105,7 +105,7 @@ Qed.
 Hint Extern 1 (RegisterSpec check) => Provide check_spec.
 
 Lemma snoc_spec : 
-  RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ; queue a.
+  RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ;- queue a.
 Proof.
   xcf. intros ((((w,lenf),f),lenr),r) x. introv (g&RQ) RX.
   xgo~; try ximpl; eauto. intuit. exists g. splits~.

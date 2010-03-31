@@ -19,7 +19,7 @@ Parameter is_empty_spec :
   RepTotal is_empty (Q;queue a) >> bool_of (Q = nil).
 
 Parameter snoc_spec : 
-  RepTotal snoc (Q;queue a) (X;a) >> (Q&X) ; queue a.
+  RepTotal snoc (Q;queue a) (X;a) >> (Q&X) ;- queue a.
 
 Parameter head_spec : 
   RepSpec head (Q;queue a) |R>>
@@ -60,7 +60,7 @@ Parameter is_empty_spec :
   RepTotal is_empty (Q;queue a) >> bool_of (Q = nil).
 
 Parameter snoc_spec : 
-  RepTotal snoc (Q;queue a) (X;a) >> (Q&X) ; queue a.
+  RepTotal snoc (Q;queue a) (X;a) >> (Q&X) ;- queue a.
 
 Parameter head_spec : 
   RepSpec head (Q;queue a) |R>>

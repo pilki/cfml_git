@@ -121,7 +121,7 @@ Qed.
 Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
 
 Lemma snoc_spec : forall `{Rep a A},
-  RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ; queue a.
+  RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ;- queue a.
 Proof.
   intros. xintros. intros q y Q Y RQ RY.
   sets_eq n: (depth q). gen a A H y q Q Y EQn.

@@ -19,7 +19,7 @@ Parameter is_empty_spec :
   RepTotal is_empty (Q;deque a) >> bool_of (Q = nil).
 
 Parameter cons_spec : 
-  RepTotal cons (X;a) (Q;deque a) >> (X::Q) ; deque a.
+  RepTotal cons (X;a) (Q;deque a) >> (X::Q) ;- deque a.
 
 Parameter head_spec : 
   RepSpec head (Q;deque a) |R>>
@@ -30,7 +30,7 @@ Parameter tail_spec :
      Q <> nil -> R (is_tail Q ;; deque a).
 
 Parameter snoc_spec : 
-  RepTotal snoc (Q;deque a) (X;a) >> (Q&X) ; deque a.
+  RepTotal snoc (Q;deque a) (X;a) >> (Q&X) ;- deque a.
 
 Parameter last_spec : 
   RepSpec last (Q;deque a) |R>>

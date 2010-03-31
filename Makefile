@@ -70,22 +70,26 @@ OKAH=\
 	okasaki/LeftistHeap_proof.v \
 	okasaki/PairingHeap_proof.v \
 	okasaki/LazyPairingHeap_proof.v \
-	okasaki/BinomialHeap_proof.v \
-	okasaki/SplayHeap_proof.v 
+	okasaki/SplayHeap_proof.v \
+	okasaki/BinomialHeap_proof.v 
 
 OKAO=\
 	okasaki/UnbalancedSet_proof.v \
 	okasaki/RedBlackSet_proof.v \
 	okasaki/BottomUpMergeSort_proof.v \
+	okasaki/CatenableListImpl_proof.v \
 	okasaki/BinaryRandomAccessList_proof.v \
-	okasaki/AltBinaryRandomAccessList_proof.v \
-	okasaki/CatenableListImpl_proof.v 
+	okasaki/AltBinaryRandomAccessList_proof.v 
+
 
 OKA=$(OKAS) $(OKAQ) $(OKAH) $(OKAO)
 
 NEW=\
 	okasaki/Okasaki_ml.v \
-	okasaki/BinaryRandomAccessList_ml.v \
+	okasaki/HoodMelvilleQueue_ml.v \
+	okasaki/HoodMelvilleQueue_proof.v 
+
+#	okasaki/BinaryRandomAccessList_ml.v \
 
 
 
@@ -161,11 +165,12 @@ edits:
 	coqide -I lib $(OKAS) &
 
 stats:
-	@php -f stats.php $(OKAQ) $(OKAH) $(OKAO) $(OKAS) > stats.txt
+	@php -f stats.php $(OKAQ) $(OKAH) $(OKAO) > stats.txt
 	@echo "STAT COMPUTED"
+#$(OKAS)
 
 statstime:
-	@php -f stats.php time $(OKAQ) $(OKAH) $(OKAO) $(OKAS) > stats.txt
+	@php -f stats.php time $(OKAQ) $(OKAH) $(OKAO) > stats.txt
 	@echo "STAT COMPUTED"
 
 libcompile:

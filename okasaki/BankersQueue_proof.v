@@ -25,7 +25,8 @@ Proof.
   intros. apply (Build_Rep (inv 0)).
   destruct x as (((lenf,f),lenr),r).
   introv K1 K2. intuit K1. intuit K2. prove_rep.
-Defined.
+Defined.
+
 (** automation *)
 
 Hint Constructors Forall2.
@@ -85,7 +86,7 @@ Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
 
 Lemma check_spec : 
   Spec check (q:queue a) |R>>
-    forall Q, inv 1 q Q -> R (Q ; queue a).
+    forall Q, inv 1 q Q -> R (Q ;- queue a).
 Proof.
   xcf. intros (((lenf,f),lenr),r) Q K. xgo.
   destructs K. subst. simple~.
@@ -95,7 +96,7 @@ Qed.
 Hint Extern 1 (RegisterSpec check) => Provide check_spec.
 
 Lemma snoc_spec : 
-  RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ; queue a.
+  RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ;- queue a.
 Proof.
   xcf. intros (((lenf,f),lenr),r) x. introv (H&LF&LR&LE) RX.
   xgo~; ximpl_nointros. unfolds. rew_list. rewrite~ <- app_assoc.

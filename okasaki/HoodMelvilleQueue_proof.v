@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-Require Import FuncTactics LibCore.
+Require Import LibCore FuncTactics.
 Require Import QueueSig_ml QueueSig_proof.
 Require Import HoodMelvilleQueue_ml.
 
@@ -13,12 +13,12 @@ Import MLHoodMelvilleQueue.
 (** invariant *)
 
 Section Invariant.
-Variables (a A : Type) (RA:Rep a A).
+Context `{RA:Rep a A}. 
 
 Record base (lf lenf lenr : int) (r g : list a) (Q:list A) :=
   { base_lenr : lenr = length r;
     base_lenf : lenf = lf;
-    base_lval : Forall2 rep (g ++ rev r) Q }.
+    base_lval : rep (g ++ rev r) Q }.
 
 Record oper lenf f lenr r (g :list a) Q (d n m p : int) : Prop := 
   { oper_base : base (2*m + 1 - p) lenf lenr r g Q;
@@ -27,9 +27,9 @@ Record oper lenf f lenr r (g :list a) Q (d n m p : int) : Prop :=
     oper_ppos : p >= 0;
     oper_nval : n + d = 2*p + 2*lenr + 2;
     reve_lf   : length f = m - p :> int; 
-    oper_fval : f = take (length f) Q }.
+    oper_fval : rep f (take (length f) Q) }.
 
-Record reve `{Rep a A} (f f' f'' r' r'' g : list a) Q (ok n m p : int) : Prop :=
+Record reve (f f' f'' r' r'' g : list a) (ok n m p : int) : Prop :=
   { reve_gval : g = rev (take (abs ok) f') ++ f'' ++ rev r'' ++ r';
     reve_lf'  : length f' = n :> int;
     reve_lf'' : length f'' = m - n :> int;
@@ -38,7 +38,7 @@ Record reve `{Rep a A} (f f' f'' r' r'' g : list a) Q (ok n m p : int) : Prop :=
     reve_okval: ok = n - p;
     reve_nle : n <= m }.
 
-Record appe (f f' r' g:list a) Q (ok n m p : int) : Prop :=
+Record appe (f f' r' g:list a) (ok n m p : int) : Prop :=
   { appe_gval : g = rev (take (abs ok) f') ++ r';
     appe_lf'  : length f' = 2*m + 1 - n :> int;
     appe_lr'  : length r' = n :> int;
@@ -51,26 +51,39 @@ Definition inv (c:bool) (d:int) (q:queue a) (Q:list A) : Prop :=
   let '(lenf,f,s,lenr,r) := q in
   match s with
   | Idle => base (length f) lenf lenr r f Q /\ lenr <= lenf
-  | Done f' => c /\ base (length f') lenf lenr r f' Q /\ lenr <= lenf
+  | Finished f' => c /\ base (length f') lenf lenr r f' Q /\ lenr <= lenf
   | Reversing ok f'' f' r'' r' => exists n m p g,
         oper lenf f lenr r g Q d n m p 
-     /\ reve f f' f'' r' r'' g Q ok n m p  
+     /\ reve f f' f'' r' r'' g ok n m p  
   | Appending ok f' r' => exists n m p g,
         oper lenf f lenr r g Q d n m p 
-     /\ appe f f' r' g Q ok n m p  
+     /\ appe f f' r' g ok n m p  
   end.
 
 End Invariant.
 
-Global Instance queue_rep `{Rep a A} : Rep (queue a) (list A) :=
-  inv false 0.
+(** model *)
+
+Global Instance queue_rep `{Rep a A} : Rep (queue a) (list A).
+Proof.
+  intros. apply (Build_Rep (inv false 0)).
+  cuts* K: (forall q c1 d1 Q1 c2 d2 Q2, 
+    inv c1 d1 q Q1 -> inv c2 d2 q Q2 -> Q1 = Q2).
+  destruct q as ((((lenf,f),state),lenr),r).
+  introv K1 K2. destruct state; intuit K1; intuit K2.
+  intuit H0; intuit H2. prove_rep.
+  intuit H0; intuit H1; intuit H2; intuit H3.
+  intuit oper_base0; intuit oper_base1; subst; apply* @rep_unique.
+  skip.
+  skip. (* similar *)
+Defined.
 
 (** automation *)
 
 Hint Constructors Forall2.
 Hint Resolve Forall2_last.
-Hint Extern 1 (@rep (queue _) _ _ _ _) => simpl.
-Ltac auto_tilde ::= eauto.
+Ltac auto_tilde ::= auto with maths.
+Ltac auto_star ::= try solve [ intuition (eauto with maths) ].
 
 (** useful facts *)
 

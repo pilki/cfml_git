@@ -19,13 +19,13 @@ Parameter is_empty_spec :
   RepTotal is_empty (L;cat a) >> bool_of (L = nil).
 
 Parameter cons_spec : 
-  RepTotal cons (X;a) (L;cat a) >> (X::L) ; cat a.
+  RepTotal cons (X;a) (L;cat a) >> (X::L) ;- cat a.
 
 Parameter snoc_spec : 
-  RepTotal snoc (L;cat a) (X;a) >> (L&X) ; cat a.
+  RepTotal snoc (L;cat a) (X;a) >> (L&X) ;- cat a.
 
 Parameter append_spec : 
-  RepTotal append (L1;cat a) (L2;cat a) >> (L1++L2) ; cat a.
+  RepTotal append (L1;cat a) (L2;cat a) >> (L1++L2) ;- cat a.
 
 Parameter head_spec : 
   RepSpec head (L;cat a) |R>>

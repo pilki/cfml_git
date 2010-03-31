@@ -14,7 +14,7 @@ Parameter empty_spec : rep empty \{}.
 
 Parameter insert_spec : 
   RepTotal insert (X;elem) (E;set) >>
-    \{X} \u E ; set.
+    \{X} \u E ;- set.
 
 Parameter member_spec : 
   RepTotal member (X;elem) (E;set) >> 

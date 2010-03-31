@@ -114,7 +114,7 @@ Qed.
 Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
 
 Lemma cons_spec : forall `{Rep a A},
-  RepTotal cons (X;a) (L;rlist a) >> (X::L) ; rlist a.
+  RepTotal cons (X;a) (L;rlist a) >> (X::L) ;- rlist a.
 Proof.
   intros. xintros.
   intros x l. intros. gen_eq n: (size l). gen a A H x l X L.
@@ -307,7 +307,7 @@ Proof.
 (*
   xcf. introv RI RX [b RL] Bi.
   (*
-  xfun (fun f => RepTotal f (y;a) >> (= X ; a)).*)
+  xfun (fun f => RepTotal f (y;a) >> (= X ;- a)).*)
   xfun_mg. simpls. xapp_spec fupdate_spec.
   specializes~ HR (fun _:A => X). reflexivity.
   fapplys HR. apply S_f0. xisspec. (* todo: xbody_exploit *)

@@ -7,7 +7,7 @@ Module BatchedQueueSpec <: QueueSigSpec.
 
 (** instantiations *)
 
-Module Import Q <: MLQueue := MLBatchedQueue.
+Module Import Q <: MLQueue := MLBatchedQueue.
 (** invariant *)
 
 Definition inv `{Rep a A} (q:queue a) (Q:list A) :=
@@ -60,7 +60,7 @@ Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
 Lemma checkf_spec : 
   Spec checkf (q:queue a) |R>>
     forall Q, (let (f,r) := q in rep (f ++ rev r) Q) ->
-    R (Q ; queue a).
+    R (Q ;- queue a).
 Proof.
   xcf. intros (f,r) l K. xgo; rew_list in K.
   simpl. rew_list~. split; auto_false.
@@ -69,7 +69,7 @@ Qed.
 Hint Extern 1 (RegisterSpec checkf) => Provide checkf_spec.
 
 Lemma snoc_spec : 
-  RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ; queue a.
+  RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ;- queue a.
 Proof.
   xcf. intros [f r] x. introv [H M] RX. simpl in H. xgo~. 
   rewrite~ app_rev_cons. ximpl~.

@@ -13,7 +13,7 @@
 let rec half x = 
    if x = 0 then 0
    else if x = 1 then failwith "error"
-   else 1 + half (x-2)
+   else let y = half (x-2) in 1 + y
 
 
 

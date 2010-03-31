@@ -167,7 +167,7 @@ Qed.
 Hint Extern 1 (RegisterSpec partition) => Provide partition_spec.
 
 Lemma merge_spec : RepTotal merge (E1;heap) (E2;heap) >>
-  E1 \u E2 ; heap.
+  E1 \u E2 ;- heap.
 Proof.
   xinduction (fun e1 e2 => (size e1 + size e2)%nat).
   xcf. introv IH Rep1 Rep2. xmatch.
@@ -180,7 +180,7 @@ Qed.
 Hint Extern 1 (RegisterSpec merge) => Provide merge_spec.
 
 Lemma insert_spec : RepTotal insert (X;O.t) (E;heap) >>
-  \{X} \u E ; heap.
+  \{X} \u E ;- heap.
 Proof.
   xcf. introv RepX RepE. xlet as. xapp~. 
   intros [f1 f2] H. intuit H. xgo*.

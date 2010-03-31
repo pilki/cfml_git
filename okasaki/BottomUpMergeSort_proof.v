@@ -149,7 +149,7 @@ Proof. apply empty_cf. xret~. Qed.
 Hint Extern 1 (RegisterSpec empty) => Provide empty_spec.
 
 Lemma add_spec : RepTotal add (X;t) (E;sortable) >>
-  \{X} \u E ; sortable.
+  \{X} \u E ;- sortable.
 Proof.
   xcf. introv RepX RepE. xmatch.
   xfun_induction_nointro

@@ -249,8 +249,8 @@ Notation "'RepTotal' f ( X1 ; A1 ) ( X2 ; A2 ) ( X3 ; A3 ) ( X4 ; A4 ) >> P"
      (at level 69, f at level 0, X1 ident, X2 ident, X3 ident, X4 ident,
       A1 at level 0, A2 at level 0, A3 at level 0, A4 at level 0) : func.
 
-Notation "X ; T" := (fun (x:T) => rep x X) (at level 68). 
-Notation "P ;; T" := (fun (x:T) => exists X, rep x X /\ P X) (at level 80). 
+Notation "X ';-' T" := (fun (x:T) => rep x X) (at level 68). 
+Notation "P ';;' T" := (fun (x:T) => exists X, rep x X /\ P X) (at level 80). 
 
 
 (********************************************************************)

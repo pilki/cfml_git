@@ -205,13 +205,13 @@ Qed.
 Lemma half_spec_2 : Spec half x |R>>
     forall n:int, n >= 0 -> x = 2*n -> R (= n).
 Proof.
-  xinduction (int_downto_wf 0). (* set up the induction *)
+  xinduction (downto 0). (* set up the induction *)
   xcf. (* apply the characteristic formula *)
   introv IH Pos Eq. (* name pre-conditions explicitly *)
   xcase. (* case analysis following if/else-if/else *)
   xret. math. (* completes the case [n = 0] *)
   xfail. math. (* completes the case [n = 1] *)
-  xlet as k'. (* reason on the let binding *)
+  xlet. (* reason on the let binding *)
   xapp (n-1); math. (* reason on recursive call *)
   xret. math. (* conclude *)
 Qed.
@@ -228,7 +228,7 @@ Qed.
 Lemma half_spec_3 : Spec half n |R>>
   forall k:int, k >= 0 -> n = 2*k -> R (= k).
 Proof.
-  xinduction (int_downto_wf 0). xcf. introv IH Pos Eq. xcase.
+  xinduction (downto 0). xcf. introv IH Pos Eq. xcase.
     xret. math. 
     xfail. math. 
     xlet as k'. 
@@ -273,8 +273,8 @@ Ltac auto_tilde ::= try solve [ auto | math ].
 Lemma half_spec_5 : Spec half x |R>>
   forall n:int, n >= 0 -> x = 2*n -> R (= n).
 Proof.
-  xinduction (int_downto_wf 0). 
-  xcf. intros. xgo~ '_x2 (Xargs (n-1)).
+  xinduction (downto 0). 
+  xcf. intros. xgo~ 'y (Xargs (n-1)).
 Qed.
 
 

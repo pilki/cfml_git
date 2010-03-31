@@ -23,16 +23,17 @@ Declare Module OS : OrderedSigSpec with Module O := H.MLElement.
 Import H MLElement OS. 
 
 Global Instance heap_rep : Rep heap (multiset T).
-Parameter empty_spec : rep empty \{}.
+
+Parameter empty_spec : rep empty \{}.
 
 Parameter is_empty_spec : RepTotal is_empty (E;heap) >> 
   bool_of (E = \{}).
 
 Parameter insert_spec : RepTotal insert (X;t) (E;heap) >>
-  \{X} \u E ; heap.
+  \{X} \u E ;- heap.
 
 Parameter merge_spec : RepTotal merge (E1;heap) (E2;heap) >>
-  E1 \u E2 ; heap.
+  E1 \u E2 ;- heap.
 
 Parameter find_min_spec : RepSpec find_min (E;heap) |R>>
   E <> \{} -> R (min_of E ;; t).

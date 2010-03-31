@@ -116,10 +116,10 @@ Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
 
 Definition link_spec := RepSpec link (E1;heap) (E2;heap) |R>>
   forall X, foreach (is_ge X) E2 -> min_of E1 X -> 
-  R (E1 \u E2 ; heap).
+  R (E1 \u E2 ;- heap).
 
 Lemma merge_spec : RepTotal merge (E1;heap) (E2;heap) >>
-  E1 \u E2 ; heap.
+  E1 \u E2 ;- heap.
 Proof.
   applys (>>> proj1 __ link_spec).
   eapply conj_strengthen_2; try intros M.
@@ -154,7 +154,7 @@ Qed.
 Hint Extern 1 (RegisterSpec merge) => Provide merge_spec.
 
 Lemma insert_spec : RepTotal insert (X;O.t) (E;heap) >>
-  \{X} \u E ; heap.
+  \{X} \u E ;- heap.
 Proof. 
   xgo~. ximpl. equates* 1. 
 Qed.
