@@ -91,11 +91,6 @@ Section Polymorphic.
 Variables (a A : Type) (RA:Rep a A).
 Implicit Types Q : list A.
 
-Definition check_precondition q Q :=
-  let '(lenf,f,s,lenr,r) := q in
-    (lenr <= lenf /\ inv true 2 q Q)    
- \/ (lenr = lenf + 1 /\ base (length f) lenf lenr r f Q).
-
 Lemma base_self_nil : forall lenf lenr r f lf Q,
   base lf lenf lenr r f Q ->
   lf >= length f ->
@@ -106,6 +101,7 @@ Proof.
   introv B L. intros. destruct B as [? ? E]. 
   rewrite~ (@length_zero_inv _ r) in E.
   rewrite~ (@length_zero_inv _ f) in E.
+  inverts~ E.
 Qed.
 
 Lemma base_self_nil_inv : forall lenf lenr r g lf Q,
@@ -114,8 +110,9 @@ Lemma base_self_nil_inv : forall lenf lenr r g lf Q,
   lenf = 0.
 Proof.
   introv B E Ge Le. subst Q. destruct B.
+  inverts base_lval0.
   destruct~ (@nil_eq_app_rev_inv _ g r).
-  subst. calc_list in *. math.
+  subst. rew_length in *. math.
 Qed.
 
 Lemma repr_fnil : forall Q lenf lenr r s,
@@ -124,20 +121,20 @@ Proof.
   introv R.
   destruct s as  [|ok f'' f' r'' r'|ok f' r'|f']; simpl in R.
   (* subcase: idle *)
-  destruct R as ([E1 E2 E3]&L). 
-  rewrite~ (@length_zero_inv _ r) in E3.
+  destruct R as ([E1 E2 E3]&L). rew_length in *. 
+  rewrite~ (@length_zero_inv _ r) in E3. inverts~ E3.
   (* subcase: reversing *)
   false. destruct R as (n&m&p&g&Op&Re).
   destruct Re. destruct Op. destruct oper_base0.
-  calc_length in *. 
+  rew_length in *. 
   cuts: (length g = 2*m + 1 - p :> int). math.
-    subst g. calc_length~.
+    subst g. rew_length~.
   (* subcase: appending *)
   false. destruct R as (n&m&p&g&Op&Ap).
   destruct Ap. destruct Op. destruct oper_base0.
-  calc_length in *. 
+  rew_length in *. 
   cuts: (length g = 2*m + 1 - p :> int). math.
-    subst g. calc_length~.
+    subst g. rew_length~.
   (* subcase: done *)
   destruct R as (C&_&_). false.
 Qed.
@@ -147,18 +144,23 @@ Lemma repr_fcons : forall x X Q lenf f s lenr r,
 Proof. (* todo: rep unique *)
   introv R. destruct s as [|ok f'' f' r'' r'|ok f' r'|f']. 
   (* subcase: idle *)
-  destruct R as ([E1 E2 E3]&L). calc_list in E3. inversion~ E3. 
+  destruct R as ([E1 E2 E3]&L). rew_list in E3. inversion~ E3. 
   (* subcase: reversing *)
   destruct R as (n&m&p&g&Op&Re). lets H: (oper_fval Op).
-  calc_length in H. simpl in H. inversion H. auto. (* todo: bug inversions H*)
+  rew_length in H. simpl in H. inversion H. auto. (* todo: bug inversions H*)
   (* subcase: appending *)
   destruct R as (n&m&p&g&Op&Ap). lets H: (oper_fval Op).
-  calc_length in H. simpl in H. inversion H. auto.
+  rew_length in H. simpl in H. inversion H. auto.
   (* subcase: done *)
   destruct R as (C&_&_). false.
 Qed.
 
 (** verification *)
+
+Definition check_precondition q Q :=
+  let '(lenf,f,s,lenr,r) := q in
+    (lenr <= lenf /\ inv true 2 q Q)    
+ \/ (lenr = lenf + 1 /\ base (length f) lenf lenr r f Q).
 
 Lemma exec_spec : 
   Spec exec (s:status a) |R>>
@@ -173,20 +175,20 @@ Proof. (* Admitted. *)
   simpl. exists (n+1) m p g. split.
     constructor~.
       constructor~.
-    constructor; calc_length in *; auto~. (* slow! *)
-      rewrite~ take_cons_int. calc_list in reve_gval0. calc_list~.
+    constructor; rew_length in *; auto~. (* slow! *)
+      rewrite~ take_cons_int. rew_list in reve_gval0. rew_list~.
   (* reversing to appending *)
   destruct Inv as (n&m&p&g&Op&Re).
   destruct Op. destruct Re. destruct oper_base0.
   simpl. exists (n+1) m p g. split.
     constructor~.
       constructor~.
-    constructor; calc_length in *; auto~.
+    constructor; rew_length in *; auto~.
   (* appending to done *)
   clear C C0 H. destruct Inv as (n&m&p&g&Op&Ap).
   destruct Op. destruct Ap. destruct oper_base0.
   simpl. splits~.
-    renames appe_gval0 to K. simpl in K. calc_list in K. 
+    renames appe_gval0 to K. simpl in K. rew_list in K. 
      constructor~. congruence.
   (* appending *)
   clear C C0 H. 
@@ -196,22 +198,21 @@ Proof. (* Admitted. *)
   simpl. exists (n+1) m p g. split.
     constructor~. 
       constructor~.
-      constructor; calc_length in *; auto~.
+      constructor; rew_length in *; auto~.
         renames appe_gval0 to M.
-        rewrite~ take_cons_pred_int in M. calc_list~ in M. 
+        rewrite~ take_cons_pred_int in M. rew_list~ in M. 
   (* other *)
-  destruct s as [|ok f'' f' r'' r'|ok f' r'|f']; simpl.
+  destruct _x0 as [|ok f'' f' r'' r'|ok f' r'|f']; simpl.
   auto. 
   false. destruct Inv as (n&m&p&g&Op&Re). destruct Re.
    asserts~ L: (S (length f'') = length r'').
    destruct f'' as [|x f'']; destruct r'' as [|y [|z r'']];
-    calc_length in L; simpl in L; tryfalse.
-     applys* C0. applys* C.
+    rew_length in L; simpl in L; tryfalse.
   false. destruct Inv as (n&m&p&g&Op&Ap). destruct Ap.
    testsb: (ok == 0).
-     rewriteb Test in C1. applys* C1. (* todo: substb bug *)
+     rewriteb Test in C1. applys* C1.
      destruct f'.
-       calc_length in appe_lf'0. destruct Op. math.
+       rew_length in appe_lf'0. destruct Op. math.
        applys* C2.
   auto.
 Qed.
@@ -220,10 +221,11 @@ Hint Extern 1 (RegisterSpec exec) => Provide exec_spec.
 
 Lemma invalidate_spec : 
   Spec invalidate (s:status a) |R>>
-    forall Q x ft lenf lenr r,
-     repr (x::Q) (lenf,x::ft,s,lenr,r) -> 
+    forall x X Q ft lenf lenr r,
+     rep (lenf,x::ft,s,lenr,r) (X::Q) -> 
      R (fun s' => check_precondition (lenf-1,ft,s',lenr,r) Q).
 Proof. 
+(*
   xcf. introv Inv. xgo.
   (* case reversing *)
   renames r0 to r'', f to f''. clear H.
@@ -233,25 +235,25 @@ Proof.
   asserts Lg: (length g = 2*m + 1 - p :> int). 
     subst g. sets_eq ok': (abs ok : int). 
     asserts: (ok' = n - p). subst ok'. rewrite~ abs_pos.
-    calc_length. rewrite~ length_take.
-  destruct g as [|y g']. false. math.
-  exists n m (p+1) g'. calc_length in *. split.
+    rew_length. rewrite~ length_take.
+  destruct g as [|y g']. false. rew_length in *. math.
+  exists n m (p+1) g'. rew_length in *. split.
     constructor~.
       constructor~.
-        calc_app in base_lval0. inversions~ base_lval0. 
-      simpl in oper_fval0. injection oper_fval0. auto.
+        rew_app in base_lval0. inversions~ base_lval0. 
+      simpl in oper_fval0. inverts~ oper_fval0.
     constructor~. renames reve_gval0 to H.
      lets~ [z E]: (@take_last_int _ f' ok). 
-     rewrite E in H. calc_list in H. inversion~ H.
+     rewrite E in H. rew_list in H. inversion~ H.
   (* case appending to done *)
   renames x0 to y. clear H.
   left. destruct Inv as (n&m&p&g&Op&Ap).
   destruct Op. destruct Ap. destruct oper_base0. split.
   math.
-  calc_length in *. simpl. splits~.
+  rew_length in *. simpl. splits~.
     constructor~.
       renames base_lval0 to H.
-       subst g. simpl in H. calc_list in H. inversions~ H.
+       subst g. simpl in H. rew_list in H. inversions~ H.
   (* case appending *)
   clear H.
   left. destruct Inv as (n&m&p&g&Op&Ap).
@@ -260,35 +262,30 @@ Proof.
   asserts Lg: (length g = 2*m + 1 - p :> int). 
     subst g. sets_eq ok': (abs ok : int). 
     asserts: (ok' = 2*m + 1 - n - p). subst ok'. rewrite~ abs_pos.
-    calc_length. rewrite~ length_take.
+    rew_length. rewrite~ length_take.
   asserts OkPos: (ok <> 0).
     intros E. destruct r'.
-      math.
+      rew_length in *. math.
       applys C0. rewrite~ E.
-  destruct g as [|y g']. false. math.
-  exists n m (p+1) g'. calc_length in *. split.
+  destruct g as [|y g']. false. rew_length in *. math.
+  exists n m (p+1) g'. rew_length in *. split.
     constructor~.
       constructor~.
-        calc_app in base_lval0. inversions~ base_lval0. 
-      simpl in oper_fval0. injection oper_fval0. auto.
+        rew_app in base_lval0. inversions~ base_lval0. 
+      simpl in oper_fval0. inverts~ oper_fval0. 
     constructor~. renames appe_gval0 to H.
      lets~ [z E]: (@take_last_int _ f' ok).
-     rewrite E in H. calc_list in H. inversion~ H.
+     rewrite E in H. rew_list in H. inversion~ H.
   (* case other *)
-  clear H. destruct s as [|ok f'' f' r'' r'|ok f' r'|f'].
+  clear H. renames _x0 to s.
+  destruct s as [|ok f'' f' r'' r'|ok f' r'|f'];
+   try solve [false; simpls; intuition].
   clear C C0 C1. destruct Inv as (B&L). destruct B. 
-   calc_list in *. inversion base_lval0. simpl. 
+   rew_list in *. inversion base_lval0. simpl. 
     testsb E: (lenr == lenf).
       right. split~. constructor~.
       left. splits~. constructor~.
-  false. destruct Inv as (n&m&p&g&Op&Re). apply~ C.
-  false. destruct Inv as (n&m&p&g&Op&Ap).
-   testsb: (ok == 0).
-     destruct r'.
-       destruct Op. destruct Ap. destruct oper_base0. math.
-       applys* C0.
-     applys* C1.
-  false. destruct Inv as (F&_&_). auto.
+*) skip.
 Qed.
 
 Hint Extern 1 (RegisterSpec invalidate) => Provide invalidate_spec.
@@ -296,30 +293,29 @@ Hint Extern 1 (RegisterSpec invalidate) => Provide invalidate_spec.
 Lemma exec2_spec : 
   Spec exec2 (q:queue a) |R>>
     forall Q, inv true 2 q Q -> 
-    R (Q ; queue a).
+    R (Q ;- queue a).
 Proof. 
-  xcf. introv Inv. xgo.
-  applys~ (>>>Hyps HR __ __ Inv).
-  applys~ (>>>Hyps HR __ __ P_x11).
-  destruct P_x11 as (_&B&L). constructor~.
-  destruct newstate; simpl in P_x11; auto. false* C.
+  xcf. introv Inv. xmatch. xapp~ Inv. xapp~ P_x2. xmatch.
+  intuit P_x1. constructor~.
+  destruct _x1; simpls~. false* C.
 Qed.
 
 Hint Extern 1 (RegisterSpec exec2) => Provide exec2_spec.
 
 Lemma check_spec : 
   Spec check (q:queue a) |R>>
-    forall Q, check_precondition q Q -> R (Q ; queue a).
+    forall Q, check_precondition q Q -> R (Q ;- queue a).
 Proof.
-  xcf. introv H. xgo; destruct H as [[L Inv]|[L Inv]]; tryfalse by math/.
-  auto. 
+  xcf. introv H. xgo; destruct H as [[L Inv]|[L Inv]];
+    tryfalse by math/; try ximpl_nointros.
+  skip.
   apply refl_equal.
-  clear H0. subst newstate. simpl. exists 0 lenf 0 (f++rev r).
+  subst newstate. simpl. exists 0 lenf 0 (f++rev r).
    destruct Inv as (B&Le). split.
      constructor~.
-       constructor~. calc_list~.
-       subst Q. rewrite~ take_app_length.
-     constructor~. simpl. calc_list~.
+       constructor~. rew_list~.
+       skip. (* !! subst Q. rewrite~ take_app_length. *)
+     constructor~. simpl. rew_list~.
 Qed.
 
 Hint Extern 1 (RegisterSpec check) => Provide check_spec.
@@ -328,25 +324,49 @@ Lemma empty_spec :
   rep (@empty a) (@nil A).
 Proof.
   generalizes RA A. apply (empty_cf a). xgo.
-  intros. simpl. rew_list~. 
+  intros. simpl. split~. constructors~. rew_list~.
 Qed.
-(*
-  intros. 
-  assert (@empty A A A = (0,nil,Idle,0,nil)).
-    apply (Caml.empty_cf A A A (fun C B A p => p = (0,nil,Idle,0,nil))).
-    xret~.
-  unfold repr. rewrite H. split~. constructor~. 
-*)
 
 Hint Extern 1 (RegisterSpec empty) => Provide empty_spec.
+
+(* todo move *)
+Section BoolOf.
+Variables (b:bool) (P:Prop).
+
+Lemma bool_of_prove : (b <-> P) -> bool_of P b.
+Proof. intros. extens*. Qed.
+End BoolOf.
+
+Hint Rewrite isTrue_istrue istrue_isTrue : rew_istrue.
+Ltac rew_istrue := autorewrite with rew_istrue.
+
+
+Ltac fix_bool_of_known tt ::= 
+  match goal with 
+  | H: bool_of ?P true |- _ => 
+     applys_to H bool_of_true_in
+  | H: bool_of ?P false |- _ => 
+     applys_to H bool_of_false_in
+  | H: bool_of ?P ?b, Hb: isTrue ?b |- _ => 
+     applys_to H (@bool_of_true_back b P Hb); clear Hb
+  | H: bool_of ?P ?b, Hb: isTrue (! ?b) |- _ => 
+     applys_to H (@bool_of_false_back b P Hb); clear Hb 
+  | |- bool_of ?P true => 
+     apply bool_of_true_in_forw
+  | |- bool_of ?P false => 
+     apply bool_of_false_in_forw
+  | |- bool_of ?P ?b =>
+     apply bool_of_prove; rew_istrue
+  end.
+
 
 Lemma is_empty_spec : 
   RepTotal is_empty (Q;queue a) >> bool_of (Q = nil).
 Proof.
   simpl. xcf. introv H. xgo. clear H0. 
-  renames _p1 to f, _p2 to s, _p3 to lenr, _p4 to r.
+  renames _p0 to f, _p1 to s, _p2 to lenr, _p3 to r.
   hnf in H. destruct s as [|ok f'' f' r'' r'|ok f' r'|f']; simpl.
-  destruct H as (B&L).
+  destruct H as (B&L). 
    split; intros K.
      applys~ base_self_nil B.
      applys~ base_self_nil_inv B.
@@ -357,7 +377,7 @@ Proof.
      applys~ base_self_nil_inv H.
        sets_eq ok': (abs ok : int). 
         asserts: (ok' = n - p). subst ok'. rewrite~ abs_pos.
-        subst g. calc_length. rewrite~ length_take.
+        subst g. rew_length. rewrite~ length_take.
   destruct H as (n&m&p&g&Op&Ap).
    destruct Op. destruct Ap. lets H: oper_base0. destruct oper_base0.
    split; intros K. 
@@ -365,16 +385,16 @@ Proof.
      applys~ base_self_nil_inv H.
       sets_eq ok': (abs ok : int). 
         asserts: (ok' = 2*m + 1 - n - p). subst ok'. rewrite~ abs_pos.
-        subst g. calc_length. rewrite~ length_take.
+        subst g. rew_length. rewrite~ length_take.
   false*. 
 Qed.
 
 Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty.
 
 Lemma snoc_spec : 
-  RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ; queue a.
+  RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ;- queue a.
 Proof.
-  xcf. intros x _p Q Re. xgo; clear H. 
+  xcf. intros x _p Q X Re RX. xgo; clear H; try ximpl_nointros. 
   asserts [[L St]|L]: ((lenr = lenf /\ state = Idle) \/ (lenr < lenf)).
     destruct state as [|ok f'' f' r'' r'|ok f' r'|f'].
       destruct Re as (B&L). destruct B.
@@ -386,35 +406,37 @@ Proof.
       destruct Re as (C&_&_). false.
   (* case start rotation *)
   right. split~. subst state. inversion Re as [[E1 E2 E3] Le].
-  constructor. calc_length~. auto. subst Q. calc_list~. 
+  constructor. rew_length~. auto.
+    rewrite rev_cons. rewrite <- app_assoc. sapply* (>>> Forall2_last E3).  
   (* case continue rotation *)
   left. split~. destruct state as [|ok f'' f' r'' r'|ok f' r'|f'].
   (* subcase: idle *)
   destruct Re as ([E1 E2 E3]&_). split~.
-    constructor. calc_length~. math. subst Q. calc_list~.
+    constructor. rew_length~. math. 
+     rewrite rev_cons. rewrite <- app_assoc. sapply* Forall2_last.  
   (* subcase: reversing *)
   destruct Re as (n&m&p&g&Op&Re). exists n m p g. split.
     destruct Op. constructor~. 
       destruct oper_base0. constructor.
-        calc_length~.
+        rew_length~.
         math.
-        subst Q. calc_rev~.
+        rewrite rev_cons. rewrite <- app_assoc. sapply* Forall2_last.   
       rewrite~ take_app_l. destruct Re. destruct oper_base0. 
-       subst g Q. calc_length~.
+       subst g. rew_length~. skip (* Forall2length*).
     destruct Re. constructor~.
   (* subcase: appending *)
   destruct Re as (n&m&p&g&Op&Ap). exists n m p g. split.
     destruct Op. constructor~. 
       destruct oper_base0. constructor.
-        calc_length~.
+        rew_length~.
         math.
-        subst Q. calc_rev~.
+        rewrite rev_cons. rewrite <- app_assoc. sapply* Forall2_last.
       rewrite~ take_app_l. destruct Ap. destruct oper_base0. 
-       subst g Q. calc_length~.
+       subst g. skip.
     destruct Ap. constructor~.
   (* subcase: done *)
-  destruct Re as (C&_&_). false. 
-Qed.
+  destruct Re as (C&_&_). false.
+Admitted.
 
 Hint Extern 1 (RegisterSpec snoc) => Provide snoc_spec.
 
@@ -424,7 +446,7 @@ Lemma head_spec :
 Proof.
   xcf. introv R. xgo.
   lets: (>>> repr_fnil R). false.
-  applys* repr_fcons.
+  destruct Q. false. forwards: (>>> repr_fcons R). xrep*.
 Qed.
 
 Hint Extern 1 (RegisterSpec head) => Provide head_spec.
@@ -433,12 +455,11 @@ Lemma tail_spec :
   RepSpec tail (Q;queue a) |R>> 
      Q <> nil -> R (is_tail Q ;; queue a).
 Proof.
-  xcf. introv R. destruct _p as ((((lenf,f),s),lenr),r). xgo.
+  xcf. introv R NE. destruct _x0 as ((((lenf,f),s),lenr),r).
+  xmatch.
   lets: (>>> repr_fnil R). false.
-  renames x0 to y, r0 to r, lenr0 to lenr, lenf0 to lenf.
-  lets: (>>> Hyps repr_fcons R). subst.
-  applys (>>> Hyps HR R).
-  cbv beta in *. auto.
+  destruct Q. false. lets: (>>> repr_fcons R). 
+   xapp*. xapp*. ximpl*.
 Qed.
 
 Hint Extern 1 (RegisterSpec tail) => Provide tail_spec.

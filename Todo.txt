@@ -131,3 +131,6 @@
             else Node (w, t1, update_tree (i - w/2) y t2)
 
 *) HoodMelville : "Done", state -> status,
+   clear useless equalities from xmatch
+    (* rewriteb Test in C1   todo: substb bug *)
+    rewrite rev_cons. rewrite <- app_assoc. factorize
