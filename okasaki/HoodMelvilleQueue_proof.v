@@ -73,9 +73,10 @@ Proof.
   introv K1 K2. destruct state; intuit K1; intuit K2.
   intuit H0; intuit H2. prove_rep.
   intuit H0; intuit H1; intuit H2; intuit H3.
-  intuit oper_base0; intuit oper_base1; subst; apply* @rep_unique.
-  skip.
-  skip. (* similar *)
+   intuit oper_base0; intuit oper_base1; subst; apply* @rep_unique.
+  intuit H0; intuit H1; intuit H2; intuit H3.
+   intuit oper_base0; intuit oper_base1; subst; apply* @rep_unique.
+  intuit H1; intuit H4. prove_rep.
 Defined.
 
 (** automation *)
@@ -167,7 +168,7 @@ Lemma exec_spec :
     forall Q lenf f lenr r d, d > 0 -> d <= 2 -> 
      inv true d (lenf,f,s,lenr,r) Q -> 
      R (fun s' => inv true (d-1) (lenf,f,s',lenr,r) Q).
-Proof. (* Admitted. *)
+Proof.
   xcf. introv Dinf Dsup Inv. xgo.
   (* reversing *)
   destruct Inv as (n&m&p&g&Op&Re).
@@ -225,7 +226,6 @@ Lemma invalidate_spec :
      rep (lenf,x::ft,s,lenr,r) (X::Q) -> 
      R (fun s' => check_precondition (lenf-1,ft,s',lenr,r) Q).
 Proof. 
-(*
   xcf. introv Inv. xgo.
   (* case reversing *)
   renames r0 to r'', f to f''. clear H.
@@ -285,7 +285,6 @@ Proof.
     testsb E: (lenr == lenf).
       right. split~. constructor~.
       left. splits~. constructor~.
-*) skip.
 Qed.
 
 Hint Extern 1 (RegisterSpec invalidate) => Provide invalidate_spec.
@@ -302,19 +301,25 @@ Qed.
 
 Hint Extern 1 (RegisterSpec exec2) => Provide exec2_spec.
 
+Lemma Forall2_take : forall A1 A2 (P:A1->A2->Prop) n l t,
+  Forall2 P l t ->
+  Forall2 P (take n l) (take n t).
+Proof. induction n; introv H; inverts H; simple~. Qed.
+
 Lemma check_spec : 
   Spec check (q:queue a) |R>>
     forall Q, check_precondition q Q -> R (Q ;- queue a).
 Proof.
   xcf. introv H. xgo; destruct H as [[L Inv]|[L Inv]];
     tryfalse by math/; try ximpl_nointros.
-  skip.
+  subst~.
   apply refl_equal.
   subst newstate. simpl. exists 0 lenf 0 (f++rev r).
    destruct Inv as (B&Le). split.
      constructor~.
        constructor~. rew_list~.
-       skip. (* !! subst Q. rewrite~ take_app_length. *)
+       forwards~ M: (@Forall2_take _ _ rep (length f) (f++rev r) Q).
+        rewrite~ take_app_length in M. 
      constructor~. simpl. rew_list~.
 Qed.
 
@@ -391,6 +396,11 @@ Qed.
 
 Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty.
 
+Lemma Forall2_length : forall A1 A2 (P:A1->A2->Prop) l t,
+  Forall2 P l t -> length l = length t.
+Proof. introv H. induction H. simple~. rew_length~. Qed.
+
+
 Lemma snoc_spec : 
   RepTotal snoc (Q;queue a) (X;a) >> (Q & X) ;- queue a.
 Proof.
@@ -407,7 +417,7 @@ Proof.
   (* case start rotation *)
   right. split~. subst state. inversion Re as [[E1 E2 E3] Le].
   constructor. rew_length~. auto.
-    rewrite rev_cons. rewrite <- app_assoc. sapply* (>>> Forall2_last E3).  
+    rewrite rev_cons. rewrite <- app_assoc. rapply Forall2_last; eauto.
   (* case continue rotation *)
   left. split~. destruct state as [|ok f'' f' r'' r'|ok f' r'|f'].
   (* subcase: idle *)
@@ -420,9 +430,9 @@ Proof.
       destruct oper_base0. constructor.
         rew_length~.
         math.
-        rewrite rev_cons. rewrite <- app_assoc. sapply* Forall2_last.   
+        rewrite rev_cons. rewrite <- app_assoc. sapply* Forall2_last.
       rewrite~ take_app_l. destruct Re. destruct oper_base0. 
-       subst g. rew_length~. skip (* Forall2length*).
+       subst g. forwards M: (Forall2_length base_lval0). rew_length in M. math.
     destruct Re. constructor~.
   (* subcase: appending *)
   destruct Re as (n&m&p&g&Op&Ap). exists n m p g. split.
@@ -432,11 +442,11 @@ Proof.
         math.
         rewrite rev_cons. rewrite <- app_assoc. sapply* Forall2_last.
       rewrite~ take_app_l. destruct Ap. destruct oper_base0. 
-       subst g. skip.
+       subst g. forwards M: (Forall2_length base_lval0). rew_length in M. math.
     destruct Ap. constructor~.
   (* subcase: done *)
   destruct Re as (C&_&_). false.
-Admitted.
+Qed.
 
 Hint Extern 1 (RegisterSpec snoc) => Provide snoc_spec.
 
