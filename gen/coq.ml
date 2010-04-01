@@ -34,16 +34,21 @@ and coqs = coq list
 type coqtop =
   | Coqtop_def of typed_var * coq
   | Coqtop_param of typed_var
+  | Coqtop_instance of typed_var * bool
+  | Coqtop_lemma of typed_var
+  | Coqtop_proof of string
   | Coqtop_ind of coqind list
   | Coqtop_record of coqind 
   | Coqtop_label of var * int
   | Coqtop_implicit of var * (var * implicit) list
   | Coqtop_registercf of var (* todo: generalize to all hints *)
+  | Coqtop_hint_constructors of vars * var
+  | Coqtop_hint_unfold of vars * var
   | Coqtop_require of string
   | Coqtop_import of string
   | Coqtop_require_import of var
   | Coqtop_set_implicit_args 
-  | Coqtop_text of var
+  | Coqtop_text of string
   | Coqtop_declare_module of var * mod_typ
   | Coqtop_module of var * mod_bindings * mod_cast * mod_def
   | Coqtop_module_type of var * mod_bindings * mod_def
@@ -230,6 +235,9 @@ let rec string_of_coqtop ct =
   match ct with
   | Coqtop_def ((n,c1),c2) -> sprintf "Definition %s : %s := %s." n (aux c1) (aux c2)
   | Coqtop_param (n,c1) -> sprintf "Parameter %s : %s." n (aux c1) 
+  | Coqtop_instance ((n,c1),g) -> sprintf "%sInstance %s : %s." (if g then "Global " else "") n (aux c1) 
+  | Coqtop_lemma (n,c1) -> sprintf "Lemma %s : %s." n (aux c1) 
+  | Coqtop_proof s -> sprintf "Proof. %s Qed." s
   | Coqtop_record r -> sprintf "Record %s %s : %s := %s { \n %s }." 
       r.coqind_name
       (string_of_typed_vars r.coqind_targs)
@@ -256,6 +264,10 @@ let rec string_of_coqtop ct =
       sprintf "Implicit Arguments %s [%s]." x (show_list show_implicit " " xs)
   | Coqtop_registercf x ->
       sprintf "Hint Extern 1 (RegisterCf %s) => Provide %s_cf." x x
+  | Coqtop_hint_constructors (xs,base) ->
+      sprintf "Hint Constructors %s : %s." (show_list show_str " " xs) base
+  | Coqtop_hint_unfold (xs,base) ->
+      sprintf "Hint Unfold %s : %s." (show_list show_str " " xs) base
   | Coqtop_require x ->
       sprintf "Require %s." x
   | Coqtop_import x ->

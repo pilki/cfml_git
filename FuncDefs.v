@@ -7,6 +7,9 @@ Require Export LibCore LibEpsilon Shared.
 
 Axiom val : Type. (* The type Func *)
 
+Axiom val_inhab : Inhab val. (* It is inhabited *)
+Existing Instance val_inhab.
+
 Axiom app_1 : forall A1 B,  (* The prediacte AppReturns *)
   val -> A1 -> (B -> Prop) -> Prop.
 

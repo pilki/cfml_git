@@ -28,9 +28,10 @@ type cf =
 
 type cftop = 
   | Cftop_val of typed_var
-    (* Parameter x : t *)
-  | Cftop_val_cf of var * vars * vars * cf
-       (* Parameter x_spec : ... see further on ... *)
+    (* Lemma x_safe : Inhab t. Proof. typeclass. Qed.
+       Parameter x : t *)
+  | Cftop_val_cf of var * vars * vars * cf 
+    (* Parameter x_spec : ... see further on ... *)
   | Cftop_fun_cf of var * cf
     (* Parameter f_spec : Val := H *)
   | Cftop_coqs of coqtops
@@ -145,8 +146,13 @@ let coqtops_of_cftop cft =
   match cft with
 
   | Cftop_val (x,t) ->
-     [ Coqtop_param (x,t) ]
-     (* Parameter x : t *)
+     [ Coqtop_instance ((x ^ "_type_inhab", Coq_app (Coq_var "Inhab", t)), true);
+       Coqtop_proof "inhab.";
+       Coqtop_text "";
+       Coqtop_param (x,t) ]
+    (* Lemma x_safe : Inhab t. Proof. typeclass. Qed.
+       Parameter x : t *)
+       (* \*)
 
   | Cftop_val_cf (x,fvs_strict,fvs_other,cf) -> 
       let type_of_p = coq_forall_types fvs_strict wild_to_prop in

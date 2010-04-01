@@ -90,6 +90,9 @@ NEW=\
 	okasaki/Okasaki_ml.v
 
 
+# 	
+
+
 #	okasaki/BinaryRandomAccessList_ml.v \
 
 
@@ -122,7 +125,9 @@ DEMO=\
 #	okasaki/queue_batch_proof.v 
 
 TEST=\
-	demo/test_ml.v \
+	okasaki/BatchedQueue_ml.v 
+
+#demo/test_ml.v \
 
 ALL=$(TOOLS) $(DEMO) $(OKA) $(OKACOD)
 # $(COD) $(DEV) $(TUTO) $(FORM) $(DEV) $(OKA) $(DEV:.v=.vo)
@@ -148,7 +153,7 @@ okah: $(OKAH:.v=.vo)
 okas: $(OKAS:.v=.vo)
 
 new: $(NEW:.v=.vo) 
-cod: $(COD:.v=.vo) 
+cod: $(OKACOD:.v=.vo) 
 dvpt: $(DEV:.v=.vo) 
 test: $(TEST:.v=.vo) 
 gen: 

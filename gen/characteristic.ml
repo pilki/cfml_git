@@ -515,7 +515,8 @@ and cfg_type_abbrev (name,dec) =
    let sort = coq_impl_types (List.length args) in
    let coqs = match dec.type_manifest with
       | None -> [Coqtop_param (x, sort)]
-      | Some t -> [Coqtop_def ((x, sort), coq_fun_types args (typ_of t))] in
+      | Some t -> [Coqtop_def ((x, sort), coq_fun_types args (typ_of t));
+                   Coqtop_hint_unfold ([x],"typeclass_instances") ] in
    coqs 
 
 and cfg_algebraic decls =
@@ -552,8 +553,9 @@ and cfg_algebraic decls =
       (coqind_decl, implicit_decl)
       in
    let inds,maxiss = List.split (List.map trans_ind decls) in
-   [ Coqtop_ind inds ] @ (List.concat maxiss)
-
+     [ Coqtop_ind inds ] 
+   @ (List.concat maxiss)
+   @ [ Coqtop_hint_constructors (List.map (fun i -> i.coqind_name) inds, "typeclass_instances") ]
 
 and cfg_type_decls decls =
     if List.length decls = 1 && is_type_abbrev (List.hd decls)  

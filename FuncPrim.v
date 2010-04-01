@@ -2,6 +2,21 @@ Set Implicit Arguments.
 Require Export FuncDefs FuncPrint.
 Open Scope comp_scope.
 
+Hint Resolve (0%nat) : typeclass_instances.
+Hint Resolve (0%Z) : typeclass_instances.
+Hint Resolve @nil : typeclass_instances.
+Hint Resolve true : typeclass_instances.
+Hint Resolve @None : typeclass_instances.
+Hint Resolve @pair : typeclass_instances.
+
+Ltac inhab :=
+  constructor; intros; try solve 
+    [ eauto 10 with typeclass_instances 
+    | constructor; eauto 10 with typeclass_instances 
+    | apply arbitrary 
+    | apply @arbitrary; eauto 10 with typeclass_instances ].
+
+
 (************************************************************)
 (** Representation for base types *)
 
