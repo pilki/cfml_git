@@ -185,12 +185,13 @@ foreach ($files as $file)
 {
    $dev = new dvpt;
    $dev->load($file);
+   if (substr($dev->name, strlen($dev->name)-3) == "Sig")
+     continue;
    if ($dev->name == "CatenableListImpl")
      $dev->name = "CatenableList";
    if ($dev->name == "BinaryRandomAccessList")
      $dev->name = "RandomAccessList";
-   if ($dev->name == "BootstrappedQueue"
-      || $dev->name == "AltBinaryRandomAccessList")
+   if ($dev->name == "AltBinaryRandomAccessList")
       continue;
    if ($times)
       $dev->measureTime();
@@ -205,7 +206,7 @@ printf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
    'dvpt', 'ml', 'real_ml', 'coq', 'real_coq', 'inv', 'facts', 'spec', 'verif', 'time');
 foreach ($devs as $dev)
    $dev->printInfos();
-$all->printInfos();
+
 
 
 $tex = '';
@@ -213,8 +214,7 @@ $tex .= sprintf("%s & %s & %s & %s & %s & %s & %s  %s \n",
 'Development', 'Caml', 'Coq', 'inv', 'facts', 'spec', 'verif', '\\\\ \\hline');
 foreach ($devs as $dev)
 {
-   if ($dev->name == "BootstrappedQueue"
-      || $dev->name == "AltBinaryRandomAccessList")
+   if ($dev->name == "AltBinaryRandomAccessList")
       continue;
    $sep = '';
    if (in_array($dev->name, array('BankersDeque', 'BinomialHeap', 'RedBlackSet', 'RandomAccessList')))
@@ -226,7 +226,7 @@ foreach ($devs as $dev)
 
 }
 file_put_contents('stats.tex', $tex);
-echo $tex;
+
 
 /*
 $x = file_get_lines('demo/half.ml');

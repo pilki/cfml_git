@@ -25,6 +25,12 @@ Proof.
   induction x; introv H1 H2; inverts H1; inverts H2; prove_rep. 
 Defined.
 
+Lemma list_rep_cons : forall `{Rep a A} l L x X,
+  rep l L -> rep x X -> rep (x::l) (X::L).
+Proof. intros. constructors~. Qed.
+
+Hint Resolve @list_rep_cons.
+
 Instance prod_rep : forall `{Rep a1 A1} `{Rep a2 A2},
   Rep (a1 * a2) (A1 * A2).
 Proof.

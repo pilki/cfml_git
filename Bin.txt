@@ -801,3 +801,85 @@ Qed.
       intro; destruct col; destruct (node_color b); destruct Col; tryfalse; auto.
      clear P_x3. xapp~. destruct~ col.
      ximpl as e. simpl. destruct col; subst; equates* 1.
+
+
+
+
+(*
+Definition head_spec := proj53 all_specs.
+Definition tail_spec := proj54 all_specs.
+Definition snoc_spec := proj55 all_specs.
+*)
+
+(*bin
+
+Definition snoc_specs `{Rep a A} :=
+  Spec snoc (q:queue a) (x:a) |R>>
+     forall X Q, rep x X -> rep q Q ->
+     R (fun q' => rep q' (Q&X)).
+
+
+
+    (* case empty *)
+    clear PN3 IHsnoc. subst m Qm. inverts H11. 
+    rew_concat in *. rew_length in H18. 
+    apply app_spec_1. apply~ checkf_cf. xisspec.
+    intros b B. subst b. xmatch. xmatch.
+      xret. inverts H9. inverts P3.
+      specializes IHhead (>>> (list a) (rev Qr :: nil)). xapp~. clear IHhead.
+      xlet (= Empty (A:=list a)). apply app_spec_1. apply~ tail_cf. xisspec.
+       intros b B. subst b. rewrite~ PE3. xmatch.
+      apply app_spec_1. apply~ checkq_cf. xisspec.
+       intros b B. subst b. xmatch. xif; try math.
+      apply app_spec_1. apply~ checkf_cf. xisspec.
+       intros b B. subst b q. xmatch. xmatch. xret~. false~ C3.
+      subst _x0. xret. xrep in P_x2. inverts H9. subst Q.
+       rew_list. rew_length in *. inverts PX as M. inverts M.
+         constructors~. rew_length~. rew_list~. simpl in RX.
+         intro_subst_hyp. inverts RX as M. applys_to M nil_eq_rev_inv.
+          subst Qr. rew_length in *. math.
+      xret. constructors~. rew_list~. rew_list~. intro_subst_hyp. false~ C1.
+       apply~ doubling_cons. rew_length~.
+    (* case not empty *)
+    clear PE3 IHhead. 
+    xapp. constructors~. subst Qm. rew_list~. subst Q Qm. rew_list~.
+    apply~ doubling_last. subst Qm. rew_length~.
+    simpl. rewrite~ PN3.
+
+*)
+
+(* bin: check needed
+
+Lemma decrease_r : forall A (Q Qf Qm Qr : list A) Qms,
+  Q = Qf ++ Qm ++ rev Qr ->
+  0 < length Qr -> 
+  Qm = concat Qms ->
+  doubling true 1 Qms ->
+  length Qms < length Q.
+Proof.
+  introv E L Em Dm. destruct Qr. gen L. rew_list~. 
+  forwards: (concat_doubling_length Dm).
+  subst Q Qm. rew_length~.
+Qed.
+
+Lemma decrease_f : forall `{Rep a A} f (Q Qf Qm Qr : list A) Qms,
+  Q = Qf ++ Qm ++ rev Qr ->
+  f <> nil -> rep f Qf ->
+  Qm = concat Qms ->
+  doubling true 1 Qms ->
+  length Qms < length Q.
+Proof.
+  introv E L R Em Dm. destruct f. false. inverts R.
+  forwards: (concat_doubling_length Dm).
+  subst Q Qm. rew_length~.
+Qed.
+ *)
+
+
+(*bin
+Fixpoint depth a (q:queue a) : nat :=
+  match q with
+  | Empty => 0%nat
+  | Struct lenfm f m lenr r => (1 + depth m)%nat
+  end.
+*)

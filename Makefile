@@ -87,8 +87,7 @@ OKAO=\
 OKA=$(OKAS) $(OKAQ) $(OKAH) $(OKAO)
 
 NEW=\
-	okasaki/Okasaki_ml.v 
-
+	okasaki/Okasaki_ml.v
 
 
 #	okasaki/BinaryRandomAccessList_ml.v \
@@ -174,6 +173,10 @@ stats:
 statstime:
 	@php -f stats.php time $(OKAQ) $(OKAH) $(OKAO) > stats.txt
 	@echo "STAT COMPUTED"
+
+CAMLFILES=$(wildcard okasaki/*.ml)
+statsml:
+	@php -f stats.php $(CAMLFILES:.ml=_proof.v)
 
 libcompile:
 	make lib -C lib
