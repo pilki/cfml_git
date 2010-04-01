@@ -125,9 +125,7 @@ DEMO=\
 #	okasaki/queue_batch_proof.v 
 
 TEST=\
-	okasaki/BatchedQueue_ml.v 
-
-#demo/test_ml.v \
+	demo/test_ml.v 
 
 ALL=$(TOOLS) $(DEMO) $(OKA) $(OKACOD)
 # $(COD) $(DEV) $(TUTO) $(FORM) $(DEV) $(OKA) $(DEV:.v=.vo)

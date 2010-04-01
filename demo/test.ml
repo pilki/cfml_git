@@ -1,12 +1,20 @@
 (* ---------------------------------------------------------*)
+(* test inhabited types *)
+
+(*
+
+let x = raise Not_found
+
+*)
+
+(* ---------------------------------------------------------*)
 (* test polymorphic recursion *)
 
+(*
 type 'a tree = Leaf of 'a | Node of ('a * 'a) tree;;
 
 let rec depth : 'a. 'a tree -> int =
   function Leaf _ -> 1 | Node x -> 1 + depth x;;
-
-(*
 
 let rec depth_aux : 'a. int -> 'a tree -> _ =
   fun n ->
