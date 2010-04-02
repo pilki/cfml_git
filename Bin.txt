@@ -1,3 +1,17 @@
+
+(** Basic facts about lists *)
+
+Lemma In_app_l : forall (A:Type) L1 L2, 
+  In A L1 -> In A (L1 ++ L2).
+Proof. intros. induction L1; simpls. false. destruct* H. Qed.
+
+Lemma In_app_2 : forall (A:Type) L1 L2, 
+  In A L2 -> In A (L1 ++ L2).
+Proof. intros. induction L1; simpls*. Qed.
+
+Hint Resolve In_app_l In_app_2.
+
+
 Definition rep_from_eq : forall A, Rep A A.
 Proof. intros. apply (Build_Rep eq). congruence. Defined.
 
