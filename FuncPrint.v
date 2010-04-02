@@ -2,70 +2,6 @@ Set Implicit Arguments.
 Require Import FuncDefs.
 
 (********************************************************************)
-(* Notation for labels *)
-
-Module Export AtomsEff. 
-
-(** Variables are described as list of bits, e.g. [1::2::1::1::2::0].
-    For efficiency, we do not use the type [list bool], but an ad-hoc
-    predicate with three constructors. *)
-
-Inductive atom : Set :=
-  | atom_0 : atom
-  | atom_1 : atom -> atom
-  | atom_2 : atom -> atom.
-
-Fixpoint beq (x y : atom) :=
-  match x,y with
-  | atom_0, atom_0 => true
-  | atom_1 x', atom_1 y' => beq x' y'
-  | atom_2 x', atom_2 y' => beq x' y'
-  | _, _ => false
-  end.
-
-Lemma req : R_eq beq.
-Proof.
-  constructor; gen y;
-  induction x; destruct y; unfold beq; simpl; intros;
-  try solve [ auto | false 
-            | rewrite* (@IHx y) | inversions* H ].
-Qed.
-
-Instance atom_inhabited : Inhab atom.
-Proof. constructor. exact atom_0. Defined.
-
-Instance atom_comparable : Eqb atom.
-Proof. apply (Build_Eqb req). Defined.
-
-(** Notation system *)
-
-Notation "'`0'" := (atom_0) 
-  (at level 50, format "`0") : atom_scope.
-Notation "'`1' v" := (atom_1 v) 
-  (at level 50, v at level 50, format "`1 v") : atom_scope.
-Notation "'`2' v" := (atom_2 v) 
-  (at level 50, v at level 50, format "`2 v") : atom_scope.
-(* todo: old
-Notation "'`' '0'" := (atom_0) 
-  (at level 50, format "` 0") : atom_scope.
-Notation "'`' '1' v" := (atom_1 v) 
-  (at level 50, v at level 50, format "` 1 v") : atom_scope.
-Notation "'`' '2' v" := (atom_2 v) 
-  (at level 50, v at level 50, format "` 2 v") : atom_scope.
-*)
-Open Scope atom_scope.
-Bind Scope atom_scope with atom.
-Delimit Scope atom_scope with atom.
-
-End AtomsEff.
-
-
-(********************************************************************)
-(********************************************************************)
-(********************************************************************)
-(* Notation System *)
-
-(********************************************************************)
 (* ** Notation for specifications *)
 
 Open Local Scope func.
@@ -254,7 +190,58 @@ Notation "P ';;' T" := (fun (x:T) => exists X, rep x X /\ P X) (at level 80).
 
 
 (********************************************************************)
-(* ** Tags *)
+(* Implementation of labels *)
+
+Module Export AtomsEff. 
+
+(** Variables are described as list of bits, e.g. [1::2::1::1::2::0].
+    For efficiency, we do not use the type [list bool], but an ad-hoc
+    predicate with three constructors. *)
+
+Inductive atom : Set :=
+  | atom_0 : atom
+  | atom_1 : atom -> atom
+  | atom_2 : atom -> atom.
+
+Fixpoint beq (x y : atom) :=
+  match x,y with
+  | atom_0, atom_0 => true
+  | atom_1 x', atom_1 y' => beq x' y'
+  | atom_2 x', atom_2 y' => beq x' y'
+  | _, _ => false
+  end.
+
+Lemma req : R_eq beq.
+Proof.
+  constructor; gen y;
+  induction x; destruct y; unfold beq; simpl; intros;
+  try solve [ auto | false 
+            | rewrite* (@IHx y) | inversions* H ].
+Qed.
+
+Instance atom_inhabited : Inhab atom.
+Proof. constructor. exact atom_0. Defined.
+
+Instance atom_comparable : Eqb atom.
+Proof. apply (Build_Eqb req). Defined.
+
+(** Notation system *)
+
+Notation "'`0'" := (atom_0) 
+  (at level 50, format "`0") : atom_scope.
+Notation "'`1' v" := (atom_1 v) 
+  (at level 50, v at level 50, format "`1 v") : atom_scope.
+Notation "'`2' v" := (atom_2 v) 
+  (at level 50, v at level 50, format "`2 v") : atom_scope.
+Open Scope atom_scope.
+Bind Scope atom_scope with atom.
+Delimit Scope atom_scope with atom.
+
+End AtomsEff.
+
+
+(********************************************************************)
+(* ** Implementation of tags *)
 
 Definition tag_name := atom.
 
@@ -345,12 +332,6 @@ Proof. intros. subst. auto. Qed.
 
 Ltac ltac_add_tag T :=
   apply (@add_tag T (refl_equal _)).
-
-(*--demo  --todo:update?
-Definition mytag (P:Prop) := P.
-Lemma test_add_tag : True.
-Proof. ltac_add_tag mytag. split. Qed.
---*)
 
 Ltac ltac_get_tag tt :=
   match goal with |- tag ?t _ _ _ => constr:(t) end.  

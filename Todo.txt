@@ -134,3 +134,8 @@
    clear useless equalities from xmatch
     (* rewriteb Test in C1   todo: substb bug *)
     rewrite rev_cons. rewrite <- app_assoc. factorize
+
+
+    
+(*- todo: conflit entre types et termes -*)
+(* todo: pkoi le nom est perdu apres xcf ? *)

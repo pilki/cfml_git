@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-Require Import FuncTactics QueueSig_ml LibCore.
+Require Import FuncTactics QueueBisSig_ml LibCore.
 
 (** Same as QueueSigSpec, but with an explicit type for
     the implementation of Queue, to work around the fact

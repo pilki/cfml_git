@@ -20,6 +20,8 @@ Ltac inhab :=
 (************************************************************)
 (** Representation for base types *)
 
+Hint Extern 1 (@rep _ _ _ _ _) => simpl.
+
 Hint Resolve @rep_unique : rep.
 
 Ltac prove_rep := 
@@ -72,45 +74,7 @@ Hint Extern 1 (@rep (option _) _ _ _ _) => simpl.
 (************************************************************)
 (** Axiomatic specification of the primitive functions *)
 
-Parameter ml_take : val.
-
-Parameter ml_take_spec : forall A,
-  Spec ml_take (n:int) (L:list A) |R>>
-    0 <= n -> n <= length L -> R(= take (abs n) L).
-
-Hint Extern 1 (RegisterSpec ml_take) => Provide ml_take_spec.
-
-Parameter ml_drop : val.
-
-Parameter ml_drop_spec : forall A,
-  Spec ml_drop (n:int) (L:list A) |R>>
-    0 <= n -> n <= length L -> R(= drop (abs n) L).
-
-Hint Extern 1 (RegisterSpec ml_drop) => Provide ml_drop_spec.
-
-
-
-Parameter ml_list_hd : val.
-
-Parameter ml_list_hd_spec : forall A,
-  Spec ml_list_hd (L:list A) |R>>
-    forall X T, L = X::T -> R(=X).
-Hint Extern 1 (RegisterSpec ml_list_hd) => Provide ml_list_hd_spec.
-
-Parameter ml_list_tl : val.
-
-Parameter ml_list_tl_spec : forall A,
-  Spec ml_list_tl (L:list A) |R>>
-    forall X T, L = X::T -> R(=T).
-Hint Extern 1 (RegisterSpec ml_list_tl) => Provide ml_list_tl_spec.
-
-Parameter ml_list_hd_repspec : forall `{Rep a A},
-  RepSpec ml_list_hd (L;list a) |R>>
-    forall X T, L = X::T -> R(X ;- a).
-Parameter ml_list_tl_repspec : forall `{Rep a A},
-  RepSpec ml_list_tl (L;list a) |R>>
-    forall X T, L = X::T -> R(T ;- list a).
-
+(** Arithmetic *)
 
 Parameter ml_plus : val.
 Parameter ml_plus_spec : Total ml_plus x y >> = (x + y)%Z.
@@ -123,12 +87,6 @@ Hint Extern 1 (RegisterSpec ml_minus) => Provide ml_minus_spec.
 Parameter ml_eqb : val.
 Parameter ml_eqb_int_spec : Total ml_eqb (x:int) (y:int) >> = (x == y).
 Hint Extern 1 (RegisterSpec ml_eqb) => Provide ml_eqb_int_spec.
-
-Parameter ml_nth : val.
-Parameter ml_nth_spec : forall A, 
-  Spec ml_nth (l:list A) (n:int) |R>> 
-    ((0 <= n /\ n < length l)%Z -> R (Nth (Zabs_nat n) l)).
-Hint Extern 1 (RegisterSpec ml_nth) => Provide ml_nth_spec.
 
 Parameter ml_leq : val.
 Parameter ml_leq_spec : Total ml_leq x y >> = (x <= y)%I.
@@ -156,20 +114,49 @@ Hint Extern 1 (RegisterSpec ml_and) => Provide ml_or_spec.
 
 Parameter ml_asr : val.
 Parameter ml_asr_spec : Spec ml_asr (x:int) (y:int) |R>>
-  (y = 1 -> R(= Zdiv x 2)). (* todo: check parentheses needed *)
+  (y = 1 -> R (= Zdiv x 2)). 
 Hint Extern 1 (RegisterSpec ml_asr) => Provide ml_asr_spec.
 
-Parameter ml_neq : val.
-Parameter ml_opp : val.
-Parameter ml_mul : val.
-Parameter ml_div : val.
-Parameter ml_append : val.
-Parameter ml_raise : val.
-  (* .. yet to specify *)
+(** Lists *)
 
-Parameter compare : val. (* todo: until functors are supported *)
+Parameter ml_list_hd : val.
+
+Parameter ml_list_hd_spec : forall A,
+  Spec ml_list_hd (L:list A) |R>>
+    forall X T, L = X::T -> R(=X).
+Hint Extern 1 (RegisterSpec ml_list_hd) => Provide ml_list_hd_spec.
+Parameter ml_list_hd_repspec : forall `{Rep a A},
+  RepSpec ml_list_hd (L;list a) |R>>
+    forall X T, L = X::T -> R(X ;- a).
+
+Parameter ml_list_tl : val.
+Parameter ml_list_tl_spec : forall A,
+  Spec ml_list_tl (L:list A) |R>>
+    forall X T, L = X::T -> R(=T).
+Hint Extern 1 (RegisterSpec ml_list_tl) => Provide ml_list_tl_spec.
+Parameter ml_list_tl_repspec : forall `{Rep a A},
+  RepSpec ml_list_tl (L;list a) |R>>
+    forall X T, L = X::T -> R(T ;- list a).
+
+Parameter ml_take : val.
+Parameter ml_take_spec : forall A,
+  Spec ml_take (n:int) (L:list A) |R>>
+    0 <= n -> n <= length L -> R(= take (abs n) L).
+Hint Extern 1 (RegisterSpec ml_take) => Provide ml_take_spec.
+
+Parameter ml_drop : val.
+Parameter ml_drop_spec : forall A,
+  Spec ml_drop (n:int) (L:list A) |R>>
+    0 <= n -> n <= length L -> R(= drop (abs n) L).
+Hint Extern 1 (RegisterSpec ml_drop) => Provide ml_drop_spec.
 
 Parameter ml_reverse : val.
 Parameter ml_reverse_spec : forall A,
   Total ml_reverse (l:list A) >> = LibList.rev l.
 Hint Extern 1 (RegisterSpec ml_reverse) => Provide ml_reverse_spec.
+
+Parameter ml_nth : val.
+Parameter ml_nth_spec : forall A, 
+  Spec ml_nth (l:list A) (n:int) |R>> 
+    ((0 <= n /\ n < length l)%Z -> R (Nth (Zabs_nat n) l)).
+Hint Extern 1 (RegisterSpec ml_nth) => Provide ml_nth_spec.
