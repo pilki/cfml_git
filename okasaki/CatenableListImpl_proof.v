@@ -1,9 +1,8 @@
 Set Implicit Arguments. 
 Require Import FuncTactics LibCore.
-Require Import QueueSig_ml QueueSig_proof.
+Require Import QueueBisSig_ml QueueBisSig_proof.
 Require Import CatenableListImpl_ml.
 Require Import CatenableListSig_ml CatenableListSig_proof.
-
 
 Module CatenableListImplSpec (Q:MLQueueBis) 
  (QS:QueueBisSigSpec with Module Q:=Q) <: CatenableListSigSpec.

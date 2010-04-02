@@ -1,13 +1,21 @@
 Set Implicit Arguments.
 Require Import FuncTactics QueueSig_ml LibCore.
 
-Module Type QueueSigSpec.
+(** Same as QueueSigSpec, but with an explicit type for
+    the implementation of Queue, to work around the fact
+    that Coq does not carry "positivity" information 
+    about type constructors in signatures. *)
 
-Declare Module Q : MLQueue.
+Module Type QueueBisSigSpec.
+
+Declare Module Q : MLQueueBis.
 Import Q.
 
-Global Instance queue_rep : forall `{Rep a A},  
-  Rep (queue a) (list A).
+Definition queue_rep : forall `{Rep a A},  
+  Rep (queue a) (list A) 
+  := fun a A H => list_rep (H:=H).
+
+Existing Instance queue_rep. 
 
 Section Polymorphic.
 Variables (a A : Type) (RA:Rep a A).
@@ -31,8 +39,4 @@ Parameter tail_spec :
 
 End Polymorphic.
 
-End QueueSigSpec.
-
-
-
-
+End QueueBisSigSpec.

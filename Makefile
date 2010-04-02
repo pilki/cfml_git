@@ -45,6 +45,7 @@ OKACOD=\
 	okasaki/BottomUpMergeSort_ml.v \
 	okasaki/BinaryRandomAccessList_ml.v \
 	okasaki/AltBinaryRandomAccessList_ml.v \
+	okasaki/QueueBisSig_ml.v \
 	okasaki/CatenableListImpl_ml.v \
 	okasaki/Okasaki_ml.v 
 
@@ -56,6 +57,7 @@ OKAS=\
 	okasaki/HeapSig_proof.v \
 	okasaki/SortableSig_proof.v \
 	okasaki/RandomAccessListSig_proof.v \
+	okasaki/QueueBisSig_proof.v \
 	okasaki/CatenableListSig_proof.v 
 
 OKAQ=\

@@ -8,6 +8,7 @@ Module BatchedQueueSpec <: QueueSigSpec.
 (** instantiations *)
 
 Module Import Q <: MLQueue := MLBatchedQueue.
+
 (** invariant *)
 
 Definition inv `{Rep a A} (q:queue a) (Q:list A) :=

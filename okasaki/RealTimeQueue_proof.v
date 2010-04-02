@@ -8,6 +8,7 @@ Module RealTimeQueueSpec <: QueueSigSpec.
 (** instantiations *)
 
 Module Import Q <: MLQueue := MLRealTimeQueue.
+
 (** invariant *)
 
 Definition inv (d:int) `{Rep a A} (q:queue a) (Q:list A) :=
@@ -138,8 +139,3 @@ Hint Extern 1 (RegisterSpec tail) => Provide tail_spec.
 End Polymorphic.
 
 End RealTimeQueueSpec.
-
-
-
-
-

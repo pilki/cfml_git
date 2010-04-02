@@ -1,6 +1,6 @@
-module type Queue =
+module type QueueBis =
 sig
-   type 'a queue 
+   type 'a queue = 'a list
 
    val empty : 'a queue
    val is_empty : 'a queue -> bool

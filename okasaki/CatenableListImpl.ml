@@ -1,6 +1,6 @@
 open Okasaki
 open CatenableListSig
-open QueueSig
+open QueueBisSig
 
 module CatenableListImpl (Q : QueueBis) : CatenableList =
 struct
