@@ -2,6 +2,16 @@ Set Implicit Arguments.
 Require Export LibCore LibEpsilon Shared.
 Require Export CFHeaps.
 
+Hint Rewrite star_neutral_l star_neutral_r star_assoc : rew_heaps.
+
+Tactic Notation "rew_heaps" :=
+  autorewrite with rew_heaps.
+Tactic Notation "rew_heaps" "in" "*" :=
+  autorewrite with rew_heaps in *.
+Tactic Notation "rew_heaps" "in" hyp(H) :=
+  autorewrite with rew_heaps in H.
+
+
 (********************************************************************)
 (* ** Weakenable formulae *)
 
@@ -193,10 +203,17 @@ Variables (A1 A2 A3 A4 B : Type) (f : val).
 Variables (x1:A1) (x2:A2) (x3:A3) (x4:A4).
 Variables (H:hprop).
 
-Lemma app_intro_1_2 : forall (P:B->Prop),
-  app_1 f x1 H (fun g h' => app_1 g x2 (= h') P) ->
-  app_2 f x1 x2 P.
-Proof. auto. Qed.
+Lemma app_intro_1_2 : forall (Q:B->hprop),
+  app_1 f x1 H (fun g h' => app_1 g x2 (= h') Q) ->
+  app_2 f x1 x2 H Q.
+Proof.
+  introv M. exists H [] __ []. splits.
+  rew_heaps. auto.
+  apply M.
+  intros x K S.
+Open Scope heap_scope.
+
+
 
 Lemma app_intro_1_3 : forall (P:B->Prop),
   app_1 f x1 (fun g => app_2 g x2 x3 P) ->

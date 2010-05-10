@@ -90,7 +90,7 @@ Notation "[ L ]" := (heap_is_empty_st L)
 Notation "[| P |]" := (fun v => heap_is_empty_st (P v)) 
   (at level 0, P at level 99) : heap_scope.
 
-Notation "H1 * H2" := (heap_is_star H1 H2)
+Notation "H1 '**' H2" := (heap_is_star H1 H2)
   (at level 40, left associativity) : heap_scope.
 
 Notation "l '~>|' P" := (heap_is_single l P)
