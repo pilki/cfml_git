@@ -353,6 +353,7 @@ End AppIntro.
 
 (********************************************************************)
 (* ** Elimination lemmas from spec to app *)
+
 (*-- spec_elim_1 --*)
 
 Lemma spec_elim_1_1' : forall A1 B (K: A1 -> ~~B -> Prop) f,
