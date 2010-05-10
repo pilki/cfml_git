@@ -2,14 +2,28 @@ Set Implicit Arguments.
 Require Export LibCore LibEpsilon Shared.
 Require Export CFHeaps.
 
-Hint Rewrite star_neutral_l star_neutral_r star_assoc : rew_heaps.
+Hint Rewrite star_neutral_l star_neutral_r star_assoc : rew_heap.
 
-Tactic Notation "rew_heaps" :=
-  autorewrite with rew_heaps.
-Tactic Notation "rew_heaps" "in" "*" :=
-  autorewrite with rew_heaps in *.
-Tactic Notation "rew_heaps" "in" hyp(H) :=
-  autorewrite with rew_heaps in H.
+Tactic Notation "rew_heap" :=
+  autorewrite with rew_heap.
+Tactic Notation "rew_heap" "in" "*" :=
+  autorewrite with rew_heap in *.
+Tactic Notation "rew_heap" "in" hyp(H) :=
+  autorewrite with rew_heap in H.
+
+Tactic Notation "rew_heap" "~" :=
+  rew_heap; auto_tilde.
+Tactic Notation "rew_heap" "~" "in" "*" :=
+  rew_heap in *; auto_tilde.
+Tactic Notation "rew_heap" "~" "in" hyp(H) :=
+  rew_heap in H; auto_tilde.
+
+Tactic Notation "rew_heap" "*" :=
+  rew_heap; auto_star.
+Tactic Notation "rew_heap" "*" "in" "*" :=
+  rew_heap in *; auto_star.
+Tactic Notation "rew_heap" "*" "in" hyp(H) :=
+  rew_heap in H; auto_star.
 
 
 (********************************************************************)
@@ -148,16 +162,16 @@ Definition spec_4 A1 A2 A3 A4 B (K: A1 -> A2 -> A3 -> A4 -> ~~B -> Prop) f :=
 (********************************************************************)
 (* ** Curried functions *)
 
-Definition curried_1 (B:Type) (f:val) := 
-  True.
-
-Definition curried_2 (A1 B:Type) f := 
+Definition curried_1 (A1 B:Type) (f:val) := 
   spec_1 (fun (x1:A1) (R:~~B) => True) f.
 
-Definition curried_3 (A1 A2 B:Type) f := 
+Definition curried_2 (A1 A2 B:Type) f := 
+  spec_2 (fun (x1:A1) (R:~~B) => True) f.
+
+Definition curried_3 (A1 A2 A3 B:Type) f := 
   spec_2 (fun (x1:A1) (x2:A2) (R:~~B) => True) f.
 
-Definition curried_4 (A1 A2 A3 B:Type) f := 
+Definition curried_4 (A1 A2 A3 A4 B:Type) f := 
   spec_3 (fun (x1:A1) (x2:A2) (x3:A3) (R:~~B) => True) f.
 
 
@@ -201,74 +215,74 @@ Qed.
 Section AppIntro.
 Variables (A1 A2 A3 A4 B : Type) (f : val).
 Variables (x1:A1) (x2:A2) (x3:A3) (x4:A4).
-Variables (H:hprop).
+Variables (H:hprop) (Q:B->hprop).
 
-Lemma app_intro_1_2 : forall (Q:B->hprop),
-  app_1 f x1 H (fun g h' => app_1 g x2 (= h') Q) ->
+Lemma app_intro_1_2 : 
+  app_1 f x1 H (fun g h => app_1 g x2 (= h) Q) ->
   app_2 f x1 x2 H Q.
 Proof.
   introv M. exists H [] __ []. splits.
-  rew_heaps. auto.
-  apply M.
-  intros x K S.
-Open Scope heap_scope.
+    rew_heap~.
+    apply M.
+    intros x K S. rew_heap~ in *.
+Qed.
 
+Lemma app_intro_1_3 : 
+  app_1 f x1 H (fun g h => app_2 g x2 x3 (= h) Q) ->
+  app_3 f x1 x2 x3 H Q.
+Proof. skip. Qed.
 
+Lemma app_intro_1_4 : 
+  app_1 f x1 H (fun g h => app_3 g x2 x3 x4 (= h) Q) ->
+  app_4 f x1 x2 x3 x4 H Q.
+Proof. skip. Qed.
 
-Lemma app_intro_1_3 : forall (P:B->Prop),
-  app_1 f x1 (fun g => app_2 g x2 x3 P) ->
-  app_3 f x1 x2 x3 P.
-Proof. auto. Qed.
+Lemma app_intro_2_1 : 
+  app_2 f x1 x2 H Q ->
+  local (app_1 f x1) H (fun g h => app_1 g x2 (= h) Q).
+Proof.
+  introv M. intuit M. exists___*.
+Qed.
 
-Lemma app_intro_1_4 : forall (P:B->Prop),
-  app_1 f x1 (fun g => app_3 g x2 x3 x4 P) ->
-  app_4 f x1 x2 x3 x4 P.
-Proof. auto. Qed.
+Lemma app_intro_2_3 : 
+  app_2 f x1 x2 H (fun g h => app_1 g x3 (= h) Q) ->
+  app_3 f x1 x2 x3 H Q.
+Proof. skip. Qed.
 
-Lemma app_intro_2_1 : forall (P:B->Prop),
-  app_2 f x1 x2 P ->
-  app_1 f x1 (fun g => app_1 g x2 P).
-Proof. auto. Qed.
+Lemma app_intro_2_4 : 
+  app_2 f x1 x2 H (fun g h => app_2 g x3 x4 (= h) Q) ->
+  app_4 f x1 x2 x3 x4 H Q.
+Proof. skip. Qed.
 
-Lemma app_intro_2_3 : forall (P:B->Prop),
-  app_2 f x1 x2 (fun g => app_1 g x3 P) ->
-  app_3 f x1 x2 x3 P.
-Proof. auto. Qed.
+Lemma app_intro_3_1 : 
+  app_3 f x1 x2 x3 H Q ->
+  app_1 f x1 H (fun g h => app_2 g x2 x3 (= h) Q).
+Proof. skip. Qed.
 
-Lemma app_intro_2_4 : forall (P:B->Prop),
-  app_2 f x1 x2 (fun g => app_2 g x3 x4 P) ->
-  app_4 f x1 x2 x3 x4 P.
-Proof. auto. Qed.
+Lemma app_intro_3_2 :
+  app_3 f x1 x2 x3 H Q ->
+  app_2 f x1 x2 H (fun g h => app_1 g x3 (= h) Q).
+Proof. skip. Qed.
 
-Lemma app_intro_3_1 : forall (P:B->Prop),
-  app_3 f x1 x2 x3 P ->
-  app_1 f x1 (fun g => app_2 g x2 x3 P).
-Proof. auto. Qed.
+Lemma app_intro_3_4 : 
+  app_3 f x1 x2 x3 H (fun g h => app_1 g x4 (= h) Q) ->
+  app_4 f x1 x2 x3 x4 H Q.
+Proof. skip. Qed.
 
-Lemma app_intro_3_2 : forall (P:B->Prop),
-  app_3 f x1 x2 x3 P ->
-  app_2 f x1 x2 (fun g => app_1 g x3 P).
-Proof. auto. Qed.
+Lemma app_intro_4_1 :
+  app_4 f x1 x2 x3 x4 H Q ->
+  app_1 f x1 H (fun g h => app_3 g x2 x3 x4 (= h) Q).
+Proof. skip. Qed.
 
-Lemma app_intro_3_4 : forall (P:B->Prop),
-  app_3 f x1 x2 x3 (fun g => app_1 g x4 P) ->
-  app_4 f x1 x2 x3 x4 P.
-Proof. auto. Qed.
+Lemma app_intro_4_2 :
+  app_4 f x1 x2 x3 x4 H Q ->
+  app_2 f x1 x2 H (fun g h => app_2 g x3 x4 (= h) Q).
+Proof. skip. Qed.
 
-Lemma app_intro_4_1 : forall (P:B->Prop),
-  app_4 f x1 x2 x3 x4 P ->
-  app_1 f x1 (fun g => app_3 g x2 x3 x4 P).
-Proof. auto. Qed.
-
-Lemma app_intro_4_2 : forall (P:B->Prop),
-  app_4 f x1 x2 x3 x4 P ->
-  app_2 f x1 x2 (fun g => app_2 g x3 x4 P).
-Proof. auto. Qed.
-
-Lemma app_intro_4_3 : forall (P:B->Prop),
-  app_4 f x1 x2 x3 x4 P ->
-  app_3 f x1 x2 x3 (fun g => app_1 g x4 P).
-Proof. auto. Qed.
+Lemma app_intro_4_3 :
+  app_4 f x1 x2 x3 x4 H Q ->
+  app_3 f x1 x2 x3 H (fun g h => app_1 g x4 (= h) Q).
+Proof. skip. Qed.
 
 End AppIntro.
 
@@ -278,18 +292,28 @@ End AppIntro.
 
 Lemma spec_intro_1 : forall A1 B f (K:A1->~~B->Prop),
   is_spec_1 K ->
-  curried_1 f ->
+  curried_1 B f ->
   (forall x1, K x1 (app_1 f x1)) ->
   spec_1 K f.
 Proof. introv S _ H. split~. Qed.
 
 Lemma spec_intro_2 : forall A1 A2 B f (K:A1->A2->~~B->Prop),
   is_spec_2 K ->
-  curried_2 A1 f ->
+  curried_2 A1 B f ->
   (forall x1 x2, K x1 x2 (app_2 f x1 x2)) ->
   spec_2 K f.
 Proof.
-  introv I C HK. split~. split. intros_all~. intros x1.
+  introv I C HK. split~.
+  intros x1.
+unfolds in C. 
+lets:(proj2 C x1).
+  destruct (pure_witness (proj2 C x1)) as [g [_ Hg]].
+lets: (I x1).
+unfolds in C.
+  destruct (pure_witness (proj
+ unfolds in H.
+
+  split~. split. intros_all~. intros x1.
   destruct (app_1_witness (proj2 C x1)) as [g [_ Hg]].
   apply* app_1_abstract. split~. intros x2. eapply I.
   apply HK. intros P HP. pattern g. apply* app_1_join.
@@ -297,7 +321,7 @@ Qed.
 
 Lemma spec_intro_3 : forall A1 A2 A3 B f (K:A1->A2->A3->~~B->Prop),
   is_spec_3 K ->
-  curried_3 A1 A2 f ->
+  curried_3 A1 A2 B f ->
   (forall x1 x2 x3, K x1 x2 x3 (app_3 f x1 x2 x3)) ->
   spec_3 K f.
 Proof.
@@ -312,7 +336,7 @@ Qed.
 
 Lemma spec_intro_4 : forall A1 A2 A3 A4 B f (K:A1->A2->A3->A4->~~B->Prop),
   is_spec_4 K ->
-  curried_4 A1 A2 A3 f ->
+  curried_4 A1 A2 A3 B f ->
   (forall x1 x2 x3 x4, K x1 x2 x3 x4 (app_4 f x1 x2 x3 x4)) ->
   spec_4 K f.
 Proof.

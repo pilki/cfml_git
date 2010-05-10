@@ -65,7 +65,7 @@ Definition heap_is_single (l:loc) A (P:A->Prop) : hprop :=
 (** Heap union *)
 
 Definition heap_is_star (H1 H2 : hprop) : hprop := 
-  fun h => exists h1 h2, h = heap_union h1 h2 /\ H1 h1 /\ H2 h2.
+  fun h => exists h1 h2, h = heap_union h1 h2 /\ h <> None /\ H1 h1 /\ H2 h2.
 
 (** Pack in heaps *)
 
@@ -92,6 +92,8 @@ Notation "[| P |]" := (fun v => heap_is_empty_st (P v))
 
 Notation "H1 '**' H2" := (heap_is_star H1 H2)
   (at level 40, left associativity) : heap_scope.
+Notation "H1 '*' H2" := (heap_is_star H1 H2)
+  (at level 40, left associativity, only parsing) : heap_scope.
 
 Notation "l '~>|' P" := (heap_is_single l P)
   (at level 35, no associativity) : heap_scope.
