@@ -50,22 +50,6 @@ Qed.
 
 
 (********************************************************************)
-(* ** Predicate weakening *)
-
-Notation "P ==> Q" := (pred_le P Q) 
-  (at level 55, right associativity) : func.
-
-Open Scope func.
-
-Hint Resolve pred_le_refl.
-
-Lemma weaken_bool_of : forall (P Q : Prop), 
-  (P <-> Q) -> ((bool_of P) ==> (bool_of Q)).
-Proof. unfold bool_of. intros_all. rewrite H0. extens*. Qed.
-
-
-
-(********************************************************************)
 (* ** Weakenable predicates *)
 
 Definition weakenable A (R:(A->Prop)->Prop) :=
@@ -415,6 +399,7 @@ Proof.
     apply (proj2 H).
     apply W.
 Qed.
+
 Lemma spec_elim_2_2' : forall A1 A2 B (K: A1 -> A2 -> ~~B -> Prop) f,
   spec_2 K f -> forall x1 x2 (P Q : B->Prop),
   (forall R, K x1 x2 R -> R Q) -> (Q ==> P) ->

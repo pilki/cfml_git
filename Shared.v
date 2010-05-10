@@ -18,20 +18,9 @@ Ltac idtacs tt :=
   idtac.
 
 
-Ltac intuit_core :=
-  repeat match goal with
-  | H: _ /\ _ |- _ => destruct H
-  | H: exists a, _ |- _ => destruct H
-  end.
 
-Ltac intuit_from H :=
-  first [ progress (intuit_core)
-        | destruct H; intuit_core ].
 
-Tactic Notation "intuit" :=
-  intuit_core.
-Tactic Notation "intuit" constr(H) :=
-  intuit_from H.
+(********************************************************************)
 
 
 Lemma if_eq_1 : forall A (x:bool) (v1 v2 y : A), 
@@ -115,10 +104,11 @@ Ltac intro_hnf :=
   intro; match goal with H: _ |- _ => hnf in H end.
 
 
+(*
 Tactic Notation "intro_subst":=
   let x := fresh "TEMP" in let H := fresh "TEMP" in
   intros x H; subst x.
-
+*)
 
 Ltac invert_first_hyp :=
   let H := get_last_hyp tt in inverts H.
@@ -259,3 +249,20 @@ Tactic Notation "splits_all" "~" :=
   splits_all; auto_tilde.
 Tactic Notation "splits_all" "*" :=
   splits_all; auto_star.
+
+
+(********************************************************************)
+(* ** Predicate weakening *)
+
+Notation "P ==> Q" := (pred_le P Q) 
+  (at level 55, right associativity) : func.
+
+Open Scope func.
+
+Hint Resolve pred_le_refl.
+
+Lemma weaken_bool_of : forall (P Q : Prop), 
+  (P <-> Q) -> ((bool_of P) ==> (bool_of Q)).
+Proof. unfold bool_of. intros_all. rewrite H0. extens*. Qed.
+
+

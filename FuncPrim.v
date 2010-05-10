@@ -1,6 +1,5 @@
 Set Implicit Arguments.
-Require Export FuncDefs FuncPrint.
-Open Scope comp_scope.
+Require Export LibInt FuncDefs FuncPrint.
 
 Hint Resolve (0%nat) : typeclass_instances.
 Hint Resolve (0%Z) : typeclass_instances.

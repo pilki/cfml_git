@@ -1,3 +1,10 @@
+(** Constructions *)
+
+Notation "emp" := (heap_empty) 
+  (at level 0) : heap_scope.
+
+
+
 
 (** Basic facts about lists *)
 

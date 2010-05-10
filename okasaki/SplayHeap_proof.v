@@ -196,7 +196,7 @@ Proof.
   inverts H. xgo. eauto.
   xgo. math. constructors~. intros K. multiset_inv.  
   ximpl as x (X&RepX&MinX). destruct MinX as (InXA&InfX).
-   esplit. splits_all~. multiset_in InXA; auto.
+   esplit. split. eauto. split. multiset_in InXA; auto.
    asserts: (X <= Y). applys~ H2.
    intros Z HZ. sets_eq A: (\{Y0} \u A0 \u B0). multiset_in HZ. 
      auto.
@@ -213,7 +213,7 @@ Proof.
   xcf. intros IH e E RepE HasE. xmatch_nocases.
   inverts RepE as RA RB RY LA LB; xpat.
   inverts RA as RC RD RX LC LD; xpat.
-  xgo. esplit; split~. exists* __.
+  xgo. xrep. exists* __.
   xcase.
   xgo. inverts RC. norm. esplit; split~.
     exists Y0. splits~. split~. introv M. multiset_in M.

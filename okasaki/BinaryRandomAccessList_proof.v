@@ -109,6 +109,12 @@ Lemma btree_size_correct : forall p t L,
 Proof. introv Rt. inverts~ Rt. Qed.
 Hint Resolve btree_size_correct.
 
+Lemma btree_p_pos : forall p t L,
+  btree p t L -> p >= 0.
+Proof. introv Rt. inductions Rt; math. Qed.
+
+Hint Resolve btree_p_pos.
+
 Lemma length_correct : forall t p L,
   btree p t L -> length L = 2^p :> int.
 Proof.
@@ -242,6 +248,8 @@ Qed.
 
 Hint Extern 1 (RegisterSpec tail) => Provide tail_spec.
 
+Require Import LibInt.
+
 Lemma lookup_tree_spec : 
   Spec lookup_tree (i:int) (t:tree a) |R>>
     forall p L, btree p t L -> ZInbound i L -> R (ZNth i L ;; a).
@@ -249,12 +257,13 @@ Proof.
   xinduction (fun (i:int) t => tree_size t).
   xcf. intros i t. introv IH Rt Bi. inverts Rt; xmatch.
   xgo. auto~. apply~ ZInbound_one_pos_inv.
-  xif. subst. rewrite pow2_succ in C0. rewrite div2_odd in C0. xapp~. 
+  xif. subst. rewrite~ pow2_succ in C0. 
+    rewrite div2_odd in C0. xapp~. 
     subst. apply~ ZInbound_app_l_inv. rewrite~ (length_correct H).
     ximpl as l. xrep in Hx. xrep. 
      apply~ ZNth_app_l.
-  subst. rewrite pow2_succ in C0. rewrite div2_odd in C0.
-   rewrite pow2_succ. rewrite div2_odd. xapp~. 
+  subst. rewrite~ pow2_succ in C0. rewrite~ div2_odd in C0.
+   rewrite~ pow2_succ. rewrite~ div2_odd. xapp~. 
     apply~ ZInbound_app_r_inv. rewrite~ (length_correct H).
     ximpl as l. xrep in Hx. xrep. 
      apply~ ZNth_app_r. rewrite~ (length_correct H).
@@ -270,11 +279,11 @@ Proof.
   xinduction (fun (i:int) (x:a) t => tree_size t).
   xcf. intros i x t. introv IH Rx Rt Bi. inverts Rt; xmatch.
   xgo. xrep~. apply~ ZInbound_one_pos_inv.
-  xif. subst. rewrite pow2_succ in C0. rewrite div2_odd in C0. xapp~. 
+  xif. subst. rewrite~ pow2_succ in C0. rewrite~ div2_odd in C0. xapp~. 
     subst. apply~ ZInbound_app_l_inv. rewrite~ (length_correct H).
     xret. xrep in P_x7. xrep~. apply~ ZUpdate_app_l.
-  subst. rewrite pow2_succ in C0. rewrite div2_odd in C0.
-   rewrite pow2_succ. rewrite div2_odd. xapp~. 
+  subst. rewrite~ pow2_succ in C0. rewrite~ div2_odd in C0.
+   rewrite~ pow2_succ. rewrite~ div2_odd. xapp~. 
     apply~ ZInbound_app_r_inv. rewrite~ (length_correct H).
     xret. xrep in P_x4. xrep~. 
       constructors~. rewrite~ pow2_succ.

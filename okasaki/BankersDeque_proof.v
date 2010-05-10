@@ -116,7 +116,7 @@ Proof.
   (* rebalance left *) 
   xret~. xret~.
   lets (B1&B2): (div2_bounds (eq_sym Pi)).
-  maths (0 <= i /\ i <= length f).
+  maths (0 <= i <= length f).
   xgo~. forwards~ (Ef&Lf'&Lx14): take_and_drop. apply~ abs_pos_le.
   lets: (nat_int_eq Lf'). hnf. splits.
     gen H. rewrite Ef. rewrite <- Pr'. rew_list~.

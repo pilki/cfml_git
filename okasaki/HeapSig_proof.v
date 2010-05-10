@@ -1,5 +1,6 @@
 Set Implicit Arguments.
 Require Import FuncTactics HeapSig_ml OrderedSig_ml OrderedSig_proof.
+Open Scope comp_scope.
 
 (** Definition of the minimum of a multiset *)
 
