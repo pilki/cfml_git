@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-Require Export LibCore LibEpsilon Shared.
+Require Export LibCore LibEpsilon Shared LibMap.
 
 
 (********************************************************************)
@@ -7,7 +7,7 @@ Require Export LibCore LibEpsilon Shared.
 
 (** Representation of locations *)
 
-Definition loc := nat.
+Definition loc : Type := nat.
 
 (** Representation of heap items *)
 
@@ -31,7 +31,7 @@ Definition heap_empty : heap :=
 (** Singleton heap *)
 
 Definition heap_single (l:loc) A (v:A) : heap := 
-  Some (single l (Build_dyn v)).
+  Some (single_bind l (Build_dyn v)).
 
 (** Heap union *)
 
@@ -87,10 +87,10 @@ Notation "[]" := (heap_is_empty)
 Notation "[ L ]" := (heap_is_empty_st L) 
   (at level 0, L at level 99) : heap_scope.
 
-Notation "[[ P ]]" := (fun v => heap_is_empty_st (P v)) 
+Notation "[| P |]" := (fun v => heap_is_empty_st (P v)) 
   (at level 0, P at level 99) : heap_scope.
 
-Notation "H1 * H2" := (heap_is_star H)
+Notation "H1 * H2" := (heap_is_star H1 H2)
   (at level 40, left associativity) : heap_scope.
 
 Notation "l '~>|' P" := (heap_is_single l P)
@@ -111,15 +111,17 @@ Open Scope heap_scope.
 (*------------------------------------------------------------------*)
 (* ** Properties of Star *)
 
-Lemma star_neutral_l : neutral_l [] heap_is_star.
+Lemma star_neutral_l : neutral_l heap_is_star [].
 Proof. skip. Qed.
 
-Lemma star_neutral_r : neutral_l [] heap_is_star.
+Lemma star_neutral_r : neutral_r heap_is_star [].
 Proof. skip. Qed.
 
 Lemma star_comm : comm heap_is_star. 
 Proof. skip. Qed.
 
-Lemma star_assoc : assoc heap_is_star. 
+Lemma star_assoc : LibOperation.assoc heap_is_star. 
 Proof. skip. Qed.
+
+
 

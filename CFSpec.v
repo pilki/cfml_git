@@ -1,6 +1,6 @@
 Set Implicit Arguments.
 Require Export LibCore LibEpsilon Shared.
-
+Require Export CFHeaps.
 
 (********************************************************************)
 (* ** Weakenable formulae *)
@@ -27,12 +27,12 @@ Existing Instance val_inhab.
 
 (* The predicate AppReturns *)
 
-Axiom app_1 : forall A1 B,  
-  val -> A1 -> hprop -> (B -> hprop) -> Prop.
+Axiom app_1 : forall A B,  
+  val -> A -> hprop -> (B -> hprop) -> Prop.
 
 (* The predicate AppPure *)
 
-Axiom pure : forall A1 B,  
+Axiom pure : forall A B,  
   val -> A -> (B -> Prop) -> Prop.
 
 (* AppReturns satisfies the weakening property *)
@@ -69,7 +69,12 @@ Proof.
   replace V' with V''. auto. apply* pure_deterministic.
 Qed.
 
-
+Lemma pure_weaken : forall A B (F:val) (V:A) (P P':B->Prop),
+  pure F V P -> P ==> P' -> pure F V P'.
+Proof.
+  introv M W. lets [x [Px Hx]]: (pure_witness M). 
+  apply* pure_abstract.
+Qed.
 
 (********************************************************************)
 (* ** "Local" = Frame rule + consequence rule + garbage collection *)
@@ -88,41 +93,12 @@ Definition local B (F:~~B) : ~~B :=
 Definition app_2 A1 A2 B f (x1:A1) (x2:A2) (H:hprop) (Q:B->hprop) := 
   local (app_1 f x1) H (fun g h' => app_1 g x2 (= h') Q).
 
-Definition app_3 A1 A2 A3 B f (x1:A1) (x2:A2) (x3:A3) (Q:B->hprop) := 
+Definition app_3 A1 A2 A3 B f (x1:A1) (x2:A2) (x3:A3) (H:hprop) (Q:B->hprop) := 
   local (app_1 f x1) H (fun g h' => app_2 g x2 x3 (= h') Q).
 
-Definition app_4 A1 A2 A3 A4 B f (x1:A1) (x2:A2) (x3:A3) (x4:A4) (Q:B->hprop) := 
+Definition app_4 A1 A2 A3 A4 B f (x1:A1) (x2:A2) (x3:A3) (x4:A4) (H:hprop) (Q:B->hprop) := 
   local (app_1 f x1) H (fun g h' => app_3 g x2 x3 x4 (= h') Q).
 
-
-(********************************************************************)
-(* ** Weakening *)
-
-(*
-Lemma app_weaken_1 : forall A1 B (x1:A1) f,
-  @weakenable B (app_1 f x1). 
-*)
-
-Lemma app_weaken_2 : forall B A1 A2 (x1:A1) (x2:A2) f,
-  @weakenable B (app_2 f x1 x2). 
-Proof. 
-  introv H W. unfolds app_2. apply (app_weaken_1 H).
-  introv G. apply~ (app_weaken_1 G). 
-Qed.
-
-Lemma app_weaken_3 : forall B A1 A2 A3 (x1:A1) (x2:A2) (x3:A3) f,
-  @weakenable B (app_3 f x1 x2 x3). 
-Proof. 
-  introv H W. unfolds app_3. apply (app_weaken_1 H).
-  introv G. apply~ (app_weaken_2 G). 
-Qed.
-
-(*
-Lemma app_weaken_4 : forall B A1 A2 A3 A4 (x1:A1) (x2:A2) (x3:A3) (x4:A4) f,
-  @weakenable B (app_4 f x1 x2 x3 x4). 
-Proof. 
-Qed.
-*)
 
 (********************************************************************)
 (* ** Valid specifications *)
@@ -162,61 +138,50 @@ Definition spec_4 A1 A2 A3 A4 B (K: A1 -> A2 -> A3 -> A4 -> ~~B -> Prop) f :=
 (********************************************************************)
 (* ** Curried functions *)
 
-Definition curried_1 (f:val) := 
+Definition curried_1 (B:Type) (f:val) := 
   True.
 
-Definition curried_2 (A1:Type) f := 
+Definition curried_2 (A1 B:Type) f := 
   spec_1 (fun (x1:A1) (R:~~B) => True) f.
 
-Definition curried_3 (A1 A2:Type) f := 
+Definition curried_3 (A1 A2 B:Type) f := 
   spec_2 (fun (x1:A1) (x2:A2) (R:~~B) => True) f.
 
-Definition curried_4 (A1 A2 A3:Type) f := 
+Definition curried_4 (A1 A2 A3 B:Type) f := 
   spec_3 (fun (x1:A1) (x2:A2) (x3:A3) (R:~~B) => True) f.
 
 
 (********************************************************************)
 (* ** From a given spec to curried *)
 
-Lemma curried_1_true : forall f, curried_1 f.
+Lemma curried_1_true : forall B f, curried_1 B f.
 Proof. split. Qed. 
 
 Lemma spec_curried_1 : forall A1 B f (K:A1->~~B->Prop),
-  spec_1 K f -> curried_1 f.
+  spec_1 K f -> curried_1 B f.
 Proof. intros. split. Qed.
 
 Lemma spec_curried_2 : forall A1 A2 B f (K:A1->A2->~~B->Prop),
-  spec_2 K f -> curried_2 A1 f.
-Proof. 
-  intros. split.
-    intros_all~.
-    intros x. applys app_weaken_1. apply (proj33 H). intros_all~.
-Qed.
+  spec_2 K f -> curried_2 A1 B f.
+Proof. intros. split~. intros_all~. Qed.
 
 Lemma spec_curried_3 : forall A1 A2 A3 B f (K:A1->A2->A3->~~B->Prop),
-  spec_3 K f ->
-  curried_3 A1 A2 f.
+  spec_3 K f -> curried_3 A1 A2 B f.
 Proof.
   intros. split.
     intros_all~.
-    intros x. applys app_weaken_1. apply (proj33 H).
-     introv H'. lets: (proj2 H). unfolds total_1. (* todo: total_weaken *)
-     eapply spec_weaken_1. apply H'. intros_all~. simpl. introv WR HR.
-     applys WR. apply HR. intros_all~.
+    intros x. eapply (pure_weaken (proj2 H x)).
+     intros g G. apply* spec_curried_2.
 Qed.
 
 Lemma spec_curried_4 : forall A1 A2 A3 A4 B f (K:A1->A2->A3->A4->~~B->Prop),
   spec_4 K f ->
-  curried_4 A1 A2 A3 f.
+  curried_4 A1 A2 A3 B f.
 Proof.
   intros. split.
     intros_all~.
-    intros x. applys app_weaken_1. apply (proj33 H).
-     introv H'. lets: (proj2 H). unfolds total_1. (* todo: total_weaken *)
-     eapply spec_weaken_1. apply H'. intros_all~. simpl. introv WR HR.
-     applys WR. apply HR.
-    intros g [IG [IG' SG]]. split. intros_all~. intros y.
-     applys* app_weaken_1. 
+    intros x. eapply (pure_weaken (proj2 H x)).
+     intros g G. apply* spec_curried_3.
 Qed.
 
 

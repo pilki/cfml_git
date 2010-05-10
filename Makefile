@@ -91,16 +91,16 @@ OKA=$(OKAS) $(OKAQ) $(OKAH) $(OKAO)
 NEW=\
 	okasaki/Okasaki_ml.v
 
+IMP=\
+	CFHeaps.v \
+	CFSpec.v \
+	CFPrint.v
+
 
 # 	
-
-
 #	okasaki/BinaryRandomAccessList_ml.v \
 
-
-
 #okasaki/PhysicistsQueue_ml.v 
- 
 
 
 # 	okasaki/Stream_ml.v \
@@ -129,7 +129,7 @@ DEMO=\
 TEST=\
 	demo/test_ml.v 
 
-ALL=$(TOOLS) $(DEMO) $(OKA) $(OKACOD)
+ALL=$(IMP) $(TOOLS) $(DEMO) $(OKA) $(OKACOD)
 # $(COD) $(DEV) $(TUTO) $(FORM) $(DEV) $(OKA) $(DEV:.v=.vo)
 
 .PHONY: all def clean cleanall dep tools tools demo oka new cod dvpt test gen lib none
@@ -144,6 +144,7 @@ all: full .camldep
 full: $(ALL:.v=.vo) 
 tools: $(TOOLS:.v=.vo) 
 demo: $(DEMO:.v=.vo)
+imp: $(IMP:.v=.vo)
 
 oka: $(OKA:.v=.vo) $(OKACOD:.v=.vo)
 okac: $(OKACOD:.v=.vo)
@@ -158,7 +159,7 @@ dvpt: $(DEV:.v=.vo)
 test: $(TEST:.v=.vo) 
 gen: 
 	make -C gen
-dep: .camldep $(ALL:.v=.d)
+dep: .camldep $(ALL:.v=.d) 
 none:
 
 editq:
@@ -253,7 +254,7 @@ include .camldep
 include .libdep
 endif
 
-COLD=clean cleanall dep new test gen stats .camldep
+COLD=clean cleanall dep new test gen stats .camldep 
 ifeq ($(findstring $(MAKECMDGOALS),$(COLD)),)
 include $(ALL:.v=.d)
 endif
