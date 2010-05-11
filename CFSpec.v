@@ -27,14 +27,54 @@ Tactic Notation "rew_heap" "*" "in" hyp(H) :=
 
 
 (********************************************************************)
-(* ** Weakenable formulae *)
+(* ** Definitions *)
+
+(** Type of post-conditions on values of type B *)
 
 Notation "'~~' B" := (hprop->(B->hprop)->Prop) 
   (at level 8, only parsing) : type_scope.
 
+(** Weakenable post-conditions *)
+
 Definition weakenable B (F:~~B) :=
   forall H Q , F H Q ->
   forall H' Q', H' ==> H -> Q ===> Q' -> F H' Q'.
+
+(** "Local" = Frame rule + consequence rule + garbage collection *)
+
+Definition local B (F:~~B) : ~~B :=
+  fun (H:hprop) (Q:B->hprop) =>
+    exists H1 H2 Q1 H',
+       H ==> H1 * H2
+    /\ F H1 Q1
+    /\ forall x, (Q1 x) * H2 ==> (Q x) * H'.
+
+(** Properties of [local] *)
+
+Lemma local_erase : forall B (F:~~B), 
+  forall H Q, F H Q -> local F H Q.
+Proof.
+  intros. exists H [] Q []. splits.
+  rew_heap~. auto. auto.
+Qed.
+
+Lemma local_local : forall B (F:~~B),
+  local (local F) = local F.
+Proof.
+  intros. extens. intros H Q. iff M. (* todo: extens should do intros *)
+  destruct M as (H1&H2&Q1&H'&?&N&?).
+  destruct N as (H1'&H2'&Q1'&H''&?&?&?).
+  exists H1' (H2 ** H2') Q1' (H' ** H''). splits.
+  eapply pred_le_trans. eauto.
+   intros h Hh. hnf in Hh. destruct Hh as (h1&h2&?&?&?).
+   subst h. applys_to H8 H4. intuit H8. subst h1.
+   rewrite (star_comm H2). rewrite star_assoc.
+   exists __ __. splits~. exists __ __. splits~.
+  eauto.
+  intros.
+  skip. (* todo *)
+  apply~ local_erase.
+Qed.
 
 
 (********************************************************************)
@@ -59,10 +99,10 @@ Axiom app_1 : forall A B,
 Axiom pure : forall A B,  
   val -> A -> (B -> Prop) -> Prop.
 
-(* AppReturns satisfies the weakening property *)
+(* AppReturns is a local property *)
 
-Axiom app_weaken_1 : forall B A1 (x1:A1) f,
-  @weakenable B (app_1 f x1). 
+Axiom app_local_1 : forall B A1 (x1:A1) f,
+  (app_1 f x1) = @local B (app_1 f x1).
 
 (* AppPure satisfies the witness property *)
 
@@ -101,17 +141,6 @@ Proof.
 Qed.
 
 (********************************************************************)
-(* ** "Local" = Frame rule + consequence rule + garbage collection *)
-
-Definition local B (F:~~B) : ~~B :=
-  fun (H:hprop) (Q:B->hprop) =>
-    exists H1 H2 Q1 H',
-       H ==> H1 * H2
-    /\ F H1 Q1
-    /\ forall x, (Q1 x) * H2 ==> (Q x) * H'.
-
-
-(********************************************************************)
 (* ** Applications *)
 
 Definition app_2 A1 A2 B f (x1:A1) (x2:A2) (H:hprop) (Q:B->hprop) := 
@@ -122,6 +151,56 @@ Definition app_3 A1 A2 A3 B f (x1:A1) (x2:A2) (x3:A3) (H:hprop) (Q:B->hprop) :=
 
 Definition app_4 A1 A2 A3 A4 B f (x1:A1) (x2:A2) (x3:A3) (x4:A4) (H:hprop) (Q:B->hprop) := 
   local (app_1 f x1) H (fun g h' => app_3 g x2 x3 x4 (= h') Q).
+
+
+(********************************************************************)
+(* ** Locality of app_n *)
+
+Lemma app_local_2 : forall B A1 A2 (x1:A1) (x2:A2) f,
+  (app_2 f x1 x2) = @local B (app_2 f x1 x2).
+Proof.
+(*
+  intros. extens. intros H Q. iff M.
+  apply~ local_erase.
+  destruct M as (H1&H2&Q1&H'&?&?&?).
+  unfold app_2. rewrite <- local_local. 
+  exists H1 H2 __ H'. splits.
+  auto.
+  rewrite app_local_1. eauto.
+  simpl.
+  intros g h Hg. 
+  intuit Hg. subst h.
+  exists___. splits. eauto. skip.
+
+
+ specializes H4 x2.
+
+
+
+  unfold app_2. 
+  unfolds app_2.
+  simpl. rewrite local_local.
+*)
+skip.
+Qed.
+
+
+
+(********************************************************************)
+(* ** Corrolaries from locality *)
+
+(* AppReturns satisfies the weakening property *)
+
+Lemma app_weaken_1 : forall B A1 (x1:A1) f,
+  @weakenable B (app_1 f x1).
+Proof.
+  intros. introv M WH WQ. rewrite app_local_1.
+  exists H [] Q []. splits. 
+  rew_heap~.
+  auto.
+  intros. rew_heap~.
+Qed. 
+
 
 
 (********************************************************************)
@@ -244,9 +323,10 @@ Proof. skip. Qed.
 
 Lemma app_intro_2_1 : 
   app_2 f x1 x2 H Q ->
-  local (app_1 f x1) H (fun g h => app_1 g x2 (= h) Q).
+  app_1 f x1 H (fun g h => app_1 g x2 (= h) Q).
 Proof.
-  introv M. intuit M. exists___*.
+  introv M. rewrite app_local_1.
+  intuit M. exists___*.
 Qed.
 
 Lemma app_intro_2_3 : 
