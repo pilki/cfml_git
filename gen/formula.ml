@@ -17,8 +17,10 @@ type cf =
     (* Body f Ai xi => Q *)
   | Cf_let of typed_var * cf * cf 
     (* Let x := Q1 in Q2 *)
-  | Cf_letval of var * vars * vars * coq * cf * cf 
+  | Cf_letpure of var * vars * vars * coq * cf * cf 
     (* Let x [Ai,Bi] := Q1 in Q2  // where x : forall Ai.T *)
+  | Cf_letval of var * vars * vars * coq * coq * cf 
+    (* Let x [Ai,Bi] := v in Q2  // where x : forall Ai.T *)
   | Cf_letfunc of (var * cf) list * cf 
     (* Let fi := Qi in Q *)
   | Cf_caseif of coq * cf * cf 
@@ -41,7 +43,7 @@ type cftop =
   | Cftop_heap of var
     (* Parameter h : heap. *)
   | Cftop_val_cf of var * vars * vars * cf 
-    (* Parameter x_cf : forall Ai Bi P, R (P Ai) -> P Ai (x Ai) *)
+    (* Parameter x_cf : forall Ai Bi P, F (P Ai) -> P Ai (x Ai) *)
   | Cftop_let_cf of var * var * var * cf 
     (* Parameter x_cf : forall H Q, H h -> F H Q -> Q x h' *)
   | Cftop_fun_cf of var * cf
@@ -102,7 +104,7 @@ let rec coq_of_pure_cf cf =
       (* (!B: (forall Ai K, is_spec_2 K -> 
                  (forall x1 x2, K x1 x2 Q) -> spec_2 K f)) *)
 
-  | Cf_letval (x, fvs_strict, fvs_other, typ, cf1, cf2) ->
+  | Cf_letpure (x, fvs_strict, fvs_other, typ, cf1, cf2) ->
       let type_of_x = coq_forall_types fvs_strict typ in
       let tvars = coq_vars fvs_strict in
       let p1_on_tvars = if tvars = [] then Coq_var "P1" else coq_apps (coq_var_at "P1") tvars in
@@ -160,8 +162,9 @@ let rec coq_of_pure_cf cf =
 
   | Cf_seq _ -> unsupported "seq-expression in pure mode"
   | Cf_for _ -> unsupported "for-expression in pure mode"
-  | Cf_while _ ->  unsupported "while-expression in pure mode"
-  | Cf_let _ ->  unsupported "let-expression in pure mode"
+  | Cf_while _ -> unsupported "while-expression in pure mode"
+  | Cf_let _ -> unsupported "let-expression in pure mode"
+  | Cf_letval _ -> unsupported "letval-expression in pure mode"
 
 
 (*#########################################################################*)
@@ -299,6 +302,8 @@ let rec coq_of_imp_cf cf =
   | Cf_for (i,v1,v2,cf) -> unsupported "for-expression not yet supported" (* todo *)
       
   | Cf_while (cf1,cf2) -> unsupported "while-expression not yet supported" (* todo *)
+
+  | Cf_letpure _ -> unsupported "letpure-expression in imperative mode"
 
 
 (*#########################################################################*)

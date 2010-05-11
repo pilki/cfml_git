@@ -11,6 +11,7 @@ open Coq
 open Primitives
 
 exception Not_in_normal_form of string
+
 let not_in_normal_form s =
    raise (Not_in_normal_form s)
 
@@ -335,6 +336,7 @@ let rec cfg_exp env e =
          | Texp_function (_,_) -> true
          | _ -> false in
 
+      (* binding of functions, possibly mutually-recursive *)
       if is_let_fun then begin
         let env' = match rf with 
            | Nonrecursive -> env
@@ -348,20 +350,53 @@ let rec cfg_exp env e =
         add_used_label (fst (List.hd ncs));
         Cf_letfunc (ncs, cf_body)
         (* TODO: bug avec les types récursifs genre ceux "fixpoint". pour l'instant, on hack avec val *)
-      end else begin
+
+      (* let-binding of a single value *)
+      end else begin 
         if (List.length pat_expr_list <> 1) then not_normal();
         let (pat,bod) = List.hd pat_expr_list in
         let x = pattern_name pat in
+           (* todo: une différence entre pattern_name et pattern_ident utilsé plus bas? *)
         let fvs_typ, typ = lift_typ_sch pat.pat_type in
         let fvs = List.map name_of_type fvs in
         let fvs_strict = list_intersect fvs fvs_typ in
         let fvs_others = list_minus fvs fvs_strict in
-        let cf1 = cfg_exp env bod in
-        let env' = Ident.add (pattern_ident pat) (List.length fvs_strict) env in
-        let cf2 = cfg_exp env' body in
-        add_used_label x;
-        Cf_letval (x, fvs_strict, fvs_others, typ, cf1, cf2)
-      end
+            
+        (* pure-mode let-binding *)
+        if !Characteristic.pure_mode then begin 
+       
+           let cf1 = cfg_exp env bod in
+           let env' = Ident.add (pattern_ident pat) (List.length fvs_strict) env in
+           let cf2 = cfg_exp env' body in
+           add_used_label x;
+           Cf_letval (x, fvs_strict, fvs_others, typ, cf1, cf2)
+
+        (* value let-binding *)
+        end else if is_nonexpansive bod then begin 
+
+           let v = 
+             try lift_val env bod  
+             with Not_in_normal_form s -> 
+                raise (Not_in_normal_form (s ^ " (only value can satisfy the value restriction)"))
+             in
+           let env' = Ident.add (pattern_ident pat) (List.length fvs_strict) env in
+           let cf = cfg_exp env' body in
+           add_used_label x;
+           Cf_letval (x, fvs_strict, fvs_others, typ, v, cf)
+
+        (* term let-binding *)
+        end else begin
+            
+           if fvs_strict <> [] || fvs_others <> [] 
+               then not_in_normal_form ("(unsatisfied value restriction) "
+                                        ^ (Print_tast.string_of_expression false e));
+           let cf1 = cfg_exp env bod in
+           let env' = Ident.add (pattern_ident pat) (List.length fvs_strict) env in
+           let cf2 = cfg_exp env' body in
+           add_used_label x;
+           Cf_let ((x,typ), cf1, cf2)
+
+        end
 
    | Texp_ifthenelse (cond, ifso, Some ifnot) ->
        Cf_caseif (lift cond, aux ifso, aux ifnot)
