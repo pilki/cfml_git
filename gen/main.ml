@@ -15,6 +15,8 @@ let ppf = Format.std_formatter
 
 let onlycmi = ref false
 
+let pure_mode = ref false
+
 (* err_formatter *)
 
 (*#########################################################################*)
@@ -32,11 +34,12 @@ let _ =
    Arg.parse  
      [ ("-I", Arg.String (fun i -> Clflags.include_dirs := i::!Clflags.include_dirs), 
                       "includes a directory where to look for interface files");
+       ("-pure", Arg.Set pure_mode, "generate formulae for purely-functional code");
        ("-rectypes", Arg.Set Clflags.recursive_types, "activates recursive types");
        ("-onlycmi", Arg.Set onlycmi, "only generate the cmi file");
        ("-debug", Arg.Set is_tracing, "trace the various steps") ]
      (fun f -> files := f::!files)
-     ("usage: -I dir -rectypes file.ml");
+     ("usage: [-I dir] [-pure] [-rectypes] file.ml");
    (*
    let args = Sys.argv in
    if Array.length args < 2 then
@@ -88,7 +91,10 @@ let _ =
 
    (*---------------------------------------------------*)
    trace "6) converting caracteristic formula ast to coq ast";
-   let coqtops = Formula.coqtops_of_cftops cftops in
+   let coqtops = 
+      if !pure_mode 
+         then Formula.coqtops_of_pure_cftops cftops 
+         else Formula.coqtops_of_imp_cftops cftops in
 
    (*---------------------------------------------------*)
    trace "7) printing coq ast";

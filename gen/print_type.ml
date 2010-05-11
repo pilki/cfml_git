@@ -28,8 +28,8 @@ type btyp =
    | Btyp_abstract
    | Btyp_stuff of string
    | Btyp_manifest of out_type * out_type
-   | Btyp_object of (string * out_type) list * bool option
    | Btyp_record of (string * bool * out_type) list
+   | Btyp_object of (string * out_type) list * bool option
    | Btyp_class of bool * out_ident * out_type list
    | Btyp_sum of (string * out_type list) list 
    *)

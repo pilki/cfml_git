@@ -69,6 +69,8 @@ let rec lift_btyp t =
       val_type
    | Btyp_arrow (t1,t2) -> 
       val_type
+   | Btyp_constr (id,[t]) when Path.name id = "ref" || Path.name id = "Pervasives.ref" -> 
+      aux t  
    | Btyp_constr (id,[t]) when Path.same id Predef.path_lazy_t || Path.name id = "Lazy.t" -> 
       aux t  (* todo: les Lazy provenant des patterns ne sont pas identique à Predef.path_lazy_t *)
    | Btyp_constr (id,[t]) when Path.name id = "Stream.stream" || Path.name id = "stream" -> 
@@ -161,12 +163,12 @@ let rec lift_pat ?(through_aliases=true) p : coq = (* ignores aliases *)
       if through_aliases then aux p else Coq_var (Ident.name s)
    | Tpat_lazy p1 ->
       aux p1
+   | Tpat_record _ -> unsupported "record patterns" (* todo! *)
+   | Tpat_array pats -> unsupported "array patterns" (* todo! *)
    | Tpat_constant _ -> unsupported "only integer constant are supported"
    | Tpat_any -> not_in_normal_form "wildcard patterns remain after normalization"
    | Tpat_variant (_,_,_) -> unsupported "variant patterns"
-   | Tpat_record _ -> unsupported "record patterns"
-   | Tpat_array pats -> unsupported "array patterns"
-   | Tpat_or (_,p1,p2) -> unsupported "or patterns"
+   | Tpat_or (_,p1,p2) -> unsupported "or patterns in depth"
 
 let rec pattern_aliases_rec p : (typed_var*coq) list = (* returns aliases *)
    let aux = pattern_aliases_rec in
@@ -178,11 +180,11 @@ let rec pattern_aliases_rec p : (typed_var*coq) list = (* returns aliases *)
    | Tpat_alias (p1, s) -> 
       ((Ident.name s, coq_typ_pat p), lift_pat ~through_aliases:false p1) :: (aux p1)
    | Tpat_lazy p1 ->  aux p1
+   | Tpat_record _ -> unsupported "record patterns" (* todo! *)
+   | Tpat_array pats -> unsupported "array patterns" (* todo! *)
    | Tpat_constant _ -> unsupported "only integer constant are supported"
    | Tpat_any -> not_in_normal_form "wildcard patterns remain after normalization"
    | Tpat_variant (_,_,_) -> unsupported "variant patterns"
-   | Tpat_record _ -> unsupported "record patterns"
-   | Tpat_array pats -> unsupported "array patterns"
    | Tpat_or (_,p1,p2) -> unsupported "or patterns"   
 
 let pattern_aliases p = 
@@ -218,16 +220,17 @@ let get_inlined_primitive e oargs =
    | Some x -> x
    | _ -> failwith "get_inlined_primitive: not an inlined primitive"
 
+let lift_exp_path p =
+   match find_primitive (Path.name p) with
+   | None -> 
+      let x = lift_path_name p in
+      coq_app_var_wilds x (typ_arity_var env p)
+   | Some y -> Coq_var y 
+
 let rec lift_val env e = 
    let aux = lift_val env in
    match e.exp_desc with
-   | Texp_ident (p,d) -> 
-      begin match find_primitive (Path.name p) with
-      | None -> 
-         let x = lift_path_name p in
-         coq_app_var_wilds x (typ_arity_var env p)
-      | Some y -> Coq_var y 
-      end
+   | Texp_ident (p,d) -> lift_exp_path p 
    | Texp_constant (Const_int n) ->
       Coq_int n
    | Texp_constant _ -> 
@@ -237,7 +240,7 @@ let rec lift_val env e =
    | Texp_construct (c, es) ->
       coq_apps (coq_of_constructor c) (List.map aux es)
    | Texp_record (l, opt_init_expr) ->  
-       if opt_init_expr <> None then unsupported "record with construction";
+       if opt_init_expr <> None then unsupported "record-with expression"; (* todo *)
        Coq_record (List.map (fun (n,v) -> (string_of_label n, aux v)) l)
    | Texp_field (e, lbl) -> 
        Coq_app (Coq_var (string_of_label lbl), aux e)
@@ -391,14 +394,23 @@ let rec cfg_exp env e =
    | Texp_lazy e -> 
       aux e
 
+   | Texp_sequence(expr1, expr2) -> 
+        Cf_seq (aux expr1, aux expr2)
+
+   | Texp_while(cond, body) -> 
+        Cf_while (aux cond, aux body)
+
+   | Texp_for(param, low, high, dir, body) -> 
+        begin match dir with 
+        | Upto -> Cf_cof (lift param, lift low, lift high, aux body)
+        | Downto -> unsupported "for-downto expressions" (* todo *)
+        end
+
    | Texp_try(body, pat_expr_list) -> unsupported "try expression"
    | Texp_variant(l, arg) ->  unsupported "variant expression"
    | Texp_setfield(arg, lbl, newval) -> unsupported "set-field expression"
    | Texp_array expr_list -> unsupported "array expressions"
-   | Texp_ifthenelse(cond, ifso, None) -> unsupported "if-then-without-else expressions"
-   | Texp_sequence(expr1, expr2) -> unsupported "sequence expressions"
-   | Texp_while(cond, body) -> unsupported "while expressions"
-   | Texp_for(param, low, high, dir, body) -> unsupported "for expressions"
+   | Texp_ifthenelse(cond, ifso, None) -> unsupported "if-then-without-else expressions should have been normalized"
    | Texp_when(cond, body) -> unsupported "when expressions outside of pattern matching"
    | Texp_send(expr, met) -> unsupported "send expressions"
    | Texp_new (cl, _) -> unsupported "new expressions"

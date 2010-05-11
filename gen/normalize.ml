@@ -293,15 +293,24 @@ let normalize_expression named e =
           let e',b = aux false e in
           let e2',b2 = aux false e2 in
           return (Pexp_setfield (e', i, e2')), b2 @ b 
-      | Pexp_array l -> unsupported "array expression" (* Pexp_array (List.map aux l)*)
-      | Pexp_ifthenelse (e1, e2, None) -> unsupported "if-without-else-clause expressions"
+      | Pexp_array l -> 
+         let l',bi = List.split (List.map (aux false) l) in
+         return (Pexp_array l'), List.flatten bi
+      | Pexp_ifthenelse (e1, e2, None) ->
+          let e1', b = aux false e1 in
+          return (Pexp_ifthenelse (e1', protect named e2, Some (return (Pexp_ident (Lident "()"))))), b
       | Pexp_ifthenelse (e1, e2, Some e3) -> 
           let e1', b = aux false e1 in
           return (Pexp_ifthenelse (e1', protect named e2, Some (protect named e3))), b
              (* todo: à tester: if then else fun x -> x *)
-      | Pexp_sequence (e1,e2) -> unsupported "sequence expression"  (* Pexp_sequence (aux e1, aux e2)*)
-      | Pexp_while (e1,e2) -> unsupported "while expression"  (* Pexp_while (aux e1, aux e2)*)
-      | Pexp_for (s,e1,e2,d,e3) -> unsupported "for expression"  (*Pexp_for (s, aux e1, aux e2, d, aux e3) *)
+      | Pexp_sequence (e1,e2) -> 
+          return (Pexp_sequence (protect named e1, protect named e2)), []      
+      | Pexp_while (e1,e2) -> 
+         return (Pexp_while (protect named e1, protect named e2)), []      
+      | Pexp_for (s,e1,e2,d,e3) -> 
+          let e1', b1 = aux false e1 in
+          let e2', b2 = aux false e2 in
+          return (Pexp_for (s, e1', e2', d, protect named e3)), b1 @ b2
       | Pexp_constraint (e,to1,to2) -> 
          let e',b = aux named e in
          return (Pexp_constraint (e',to1,to2)), b
@@ -317,7 +326,7 @@ let normalize_expression named e =
       | Pexp_assert e -> unsupported "assertions other than [assert false]"          
       | Pexp_assertfalse -> 
           return Pexp_assertfalse, []
-      | Pexp_lazy e ->  (* todo: enlever les lazy *)
+      | Pexp_lazy e -> 
           let e',b = aux false e in
           return (Pexp_lazy e'), b
       | Pexp_poly (_,_) -> unsupported "poly expression"
