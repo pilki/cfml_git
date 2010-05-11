@@ -635,12 +635,15 @@ let rec is_nonexpansive exp =
   match exp.exp_desc with
     Texp_ident(_,_) -> true
   | Texp_constant _ -> true
-  | Texp_let(rec_flag, fvs, pat_exp_list, body) ->
+  | Texp_let(rec_flag, fvs, pat_exp_list, body) -> 
+      (*arthur*) if !Clflags.strict_value_restriction then false else
       List.for_all (fun (pat, exp) -> is_nonexpansive exp) pat_exp_list &&
       is_nonexpansive body
   | Texp_function _ -> true
   | Texp_apply(e, (None,_)::el) ->
+      (*arthur*) if !Clflags.strict_value_restriction then false else
       is_nonexpansive e && List.for_all is_nonexpansive_opt (List.map fst el)
+         (* todo: c'est quoi ce test? *)
   | Texp_tuple el ->
       List.for_all is_nonexpansive el
   | Texp_construct(_, el) ->
@@ -654,8 +657,11 @@ let rec is_nonexpansive exp =
   | Texp_field(exp, lbl) -> is_nonexpansive exp
   | Texp_array [] -> true
   | Texp_ifthenelse(cond, ifso, ifnot) ->
+      (*arthur*) if !Clflags.strict_value_restriction then false else
       is_nonexpansive ifso && is_nonexpansive_opt ifnot
-  | Texp_sequence (e1, e2) -> is_nonexpansive e2  (* PR#4354 *)
+  | Texp_sequence (e1, e2) -> 
+      (*arthur*) if !Clflags.strict_value_restriction then false else
+      is_nonexpansive e2  (* PR#4354 *)
   | Texp_new (_, cl_decl) when Ctype.class_type_arity cl_decl.cty_type > 0 ->
       true
   (* Note: nonexpansive only means no _observable_ side effects *)

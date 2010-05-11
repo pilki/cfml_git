@@ -74,3 +74,6 @@ val std_include_flag : string -> string
 val std_include_dir : unit -> string list
 val shared : bool ref
 val dlcode : bool ref
+
+(*arthur*)
+val strict_value_restriction : bool ref

@@ -21,6 +21,8 @@ Tconstr(path_lazy_t, [t], ref Mnil)
 
 (* todo: check that primitive functions are not rebound locally ! *)
 
+let pure_mode = ref false
+
 (*#########################################################################*)
 (* Lifting of paths *)
 
@@ -250,6 +252,8 @@ let rec lift_val env e =
       coq_apps (Coq_var f) (List.map aux args)
    | Texp_lazy e -> 
       aux e
+   | Texp_array [] -> 
+      Coq_var "array_empty"
    | _ -> not_in_normal_form (Print_tast.string_of_expression false e)
 
    (*
@@ -356,7 +360,7 @@ let rec cfg_exp env e =
         let env' = Ident.add (pattern_ident pat) (List.length fvs_strict) env in
         let cf2 = cfg_exp env' body in
         add_used_label x;
-        Cf_let (x, fvs_strict, fvs_others, typ, cf1, cf2)
+        Cf_letval (x, fvs_strict, fvs_others, typ, cf1, cf2)
       end
 
    | Texp_ifthenelse (cond, ifso, Some ifnot) ->
@@ -395,21 +399,22 @@ let rec cfg_exp env e =
       aux e
 
    | Texp_sequence(expr1, expr2) -> 
-        Cf_seq (aux expr1, aux expr2)
+      Cf_seq (aux expr1, aux expr2)
 
    | Texp_while(cond, body) -> 
-        Cf_while (aux cond, aux body)
+      Cf_while (aux cond, aux body)
 
    | Texp_for(param, low, high, dir, body) -> 
-        begin match dir with 
-        | Upto -> Cf_cof (lift param, lift low, lift high, aux body)
+      begin match dir with 
+        | Upto -> Cf_cof (Ident.name param, lift low, lift high, aux body)
         | Downto -> unsupported "for-downto expressions" (* todo *)
-        end
+      end
+
+   | Texp_array expr_list -> unsupported "array expressions" (* todo *)
 
    | Texp_try(body, pat_expr_list) -> unsupported "try expression"
    | Texp_variant(l, arg) ->  unsupported "variant expression"
    | Texp_setfield(arg, lbl, newval) -> unsupported "set-field expression"
-   | Texp_array expr_list -> unsupported "array expressions"
    | Texp_ifthenelse(cond, ifso, None) -> unsupported "if-then-without-else expressions should have been normalized"
    | Texp_when(cond, body) -> unsupported "when expressions outside of pattern matching"
    | Texp_send(expr, met) -> unsupported "send expressions"
@@ -436,7 +441,7 @@ and cfg_func env fvs pat bod =
    let fvs = List.map name_of_type fvs in
    Cf_body (f, fvs, targs, cf_body) 
    (* TODO: c'est peut être un peu trop conservatif sur les let-rec:
-      on va sans-doute quantifier trop de variables de type *)
+      on va sans-doute quantifier trop de variables de type; que faire? *)
 
 
 

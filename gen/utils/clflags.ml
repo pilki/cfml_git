@@ -91,3 +91,5 @@ let std_include_dir () =
 let shared = ref false (* -shared *)
 let dlcode = ref true (* not -nodynlink *)
 
+(*arthur*)
+let strict_value_restriction = ref false
