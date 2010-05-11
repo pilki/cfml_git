@@ -289,9 +289,16 @@ let rec coq_of_imp_cf cf =
   | Cf_match (label, n,cf1) ->
      coq_tag (Printf.sprintf "(tag_match %d%snat)" n "%") ~label:label (coq_of_cf cf1)
 
-  | Cf_seq _ -> unsupported "seq-expression in pure mode"
-  | Cf_for _ -> unsupported "for-expression in pure mode"
-  | Cf_while _ ->  unsupported "while-expression in pure mode"
+  | Cf_seq (cf1,cf2) -> 
+      let q1_type = Coq_impl (Coq_var "unit", hprop) in
+      let c1 = coq_apps (coq_to_cf cf1) [h; Coq_var "Q1"] in
+      let c2 = coq_apps (coq_to_cf cf2) [Coq_app (Coq_var "Q1", coq_tt); Coq_var "Q"]  in
+      funhq "tag_seq" (coq_exists "Q1" q1_type (coq_conj c1 c2))
+      (* (!S: fun H Q => exists Q1, F1 H Q1 /\ F2 (Q1 tt) Q *)
+
+  | Cf_for (i,v1,v2,cf) -> unsupported "for-expression not yet supported" (* todo *)
+      
+  | Cf_while (cf1,cf2) -> unsupported "while-expression not yet supported" (* todo *)
 
 
 (*#########################################################################*)

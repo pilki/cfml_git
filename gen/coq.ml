@@ -175,6 +175,8 @@ let coq_false =
 let coq_true =  
   Coq_var "True"
 
+let coq_tt =
+  Coq_var "tt"
 
 
 
