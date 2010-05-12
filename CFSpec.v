@@ -25,6 +25,19 @@ Tactic Notation "rew_heap" "*" "in" "*" :=
 Tactic Notation "rew_heap" "*" "in" hyp(H) :=
   rew_heap in H; auto_star.
 
+(** *)
+
+Definition starpost B (Q:B->hprop) (H:hprop) : B->hprop :=
+  fun x => Q x ** H.
+
+Notation "Q *** H" := (starpost Q H) (at level 40).
+
+Lemma starpost_neutral : forall B (Q:B->hprop),
+  Q *** [] = Q.
+Proof. intros. extens. intros. unfold starpost. rew_heap~. Qed.
+
+Hint Rewrite starpost_neutral : rew_heap.
+
 
 (********************************************************************)
 (* ** Definitions *)
@@ -48,6 +61,11 @@ Definition local B (F:~~B) : ~~B :=
        H ==> H1 * H2
     /\ F H1 Q1
     /\ forall x, (Q1 x) * H2 ==> (Q x) * H'.
+
+(** Local judgments *)
+
+Definition is_local B (F:~~B) :=
+  F = local F.
 
 (** Properties of [local] *)
 
@@ -76,6 +94,37 @@ Proof.
   apply~ local_erase.
 Qed.
 
+Lemma local_elim : forall B (F:~~B) H H1 H2 H' Q1 Q,
+  is_local F -> 
+  F H1 Q1 -> 
+  H ==> H1 ** H2 -> 
+  Q1 *** H2 ===> Q *** H' ->
+  F H Q.
+Proof.
+  introv L M WH WQ. rewrite L. exists H1 H2 Q1 H'. splits.
+  auto. auto. intros. rew_heap~. apply WQ.
+Qed.
+
+Lemma local_frame : forall B (F:~~B) H H1 H2 Q1 Q,
+  is_local F -> 
+  F H1 Q1 -> 
+  H ==> H1 ** H2 -> 
+  Q1 *** H2 ===> Q ->
+  F H Q.
+Proof.
+  intros. eapply local_elim with (H' := []); eauto. rew_heap~.
+Qed.
+
+Lemma local_weaken : forall B (F:~~B) H H' Q Q',
+  is_local F -> 
+  F H' Q' -> 
+  H ==> H' -> 
+  Q' ===> Q ->
+  F H Q.
+Proof.
+  intros. eapply local_frame with (H2 := []); eauto; rew_heap~.
+Qed.
+
 
 (********************************************************************)
 (* ** Axioms *)
@@ -102,7 +151,7 @@ Axiom pure : forall A B,
 (* AppReturns is a local property *)
 
 Axiom app_local_1 : forall B A1 (x1:A1) f,
-  (app_1 f x1) = @local B (app_1 f x1).
+  is_local (app_1 (B:=B) f x1). 
 
 (* AppPure satisfies the witness property *)
 
@@ -144,29 +193,58 @@ Qed.
 (* ** Applications *)
 
 Definition app_2 A1 A2 B f (x1:A1) (x2:A2) (H:hprop) (Q:B->hprop) := 
-  local (app_1 f x1) H (fun g h' => app_1 g x2 (= h') Q).
+  exists Q1:val->hprop, app_1 f x1 H Q1 
+                     /\ forall g, app_1 g x2 (Q1 g) Q.
+
+(*
+Definition app_2 A1 A2 B f (x1:A1) (x2:A2) (H:hprop) (Q:B->hprop) := 
+  app_1 f x1 H (fun g h' => app_1 g x2 (= h') Q).
 
 Definition app_3 A1 A2 A3 B f (x1:A1) (x2:A2) (x3:A3) (H:hprop) (Q:B->hprop) := 
-  local (app_1 f x1) H (fun g h' => app_2 g x2 x3 (= h') Q).
+  app_1 f x1 H (fun g h' => app_2 g x2 x3 (= h') Q).
 
 Definition app_4 A1 A2 A3 A4 B f (x1:A1) (x2:A2) (x3:A3) (x4:A4) (H:hprop) (Q:B->hprop) := 
-  local (app_1 f x1) H (fun g h' => app_3 g x2 x3 x4 (= h') Q).
-
+  app_1 f x1 H (fun g h' => app_3 g x2 x3 x4 (= h') Q).
+*)
 
 (********************************************************************)
 (* ** Locality of app_n *)
 
+Hint Resolve app_local_1.
+
+Lemma app_local_2 : forall B A1 A2 (x1:A1) (x2:A2) f,
+  is_local (app_2 (B:=B) f x1 x2).
+Proof.
+  intros. extens. intros H Q. iff M.
+  apply~ local_erase.
+  destruct M as (H1&H2&Q1&H'&?&(Qg&?&Hg)&?).
+  exists (fun g => Qg g ** H2). splits.
+    apply* local_frame.
+    intros. specializes Hg g. apply* local_elim.
+Qed.
+  
+  
+  unfolds app_2. 
+
+
+
+(* old
 Lemma app_local_2 : forall B A1 A2 (x1:A1) (x2:A2) f,
   (app_2 f x1 x2) = @local B (app_2 f x1 x2).
 Proof.
-(*
   intros. extens. intros H Q. iff M.
   apply~ local_erase.
   destruct M as (H1&H2&Q1&H'&?&?&?).
-  unfold app_2. rewrite <- local_local. 
-  exists H1 H2 __ H'. splits.
+  unfolds app_2. 
+  rewrite app_local_1.
+  exists H1 (H2 ** H') __ []. splits.
   auto.
-  rewrite app_local_1. eauto.
+  eauto.
+  simpl. intros g h Hg.
+  destruct Hg as (h1&h2&?&?&?). subst h.
+  exists___. splits~.
+
+  eauto.te app_local_1. eauto.
   simpl.
   intros g h Hg. 
   intuit Hg. subst h.
@@ -180,10 +258,10 @@ Proof.
   unfold app_2. 
   unfolds app_2.
   simpl. rewrite local_local.
-*)
+
 skip.
 Qed.
-
+*)
 
 
 (********************************************************************)

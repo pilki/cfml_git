@@ -262,6 +262,7 @@ Inductive tag_type : Type :=
   | tag_done
   | tag_if
   | tag_alias
+  | tag_topval
   | tag_toplet
   | tag_topfun
   | tag_match (n : nat).
@@ -292,6 +293,8 @@ Notation "'!D' P" := (tag tag_done None P)
   (at level 95).
 Notation "'!M' n P" := (tag (tag_match n) None P)  
   (at level 95, n at level 0).
+Notation "'!TV' P" := (tag tag_topval None P)  
+  (at level 95).
 Notation "'!TL' P" := (tag tag_toplet None P)  
   (at level 95).
 Notation "'!TF' P" := (tag tag_topfun None P)  
@@ -321,6 +324,8 @@ Notation "'!!D' x P" := (tag tag_done (Some x) P)
   (at level 95, x at level 0).
 Notation "'!!M' x n P" := (tag (tag_match n) (Some x) P)  
   (at level 95, x at level 0, n at level 0).
+Notation "'!!TV' x P" := (tag tag_topval (Some x) P)  
+  (at level 95, x at level 0).
 Notation "'!!TL' x P" := (tag tag_toplet (Some x) P)  
   (at level 95, x at level 0).
 Notation "'!!TF' x P" := (tag tag_topfun (Some x) P)  

@@ -1,3 +1,9 @@
+let _ = 
+   let f() = [|1|] in (* "a", String.copy "a", [| 1 |] *)
+   print_string (if f() == f() then "same" else "diff");
+   print_newline()
+
+
 (** Constructions *)
 
 Notation "emp" := (heap_empty) 
