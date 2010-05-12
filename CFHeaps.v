@@ -85,7 +85,7 @@ Definition heap_is_empty_st (H:Prop) : hprop :=
 (** Star with post-conditions (predicates of type [B->hprop]) *)
 
 Definition starpost B (Q:B->hprop) (H:hprop) : B->hprop :=
-  fun x => Q x ** H.
+  fun x => heap_is_star (Q x) H.
 
 (*------------------------------------------------------------------*)
 (* ** Notation for heap predicates *)
@@ -135,7 +135,7 @@ Proof. skip. Qed.
 
 Lemma starpost_neutral : forall B (Q:B->hprop),
   Q *** [] = Q.
-Proof. extens. intros. unfold starpost. rewrite~ star_neutral_l. Qed.
+Proof. extens. intros. unfold starpost. rewrite~ star_neutral_r. Qed.
 
 
 (*------------------------------------------------------------------*)
@@ -222,8 +222,8 @@ Proof.
   destruct N as (H1'&H2'&Q1'&H''&?&?&?).
   exists H1' (H2 ** H2') Q1' (H' ** H''). splits.
   eapply pred_le_trans. eauto.
-   intros h Hh. hnf in Hh. destruct Hh as (h1&h2&?&?&?).
-   subst h. applys_to H8 H4. intuit H8. subst h1.
+   intros h Hh. hnf in Hh. destruct Hh as (h1&h2&?&?&?&?).
+   subst h. applys_to H9 H4. intuit H9. subst h1.
    rewrite (star_comm H2). rewrite star_assoc.
    exists __ __. splits~. exists __ __. splits~.
   eauto.

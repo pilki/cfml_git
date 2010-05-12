@@ -114,8 +114,8 @@ DEMO=\
 	demo/half_proof.v \
 	demo/demo_ml.v \
 	demo/demo_proof.v \
-	demo/test_ml.v \
-	demo/test_proof.v 
+#	demo/test_ml.v \
+#	demo/test_proof.v 
 
 #	okasaki/queue_realtime_ml.v \
 #	okasaki/queue_batch_ml.v \
@@ -126,8 +126,8 @@ DEMO=\
 #	okasaki/queue_hood_melville_proof.v \
 #	okasaki/queue_batch_proof.v 
 
-TEST=\
-	demo/test_ml.v 
+#TEST=\
+#	demo/test_ml.v 
 
 ALL=$(IMP) $(TOOLS) $(DEMO) $(OKA) $(OKACOD)
 # $(COD) $(DEV) $(TUTO) $(FORM) $(DEV) $(OKA) $(DEV:.v=.vo)
@@ -249,7 +249,7 @@ $(MYOCAMLDEP):
 include .camldep
 #include .libdep
 
-ifeq ($(findstring $(MAKECMDGOALS),stats clean gen dep .camldep),)
+ifeq ($(findstring $(MAKECMDGOALS),stats imp clean gen dep .camldep),)
 include .camldep
 include .libdep
 endif
@@ -267,8 +267,9 @@ endif
 
 ifneq ($(findstring $(MAKECMDGOALS),test),)
 include $(TEST:.v=.d) 
-include $(TOOLS:.v=.d)
 endif
+
+include $(TOOLS:.v=.d)
 
 cleancod:
 	rm *_ml.v *_ml.vo

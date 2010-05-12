@@ -4,7 +4,7 @@
 let p = 
    let x = ref 3 in
    let y = !x in
-   x := 4
+   x := 4;
    let z = !x in
    y + z
 

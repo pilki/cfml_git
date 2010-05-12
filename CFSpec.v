@@ -22,7 +22,7 @@ Axiom app_1 : forall A B,
 
 (** The predicate AppPure *)
 
-Axiom pure : forall A B,  
+Axiom pureapp : forall A B,  
   val -> A -> (B -> Prop) -> Prop.
 
 (** AppReturns is a local property *)
@@ -37,23 +37,24 @@ Axiom app_pre_1 : forall (U:Prop) A B (F:val) (V:A) (H:hprop) (Q:B->hprop),
 
 (** AppPure satisfies the witness property *)
 
-Axiom pure_concrete : forall A B (F:val) (V:A) (P:B->Prop),
-  pure F V P <-> exists V', P V' /\ pure F V (= V').
+Axiom pureapp_concrete : forall A B (F:val) (V:A) (P:B->Prop),
+  pureapp F V P <-> exists V', P V' /\ pureapp F V (= V').
 
 (** AppPure satisfies the determinacy property *)
 
-Axiom pure_deterministic : forall A B (F:val) (V:A) (V1' V2':B),
-  pure F V (= V1') -> pure F V (= V2') -> V1' = V2'.          
+Axiom pureapp_deterministic : forall A B (F:val) (V:A) (V1' V2':B),
+  pureapp F V (= V1') -> pureapp F V (= V2') -> V1' = V2'.          
 
 (** From AppPure to AppReturns *)
 
-Axiom pure_to_app : forall A B (F:val) (V:A) (P:B->Prop),
-  pure F V P -> app_1 F V [] [|P|].
+Axiom pureapp_to_app : forall A B (F:val) (V:A) (P:B->Prop),
+  pureapp F V P -> app_1 F V [] [|P|].
+  (* Could also be stated: [pureapp F V ==> pure (app_1 F V)] *)
 
 (** Overlapping of AppPure and AppReturns *)
 
-Axiom pure_and_app : forall A B (F:val) (V:A) (V':B) (H:hprop) (Q:B->hprop),
-  pure F V (= V') -> app_1 F V H Q -> (H ==> Q V').
+Axiom pureapp_and_app : forall A B (F:val) (V:A) (V':B) (H:hprop) (Q:B->hprop),
+  pureapp F V (= V') -> app_1 F V H Q -> (H ==> Q V').
 
 
 (********************************************************************)
@@ -61,32 +62,32 @@ Axiom pure_and_app : forall A B (F:val) (V:A) (V':B) (H:hprop) (Q:B->hprop),
 
 Hint Resolve app_local_1.
 
-Lemma pure_witness : forall A B (F:val) (V:A) (P:B->Prop),
-  pure F V P -> exists V', P V' /\ pure F V (= V').
-Proof. intros. apply* pure_concrete. Qed.
+Lemma pureapp_witness : forall A B (F:val) (V:A) (P:B->Prop),
+  pureapp F V P -> exists V', P V' /\ pureapp F V (= V').
+Proof. intros. apply* pureapp_concrete. Qed.
 
-Lemma pure_abstract : forall A B (F:val) (V:A) (V':B) (P:B->Prop),
-  pure F V (= V') -> P V' -> pure F V P.
-Proof. intros. apply* pure_concrete. Qed.
+Lemma pureapp_abstract : forall A B (F:val) (V:A) (V':B) (P:B->Prop),
+  pureapp F V (= V') -> P V' -> pureapp F V P.
+Proof. intros. apply* pureapp_concrete. Qed.
 
-Lemma pure_join : forall A B (F:val) (V:A) (V':B) (P:B->Prop),
-  pure F V (= V') -> pure F V P -> P V'.    
+Lemma pureapp_join : forall A B (F:val) (V:A) (V':B) (P:B->Prop),
+  pureapp F V (= V') -> pureapp F V P -> P V'.    
 Proof.
-  introv HE1 H. lets [V'' [HP HE2]]: (pure_witness H). subst.
-  replace V' with V''. auto. apply* pure_deterministic.
+  introv HE1 H. lets [V'' [HP HE2]]: (pureapp_witness H). subst.
+  replace V' with V''. auto. apply* pureapp_deterministic.
 Qed.
 
-Lemma pure_weaken : forall A B (F:val) (V:A) (P P':B->Prop),
-  pure F V P -> P ==> P' -> pure F V P'.
+Lemma pureapp_weaken : forall A B (F:val) (V:A) (P P':B->Prop),
+  pureapp F V P -> P ==> P' -> pureapp F V P'.
 Proof.
-  introv M W. lets [x [Px Hx]]: (pure_witness M). 
-  apply* pure_abstract.
+  introv M W. lets [x [Px Hx]]: (pureapp_witness M). 
+  apply* pureapp_abstract.
 Qed.
 
-Lemma pure_app_1 : forall  A B (F:val) (V:A) (P:B->Prop) (H:hprop) (Q:B->hprop),
-  pure F V P -> ([|P|] *** H ===> Q) -> app_1 F V H Q.
+Lemma pureapp_app_1 : forall  A B (F:val) (V:A) (P:B->Prop) (H:hprop) (Q:B->hprop),
+  pureapp F V P -> ([|P|] *** H ===> Q) -> app_1 F V H Q.
 Proof.
-  intros. apply* local_frame. apply~ pure_to_app. rew_heap~.
+  intros. apply* local_frame. apply~ pureapp_to_app. rew_heap~.
 Qed. 
 
 
@@ -157,13 +158,13 @@ Definition spec_1 A1 B (K: A1 -> ~~B -> Prop) f :=
   is_spec_1 K /\ forall x1, K x1 (app_1 f x1).
 
 Definition spec_2 A1 A2 B (K: A1 -> A2 -> ~~B -> Prop) f :=
-  is_spec_2 K /\ forall x1, pure f x1 (spec_1 (K x1)).
+  is_spec_2 K /\ forall x1, pureapp f x1 (spec_1 (K x1)).
 
 Definition spec_3 A1 A2 A3 B (K: A1 -> A2 -> A3 -> ~~B -> Prop) f :=
-  is_spec_3 K /\ forall x1, pure f x1 (spec_2 (K x1)).
+  is_spec_3 K /\ forall x1, pureapp f x1 (spec_2 (K x1)).
 
 Definition spec_4 A1 A2 A3 A4 B (K: A1 -> A2 -> A3 -> A4 -> ~~B -> Prop) f :=
-  is_spec_4 K /\ forall x1, pure f x1 (spec_3 (K x1)).
+  is_spec_4 K /\ forall x1, pureapp f x1 (spec_3 (K x1)).
 
 
 (********************************************************************)
@@ -194,7 +195,7 @@ Lemma spec_curried_2 : forall A1 A2 B f (K:A1->A2->~~B->Prop),
 Proof.
   intros. split.
     intros_all~.
-    intros x. eapply (pure_weaken (proj2 H x)).
+    intros x. eapply (pureapp_weaken (proj2 H x)).
      intros g G. apply* spec_curried_1.
 Qed.
 
@@ -203,7 +204,7 @@ Lemma spec_curried_3 : forall A1 A2 A3 B f (K:A1->A2->A3->~~B->Prop),
 Proof.
   intros. split.
     intros_all~.
-    intros x. eapply (pure_weaken (proj2 H x)).
+    intros x. eapply (pureapp_weaken (proj2 H x)).
      intros g G. apply* spec_curried_2.
 Qed.
 
@@ -213,7 +214,7 @@ Lemma spec_curried_4 : forall A1 A2 A3 A4 B f (K:A1->A2->A3->A4->~~B->Prop),
 Proof.
   intros. split.
     intros_all~.
-    intros x. eapply (pure_weaken (proj2 H x)).
+    intros x. eapply (pureapp_weaken (proj2 H x)).
      intros g G. apply* spec_curried_3.
 Qed.
 
@@ -234,7 +235,7 @@ Lemma app_intro_1_2 :
 Proof. intros. exists Q'. split~. Qed.
 
 Lemma app_intro_1_3 : 
-  app_1 f x1 H Q'
+  app_1 f x1 H Q' ->
   (forall g, app_2 g x2 x3 (Q' g) Q) ->
   app_3 f x1 x2 x3 H Q.
 Proof. intros. exists Q'. split~. Qed.
@@ -245,26 +246,33 @@ Lemma app_intro_1_4 :
   app_4 f x1 x2 x3 x4 H Q.
 Proof. intros. exists Q'. split~. Qed.
 
-Lemma app_intro_2_3 : forall Q', 
+Lemma app_intro_2_3 : 
   app_2 f x1 x2 H Q' ->
   (forall g, app_1 g x3 (Q' g) Q) ->
   app_3 f x1 x2 x3 H Q.
 Proof. 
-  introv (Q1&M1&M2). exists Q1. split~.
-  intros g. exists~ Q'.
+  introv (Q1&M1&M2) M. exists Q1. split~.
+  intros g. exists~ Q'. 
 Qed.
 
 Lemma app_intro_2_4 : 
   app_2 f x1 x2 H Q' ->
   (forall g, app_2 g x3 x4 (Q' g) Q) ->
   app_4 f x1 x2 x3 x4 H Q.
-Proof. skip. Qed.
+Proof. 
+  introv (Q1&M1&M2) M. exists Q1. split~.
+  intros g. exists~ Q'. 
+Qed.
 
 Lemma app_intro_3_4 : 
   app_3 f x1 x2 x3 H Q' ->
   (forall g, app_1 g x4 (Q' g) Q) ->
   app_4 f x1 x2 x3 x4 H Q.
-Proof. skip. Qed.
+Proof. 
+  introv (Q1&M1&M2) M. exists Q1. split~.
+  intros g. destruct (M2 g) as (Q2&M3&M4).
+  exists Q2. split~. intros g'. exists~ Q'.
+Qed.
 
 End AppIntro.
 
@@ -286,11 +294,11 @@ Lemma spec_intro_2 : forall A1 A2 B f (K:A1->A2->~~B->Prop),
   spec_2 K f.
 Proof.
   introv I C HK. split~.
-  intros x1. destruct (pure_witness (proj2 C x1)) as [g [_ Hg]].
-  apply* pure_abstract. split~. intros x2. eapply I.
+  intros x1. destruct (pureapp_witness (proj2 C x1)) as [g [_ Hg]].
+  apply* pureapp_abstract. split~. intros x2. eapply I.
   apply HK. intros H Q (Q'&Ap1&Ap2). 
-  lets WH: (pure_and_app Hg Ap1). (* todo : bug forwards ? *)
-  apply* app_weaken_1. (* todo: use local_weaken *)
+  lets WH: (pureapp_and_app Hg Ap1). (* todo : bug forwards ? *)
+  apply* local_weaken.
 Qed.
 
 Lemma spec_intro_3 : forall A1 A2 A3 B f (K:A1->A2->A3->~~B->Prop),
@@ -330,9 +338,9 @@ Proof. introv [S H]. auto. Qed.
 Lemma spec_elim_2 : forall A1 A2 B (K: A1 -> A2 -> ~~B -> Prop) f,
   spec_2 K f -> forall x1 x2, K x1 x2 (app_2 f x1 x2).
 Proof.
-  introv S. intros. destruct (pure_witness ((proj22 S) x1)) as [g [Pg Hg]].
+  introv S. intros. destruct (pureapp_witness ((proj22 S) x1)) as [g [Pg Hg]].
   lets: ((proj2 Pg) x2). apply* (proj1 S). intros H' Q Ap1.
-  exists (fun g' => [g'=g] ** H'). split. apply* pure_app_1. 
+  exists (fun g' => [g'=g] ** H'). split. apply* pureapp_app_1. 
    intros g'.
    apply (@app_pre_1 (g'=g)).
    skip. (* tactic for heaps: [g' = g] ** H' ==> [g' = g] *)
@@ -370,14 +378,14 @@ Lemma spec_elim_1_2 : forall A1 A2 (K: A1 -> ~~val -> Prop) f,
   app_2 f x1 x2 H Q.
 Proof. intros. apply* app_intro_1_2. apply* spec_elim_1_1. Qed.
 
-Lemma spec_elim_1_3 : forall A1 A2 A3 B (K: A1 -> ~~val -> Prop) f,
+Lemma spec_elim_1_3 : forall A1 A2 A3 (K: A1 -> ~~val -> Prop) f,
   spec_1 K f -> forall x1 (x2:A2) (x3:A3) (H : hprop) (Q Q' : val->hprop),
   (forall R, K x1 R -> R H Q') -> 
   (forall g, app_2 g x2 x3 (Q' g) Q) ->
   app_3 f x1 x2 x3 H Q.
 Proof. intros. apply* app_intro_1_3. apply* spec_elim_1_1. Qed.
 
-Lemma spec_elim_1_4 : forall A1 A2 A3 A4 B (K: A1 -> ~~val -> Prop) f,
+Lemma spec_elim_1_4 : forall A1 A2 A3 A4 (K: A1 -> ~~val -> Prop) f,
   spec_1 K f -> forall x1 (x2:A2) (x3:A3) (x4:A4) (H : hprop) (Q Q' : val->hprop),
   (forall R, K x1 R -> R H Q') -> 
   (forall g, app_3 g x2 x3 x4 (Q' g) Q) ->
@@ -387,9 +395,9 @@ Proof. intros. apply* app_intro_1_4. apply* spec_elim_1_1. Qed.
 (*-- spec_elim_2 --*)
 
 Lemma spec_elim_2_1 : forall A1 A2 B (K: A1 -> A2 -> ~~B -> Prop) f,
-  spec_2 K f -> forall x1 (P : val->Prop),
+  spec_2 K f -> forall x1,
   app_1 f x1 [] [| spec_1 (K x1) |].
-Proof. intros. destruct H as [I Ap1]. apply~ pure_to_app. Qed.
+Proof. intros. destruct H as [I Ap1]. apply~ pureapp_to_app. Qed.
 
 Lemma spec_elim_2_2 : forall A1 A2 B (K: A1 -> A2 -> ~~B -> Prop) f,
   spec_2 K f -> forall x1 x2 (H : hprop) (Q : B->hprop),
@@ -397,31 +405,43 @@ Lemma spec_elim_2_2 : forall A1 A2 B (K: A1 -> A2 -> ~~B -> Prop) f,
   app_2 f x1 x2 H Q.
 Proof. introv S W. apply (W _). apply* spec_elim_2. Qed.
 
-Lemma spec_elim_2_3 : forall A1 A2 A3 B (K: A1 -> A2 -> ~~B -> Prop) f,
-  spec_2 K f -> forall x1 x2 x3 (H : hprop) (Q Q' : B->hprop),
+Lemma spec_elim_2_3 : forall A1 A2 A3 (K: A1 -> A2 -> ~~val -> Prop) f,
+  spec_2 K f -> forall x1 x2 (x3:A3) (H : hprop) (Q Q' : val->hprop),
   (forall R, K x1 x2 R -> R H Q') ->
   (forall g, app_1 g x3 (Q' g) Q) ->
   app_3 f x1 x2 x3 H Q.
 Proof. intros. apply* app_intro_2_3. apply* spec_elim_2_2. Qed.
 
-Lemma spec_elim_2_4 : forall A1 A2 A3 A4 B (K: A1 -> A2 -> ~~B -> Prop) f,
-  spec_2 K f -> forall x1 x2 x3 x4 (H : hprop) (Q Q' : B->hprop),
+Lemma spec_elim_2_4 : forall A1 A2 A3 A4 (K: A1 -> A2 -> ~~val -> Prop) f,
+  spec_2 K f -> forall x1 x2 (x3:A3) (x4:A4) (H : hprop) (Q Q' : val->hprop),
   (forall R, K x1 x2 R -> R H Q') ->
   (forall g, app_2 g x3 x4 (Q' g) Q) ->
-  app_3 f x1 x2 x3 x4 H Q.
+  app_4 f x1 x2 x3 x4 H Q.
 Proof. intros. apply* app_intro_2_4. apply* spec_elim_2_2. Qed.
 
 (*-- spec_elim_3 --*)
 
 Lemma spec_elim_3_1 : forall A1 A2 A3 B (K: A1 -> A2 -> A3 -> ~~B -> Prop) f,
-  spec_3 K f -> forall x1 (P : val->Prop),
+  spec_3 K f -> forall x1,
   app_1 f x1 [] [| spec_2 (K x1) |].
-Proof. intros. destruct H as [I Ap1]. apply~ pure_to_app. Qed.
+Proof. intros. destruct H as [I Ap1]. apply~ pureapp_to_app. Qed.
 
 Lemma spec_elim_3_2 : forall A1 A2 A3 B (K: A1 -> A2 -> A3 -> ~~B -> Prop) f,
-  spec_3 K f -> forall x1 x2 (P : val->Prop),
+  spec_3 K f -> forall x1 x2,
   app_2 f x1 x2 [] [| spec_1 (K x1 x2) |].
-Proof.  Qed.
+Proof. intros. destruct H as [I Ap1].
+specializes Ap1 x1.
+eapply app_intro_1_2.
+apply~ pureapp_app_1. eauto.
+intros g.
+rew_heap.
+apply~ app_pre_1.
+intros M.
+eapply local_weaken with (H':=[]). auto.
+forwards: (spec_elim_2_1 M). eapply H.
+skip. (* todo: heaps ==> *)
+auto.
+Qed. (* todo: simplifier !*)
 
 Lemma spec_elim_3_3 : forall A1 A2 A3 B (K: A1 -> A2 -> A3 -> ~~B -> Prop) f,
   spec_3 K f -> forall x1 x2 x3 (H : hprop) (Q : B->hprop),
@@ -429,8 +449,8 @@ Lemma spec_elim_3_3 : forall A1 A2 A3 B (K: A1 -> A2 -> A3 -> ~~B -> Prop) f,
   app_3 f x1 x2 x3 H Q.
 Proof. introv S W. apply (W _). apply* spec_elim_3. Qed.
 
-Lemma spec_elim_3_4 : forall A1 A2 A3 A4 B (K: A1 -> A2 -> A3 -> ~~B -> Prop) f,
-  spec_3 K f -> forall x1 x2 x3 x4 (H : hprop) (Q Q' : B->hprop),
+Lemma spec_elim_3_4 : forall A1 A2 A3 A4 (K: A1 -> A2 -> A3 -> ~~val -> Prop) f,
+  spec_3 K f -> forall x1 x2 x3 (x4:A4) (H : hprop) (Q Q' : val->hprop),
   (forall R, K x1 x2 x3 R -> R H Q') ->
   (forall g, app_1 g x4 (Q' g) Q) ->
   app_4 f x1 x2 x3 x4 H Q.
@@ -441,17 +461,17 @@ Proof. intros. apply* app_intro_3_4. apply* spec_elim_3_3. Qed.
 Lemma spec_elim_4_1 : forall A1 A2 A3 A4 B (K: A1 -> A2 -> A3 -> A4 -> ~~B -> Prop) f,
   spec_4 K f -> forall x1 (P : val->Prop),
   app_1 f x1 [] [| spec_3 (K x1) |].
-Proof. intros. destruct H as [I Ap1]. apply~ pure_to_app. Qed.
+Proof. intros. destruct H as [I Ap1]. apply~ pureapp_to_app. Qed.
 
 Lemma spec_elim_4_2 : forall A1 A2 A3 A4 B (K: A1 -> A2 -> A3 -> A4 -> ~~B -> Prop) f,
-  spec_4 K f -> forall x1 x2 (P : val->Prop),
-  app_2 f x1 [] [| spec_2 (K x1 x2) |].
-Proof.  Qed.
+  spec_4 K f -> forall x1 x2,
+  app_2 f x1 x2 [] [| spec_2 (K x1 x2) |].
+Proof. skip. Qed. (*todo: cf spec_elim_3_2 *)
 
 Lemma spec_elim_4_3 : forall A1 A2 A3 A4 B (K: A1 -> A2 -> A3 -> A4 -> ~~B -> Prop) f,
   spec_4 K f -> forall x1 x2 x3 (P : val->Prop),
-  app_3 f x1 x2 x3 [] [| spec_2 (K x1 x2 x3) |].
-Proof.  Qed.
+  app_3 f x1 x2 x3 [] [| spec_1 (K x1 x2 x3) |].
+Proof. skip. Qed. (*todo: cf spec_elim_3_2 *)
 
 Lemma spec_elim_4_4 : forall A1 A2 A3 A4 B (K: A1 -> A2 -> A3 -> A4 -> ~~B -> Prop) f,
   spec_4 K f -> forall x1 x2 x3 x4 (H : hprop) (Q : B->hprop),
@@ -651,6 +671,16 @@ Proof.
 Qed.
 
 *)
+
+
+(********************************************************************)
+(* ** Specification of pure functions *)
+
+(** [pure F P] is equivalent to [F [] [|P|]] *)
+
+Definition pure B (R:~~B) := 
+  fun P => R [] [|P|].
+
 
 (********************************************************************)
 (* ** Representation predicate *)

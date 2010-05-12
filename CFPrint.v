@@ -6,6 +6,9 @@ Require Import FuncDefs.
 
 Open Local Scope func.
 
+(*------------------------------------------------------------------*)
+(* ** Printing abstract specifications *)
+
 Notation "'Spec_1' f K" := (spec_1 K f) 
   (at level 69, f at level 0) : func.
 
@@ -17,6 +20,9 @@ Notation "'Spec_3' f K" := (spec_3 K f)
 
 Notation "'Spec_4' f K" := (spec_4 K f) 
   (at level 69, f at level 0) : func.
+
+(*------------------------------------------------------------------*)
+(* ** Printing general specifications *)
 
 Notation "'Spec' f x1 | R >> H"
   := (Spec_1 f (fun x1 R => H))
@@ -66,73 +72,122 @@ Notation "'Spec' f ( x1 : A1 ) ( x2 : A2 ) ( x3 : A3 ) ( x4 : A4 ) | R >> H"
       R ident, H at level 90,
       A1 at level 0, A2 at level 0, A3 at level 0, A4 at level 0, only parsing) : func.
 
-Notation "'Total' f x1 >> P"
-  := (Spec f x1 | R >> R P)
+(*------------------------------------------------------------------*)
+(* ** Printing specifications without auxiliary variables *)
+
+Notation "'Specs' f x1 >> H Q"
+  := (Spec f x1 | R >> R H Q)
+     (at level 69, f at level 0, x1 ident, H at level 0,
+      format "Total  f  x1  >>  '/'   '[v' H ']'  '[v' Q ']'") : func.
+
+Notation "'Specs' f x1 x2 >> H Q"
+  := (Spec f x1 x2 | R >> R Q)
+     (at level 69, f at level 0, x1 ident, x2 ident, H at level 0,
+      format "Total  f  x1  x2  >>  '/'   '[v' H ']'   '[v' Q ']'") : func.
+
+Notation "'Specs' f x1 x2 x3 >> H Q"
+  := (Spec f x1 x2 x3 | R >> R H Q)
+     (at level 69, f at level 0, x1 ident, x2 ident, x3 ident, H at level 0,
+      format "Total  f  x1  x2  x3  >>  '/'   '[v' H ']'   '[v' Q ']'") : func.
+
+Notation "'Specs' f x1 x2 x3 x4 >> H Q"
+  := (Spec f x1 x2 x3 x4 | R >> R H Q)
+     (at level 69, f at level 0, x1 ident, x2 ident, x3 ident, x4 ident, H at level 0,
+      format "Total  f  x1  x2  x3  x4  >>  '/'   '[v' H ']'   '[v' Q ']'") : func.
+
+Notation "'Specs' f ( x1 : A1 ) >> H Q"
+  := (Spec f (x1:A1) | R >> R H Q)
+     (at level 69, f at level 0, x1 ident, H at level 0,  
+      A1 at level 0, only parsing) : func.
+
+Notation "'Specs' f ( x1 : A1 ) ( x2 : A2 ) >> H Q"
+  := (Spec f (x1:A1) (x2:A2) | R >> R H Q)
+     (at level 69, f at level 0, x1 ident, x2 ident, H at level 0,
+      A1 at level 0, A2 at level 0, only parsing) : func.
+
+Notation "'Specs' f ( x1 : A1 ) ( x2 : A2 ) ( x3 : A3 ) >> H Q"
+  := (Spec f (x1:A1) (x2:A2) (x3:A3) | R >> R H Q)
+     (at level 69, f at level 0, x1 ident, x2 ident, x3 ident, H at level 0,
+      A1 at level 0, A2 at level 0, A3 at level 0, only parsing) : func.
+
+Notation "'Specs' f ( x1 : A1 ) ( x2 : A2 ) ( x3 : A3 ) ( x4 : A4 ) >> H Q"
+  := (Spec f (x1:A1) (x2:A2) (x3:A3) (x4:A4) | R >> R H Q)
+     (at level 69, f at level 0, x1 ident, x2 ident, x3 ident, x4 ident, H at level 0,
+      A1 at level 0, A2 at level 0, A3 at level 0, A4 at level 0, only parsing) : func.
+
+
+(*------------------------------------------------------------------*)
+(* ** Printing specifications without effects *)
+
+Notation "'Pure' f x1 >> P"
+  := (Total f x1 >> pure P)
      (at level 69, f at level 0, x1 ident,
       format "Total  f  x1  >>  '/'   '[v' P ']'") : func.
 
-Notation "'Total' f x1 x2 >> P"
-  := (Spec f x1 x2 | R >> R P)
+Notation "'Pure' f x1 x2 >> P"
+  := (Total f x1 x2 >> pure P)
      (at level 69, f at level 0, x1 ident, x2 ident,
       format "Total  f  x1  x2  >>  '/'   '[v' P ']'") : func.
 
-Notation "'Total' f x1 x2 x3 >> P"
-  := (Spec f x1 x2 x3 | R >> R P)
+Notation "'Pure' f x1 x2 x3 >> P"
+  := (Total f x1 x2 x3 >> pure P)
      (at level 69, f at level 0, x1 ident, x2 ident, x3 ident,
       format "Total  f  x1  x2  x3  >>  '/'   '[v' P ']'") : func.
 
-Notation "'Total' f x1 x2 x3 x4 >> P"
-  := (Spec f x1 x2 x3 x4 | R >> R P)
+Notation "'Pure' f x1 x2 x3 x4 >> P"
+  := (Total f x1 x2 x3 x4 >> pure P)
      (at level 69, f at level 0, x1 ident, x2 ident, x3 ident, x4 ident,
       format "Total  f  x1  x2  x3  x4  >>  '/'   '[v' P ']'") : func.
 
-Notation "'Total' f x1 | y >> H"
-  := (Total f x1 >> (fun y => H))
+Notation "'Pure' f x1 | y >> H"
+  := (Pure f x1 >> (fun y => H))
      (at level 69, f at level 0, x1 ident, y ident, H at level 90,
       format "Total  f  x1  | y >>  H") : func.
 
-Notation "'Total' f x1 x2 | y >> H"
-  := (Total f x1 x2 >> (fun y => H))
+Notation "'Pure' f x1 x2 | y >> H"
+  := (Pure f x1 x2 >> (fun y => H))
      (at level 69, f at level 0, x1 ident, x2 ident, 
       y ident, H at level 90,
       format "Total  f  x1  x2  | y >>  H") : func.
 
-Notation "'Total' f x1 x2 x3 | y >> H"
-  := (Total f x1 x2 x3 >> (fun y => H))
+Notation "'Pure' f x1 x2 x3 | y >> H"
+  := (Pure f x1 x2 x3 >> (fun y => H))
      (at level 69, f at level 0, x1 ident, x2 ident, x3 ident, 
       y ident, H at level 90,
       format "Total  f  x1  x2  x3  | y >>  H") : func.
 
-Notation "'Total' f x1 x2 x3 x4 | y >> H"
-  := (Total f x1 x2 x3 x4 >> (fun y => H))
+Notation "'Pure' f x1 x2 x3 x4 | y >> H"
+  := (Pure f x1 x2 x3 x4 >> (fun y => H))
      (at level 69, f at level 0, x1 ident, x2 ident, x3 ident, x4 ident, 
       y ident, H at level 90,
       format "Total  f  x1  x2  x3  x4  | y >>  H") : func.
 
-
-Notation "'Total' f ( x1 : A1 ) >> P"
-  := (Spec f (x1:A1) | R >> R P)
+Notation "'Pure' f ( x1 : A1 ) >> P"
+  := (Total f (x1:A1) >> pure P)
      (at level 69, f at level 0, x1 ident, 
       A1 at level 0, only parsing) : func.
 
-Notation "'Total' f ( x1 : A1 ) ( x2 : A2 ) >> P"
-  := (Spec f (x1:A1) (x2:A2) | R >> R P)
+Notation "'Pure' f ( x1 : A1 ) ( x2 : A2 ) >> P"
+  := (Total f (x1:A1) (x2:A2) >> pure P)
      (at level 69, f at level 0, x1 ident, x2 ident,
       A1 at level 0, A2 at level 0, only parsing) : func.
 
-Notation "'Total' f ( x1 : A1 ) ( x2 : A2 ) ( x3 : A3 ) >> P"
-  := (Spec f (x1:A1) (x2:A2) (x3:A3) | R >> R P)
+Notation "'Pure' f ( x1 : A1 ) ( x2 : A2 ) ( x3 : A3 ) >> P"
+  := (Total f (x1:A1) (x2:A2) (x3:A3) >> pure P)
      (at level 69, f at level 0, x1 ident, x2 ident, x3 ident,
       A1 at level 0, A2 at level 0, A3 at level 0, only parsing) : func.
 
-Notation "'Total' f ( x1 : A1 ) ( x2 : A2 ) ( x3 : A3 ) ( x4 : A4 ) >> P"
-  := (Spec f (x1:A1) (x2:A2) (x3:A3) (x4:A4) | R >> R P)
+Notation "'Pure' f ( x1 : A1 ) ( x2 : A2 ) ( x3 : A3 ) ( x4 : A4 ) >> P"
+  := (Total f (x1:A1) (x2:A2) (x3:A3) (x4:A4) >> pure P)
      (at level 69, f at level 0, x1 ident, x2 ident, x3 ident, x4 ident,
       A1 at level 0, A2 at level 0, A3 at level 0, A4 at level 0, only parsing) : func.
 
 
 (********************************************************************)
 (* ** Notation for specifications through [rep] predicate *)
+
+(*------------------------------------------------------------------*)
+(* ** Printing specifications without effects *)
 
 Notation "'RepSpec' f ( X1 ';' A1 )  | R >> H"
   := (Spec_1 f (fun (x1:A1) R => forall X1, rep x1 X1 -> H))
@@ -161,32 +216,65 @@ Notation "'RepSpec' f ( X1 ; A1 ) ( X2 ; A2 ) ( X3 ; A3 ) ( X4 ; A4 )  | R >> H"
       R ident, H at level 90,
       A1 at level 0, A2 at level 0, A3 at level 0, A4 at level 0) : func.
 
-Notation "'RepTotal' f ( X1 ; A1 ) >> P"
+(*------------------------------------------------------------------*)
+(* ** Printing specifications without auxiliary variables *)
+
+Notation "'RepSpecs' f ( X1 ; A1 ) >> H Q"
   := (Spec f (x1:A1) | R >> 
-       forall X1, rep x1 X1 -> R P)
+       forall X1, rep x1 X1 -> R H Q)
+     (at level 69, f at level 0, X1 ident, H at level 0, 
+      A1 at level 0) : func.
+
+Notation "'RepSpecs' f ( X1 ; A1 ) ( X2 ; A2 ) >> H Q"
+  := (Spec f (x1:A1) (x2:A2) | R >> 
+       forall X1 X2, rep x1 X1 -> rep x2 X2 -> R H Q)
+     (at level 69, f at level 0, X1 ident, X2 ident, H at level 0,
+      A1 at level 0, A2 at level 0) : func.
+
+Notation "'RepSpecs' f ( X1 ; A1 ) ( X2 ; A2 ) ( X3 ; A3 ) >> H Q"
+  := (Spec f (x1:A1) (x2:A2) (x3:A3) | R >> 
+       forall X1 X2 X3, rep x1 X1 -> rep x2 X2 -> rep x3 X3 -> R H Q)
+     (at level 69, f at level 0, X1 ident, X2 ident, X3 ident, H at level 0,
+      A1 at level 0, A2 at level 0, A3 at level 0) : func.
+
+Notation "'RepSpecs' f ( X1 ; A1 ) ( X2 ; A2 ) ( X3 ; A3 ) ( X4 ; A4 ) >> H Q"
+  := (Spec f (x1:A1) (x2:A2) (x3:A3) (x4:A4) | R >> 
+       forall X1 X2 X3 X4, rep x1 X1 -> rep x2 X2 -> rep x3 X3 -> rep x4 X4 -> R H Q)
+     (at level 69, f at level 0, X1 ident, X2 ident, X3 ident, X4 ident, H at level 0,
+      A1 at level 0, A2 at level 0, A3 at level 0, A4 at level 0) : func.
+
+(*------------------------------------------------------------------*)
+(* ** Printing general specifications *)
+
+Notation "'RepPure' f ( X1 ; A1 ) >> P"
+  := (Spec f (x1:A1) | R >> 
+       forall X1, rep x1 X1 -> pure R P)
      (at level 69, f at level 0, X1 ident, 
       A1 at level 0) : func.
 
-Notation "'RepTotal' f ( X1 ; A1 ) ( X2 ; A2 ) >> P"
+Notation "'RepPure' f ( X1 ; A1 ) ( X2 ; A2 ) >> P"
   := (Spec f (x1:A1) (x2:A2) | R >> 
-       forall X1 X2, rep x1 X1 -> rep x2 X2 -> R P)
+       forall X1 X2, rep x1 X1 -> rep x2 X2 -> pure R P)
      (at level 69, f at level 0, X1 ident, X2 ident,
       A1 at level 0, A2 at level 0) : func.
 
-Notation "'RepTotal' f ( X1 ; A1 ) ( X2 ; A2 ) ( X3 ; A3 ) >> P"
+Notation "'RepPure' f ( X1 ; A1 ) ( X2 ; A2 ) ( X3 ; A3 ) >> P"
   := (Spec f (x1:A1) (x2:A2) (x3:A3) | R >> 
-       forall X1 X2 X3, rep x1 X1 -> rep x2 X2 -> rep x3 X3 -> R P)
+       forall X1 X2 X3, rep x1 X1 -> rep x2 X2 -> rep x3 X3 -> pure R P)
      (at level 69, f at level 0, X1 ident, X2 ident, X3 ident,
       A1 at level 0, A2 at level 0, A3 at level 0) : func.
 
-Notation "'RepTotal' f ( X1 ; A1 ) ( X2 ; A2 ) ( X3 ; A3 ) ( X4 ; A4 ) >> P"
+Notation "'RepPure' f ( X1 ; A1 ) ( X2 ; A2 ) ( X3 ; A3 ) ( X4 ; A4 ) >> P"
   := (Spec f (x1:A1) (x2:A2) (x3:A3) (x4:A4) | R >> 
-       forall X1 X2 X3 X4, rep x1 X1 -> rep x2 X2 -> rep x3 X3 -> rep x4 X4 -> R P)
+       forall X1 X2 X3 X4, rep x1 X1 -> rep x2 X2 -> rep x3 X3 -> rep x4 X4 -> pure R P)
      (at level 69, f at level 0, X1 ident, X2 ident, X3 ident, X4 ident,
       A1 at level 0, A2 at level 0, A3 at level 0, A4 at level 0) : func.
 
-Notation "X ';-' T" := (fun (x:T) => rep x X) (at level 68). 
-Notation "P ';;' T" := (fun (x:T) => exists X, rep x X /\ P X) (at level 80). 
+(*------------------------------------------------------------------*)
+(* ** Specification of output modulo representation *)
+
+Notation "X '.;' T" := (fun (x:T) => rep x X) (at level 68). 
+Notation "P '.:' T" := (fun (x:T) => exists X, rep x X /\ P X) (at level 80). 
 
 
 (********************************************************************)
@@ -252,6 +340,7 @@ Notation "'?'" := (no_name).
 Inductive tag_type : Type :=
   | tag_ret
   | tag_apply
+  | tag_val
   | tag_let
   | tag_letfun
   | tag_body
@@ -264,13 +353,18 @@ Inductive tag_type : Type :=
   | tag_alias
   | tag_toplet
   | tag_topfun
-  | tag_match (n : nat).
+  | tag_match (n : nat)
+  | tag_seq
+  | tag_for
+  | tag_while.
 
 Definition tag (t:tag_type) (x:option tag_name) (A:Type) (P:A) := P.
 
 Notation "'!R' P" := (tag tag_ret None P)  
   (at level 69).
 Notation "'!A' P" := (tag tag_apply None P)  
+  (at level 95).
+Notation "'!V' P" := (tag tag_val None P)  
   (at level 95).
 Notation "'!L' P" := (tag tag_let None P)  
   (at level 95).
@@ -292,6 +386,12 @@ Notation "'!D' P" := (tag tag_done None P)
   (at level 95).
 Notation "'!M' n P" := (tag (tag_match n) None P)  
   (at level 95, n at level 0).
+Notation "'!Seq' P" := (tag tag_seq None P)  
+  (at level 95).
+Notation "'!For' P" := (tag tag_for None P)  
+  (at level 95).
+Notation "'!While' P" := (tag tag_while None P)  
+  (at level 95).
 Notation "'!TL' P" := (tag tag_toplet None P)  
   (at level 95).
 Notation "'!TF' P" := (tag tag_topfun None P)  
@@ -301,6 +401,8 @@ Notation "'!!R' x P" := (tag tag_ret (Some x) P)
   (at level 69, x at level 0).
 Notation "'!!A' x P" := (tag tag_apply (Some x) P)  
   (at level 95, x at level 0).
+Notation "'!!V' x P" := (tag tag_val (Some x) P)  
+  (at level 95).
 Notation "'!!L' x P" := (tag tag_let (Some x) P)  
   (at level 95, x at level 0).
 Notation "'!!C' x P" := (tag tag_case (Some x) P)  
@@ -321,6 +423,12 @@ Notation "'!!D' x P" := (tag tag_done (Some x) P)
   (at level 95, x at level 0).
 Notation "'!!M' x n P" := (tag (tag_match n) (Some x) P)  
   (at level 95, x at level 0, n at level 0).
+Notation "'!!Seq' x P" := (tag tag_seq (Some x) P)  
+  (at level 95, x at level 0).
+Notation "'!!For'x  P" := (tag tag_for (Some x) P)  
+  (at level 95, x at level 0).
+Notation "'!!While' x P" := (tag tag_while (Some x) P)  
+  (at level 95, x at level 0).
 Notation "'!!TL' x P" := (tag tag_toplet (Some x) P)  
   (at level 95, x at level 0).
 Notation "'!!TF' x P" := (tag tag_topfun (Some x) P)  
@@ -352,15 +460,15 @@ Tactic Notation "xuntags" := unfold tag in *.
 (* ** Notation for characteristic formulae *)
 
 Notation "'Ret' v" :=
-  (!R (fun P => P v))
+  (!R (fun H Q => H heap_empty /\Q v heap_empty))
   (at level 69) : charac.
 
 Notation "'Fail'" :=
-  (!E (fun _ => False))
+  (!E (fun _ _ => False))
   (at level 0) : charac.
 
 Notation "'Done'" := 
-  (!D (fun _ => True))
+  (!D (fun _ _ => True))
   (at level 0) : charac.
 
 Notation "'App' f x1 ;" :=
@@ -417,7 +525,8 @@ Notation "'Body' f [ A1 A2 ]  x1 x2 '=>' Q" :=
                  (forall x1 x2, K x1 x2 Q) -> spec_2 K f))
   (at level 0, f at level 0, x1 ident, x2 ident, A1 ident, A2 ident) : charac.
 
-(* todo: other versions *)
+
+(* deprecated 
 
 Notation "'Let' : a x1 ':=' Q1 'in' Q2" :=
   (!!L a (fun P => exists P1, Q1 P1 
@@ -449,97 +558,98 @@ Notation "'Let' [ A1 A2 ]  x1 ':=' Q1 'in' Q2" :=
                             /\ forall x1,P1 x1 -> Q2 P))
   (at level 69, x1 ident, A1 ident, A2 ident) : charac.
 
+*)
 
 Notation "'_If' x 'Then' Q1 'Else' Q2" :=
-  (!I (fun P => (x = true -> Q1 P) /\ (x = false -> Q2 P)))
+  (!I (fun H Q => (x = true -> Q1 H Q) /\ (x = false -> Q2 H Q)))
   (at level 69, x at level 0) : charac.
 
 Notation "'Case' x '=' p 'Then' Q1 'Else' Q2" :=
-  (!C (fun P => (x = p -> Q1 P) /\ (x <> p -> Q2 P)))
+  (!C (fun H Q => (x = p -> Q1 H Q) /\ (x <> p -> Q2 H Q)))
   (at level 69, x at level 0) : charac.
 
 Notation "'Case' x '=' p [ x1 ]  'Then' Q1 'Else' Q2" :=
-  (!C (fun P => (forall x1, x = p -> Q1 P) 
-                /\ ((forall x1, x <> p) -> Q2 P)))
+  (!C (fun H Q => (forall x1, x = p -> Q1 H Q) 
+                /\ ((forall x1, x <> p) -> Q2 H Q)))
   (at level 69, x at level 0, x1 ident) : charac.
 
 Notation "'Case' x '=' p [ x1 x2 ]  'Then' Q1 'Else' Q2" :=
-  (!C (fun P => (forall x1 x2, x = p -> Q1 P) 
-                /\ ((forall x1 x2, x <> p) -> Q2 P)))
+  (!C (fun H Q => (forall x1 x2, x = p -> Q1 H Q) 
+                /\ ((forall x1 x2, x <> p) -> Q2 H Q)))
   (at level 69, x at level 0, x1 ident, x2 ident) : charac.
 
 Notation "'Case' x '=' p [ x1 x2 x3 ]  'Then' Q1 'Else' Q2" :=
-  (!C (fun P => (forall x1 x2 x3, x = p -> Q1 P) 
-                /\ ((forall x1 x2 x3, x <> p) -> Q2 P)))
+  (!C (fun H Q => (forall x1 x2 x3, x = p -> Q1 H Q) 
+                /\ ((forall x1 x2 x3, x <> p) -> Q2 H Q)))
   (at level 69, x at level 0, x1 ident, x2 ident,
    x3 ident) : charac.
 
 Notation "'Case' x '=' p [ x1 x2 x3 x4 ]  'Then' Q1 'Else' Q2" :=
-  (!C (fun P => (forall x1 x2 x3 x4, x = p -> Q1 P) 
-                /\ ((forall x1 x2 x3 x4, x <> p) -> Q2 P)))
+  (!C (fun H Q => (forall x1 x2 x3 x4, x = p -> Q1 H Q) 
+                /\ ((forall x1 x2 x3 x4, x <> p) -> Q2 H Q)))
   (at level 69, x at level 0, x1 ident, x2 ident,
    x3 ident, x4 ident) : charac.
 
 Notation "'Case' x '=' p [ x1 x2 x3 x4 x5 ]  'Then' Q1 'Else' Q2" :=
-  (!C (fun P => (forall x1 x2 x3 x4 x5, x = p -> Q1 P) 
-                /\ ((forall x1 x2 x3 x4 x5, x <> p) -> Q2 P)))
+  (!C (fun H Q => (forall x1 x2 x3 x4 x5, x = p -> Q1 H Q) 
+                /\ ((forall x1 x2 x3 x4 x5, x <> p) -> Q2 H Q)))
   (at level 69, x at level 0, x1 ident, x2 ident,
    x3 ident, x4 ident, x5 ident) : charac.
 
 Notation "'Case' x '=' p [ x1 x2 x3 x4 x5 x6 ]  'Then' Q1 'Else' Q2" :=
-  (!C (fun P => (forall x1 x2 x3 x4 x5 x6, x = p -> Q1 P) 
-                /\ ((forall x1 x2 x3 x4 x5 x6, x <> p) -> Q2 P)))
+  (!C (fun H Q => (forall x1 x2 x3 x4 x5 x6, x = p -> Q1 H Q) 
+                /\ ((forall x1 x2 x3 x4 x5 x6, x <> p) -> Q2 H Q)))
   (at level 69, x at level 0, x1 ident, x2 ident,
    x3 ident, x4 ident, x5 ident, x6 ident) : charac.
 
 Notation "'Case' x '=' p [ x1 x2 x3 x4 x5 x6 x7 ]  'Then' Q1 'Else' Q2" :=
-  (!C (fun P => (forall x1 x2 x3 x4 x5 x6 x7, x = p -> Q1 P) 
-                /\ ((forall x1 x2 x3 x4 x5 x6 x7, x <> p) -> Q2 P)))
+  (!C (fun H Q => (forall x1 x2 x3 x4 x5 x6 x7, x = p -> Q1 H Q) 
+                /\ ((forall x1 x2 x3 x4 x5 x6 x7, x <> p) -> Q2 H Q)))
   (at level 69, x at level 0, x1 ident, x2 ident,
    x3 ident, x4 ident, x5 ident, x6 ident, x7 ident) : charac.
 
 Notation "'Case' x '=' p 'When' w 'Then' Q1 'Else' Q2" :=
-  (!W (fun P => (x = p -> isTrue (w)%bool -> Q1 P) 
-                /\ (x <> p \/ isTrue (!w) -> Q2 P)))
+  (!W (fun H Q => (x = p -> isTrue (w)%bool -> Q1 H Q) 
+                /\ (x <> p \/ isTrue (!w) -> Q2 H Q)))
   (at level 69, x at level 0) : charac.
 
 Notation "'Case' x '=' p [ x1 ]  'When' w 'Then' Q1 'Else' Q2" :=
-  (!W (fun P => (forall x1, x = p -> isTrue w%bool -> Q1 P) 
-                /\ ((forall x1, x <> p \/ isTrue (!w)) -> Q2 P)))
+  (!W (fun H Q => (forall x1, x = p -> isTrue w%bool -> Q1 H Q) 
+                /\ ((forall x1, x <> p \/ isTrue (!w)) -> Q2 H Q)))
   (at level 69, x at level 0, x1 ident) : charac.
 
 Notation "'Case' x '=' p [ x1 x2 ]  'When' w 'Then' Q1 'Else' Q2" :=
-  (!W (fun P => (forall x1 x2, x = p -> isTrue w%bool -> Q1 P) 
-                /\ ((forall x1 x2, x <> p \/ isTrue (!w)) -> Q2 P)))
+  (!W (fun H Q => (forall x1 x2, x = p -> isTrue w%bool -> Q1 H Q) 
+                /\ ((forall x1 x2, x <> p \/ isTrue (!w)) -> Q2 H Q)))
   (at level 69, x at level 0, x1 ident, x2 ident) : charac.
 
 Notation "'Case' x '=' p [ x1 x2 x3 ]  'When' w 'Then' Q1 'Else' Q2" :=
-  (!W (fun P => (forall x1 x2 x3, x = p -> isTrue w%bool -> Q1 P) 
-                /\ ((forall x1 x2 x3, x <> p \/ isTrue (!w)) -> Q2 P)))
+  (!W (fun H Q => (forall x1 x2 x3, x = p -> isTrue w%bool -> Q1 H Q) 
+                /\ ((forall x1 x2 x3, x <> p \/ isTrue (!w)) -> Q2 H Q)))
   (at level 69, x at level 0, x1 ident, x2 ident,
    x3 ident) : charac.
 
 Notation "'Case' x '=' p [ x1 x2 x3 x4 ]  'When' w 'Then' Q1 'Else' Q2" :=
-  (!W (fun P => (forall x1 x2 x3 x4, x = p -> isTrue w%bool -> Q1 P) 
-                /\ ((forall x1 x2 x3 x4, x <> p \/ isTrue (!w)) -> Q2 P)))
+  (!W (fun H Q => (forall x1 x2 x3 x4, x = p -> isTrue w%bool -> Q1 H Q) 
+                /\ ((forall x1 x2 x3 x4, x <> p \/ isTrue (!w)) -> Q2 H Q)))
   (at level 69, x at level 0, x1 ident, x2 ident,
    x3 ident, x4 ident) : charac.
 
 Notation "'Case' x '=' p [ x1 x2 x3 x4 x5 ]  'When' w 'Then' Q1 'Else' Q2" :=
-  (!W (fun P => (forall x1 x2 x3 x4 x5, x = p -> isTrue w%bool -> Q1 P) 
-                /\ ((forall x1 x2 x3 x4 x5, x <> p \/ isTrue (!w)) -> Q2 P)))
+  (!W (fun H Q => (forall x1 x2 x3 x4 x5, x = p -> isTrue w%bool -> Q1 H Q) 
+                /\ ((forall x1 x2 x3 x4 x5, x <> p \/ isTrue (!w)) -> Q2 H Q)))
   (at level 69, x at level 0, x1 ident, x2 ident,
    x3 ident, x4 ident, x5 ident) : charac.
 
 Notation "'Case' x '=' p [ x1 x2 x3 x4 x5 x6 ]  'When' w 'Then' Q1 'Else' Q2" :=
-  (!W (fun P => (forall x1 x2 x3 x4 x5 x6, x = p -> isTrue w%bool -> Q1 P) 
-                /\ ((forall x1 x2 x3 x4 x5 x6, x <> p \/ isTrue (!w)) -> Q2 P)))
+  (!W (fun H Q => (forall x1 x2 x3 x4 x5 x6, x = p -> isTrue w%bool -> Q1 H Q) 
+                /\ ((forall x1 x2 x3 x4 x5 x6, x <> p \/ isTrue (!w)) -> Q2 H Q)))
   (at level 69, x at level 0, x1 ident, x2 ident,
    x3 ident, x4 ident, x5 ident, x6 ident) : charac.
 
 Notation "'Case' x '=' p [ x1 x2 x3 x4 x5 x6 x7 ]  'When' w 'Then' Q1 'Else' Q2" :=
-  (!W (fun P => (forall x1 x2 x3 x4 x5 x6 x7, x = p -> isTrue w%bool -> Q1 P) 
-                /\ ((forall x1 x2 x3 x4 x5 x6 x7, x <> p \/ isTrue (!w)) -> Q2 P)))
+  (!W (fun H Q => (forall x1 x2 x3 x4 x5 x6 x7, x = p -> isTrue w%bool -> Q1 H Q) 
+                /\ ((forall x1 x2 x3 x4 x5 x6 x7, x <> p \/ isTrue (!w)) -> Q2 H Q)))
   (at level 69, x at level 0, x1 ident, x2 ident,
    x3 ident, x4 ident, x5 ident, x6 ident, x7 ident) : charac.
 
@@ -552,48 +662,52 @@ Notation "'Match' x : n Q" :=
   (at level 69, x ident, n at level 0) : charac.
 
 Notation "'Alias' x ':=' v 'in' Q" :=
-  (!S (fun P => forall x, x = v -> Q P))
+  (!S (fun H Q => forall x, x = v -> Q H Q))
   (at level 69, x ident) : charac.
-
-Notation "'Func' f ':=' Q" :=
-  (!F (fun P => forall f, Q -> P f))
-  (at level 69) : charac.
 
 Open Scope charac.
 
 Notation "'LetFunc' a f1 ':=' Q1 'in' Q" :=
-  (!!F a fun P => forall f1, exists P1,
-     (Q1 -> P1 f1) /\ (P1 f1 -> Q P))
+  (!!F a fun H Q => forall f1, exists P1,
+     (Q1 -> P1 f1) /\ (P1 f1 -> Q H Q))
   (at level 69, a at level 0, f1 ident) : charac.
 
 Notation "'LetFunc' a f1 ':=' Q1 'and' f2 ':=' Q2 'in' Q" :=
-  (!!F a fun P => forall f1 f2, exists P1 P2,
-     (Q1 -> Q2 -> P1 f1 /\ P2 f2) /\ (P1 f1 -> P2 f2 -> Q P))
+  (!!F a fun H Q => forall f1 f2, exists P1 P2,
+     (Q1 -> Q2 -> P1 f1 /\ P2 f2) /\ (P1 f1 -> P2 f2 -> Q H Q))
   (at level 69, a at level 0, f1 ident, f2 ident) : charac.
 
 Notation "'LetFunc' a f1 ':=' Q1 'and' f2 ':=' Q2 'and' f3 ':=' Q3 'in' Q" :=
-  (!!F a fun P => forall f1 f2 f3, exists P1 P2 P3,
-     (Q1 -> Q2 -> Q3 -> P1 f1 /\ P2 f2 /\ P3 f3) /\ (P1 f1 -> P2 f2 -> P3 f3 -> Q P))
+  (!!F a fun H Q => forall f1 f2 f3, exists P1 P2 P3,
+     (Q1 -> Q2 -> Q3 -> P1 f1 /\ P2 f2 /\ P3 f3) /\ (P1 f1 -> P2 f2 -> P3 f3 -> Q H Q))
   (at level 69, a at level 0, f1 ident, f2 ident, f3 ident) : charac.
 
-
 Notation "'LetFunc' f1 ':=' Q1 'in' Q" :=
-  (!F fun P => forall f1, exists P1,
-     (Q1 -> P1 f1) /\ (P1 f1 -> Q P))
+  (!F fun H Q => forall f1, exists P1,
+     (Q1 -> P1 f1) /\ (P1 f1 -> Q H Q))
   (at level 69, f1 ident) : charac.
 
 Notation "'LetFunc' f1 ':=' Q1 'and' f2 ':=' Q2 'in' Q" :=
-  (!F fun P => forall f1 f2, exists P1 P2,
-     (Q1 -> Q2 -> P1 f1 /\ P2 f2) /\ (P1 f1 -> P2 f2 -> Q P))
+  (!F fun H Q => forall f1 f2, exists P1 P2,
+     (Q1 -> Q2 -> P1 f1 /\ P2 f2) /\ (P1 f1 -> P2 f2 -> Q H Q))
   (at level 69, f1 ident, f2 ident) : charac.
 
 Notation "'LetFunc' f1 ':=' Q1 'and' f2 ':=' Q2 'and' f3 ':=' Q3 'in' Q" :=
-  (!F fun P => forall f1 f2 f3, exists P1 P2 P3,
-     (Q1 -> Q2 -> Q3 -> P1 f1 /\ P2 f2 /\ P3 f3) /\ (P1 f1 -> P2 f2 -> P3 f3 -> Q P))
+  (!F fun H Q => forall f1 f2 f3, exists P1 P2 P3,
+     (Q1 -> Q2 -> Q3 -> P1 f1 /\ P2 f2 /\ P3 f3) /\ (P1 f1 -> P2 f2 -> P3 f3 -> Q H Q))
   (at level 69, f1 ident, f2 ident, f3 ident) : charac.
 
+Notation "Q1 ;; Q2" :=
+  (!Seq fun H Q => exists Q', Q1 H Q' /\ Q2 (Q' tt) Q)
+  (at level 68, right associativity) : charac.
+
+---
 
 Notation "'TopLet' x ':=' Q" :=
+  (!TL (forall P, Q P -> P x))
+  (at level 69, x at level 0, Q at level 200).
+
+Notation "'TopLet' x ':=' Q" := (* todo: needed? *)
   (!TL (forall P:_->Prop, Q P -> P x))
   (at level 69, x at level 0, Q at level 200).
 
@@ -612,6 +726,10 @@ Notation "'TopLet' [ A1 A2 A3 ]  x ':=' Q" :=
 Notation "'TopLetFunc' ':=' H" :=
   (!TF H)
   (at level 69, Q at level 200).
+
+Notation "'Func' f ':=' Q" := (* todo:needed?*)
+  (!F (fun P => forall f, Q -> P f))
+  (at level 69) : charac.
 
 
 (********************************************************************)

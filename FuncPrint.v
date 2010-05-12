@@ -188,6 +188,10 @@ Notation "'RepTotal' f ( X1 ; A1 ) ( X2 ; A2 ) ( X3 ; A3 ) ( X4 ; A4 ) >> P"
 Notation "X ';-' T" := (fun (x:T) => rep x X) (at level 68). 
 Notation "P ';;' T" := (fun (x:T) => exists X, rep x X /\ P X) (at level 80). 
 
+(*
+Notation "X '.:' T" := (fun (x:T) => rep x X) (at level 68). 
+Notation "P '.;' T" := (fun (x:T) => exists X, rep x X /\ P X) (at level 80). 
+*)
 
 (********************************************************************)
 (* Implementation of labels *)

@@ -238,6 +238,13 @@ let rec coq_of_imp_cf cf =
 
   | Cf_letval (x, fvs_strict, fvs_other, typ, v, cf) ->
       let type_of_x = coq_forall_types fvs_strict typ in
+      let equ = coq_eq x v in
+      let conc = coq_apps (coq_of_cf cf) [h;q] in
+      funhq "tag_val" ~label:x (Coq_forall ((x, type_of_x), Coq_impl (equ, conc)))
+      (*(!L a: (fun H Q => forall (x:forall Ai,T), x = v -> F H Q)) *)
+
+      (* DEPRECATED
+      let type_of_x = coq_forall_types fvs_strict typ in
       let tvars = coq_vars fvs_strict in
       let p1_on_tvars = if tvars = [] then Coq_var "P1" else coq_apps (coq_var_at "P1") tvars in
       let c1 = coq_forall_types (fvs_strict @ fvs_other) (Coq_app (p1_on_tvars, v)) in
@@ -248,6 +255,7 @@ let rec coq_of_imp_cf cf =
       funhq "tag_val" ~label:x (coq_exist "P1" type_of_p1 (coq_conj c1 c2))
       (*(!L a: (fun H Q => exists (P1:forall Ai, T -> Prop), (forall Ai Bj, P1 A1 v)
                              /\ forall (x1:forall Ai,T), ((forall Ai, P1 Ai (x1 Ai)) -> F H Q)) *)
+      *)
     
   | Cf_letfunc (ncs, cf) ->
       let ns, cs = List.split ncs in
