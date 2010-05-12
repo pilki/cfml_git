@@ -125,43 +125,53 @@ Proof.
   intros. eapply local_frame with (H2 := []); eauto; rew_heap~.
 Qed.
 
+Lemma local_weaken' : forall B (F:~~B),
+  is_local F -> weakenable F.
+Proof. intros_all. apply* local_weaken. Qed.
+(* todo: use only one lemma *)
+
 
 (********************************************************************)
 (* ** Axioms *)
 
-(* The type Func *)
+(** The type Func *)
 
 Axiom val : Type. 
 
-(* The type Func is inhabited *)
+(** The type Func is inhabited *)
 
 Axiom val_inhab : Inhab val. 
 Existing Instance val_inhab.
 
-(* The predicate AppReturns *)
+(** The predicate AppReturns *)
 
 Axiom app_1 : forall A B,  
   val -> A -> hprop -> (B -> hprop) -> Prop.
 
-(* The predicate AppPure *)
+(** The predicate AppPure *)
 
 Axiom pure : forall A B,  
   val -> A -> (B -> Prop) -> Prop.
 
-(* AppReturns is a local property *)
+(** AppReturns is a local property *)
 
 Axiom app_local_1 : forall B A1 (x1:A1) f,
   is_local (app_1 (B:=B) f x1). 
 
-(* AppPure satisfies the witness property *)
+(** AppPure satisfies the witness property *)
 
 Axiom pure_concrete : forall A B (F:val) (V:A) (P:B->Prop),
   pure F V P <-> exists V', P V' /\ pure F V (= V').
 
-(* AppPure satisfies the determinacy property *)
+(** AppPure satisfies the determinacy property *)
 
 Axiom pure_deterministic : forall A B (F:val) (V:A) (V1' V2':B),
   pure F V (= V1') -> pure F V (= V2') -> V1' = V2'.          
+
+(** Overlapping of AppPure and AppReturns *)
+
+Axiom pure_app : forall  A B (F:val) (V:A) (V':B) (H:hprop) (Q:B->hprop),
+  pure F V (= V') -> app_1 F V H Q -> (H ==> Q V').
 
 
 (********************************************************************)
@@ -193,19 +203,17 @@ Qed.
 (* ** Applications *)
 
 Definition app_2 A1 A2 B f (x1:A1) (x2:A2) (H:hprop) (Q:B->hprop) := 
-  exists Q1:val->hprop, app_1 f x1 H Q1 
-                     /\ forall g, app_1 g x2 (Q1 g) Q.
-
-(*
-Definition app_2 A1 A2 B f (x1:A1) (x2:A2) (H:hprop) (Q:B->hprop) := 
-  app_1 f x1 H (fun g h' => app_1 g x2 (= h') Q).
+  exists Q', app_1 f x1 H Q' 
+          /\ forall g, app_1 g x2 (Q' g) Q.
 
 Definition app_3 A1 A2 A3 B f (x1:A1) (x2:A2) (x3:A3) (H:hprop) (Q:B->hprop) := 
-  app_1 f x1 H (fun g h' => app_2 g x2 x3 (= h') Q).
+  exists Q', app_1 f x1 H Q' 
+          /\ forall g, app_2 g x2 x3 (Q' g) Q.
 
 Definition app_4 A1 A2 A3 A4 B f (x1:A1) (x2:A2) (x3:A3) (x4:A4) (H:hprop) (Q:B->hprop) := 
-  app_1 f x1 H (fun g h' => app_3 g x2 x3 x4 (= h') Q).
-*)
+  exists Q', app_1 f x1 H Q' 
+          /\ forall g, app_3 g x2 x3 x4 (Q' g) Q.
+
 
 (********************************************************************)
 (* ** Locality of app_n *)
@@ -222,46 +230,16 @@ Proof.
     apply* local_frame.
     intros. specializes Hg g. apply* local_elim.
 Qed.
-  
-  
-  unfolds app_2. 
 
+Lemma app_local_3 : forall B A1 A2 A3 (x1:A1) (x2:A2) (x3:A3) f,
+  is_local (app_3 (B:=B) f x1 x2 x3).
+Admitted.
 
+Lemma app_local_4 : forall B A1 A2 A3 A4 (x1:A1) (x2:A2) (x3:A3) (x4:A4) f,
+  is_local (app_4 (B:=B) f x1 x2 x3 x4).
+Admitted.
 
-(* old
-Lemma app_local_2 : forall B A1 A2 (x1:A1) (x2:A2) f,
-  (app_2 f x1 x2) = @local B (app_2 f x1 x2).
-Proof.
-  intros. extens. intros H Q. iff M.
-  apply~ local_erase.
-  destruct M as (H1&H2&Q1&H'&?&?&?).
-  unfolds app_2. 
-  rewrite app_local_1.
-  exists H1 (H2 ** H') __ []. splits.
-  auto.
-  eauto.
-  simpl. intros g h Hg.
-  destruct Hg as (h1&h2&?&?&?). subst h.
-  exists___. splits~.
-
-  eauto.te app_local_1. eauto.
-  simpl.
-  intros g h Hg. 
-  intuit Hg. subst h.
-  exists___. splits. eauto. skip.
-
-
- specializes H4 x2.
-
-
-
-  unfold app_2. 
-  unfolds app_2.
-  simpl. rewrite local_local.
-
-skip.
-Qed.
-*)
+Hint Resolve app_local_2 app_local_3 app_local_4.
 
 
 (********************************************************************)
@@ -271,14 +249,9 @@ Qed.
 
 Lemma app_weaken_1 : forall B A1 (x1:A1) f,
   @weakenable B (app_1 f x1).
-Proof.
-  intros. introv M WH WQ. rewrite app_local_1.
-  exists H [] Q []. splits. 
-  rew_heap~.
-  auto.
-  intros. rew_heap~.
-Qed. 
+Proof. intros. apply~ local_weaken'. Qed.
 
+(* todo: other needed?*)
 
 
 (********************************************************************)
@@ -379,14 +352,29 @@ Variables (A1 A2 A3 A4 B : Type) (f : val).
 Variables (x1:A1) (x2:A2) (x3:A3) (x4:A4).
 Variables (H:hprop) (Q:B->hprop).
 
+Lemma app_intro_2_3 : 
+  (exists Q', app_2 f x1 x2 H Q' 
+           /\ forall g, app_1 g x3 (Q' g) Q) ->
+  app_3 f x1 x2 x3 H Q.
+Proof. 
+  introv (Q2&(Q1&M1&M2)&M3).
+  exists Q1. split~. intros g. exists~ Q2.
+Qed.
+  
+(*
+
 Lemma app_intro_1_2 : 
   app_1 f x1 H (fun g h => app_1 g x2 (= h) Q) ->
   app_2 f x1 x2 H Q.
 Proof.
+  introv M. hnf. esplit. split. eauto.
+  intros.
+(*
   introv M. exists H [] __ []. splits.
     rew_heap~.
     apply M.
     intros x K S. rew_heap~ in *.
+*)
 Qed.
 
 Lemma app_intro_1_3 : 
@@ -446,6 +434,8 @@ Lemma app_intro_4_3 :
   app_4 f x1 x2 x3 x4 H Q ->
   app_3 f x1 x2 x3 H (fun g h => app_1 g x4 (= h) Q).
 Proof. skip. Qed.
+
+*)
 
 End AppIntro.
 

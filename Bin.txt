@@ -1,3 +1,59 @@
+(*app_weaken_1;
+  intros. introv M WH WQ. rewrite app_local_1.
+  exists H [] Q []. splits. 
+  rew_heap~.
+  auto.
+  intros. rew_heap~.
+*)
+
+
+(*
+Definition app_2 A1 A2 B f (x1:A1) (x2:A2) (H:hprop) (Q:B->hprop) := 
+  app_1 f x1 H (fun g h' => app_1 g x2 (= h') Q).
+
+Definition app_3 A1 A2 A3 B f (x1:A1) (x2:A2) (x3:A3) (H:hprop) (Q:B->hprop) := 
+  app_1 f x1 H (fun g h' => app_2 g x2 x3 (= h') Q).
+
+Definition app_4 A1 A2 A3 A4 B f (x1:A1) (x2:A2) (x3:A3) (x4:A4) (H:hprop) (Q:B->hprop) := 
+  app_1 f x1 H (fun g h' => app_3 g x2 x3 x4 (= h') Q).
+*)
+
+
+(* old
+Lemma app_local_2 : forall B A1 A2 (x1:A1) (x2:A2) f,
+  (app_2 f x1 x2) = @local B (app_2 f x1 x2).
+Proof.
+  intros. extens. intros H Q. iff M.
+  apply~ local_erase.
+  destruct M as (H1&H2&Q1&H'&?&?&?).
+  unfolds app_2. 
+  rewrite app_local_1.
+  exists H1 (H2 ** H') __ []. splits.
+  auto.
+  eauto.
+  simpl. intros g h Hg.
+  destruct Hg as (h1&h2&?&?&?). subst h.
+  exists___. splits~.
+
+  eauto.te app_local_1. eauto.
+  simpl.
+  intros g h Hg. 
+  intuit Hg. subst h.
+  exists___. splits. eauto. skip.
+
+
+ specializes H4 x2.
+
+
+
+  unfold app_2. 
+  unfolds app_2.
+  simpl. rewrite local_local.
+
+skip.
+Qed.
+*)
+
 let _ = 
    let f() = [|1|] in (* "a", String.copy "a", [| 1 |] *)
    print_string (if f() == f() then "same" else "diff");
