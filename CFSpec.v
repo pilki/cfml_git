@@ -779,24 +779,27 @@ Lemma app_spec_1 : forall A1 B f (v1:A1) (H:hprop) (Q : B->hprop),
   app_1 f v1 H Q.
 Proof. introv S. apply~ (spec_elim_1_1 S). Qed.
 
-Lemma app_spec_2 : forall A1 A2 B f (v1:A1) (v2:A2) (H:hprop) (Q : B->Prop),
+Lemma app_spec_2 : forall A1 A2 B f (v1:A1) (v2:A2) (H:hprop) (Q : B->hprop),
   spec_2 (fun x1 x2 R => x1 = v1 -> x2 = v2 -> R H Q) f ->
   app_2 f v1 v2 H Q.
 Proof. introv S. apply~ (spec_elim_2_2 S). Qed.
 
-Lemma app_spec_3 : forall A1 A2 A3 B f (v1:A1) (v2:A2) (v3:A3) (H:hprop) (Q : B->Prop),
+(* todo
+Lemma app_spec_3 : forall A1 A2 A3 B f (v1:A1) (v2:A2) (v3:A3) (H:hprop) (Q : B->hprop),
   spec_3 (fun x1 x2 x3 R => x1 = v1 -> x2 = v2 -> x3 = v3 -> R H Q) f -> 
   app_3 f v1 v2 v3 H Q.
 Proof. introv S. apply~ (spec_elim_3_3 S). Qed.
 
-Lemma app_spec_4 : forall A1 A2 A3 A4 B f (v1:A1) (v2:A2) (v3:A3) (v4:A4) (H:hprop) (Q : B->Prop),
+Lemma app_spec_4 : forall A1 A2 A3 A4 B f (v1:A1) (v2:A2) (v3:A3) (v4:A4) (H:hprop) (Q : B->hprop),
   spec_4 (fun x1 x2 x3 x4 R => x1 = v1 -> x2 = v2 -> x3 = v3 -> x4 = v4 -> R H Q) f -> 
   app_4 f v1 v2 v3 v4 H Q.
 Proof. introv S. apply~ (spec_elim_4_4 S). Qed.
-
+*)
 
 (********************************************************************)
 (* ** Weakenability of app *)
+
+(* automatic from local_weaken
 
 Lemma app_weakenable_1 : forall A1 B f x1,
   weakenable (@app_1 A1 B f x1).
@@ -826,44 +829,45 @@ Qed.
 Hint Resolve app_weakenable_1 app_weakenable_2 
   app_weakenable_3 app_weakenable_4.
 
+*)
+
 
 (********************************************************************)
 (* ** Weakening for spec *)
 
+Hint Resolve spec_curried_1 spec_curried_2 spec_curried_3 spec_curried_4. (*todo: check here *)
+
 Lemma spec_weaken_1 : forall A1 B (K K': A1 -> ~~B -> Prop) f,
    spec_1 K f -> is_spec_1 K' -> 
-   (forall x1 R, weakenable R -> K x1 R -> K' x1 R) ->
+   (forall x1 R, is_local R -> K x1 R -> K' x1 R) ->
    spec_1 K' f.
-Proof. unfold spec_1. introv [S H] I W. split~. Qed.
+Proof. 
+  introv ? ? M. apply* spec_intro_1. intros. apply~ M. apply~ spec_elim_1.
+(* unfold spec_1. introv [S H] I W. split~. *)
+Qed.
 
 Lemma spec_weaken_2 : forall A1 A2 B (K K': A1 -> A2 -> ~~B -> Prop) f,
    spec_2 K f -> is_spec_2 K' ->
-   (forall x1 x2 R, weakenable R -> K x1 x2 R -> K' x1 x2 R) ->
+   (forall x1 x2 R, is_local R -> K x1 x2 R -> K' x1 x2 R) ->
    spec_2 K' f.
 Proof. 
-  unfold spec_2. introv [S H] I W. split~.
-  apply (spec_weaken_1 H). intros_all. apply* H1.
-  introv WR HR. applys* WR. intros_all. apply* spec_weaken_1.
+  introv ? ? M. apply* spec_intro_2. intros. apply~ M. apply~ spec_elim_2.
 Qed.
 
 Lemma spec_weaken_3 : forall A1 A2 A3 B (K K': A1 -> A2 -> A3 -> ~~B -> Prop) f,
    spec_3 K f -> is_spec_3 K' -> 
-   (forall x1 x2 x3 R, weakenable R -> K x1 x2 x3 R -> K' x1 x2 x3 R) ->
+   (forall x1 x2 x3 R, is_local R -> K x1 x2 x3 R -> K' x1 x2 x3 R) ->
    spec_3 K' f.
 Proof. 
-  unfold spec_3. introv [S H] I W. split~.
-  apply (spec_weaken_1 H). intros_all. apply* H1.
-  introv WR HR. applys* WR. intros_all. apply* spec_weaken_2.
+  introv ? ? M. apply* spec_intro_3. intros. apply~ M. apply~ spec_elim_3.
 Qed.
 
 Lemma spec_weaken_4 : forall A1 A2 A3 A4 B (K K': A1 -> A2 -> A3 -> A4 -> ~~B -> Prop) f,
    spec_4 K f -> is_spec_4 K' -> 
-   (forall x1 x2 x3 x4 R, weakenable R -> K x1 x2 x3 x4 R -> K' x1 x2 x3 x4 R) ->
+   (forall x1 x2 x3 x4 R, is_local R -> K x1 x2 x3 x4 R -> K' x1 x2 x3 x4 R) ->
    spec_4 K' f.
 Proof. 
-  unfold spec_3. introv [S H] I W. split~.
-  apply (spec_weaken_1 H). intros_all. apply* H1.
-  introv WR HR. applys* WR. intros_all. apply* spec_weaken_3.
+  introv ? ? M. apply* spec_intro_4. intros. apply~ M. apply~ spec_elim_4.
 Qed.
 
 (********************************************************************)
