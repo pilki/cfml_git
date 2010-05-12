@@ -228,11 +228,11 @@ let rec coq_of_imp_cf cf =
       (* (!B: (forall Ai K, is_spec_2 K -> 
                  (forall x1 x2, K x1 x2 F) -> spec_2 K f)) *)
 
-  | Cf_let ((x,typ), cf1, cf2) 
+  | Cf_let ((x,typ), cf1, cf2) ->
       let q1 = Coq_var "Q1" in
       let type_of_q1 = Coq_impl (typ, hprop) in
       let c1 = coq_apps (coq_of_cf cf1) [h; q1] in
-      let c2 = coq_forall [x,typ] (coq_apps (coq_of_cf cf2) [(Coq_app (q1, Coq_var x)); q]) in
+      let c2 = coq_foralls [x,typ] (coq_apps (coq_of_cf cf2) [(Coq_app (q1, Coq_var x)); q]) in
       funhq "tag_let" ~label:x (coq_exist "Q1" type_of_q1 (coq_conj c1 c2))
       (* !L: fun H Q => exists Q1, F1 H Q1 /\ forall (x:T), F2 (Q1 x) Q *)
 
@@ -273,8 +273,8 @@ let rec coq_of_imp_cf cf =
 
   | Cf_case (v,tps,pat,vwhenopt,aliases,cf1,cf2) ->
       let add_alias ((name,typ),exp) cf : coq =
-         funp "tag_alias" (coq_foralls [name,typ] (coq_impls [coq_eq (Coq_var name) exp] (Coq_app (cf, p))))
-         (* !L a: (fun P => forall y, y = v -> Q P) *)
+         funhq "tag_alias" (coq_foralls [name,typ] (coq_impls [coq_eq (Coq_var name) exp] (coq_apps cf [h;q])))
+         (* !L a: (fun H Q => forall y, y = v -> F H Q) *)
          in
       let cf1_aliased = List.fold_right add_alias aliases (coq_of_cf cf1) in
       let same = coq_eq v pat in
@@ -294,9 +294,9 @@ let rec coq_of_imp_cf cf =
 
   | Cf_seq (cf1,cf2) -> 
       let q1_type = Coq_impl (Coq_var "unit", hprop) in
-      let c1 = coq_apps (coq_to_cf cf1) [h; Coq_var "Q1"] in
-      let c2 = coq_apps (coq_to_cf cf2) [Coq_app (Coq_var "Q1", coq_tt); Coq_var "Q"]  in
-      funhq "tag_seq" (coq_exists "Q1" q1_type (coq_conj c1 c2))
+      let c1 = coq_apps (coq_of_cf cf1) [h; Coq_var "Q1"] in
+      let c2 = coq_apps (coq_of_cf cf2) [Coq_app (Coq_var "Q1", coq_tt); Coq_var "Q"]  in
+      funhq "tag_seq" (coq_exist "Q1" q1_type (coq_conj c1 c2))
       (* (!S: fun H Q => exists Q1, F1 H Q1 /\ F2 (Q1 tt) Q *)
 
   | Cf_for (i,v1,v2,cf) -> unsupported "for-expression not yet supported" (* todo *)
@@ -342,14 +342,12 @@ let coqtops_of_cftop coq_of_cf cft =
       (* Parameter h : heap. *)
 
   | Cftop_let_cf (x,h,h',cf) ->   
-      let var_q = Coq_var "Q" in
-      let var_h = Coq_var "H" in
-      let conc = coq_apps var_q [Coq_var x; Coq_var h'] in
-      let hyp1 = Coq_app (var_h, Coq_var h) in
-      let hyp2 = coq_apps (coq_of_cf cf) [var_h;var_q] in
-      let cf_body = coq_foralls [(var_h,hprop); (var_q,wild_to_hprop)] (coq_impls [hyp1;hyp2] conc) in
+      let conc = coq_apps (Coq_var "Q") [Coq_var x; Coq_var h'] in
+      let hyp1 = Coq_app (Coq_var "H", Coq_var h) in
+      let hyp2 = coq_apps (coq_of_cf cf) [Coq_var "H"; Coq_var "Q"] in
+      let cf_body = coq_foralls [("H",hprop); ("Q",wild_to_hprop)] (coq_impls [hyp1;hyp2] conc) in
       let t = coq_tag "tag_toplet" cf_body in 
-      [ Coqtop_param (x ^ "_cf", t)
+      [ Coqtop_param (x ^ "_cf", t) ]
       (* Parameter x_cf : (!TL: forall H Q, H h -> F H Q -> Q x h') *)
 
   | Cftop_coqs cmds -> cmds
@@ -360,12 +358,12 @@ let coqtops_of_cftops coq_of_cf cfts =
 
 
 (*#########################################################################*)
-(* Printing of characteristic formulae as Coq term *)
+(* Printing of characteristic formulae as Coq term 
 
 let string_of_cftop cftop =
-   string_of_coqtops (coqtops_of_cftop cftop)
+   string_of_coqtops (coqtops_of_cftop) cftop
 
 let string_of_coqtops cftops =
    string_of_coqtops (list_concat_map coqtops_of_cftop cftops)
 
-
+*)

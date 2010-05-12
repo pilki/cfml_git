@@ -85,7 +85,9 @@ let _ =
 
    (*---------------------------------------------------*)
    trace "6) converting caracteristic formula ast to coq ast";
-   let coq_to_cf = if !Characteristic.pure_mode then coq_of_pure_cf else coq_of_imp_cf in
+   let coq_to_cf = if !Characteristic.pure_mode 
+      then Formula.coq_of_pure_cf
+      else Formula.coq_of_imp_cf in
    let coqtops = Formula.coqtops_of_cftops coq_to_cf cftops in
 
    (*---------------------------------------------------*)

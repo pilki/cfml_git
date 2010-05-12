@@ -1,3 +1,147 @@
+
+
+(* don't do those, cause need to use spec_elim_3_2 directly
+   to know partial apps have no effects
+Lemma app_intro_3_2 :
+  app_3 f x1 x2 x3 H Q ->
+  (exists Q', app_2 f x1 x2 H Q' 
+           /\ forall g, app_1 g x3 (Q' g) Q) ->
+
+  app_2 f x1 x2 H (fun g h => app_1 g x3 (= h) Q).
+Proof. skip. Qed.
+*)
+
+(*
+
+Lemma app_intro_1_2 : 
+  app_1 f x1 H (fun g h => app_1 g x2 (= h) Q) ->
+  app_2 f x1 x2 H Q.
+Proof.
+  introv M. hnf. esplit. split. eauto.
+  intros.
+(*
+  introv M. exists H [] __ []. splits.
+    rew_heap~.
+    apply M.
+    intros x K S. rew_heap~ in *.
+*)
+Qed.
+
+Lemma app_intro_2_1 : 
+  app_2 f x1 x2 H Q ->
+  app_1 f x1 H (fun g h => app_1 g x2 (= h) Q).
+Proof.
+  introv M. rewrite app_local_1.
+  intuit M. exists___*.
+Qed.
+
+Lemma app_intro_2_3 : 
+  app_2 f x1 x2 H (fun g h => app_1 g x3 (= h) Q) ->
+  app_3 f x1 x2 x3 H Q.
+Proof. skip. Qed.
+
+Lemma app_intro_2_4 : 
+  app_2 f x1 x2 H (fun g h => app_2 g x3 x4 (= h) Q) ->
+  app_4 f x1 x2 x3 x4 H Q.
+Proof. skip. Qed.
+
+Lemma app_intro_3_1 : 
+  app_3 f x1 x2 x3 H Q ->
+  app_1 f x1 H (fun g h => app_2 g x2 x3 (= h) Q).
+Proof. skip. Qed.
+
+Lemma app_intro_3_2 :
+  app_3 f x1 x2 x3 H Q ->
+  app_2 f x1 x2 H (fun g h => app_1 g x3 (= h) Q).
+Proof. skip. Qed.
+
+Lemma app_intro_3_4 : 
+  app_3 f x1 x2 x3 H (fun g h => app_1 g x4 (= h) Q) ->
+  app_4 f x1 x2 x3 x4 H Q.
+Proof. skip. Qed.
+
+Lemma app_intro_4_1 :
+  app_4 f x1 x2 x3 x4 H Q ->
+  app_1 f x1 H (fun g h => app_3 g x2 x3 x4 (= h) Q).
+Proof. skip. Qed.
+
+Lemma app_intro_4_2 :
+  app_4 f x1 x2 x3 x4 H Q ->
+  app_2 f x1 x2 H (fun g h => app_2 g x3 x4 (= h) Q).
+Proof. skip. Qed.
+
+Lemma app_intro_4_3 :
+  app_4 f x1 x2 x3 x4 H Q ->
+  app_3 f x1 x2 x3 H (fun g h => app_1 g x4 (= h) Q).
+Proof. skip. Qed.
+
+*)
+
+
+Lemma app_intro_2_3' : 
+  (exists Q', app_2 f x1 x2 H Q' 
+           /\ forall g, app_1 g x3 (Q' g) Q) ->
+  app_3 f x1 x2 x3 H Q.
+Proof. 
+  introv (Q2&(Q1&M1&M2)&M3).
+  exists Q1. split~. intros g. exists~ Q2.
+Qed.
+
+
+(********************************************************************)
+(* ** Corrolaries from locality *)
+
+(* AppReturns satisfies the weakening property *)
+
+Lemma app_weaken_1 : forall B A1 (x1:A1) f,
+  @weakenable B (app_1 f x1).
+Proof. intros. apply~ local_weaken'. Qed.
+
+(* todo: other needed?*)
+
+
+Lemma curried_1_true : forall A1 B f, curried_1 A1 B f.
+Proof. split. intros_all~. auto. Qed. 
+
+
+
+(********************************************************************)
+(* ** Weakenability of app *)
+
+(* automatic from local_weaken
+
+Lemma app_weakenable_1 : forall A1 B f x1,
+  weakenable (@app_1 A1 B f x1).
+Proof. intros_all. apply~ (app_weaken_1 H). Qed.
+
+Lemma app_weakenable_2 : forall A1 A2 B f x1 x2,
+  weakenable (@app_2 A1 A2 B f x1 x2).
+Proof.
+   intros_all. apply (app_weaken_1 H). 
+   intros_all. applys* app_weakenable_1.
+Qed.
+
+Lemma app_weakenable_3 : forall A1 A2 A3 B f x1 x2 x3,
+  weakenable (@app_3 A1 A2 A3 B f x1 x2 x3).
+Proof.
+   intros_all. apply (app_weaken_1 H). 
+   intros_all. applys* app_weakenable_2.
+Qed.
+
+Lemma app_weakenable_4 : forall A1 A2 A3 A4 B f x1 x2 x3 x4,
+  weakenable (@app_4 A1 A2 A3 A4 B f x1 x2 x3 x4).
+Proof.
+   intros_all. apply (app_weaken_1 H). 
+   intros_all. applys* app_weakenable_3.
+Qed.
+
+Hint Resolve app_weakenable_1 app_weakenable_2 
+  app_weakenable_3 app_weakenable_4.
+
+*)
+
+
+
 (*app_weaken_1;
   intros. introv M WH WQ. rewrite app_local_1.
   exists H [] Q []. splits. 

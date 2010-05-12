@@ -223,7 +223,7 @@ let get_inlined_primitive e oargs =
    | Some x -> x
    | _ -> failwith "get_inlined_primitive: not an inlined primitive"
 
-let lift_exp_path p =
+let lift_exp_path env p =
    match find_primitive (Path.name p) with
    | None -> 
       let x = lift_path_name p in
@@ -233,7 +233,7 @@ let lift_exp_path p =
 let rec lift_val env e = 
    let aux = lift_val env in
    match e.exp_desc with
-   | Texp_ident (p,d) -> lift_exp_path p 
+   | Texp_ident (p,d) -> lift_exp_path env p 
    | Texp_constant (Const_int n) ->
       Coq_int n
    | Texp_constant _ -> 
@@ -363,16 +363,16 @@ let rec cfg_exp env e =
         let fvs_others = list_minus fvs fvs_strict in
             
         (* pure-mode let-binding *)
-        if !Characteristic.pure_mode then begin 
+        if !pure_mode then begin 
        
            let cf1 = cfg_exp env bod in
            let env' = Ident.add (pattern_ident pat) (List.length fvs_strict) env in
            let cf2 = cfg_exp env' body in
            add_used_label x;
-           Cf_letval (x, fvs_strict, fvs_others, typ, cf1, cf2)
+           Cf_letpure (x, fvs_strict, fvs_others, typ, cf1, cf2)
 
         (* value let-binding *)
-        end else if is_nonexpansive bod then begin 
+        end else if Typecore.is_nonexpansive bod then begin 
 
            let v = 
              try lift_val env bod  
@@ -397,6 +397,7 @@ let rec cfg_exp env e =
            Cf_let ((x,typ), cf1, cf2)
 
         end
+      end
 
    | Texp_ifthenelse (cond, ifso, Some ifnot) ->
        Cf_caseif (lift cond, aux ifso, aux ifnot)
@@ -441,7 +442,7 @@ let rec cfg_exp env e =
 
    | Texp_for(param, low, high, dir, body) -> 
       begin match dir with 
-        | Upto -> Cf_cof (Ident.name param, lift low, lift high, aux body)
+        | Upto -> Cf_for (Ident.name param, lift low, lift high, aux body)
         | Downto -> unsupported "for-downto expressions" (* todo *)
       end
 
