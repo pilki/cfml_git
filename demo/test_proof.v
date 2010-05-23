@@ -1,7 +1,17 @@
 Set Implicit Arguments.
-Require Import FuncTactics.
-Require Import test_ml.
+(* Require Import FuncTactics.*)
 Require Import LibCore.
+Require Import CFPrim.
+Require Import test_ml.
+
+
+(********************************************************)
+(* imperative *)
+
+Print imp1_cf.
+Print imp2_cf.
+
+
 
 
 (********************************************************)

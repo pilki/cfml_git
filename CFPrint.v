@@ -685,19 +685,19 @@ Notation "'Alias' x ':=' v 'in' Q" :=
 
 Open Scope charac.
 
-Notation "'LetFunc' a f1 ':=' Q1 'in' Q" :=
+Notation "'LetFunc' a f1 ':=' Q1 'in' F" :=
   (!!F a fun H Q => forall f1, exists P1,
-     (Q1 -> P1 f1) /\ (P1 f1 -> Q H Q))
+     (Q1 -> P1 f1) /\ (P1 f1 -> F H Q))
   (at level 69, a at level 0, f1 ident) : charac.
 
-Notation "'LetFunc' a f1 ':=' Q1 'and' f2 ':=' Q2 'in' Q" :=
+Notation "'LetFunc' a f1 ':=' Q1 'and' f2 ':=' Q2 'in' F" :=
   (!!F a fun H Q => forall f1 f2, exists P1 P2,
-     (Q1 -> Q2 -> P1 f1 /\ P2 f2) /\ (P1 f1 -> P2 f2 -> Q H Q))
+     (Q1 -> Q2 -> P1 f1 /\ P2 f2) /\ (P1 f1 -> P2 f2 -> F H Q))
   (at level 69, a at level 0, f1 ident, f2 ident) : charac.
 
-Notation "'LetFunc' a f1 ':=' Q1 'and' f2 ':=' Q2 'and' f3 ':=' Q3 'in' Q" :=
+Notation "'LetFunc' a f1 ':=' Q1 'and' f2 ':=' Q2 'and' f3 ':=' Q3 'in' F" :=
   (!!F a fun H Q => forall f1 f2 f3, exists P1 P2 P3,
-     (Q1 -> Q2 -> Q3 -> P1 f1 /\ P2 f2 /\ P3 f3) /\ (P1 f1 -> P2 f2 -> P3 f3 -> Q H Q))
+     (Q1 -> Q2 -> Q3 -> P1 f1 /\ P2 f2 /\ P3 f3) /\ (P1 f1 -> P2 f2 -> P3 f3 -> F H Q))
   (at level 69, a at level 0, f1 ident, f2 ident, f3 ident) : charac.
 
 Notation "'LetFunc' f1 ':=' Q1 'in' Q" :=
@@ -705,14 +705,14 @@ Notation "'LetFunc' f1 ':=' Q1 'in' Q" :=
      (Q1 -> P1 f1) /\ (P1 f1 -> Q H Q))
   (at level 69, f1 ident) : charac.
 
-Notation "'LetFunc' f1 ':=' Q1 'and' f2 ':=' Q2 'in' Q" :=
+Notation "'LetFunc' f1 ':=' Q1 'and' f2 ':=' Q2 'in' F" :=
   (!F fun H Q => forall f1 f2, exists P1 P2,
-     (Q1 -> Q2 -> P1 f1 /\ P2 f2) /\ (P1 f1 -> P2 f2 -> Q H Q))
+     (Q1 -> Q2 -> P1 f1 /\ P2 f2) /\ (P1 f1 -> P2 f2 -> F H Q))
   (at level 69, f1 ident, f2 ident) : charac.
 
-Notation "'LetFunc' f1 ':=' Q1 'and' f2 ':=' Q2 'and' f3 ':=' Q3 'in' Q" :=
+Notation "'LetFunc' f1 ':=' Q1 'and' f2 ':=' Q2 'and' f3 ':=' Q3 'in' F" :=
   (!F fun H Q => forall f1 f2 f3, exists P1 P2 P3,
-     (Q1 -> Q2 -> Q3 -> P1 f1 /\ P2 f2 /\ P3 f3) /\ (P1 f1 -> P2 f2 -> P3 f3 -> Q H Q))
+     (Q1 -> Q2 -> Q3 -> P1 f1 /\ P2 f2 /\ P3 f3) /\ (P1 f1 -> P2 f2 -> P3 f3 -> F H Q))
   (at level 69, f1 ident, f2 ident, f3 ident) : charac.
 
 Notation "Q1 ;; Q2" :=

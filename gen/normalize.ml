@@ -215,7 +215,12 @@ let normalize_expression named e =
                  begin match p'.ppat_desc with
                  | Ppat_var x
                  | Ppat_constraint ({ ppat_desc = Ppat_var x}, _) -> 
-                    return (Pexp_function (lab, None, [p', protect_func ms e']))
+                    return (Pexp_function (lab, None, [p', protect_func ms e'])) 
+                    (* todo: type annotations in pattern get lost *)
+                 | Ppat_construct (li, None, b) when Longident.flatten li = ["()"] -> 
+                    let x = next_var() in
+                    let px = { ppat_loc = Location.none; ppat_desc = Ppat_var x } in
+                    return (Pexp_function (lab, None, [px, protect_func ms e'])) 
                  | _ ->
                     let x = next_var() in
                     let px = { ppat_loc = Location.none; ppat_desc = Ppat_var x } in
@@ -304,7 +309,8 @@ let normalize_expression named e =
           return (Pexp_ifthenelse (e1', protect named e2, Some (protect named e3))), b
              (* todo: à tester: if then else fun x -> x *)
       | Pexp_sequence (e1,e2) -> 
-          return (Pexp_sequence (protect named e1, protect named e2)), []      
+          let e1', b = aux true e1 in
+          return (Pexp_sequence (e1', protect named e2)), b     
       | Pexp_while (e1,e2) -> 
          return (Pexp_while (protect named e1, protect named e2)), []      
       | Pexp_for (s,e1,e2,d,e3) -> 
