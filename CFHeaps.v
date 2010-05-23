@@ -96,7 +96,7 @@ Notation "[]" := (heap_is_empty)
 Notation "[ L ]" := (heap_is_empty_st L) 
   (at level 0, L at level 99) : heap_scope.
 
-Notation "[| P |]" := (fun v => heap_is_empty_st (P v)) 
+Notation "\[ P ]" := (fun v => heap_is_empty_st (P v)) 
   (at level 0, P at level 99) : heap_scope.
 
 Notation "H1 '**' H2" := (heap_is_star H1 H2)

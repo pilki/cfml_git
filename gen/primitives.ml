@@ -60,6 +60,9 @@ let all_primitives_table = (*todo:complete*)
     "Pervasives.@", "ml_append";
     "Pervasives.raise", "ml_raise";
     "Pervasives.asr", "ml_asr";
+    "Pervasives.ref", "ml_ref";    
+    "Pervasives.!", "ml_get";
+    "Pervasives.:=", "ml_set";
     "List.hd", "ml_list_hd";
     "List.tl", "ml_list_tl";
     "List.rev", "ml_rev";

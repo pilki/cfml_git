@@ -94,7 +94,8 @@ NEW=\
 IMP=\
 	CFHeaps.v \
 	CFSpec.v \
-	CFPrint.v
+	CFPrint.v \
+	CFPrim.v 
 
 
 # 	
@@ -126,10 +127,11 @@ DEMO=\
 #	okasaki/queue_hood_melville_proof.v \
 #	okasaki/queue_batch_proof.v 
 
-#TEST=\
-#	demo/test_ml.v 
+TEST=\
+	demo/test_ml.v 
 
-ALL=$(IMP) $(TOOLS) $(DEMO) $(OKA) $(OKACOD)
+ALL=$(IMP) $(TEST) 
+OLD=$(TOOLS) $(DEMO) $(OKA) $(OKACOD)
 # $(COD) $(DEV) $(TUTO) $(FORM) $(DEV) $(OKA) $(DEV:.v=.vo)
 
 .PHONY: all def clean cleanall dep tools tools demo oka new cod dvpt test gen lib none
@@ -140,7 +142,7 @@ ALL=$(IMP) $(TOOLS) $(DEMO) $(OKA) $(OKACOD)
 .SECONDARY: *.d okasaki/*.d demo/*.d *_ml.d okasaki/*_ml.d demo/*_ml.d
 
 def: all
-all: full .camldep
+all: gen full .camldep 
 full: $(ALL:.v=.vo) 
 tools: $(TOOLS:.v=.vo) 
 demo: $(DEMO:.v=.vo)

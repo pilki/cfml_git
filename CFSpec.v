@@ -48,7 +48,7 @@ Axiom pureapp_deterministic : forall A B (F:val) (V:A) (V1' V2':B),
 (** From AppPure to AppReturns *)
 
 Axiom pureapp_to_app : forall A B (F:val) (V:A) (P:B->Prop),
-  pureapp F V P -> app_1 F V [] [|P|].
+  pureapp F V P -> app_1 F V [] \[P].
   (* Could also be stated: [pureapp F V ==> pure (app_1 F V)] *)
 
 (** Overlapping of AppPure and AppReturns *)
@@ -85,7 +85,7 @@ Proof.
 Qed.
 
 Lemma pureapp_app_1 : forall  A B (F:val) (V:A) (P:B->Prop) (H:hprop) (Q:B->hprop),
-  pureapp F V P -> ([|P|] *** H ===> Q) -> app_1 F V H Q.
+  pureapp F V P -> (\[P] *** H ===> Q) -> app_1 F V H Q.
 Proof.
   intros. apply* local_frame. apply~ pureapp_to_app. rew_heap~.
 Qed. 
@@ -396,7 +396,7 @@ Proof. intros. apply* app_intro_1_4. apply* spec_elim_1_1. Qed.
 
 Lemma spec_elim_2_1 : forall A1 A2 B (K: A1 -> A2 -> ~~B -> Prop) f,
   spec_2 K f -> forall x1,
-  app_1 f x1 [] [| spec_1 (K x1) |].
+  app_1 f x1 [] \[spec_1 (K x1)].
 Proof. intros. destruct H as [I Ap1]. apply~ pureapp_to_app. Qed.
 
 Lemma spec_elim_2_2 : forall A1 A2 B (K: A1 -> A2 -> ~~B -> Prop) f,
@@ -423,12 +423,12 @@ Proof. intros. apply* app_intro_2_4. apply* spec_elim_2_2. Qed.
 
 Lemma spec_elim_3_1 : forall A1 A2 A3 B (K: A1 -> A2 -> A3 -> ~~B -> Prop) f,
   spec_3 K f -> forall x1,
-  app_1 f x1 [] [| spec_2 (K x1) |].
+  app_1 f x1 [] \[spec_2 (K x1)].
 Proof. intros. destruct H as [I Ap1]. apply~ pureapp_to_app. Qed.
 
 Lemma spec_elim_3_2 : forall A1 A2 A3 B (K: A1 -> A2 -> A3 -> ~~B -> Prop) f,
   spec_3 K f -> forall x1 x2,
-  app_2 f x1 x2 [] [| spec_1 (K x1 x2) |].
+  app_2 f x1 x2 [] \[spec_1 (K x1 x2)].
 Proof. intros. destruct H as [I Ap1].
 specializes Ap1 x1.
 eapply app_intro_1_2.
@@ -460,17 +460,17 @@ Proof. intros. apply* app_intro_3_4. apply* spec_elim_3_3. Qed.
 
 Lemma spec_elim_4_1 : forall A1 A2 A3 A4 B (K: A1 -> A2 -> A3 -> A4 -> ~~B -> Prop) f,
   spec_4 K f -> forall x1 (P : val->Prop),
-  app_1 f x1 [] [| spec_3 (K x1) |].
+  app_1 f x1 [] \[spec_3 (K x1)].
 Proof. intros. destruct H as [I Ap1]. apply~ pureapp_to_app. Qed.
 
 Lemma spec_elim_4_2 : forall A1 A2 A3 A4 B (K: A1 -> A2 -> A3 -> A4 -> ~~B -> Prop) f,
   spec_4 K f -> forall x1 x2,
-  app_2 f x1 x2 [] [| spec_2 (K x1 x2) |].
+  app_2 f x1 x2 [] \[spec_2 (K x1 x2)].
 Proof. skip. Qed. (*todo: cf spec_elim_3_2 *)
 
 Lemma spec_elim_4_3 : forall A1 A2 A3 A4 B (K: A1 -> A2 -> A3 -> A4 -> ~~B -> Prop) f,
   spec_4 K f -> forall x1 x2 x3 (P : val->Prop),
-  app_3 f x1 x2 x3 [] [| spec_1 (K x1 x2 x3) |].
+  app_3 f x1 x2 x3 [] \[spec_1 (K x1 x2 x3)].
 Proof. skip. Qed. (*todo: cf spec_elim_3_2 *)
 
 Lemma spec_elim_4_4 : forall A1 A2 A3 A4 B (K: A1 -> A2 -> A3 -> A4 -> ~~B -> Prop) f,
@@ -676,10 +676,10 @@ Qed.
 (********************************************************************)
 (* ** Specification of pure functions *)
 
-(** [pure F P] is equivalent to [F [] [|P|]] *)
+(** [pure F P] is equivalent to [F [] \[P]] *)
 
 Definition pure B (R:~~B) := 
-  fun P => R [] [|P|].
+  fun P => R [] \[P].
 
 
 (********************************************************************)

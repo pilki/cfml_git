@@ -224,7 +224,9 @@ let rec string_of_coq c =
          | None -> "None"
          | Some x -> sprintf "(Some '%s)" x
          in
-        sprintf "(FuncPrint.tag %s %s %s)" tag slab (aux term)
+        sprintf "(tag %s %s %s)" tag slab (aux term)
+         (* todo: FuncPrint.tag ou CFPrint.tag *)
+
 
 let string_of_typed_var ?(par=true) (x,c) =
    show_par par (sprintf "%s : %s" x (string_of_coq c))

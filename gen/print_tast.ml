@@ -139,15 +139,23 @@ let rec string_of_expression par e =
        let e2',b2 = aux e2 in
        Texp_setfield (e', i, e2'), b2 @ b  *)
    | Texp_array l -> unsupported "array expression" (* Texp_array (List.map aux l)*)
-   | Texp_ifthenelse (e1, e2, None) -> unsupported "if-without-else-clause expressions"
+   | Texp_ifthenelse (e1, e2, None) ->
+       let s = Format.sprintf "@[if %s@ then %s@]" (aux e1) (aux e2) in
+       show_par par s
    | Texp_ifthenelse (e1, e2, Some e3) ->
        let s = Format.sprintf "@[if %s@ then %s@ %s@]" (aux e1) (aux e2) (aux e3) in
        show_par par s
    | Texp_when (e1,e2) ->  (*todo:better printing so that compiles *)
        Format.sprintf "<< when %s >> %s" (aux e1) (aux e2) 
-   | Texp_sequence (e1,e2) -> unsupported "sequence expression"  (* Texp_sequence (aux e1, aux e2)*)
-   | Texp_while (e1,e2) -> unsupported "while expression"  (* Texp_while (aux e1, aux e2)*)
-   | Texp_for (s,e1,e2,d,e3) -> unsupported "for expression"  (*Pexp_for (s, aux e1, aux e2, d, aux e3) *)
+   | Texp_sequence (e1,e2) -> 
+       let s = Format.sprintf "@[%s@ ; %s@]" (aux e1) (aux e2) in
+       show_par par s
+   | Texp_while (e1,e2) -> 
+       let s = Format.sprintf "@[while %s@ do %s@ done@]" (aux e1) (aux e2) in
+       show_par par s
+   | Texp_for (i,e1,e2,d,e3) -> 
+       let s = Format.sprintf "@[for %s = %s to %s do@ %s@ done@]" (Ident.name i) (aux e1) (aux e2) (aux e3) in
+       show_par par s
    | Texp_send (_,_) -> unsupported "send expression"
    | Texp_new _ -> unsupported "new expression"
    | Texp_instvar (_,_) -> unsupported "inst-var expression"

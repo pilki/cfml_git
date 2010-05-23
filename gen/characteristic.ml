@@ -515,26 +515,69 @@ let rec cfg_structure_item s : cftops =
         @ (List.map (fun (name,cf_body) -> Cftop_fun_cf (name, cf_body)) ncs)
         @ [Cftop_coqs (List.map (fun (name,_) -> Coqtop_registercf name) ncs)]
    
-      end else if (List.length pat_expr_list = 1) then begin    (* todo: check it is not a function *)
+      (* let-binding of a single value *)
+      end else if (List.length pat_expr_list = 1) then begin  (* todo: check it is not a function *)
+        (* todo:  avoid copy paste of this block with treatment of expressions *) 
         let (pat,bod) = List.hd pat_expr_list in
-        let name = pattern_name pat in
-        if (skip_cf_for name) then [] else begin
+        let x = pattern_name pat in
+        if (skip_cf_for x) then [] else begin
         let fvs_typ, typ = lift_typ_sch pat.pat_type in
         let fvs = List.map name_of_type fvs in
         let fvs_strict = list_intersect fvs fvs_typ in
         let fvs_others = list_minus fvs fvs_strict in
-        let cf_body = cfg_exp (Ident.empty) bod in
-        let implicits = 
-           match fvs_strict with
-           | [] -> []
-           | _ ->  [ Coqtop_implicit (name, List.map (fun t -> (t,Coqi_maximal)) fvs_strict) ]
-           in
-        [ Cftop_val (name, coq_forall_types fvs_strict typ);
-          Cftop_coqs implicits;
-          Cftop_val_cf (name, fvs_strict, fvs_others, cf_body); 
-          Cftop_coqs [Coqtop_registercf name]; ] 
+        
+        (* pure-mode let-binding *)
+        if !pure_mode then begin 
+
+           let cf_body = cfg_exp (Ident.empty) bod in
+           let implicits = 
+              match fvs_strict with
+              | [] -> []
+              | _ ->  [ Coqtop_implicit (x, List.map (fun t -> (t,Coqi_maximal)) fvs_strict) ]
+              in
+           [ Cftop_val (x, coq_forall_types fvs_strict typ);
+             Cftop_coqs implicits;
+             Cftop_pure_cf (x, fvs_strict, fvs_others, cf_body); 
+             Cftop_coqs [Coqtop_registercf x]; ] 
+
+        (* value let-binding *)
+        end else if Typecore.is_nonexpansive bod then begin 
+
+           let v = 
+             try lift_val (Ident.empty) bod  
+             with Not_in_normal_form s -> 
+                raise (Not_in_normal_form (s ^ " (only value can satisfy the value restriction)"))
+            in
+           let implicits = 
+              match fvs_strict with
+              | [] -> []
+              | _ ->  [ Coqtop_implicit (x, List.map (fun t -> (t,Coqi_maximal)) fvs_strict) ]
+              in
+           [ Cftop_val (x, coq_forall_types fvs_strict typ);
+             Cftop_coqs implicits;
+             Cftop_val_cf (x, fvs_strict, fvs_others, v); 
+             Cftop_coqs [Coqtop_registercf x]; ] 
+
+        (* term let-binding *)
+        end else begin
+            
+           failwith "unsupported top-level binding of terms that are not values";
+           (*
+           if fvs_strict <> [] || fvs_others <> [] 
+               then not_in_normal_form ("(unsatisfied value restriction) "
+                                        ^ (Print_tast.string_of_expression false e));
+           let cf1 = cfg_exp env bod in
+           let env' = Ident.add (pattern_ident pat) (List.length fvs_strict) env in
+           let cf2 = cfg_exp env' body in
+           add_used_label x;
+           Cf_let ((x,typ), cf1, cf2)
+           *)
+
         end
-      end else
+
+      end (* for skip_cf *)
+
+     end else
         unsupported ("mutually-recursive values that are not all functions");
 
 
@@ -756,7 +799,7 @@ and cfg_module id m =
 
 
 let cfg_file str =
-   [ Cftop_coqs [ Coqtop_set_implicit_args; Coqtop_require_import "FuncPrim" ] ]
+   [ Cftop_coqs [ Coqtop_set_implicit_args; Coqtop_require_import (if !pure_mode then "FuncPrim" else "CFPrim") ] ]
    @ cfg_structure str
 
 (*#########################################################################*)

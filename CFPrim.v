@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-Require Export LibInt FuncDefs FuncPrint.
+Require Export LibInt CFSpec CFPrint.
 
 Hint Resolve (0%nat) : typeclass_instances.
 Hint Resolve (0%Z) : typeclass_instances.
@@ -76,37 +76,47 @@ Hint Extern 1 (@rep (option _) _ _ _ _) => simpl.
 (** Arithmetic *)
 
 Parameter ml_plus : val.
-Parameter ml_plus_spec : Total ml_plus x y >> = (x + y)%Z.
+Parameter ml_plus_spec : Pure ml_plus x y >> = (x + y)%Z.
 Hint Extern 1 (RegisterSpec ml_plus) => Provide ml_plus_spec.
 
 Parameter ml_minus : val.
-Parameter ml_minus_spec : Total ml_minus x y >> = (x - y)%Z.
+Parameter ml_minus_spec : Pure ml_minus x y >> = (x - y)%Z.
 Hint Extern 1 (RegisterSpec ml_minus) => Provide ml_minus_spec.
 
 Parameter ml_eqb : val.
-Parameter ml_eqb_int_spec : Total ml_eqb (x:int) (y:int) >> = (x == y).
+Parameter ml_eqb_int_spec : Pure ml_eqb (x:int) (y:int) >> = (x == y).
 Hint Extern 1 (RegisterSpec ml_eqb) => Provide ml_eqb_int_spec.
 
 Parameter ml_leq : val.
-Parameter ml_leq_spec : Total ml_leq x y >> = (x <= y)%I.
+Parameter ml_leq_spec : Pure ml_leq x y >> = (x <= y)%I.
 Hint Extern 1 (RegisterSpec ml_leq) => Provide ml_leq_spec.
 
 Parameter ml_geq : val.
-Parameter ml_geq_spec : Total ml_geq x y >> = (x >= y)%I.
+Parameter ml_geq_spec : Pure ml_geq x y >> = (x >= y)%I.
 Hint Extern 1 (RegisterSpec ml_geq) => Provide ml_geq_spec.
 
 Parameter ml_lt : val.
-Parameter ml_lt_spec : Total ml_lt x y >> = (x < y)%I.
+Parameter ml_lt_spec : Pure ml_lt x y >> = (x < y)%I.
 Hint Extern 1 (RegisterSpec ml_lt) => Provide ml_lt_spec.
 
 Parameter ml_gt : val.
-Parameter ml_gt_spec : Total ml_gt x y >> = (x > y)%I.
+Parameter ml_gt_spec : Pure ml_gt x y >> = (x > y)%I.
 Hint Extern 1 (RegisterSpec ml_gt) => Provide ml_gt_spec.
 
 Parameter ml_and : val.
-Parameter ml_and_spec : Total ml_and x y >> = (x && y).
+Parameter ml_and_spec : Pure ml_and x y >> = (x && y).
 Hint Extern 1 (RegisterSpec ml_and) => Provide ml_and_spec.
 
 Parameter ml_or : val.
-Parameter ml_or_spec : Total ml_or x y >> = (x || y).
+Parameter ml_or_spec : Pure ml_or x y >> = (x || y).
 Hint Extern 1 (RegisterSpec ml_and) => Provide ml_or_spec.
+
+Parameter ml_ref : val.
+
+Parameter ml_get : val.
+
+Parameter ml_set : val.
+
+
+
+

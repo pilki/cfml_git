@@ -4,6 +4,8 @@ open Mytools
 (*#########################################################################*)
 (* Syntax of characteristic formulae *)
 
+(* todo: rename les "let_" *)
+
 type cf =
   | Cf_ret of coq 
     (* Ret v *)
@@ -42,8 +44,10 @@ type cftop =
        Parameter x : t. *)
   | Cftop_heap of var
     (* Parameter h : heap. *)
-  | Cftop_val_cf of var * vars * vars * cf 
+  | Cftop_pure_cf of var * vars * vars * cf 
     (* Parameter x_cf : forall Ai Bi P, F (P Ai) -> P Ai (x Ai) *)
+  | Cftop_val_cf of var * vars * vars * coq 
+    (* Parameter x_cf: forall Ai, x = V *)
   | Cftop_let_cf of var * var * var * cf 
     (* Parameter x_cf : forall H Q, H h -> F H Q -> Q x h' *)
   | Cftop_fun_cf of var * cf
@@ -233,15 +237,15 @@ let rec coq_of_imp_cf cf =
       let type_of_q1 = Coq_impl (typ, hprop) in
       let c1 = coq_apps (coq_of_cf cf1) [h; q1] in
       let c2 = coq_foralls [x,typ] (coq_apps (coq_of_cf cf2) [(Coq_app (q1, Coq_var x)); q]) in
-      funhq "tag_let" ~label:x (coq_exist "Q1" type_of_q1 (coq_conj c1 c2))
+      funhq "tag_let_trm" ~label:x (coq_exist "Q1" type_of_q1 (coq_conj c1 c2))
       (* !L: fun H Q => exists Q1, F1 H Q1 /\ forall (x:T), F2 (Q1 x) Q *)
 
   | Cf_letval (x, fvs_strict, fvs_other, typ, v, cf) ->
       let type_of_x = coq_forall_types fvs_strict typ in
-      let equ = coq_eq x v in
+      let equ = coq_eq (Coq_var x) v in
       let conc = coq_apps (coq_of_cf cf) [h;q] in
-      funhq "tag_val" ~label:x (Coq_forall ((x, type_of_x), Coq_impl (equ, conc)))
-      (*(!L a: (fun H Q => forall (x:forall Ai,T), x = v -> F H Q)) *)
+      funhq "tag_let_val" ~label:x (Coq_forall ((x, type_of_x), Coq_impl (equ, conc)))
+      (*(!!L x: (fun H Q => forall (x:forall Ai,T), x = v -> F H Q)) *)
 
       (* DEPRECATED
       let type_of_x = coq_forall_types fvs_strict typ in
@@ -269,7 +273,7 @@ let rec coq_of_imp_cf cf =
       let c2conc = coq_apps (coq_of_cf cf) [h;q] in
       let c2 = coq_impls c2hyps c2conc in
       let x = List.hd ns in
-      funhq "tag_letfun" ~label:x (coq_foralls fs (coq_exists ps (coq_conj c1 c2)))
+      funhq "tag_let_fun" ~label:x (coq_foralls fs (coq_exists ps (coq_conj c1 c2)))
       (* (!F a: fun H Q => forall f1 f2, exists P1 P2,
               (B1 -> B2 -> P1 f1 /\ P2 f2) /\ (P1 f1 -> P2 f2 -> F H Q)) *)            
 
@@ -329,19 +333,25 @@ let coqtops_of_cftop coq_of_cf cft =
      (* Lemma x_safe : Inhab t. Proof. typeclass. Qed.
        Parameter x : t *)
 
-  | Cftop_val_cf (x,fvs_strict,fvs_other,cf) -> 
+  | Cftop_pure_cf (x,fvs_strict,fvs_other,cf) -> 
       let type_of_p = coq_forall_types fvs_strict wild_to_prop in
       let p_applied = if fvs_strict = [] then Coq_var "P" else coq_apps (Coq_var "@P") (coq_vars fvs_strict) in
       let x_applied = if fvs_strict = [] then Coq_var x else coq_apps (Coq_var ("@" ^ x)) (coq_vars fvs_strict) in
       let cf_body = coq_foralls ["P", type_of_p] (Coq_impl (Coq_app (coq_of_cf cf, p_applied), Coq_app (p_applied, x_applied))) in
       let hyp = coq_forall_types (fvs_strict @ fvs_other) cf_body in
-      let t = coq_tag "tag_topval" hyp in
+      let t = coq_tag "tag_top_val" hyp in
       [ Coqtop_param (x ^ "_cf", t)]
-      (* Parameter x_cf : (!TV label: forall Ai Bi, (forall P:_->Prop, R (P Ai) -> P Ai (x Ai))) *)
+      (* Parameter x_cf : (!TV forall Ai Bi, (forall P:_->Prop, R (P Ai) -> P Ai (x Ai))) *)
+
+  | Cftop_val_cf (x,fvs_strict,fvs_other,v) -> 
+      let hyp = coq_forall_types (fvs_strict @ fvs_other) (coq_eq (Coq_var x) v) in
+      let t = coq_tag "tag_top_val" hyp in
+      [ Coqtop_param (x ^ "_cf", t)]
+      (* Parameter x_cf: (!TV forall Ai Bi, x = v) *)
 
   | Cftop_fun_cf (x,cf) -> 
       (* the following is the same as for pure *)
-      let t = coq_tag "tag_topfun" (coq_of_cf cf) in
+      let t = coq_tag "tag_top_fun" (coq_of_cf cf) in
       [ Coqtop_param (x ^ "_cf", t) ]
       (* Parameter x_cf : (!TF a: H) *)
 
@@ -354,9 +364,9 @@ let coqtops_of_cftop coq_of_cf cft =
       let hyp1 = Coq_app (Coq_var "H", Coq_var h) in
       let hyp2 = coq_apps (coq_of_cf cf) [Coq_var "H"; Coq_var "Q"] in
       let cf_body = coq_foralls [("H",hprop); ("Q",wild_to_hprop)] (coq_impls [hyp1;hyp2] conc) in
-      let t = coq_tag "tag_toplet" cf_body in 
+      let t = coq_tag "tag_top_trm" cf_body in 
       [ Coqtop_param (x ^ "_cf", t) ]
-      (* Parameter x_cf : (!TL: forall H Q, H h -> F H Q -> Q x h') *)
+      (* Parameter x_cf : (!TT: forall H Q, H h -> F H Q -> Q x h') *)
 
   | Cftop_coqs cmds -> cmds
 

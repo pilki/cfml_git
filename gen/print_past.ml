@@ -130,13 +130,21 @@ let rec string_of_expression par e =
        let e2',b2 = aux e2 in
        Pexp_setfield (e', i, e2'), b2 @ b  *)
    | Pexp_array l -> unsupported "array expression" (* Pexp_array (List.map aux l)*)
-   | Pexp_ifthenelse (e1, e2, None) -> unsupported "if-without-else-clause expressions"
+   | Pexp_ifthenelse (e1, e2, None) -> 
+       let s = Format.sprintf "@[if %s@ then %s@]" (aux e1) (aux e2) in
+       show_par par s
    | Pexp_ifthenelse (e1, e2, Some e3) ->
        let s = Format.sprintf "@[if %s@ then %s@ %s@]" (aux e1) (aux e2) (aux e3) in
        show_par par s
-   | Pexp_sequence (e1,e2) -> unsupported "sequence expression"  (* Pexp_sequence (aux e1, aux e2)*)
-   | Pexp_while (e1,e2) -> unsupported "while expression"  (* Pexp_while (aux e1, aux e2)*)
-   | Pexp_for (s,e1,e2,d,e3) -> unsupported "for expression"  (*Pexp_for (s, aux e1, aux e2, d, aux e3) *)
+   | Pexp_sequence (e1,e2) -> 
+       let s = Format.sprintf "@[%s@ ; %s@]" (aux e1) (aux e2) in
+       show_par par s
+   | Pexp_while (e1,e2) -> 
+       let s = Format.sprintf "@[while %s@ do %s@ done@]" (aux e1) (aux e2) in
+       show_par par s
+   | Pexp_for (s,e1,e2,d,e3) ->
+       let s = Format.sprintf "@[for %s = %s to %s do@ %s@ done@]" s (aux e1) (aux e2) (aux e3) in
+       show_par par s
    | Pexp_constraint (e,to1,to2) -> 
        let s = Format.sprintf "@[(%s@ : _)]" (aux e) in
        show_par par s
