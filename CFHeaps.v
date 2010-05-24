@@ -249,8 +249,46 @@ Lemma hsimpl_cancel_6 : forall H HA HR H1 H2 H3 H4 H5 HT,
 (*Proof. intros. rewrite (star_comm_assoc H5). apply~ hsimpl_cancel_5. Qed.*)
 Admitted.
 
+
+Definition subst_hprop := hprop.
+
+Ltac protect_evars_in H :=
+   match H with context [ ?X ] => 
+     let go tt := 
+       match X with
+       | _ \* _ => fail 1
+       | _ ~> _ => fail 1
+       | X => fail 1 
+       | _ => let K := fresh "TEMP" in sets_eq K: (X : subst_hprop)
+       end in
+     match type of X with 
+     | hprop => go tt
+     | heap -> Prop => go tt
+     end
+   end.
+
+Ltac protect_evars tt :=
+  do 5 try match goal with |- ?H1 ==> ?H2 =>
+     first [ protect_evars_in H1 | protect_evars_in H2 ]; instantiate
+  end.
+
+Ltac unprotect_evars tt :=
+  repeat match goal with H : subst_hprop |- _ => 
+    subst H end;
+  unfold subst_hprop.
+
+
+(*
+Ltac hsimpl_assoc_rhs tt :=
+  let M := fresh "TEMP" in
+  match goal with |- ?H ==> ?H' =>
+    sets M: H'; autorewrite with hsimpl_assoc; subst M
+  end.
+hsimpl_assoc_rhs tt.*)
+
 Ltac hsimpl_setup tt :=
   apply hsimpl_start;
+  protect_evars tt; 
   autorewrite with hsimpl_assoc.
 
 Ltac hsimpl_find_same H HL :=
@@ -283,6 +321,7 @@ Ltac hsimpl_step tt :=
 
 Ltac hsimpl_cleanup tt :=
   autorewrite with hsimpl_neutral;
+  unprotect_evars tt;
   try apply pred_le_refl.
 
 Ltac hsimpl_main tt :=
@@ -310,12 +349,14 @@ Proof.
   hsimpl. skip.
 Qed.
 
+
 Lemma hsimpl_demo_2 : forall l1 l2 S1 S2 H1 H2 H3 H',
-  (forall S1' HG, H1 \* l1 ~> S1' \* H2 \* HG ==> H') ->
+  (forall X S1' HG, X ==> H1 \* l1 ~> S1' \* H2 \* HG -> X ==> H') ->
   H1 \* l1 ~> S1 \* l2 ~> S2 \* H3 ==> H'.
 Proof.
   intros. dup.
-  (* details *)
+  (* details *) 
+  eapply H.
   hsimpl_setup tt.
   hsimpl_step tt.
   hsimpl_step tt.
@@ -324,12 +365,28 @@ Proof.
   hsimpl_cleanup tt.
   skip.
   (* short *)
-   hsimpl. skip.
-Qed.
+  eapply H.
+  hsimpl. skip.
+Admitted.
 
-  
-
-
+Lemma hsimpl_demo_3 : forall l1 l2 S1 S2 H1 H2 H',
+  (forall X S1' HG, X ==> H1 \* l1 ~> S1' \* HG -> HG = HG -> X ==> H') ->
+  H1 \* l1 ~> S1 \* l2 ~> S2 \* H2 ==> H'.
+Proof.
+  intros. dup.
+  (* details *)
+  eapply H.  
+  hsimpl_setup tt.
+  hsimpl_step tt.
+  hsimpl_step tt.
+  hsimpl_step tt.
+  hsimpl_cleanup tt.
+  auto.
+  (* short *)
+  eapply H.
+  hsimpl.
+  auto.
+Admitted.
 
 
 (* todo: move *)
