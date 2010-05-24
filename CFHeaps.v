@@ -250,8 +250,6 @@ Lemma hsimpl_cancel_6 : forall H HA HR H1 H2 H3 H4 H5 HT,
 Admitted.
 
 
-Definition subst_hprop := hprop.
-
 Ltac protect_evars_in H :=
    match H with context [ ?X ] => 
      let go tt := 
@@ -259,7 +257,7 @@ Ltac protect_evars_in H :=
        | _ \* _ => fail 1
        | _ ~> _ => fail 1
        | X => fail 1 
-       | _ => let K := fresh "TEMP" in sets_eq K: (X : subst_hprop)
+       | _ => let K := fresh "TEMP" in sets_eq K: (X : ltac_tag_subst hprop)
        end in
      match type of X with 
      | hprop => go tt
@@ -273,9 +271,9 @@ Ltac protect_evars tt :=
   end.
 
 Ltac unprotect_evars tt :=
-  repeat match goal with H : subst_hprop |- _ => 
+  repeat match goal with H : ltac_tag_subst _ |- _ => 
     subst H end;
-  unfold subst_hprop.
+  unfold ltac_tag_subst.
 
 
 (*
@@ -397,7 +395,7 @@ Proof. intros_all~. Qed.
 Hint Resolve rel_le_refl.
 
 Lemma heap_weaken_star : forall H1' H1 H2 H3,
-  (H1 ==> H1') -> (H1' * H2 ==> H3) -> (H1 * H2 ==> H3).
+  (H1 ==> H1') -> (H1' \* H2 ==> H3) -> (H1 \* H2 ==> H3).
 Proof.
   introv W M (h1&h2&N). intuit N. apply M. exists~ h1 h2.
 Qed.
@@ -532,7 +530,7 @@ Qed.
 (** Extraction of premisses from [local] *)
 
 Lemma local_intro_prop : forall B (F:~~B) H (P:Prop) Q,
-  is_local F -> (P -> F H Q) -> F ([P] * H) Q.
+  is_local F -> (P -> F H Q) -> F ([P] \* H) Q.
 Proof.
   introv L M. rewrite L. introv (h1&h2&?&?&(PH1&HP)&PH2).
   skip: (h = h2). (* todo heaps *) subst h2.
@@ -543,11 +541,11 @@ Qed.
 
 Lemma local_intro_exists : forall B (F:~~B) H A (J:A->hprop) Q,
   is_local F -> 
-  (forall x, F ((J x) * H) Q) ->
-   F (heap_is_pack J * H) Q.
+  (forall x, F ((J x) \* H) Q) ->
+   F (heap_is_pack J \* H) Q.
 Proof.
   introv L M. rewrite L. introv (h1&h2&?&?&(X&HX)&PH2).
-  exists (J X * H) [] Q []. splits.
+  exists (J X \* H) [] Q []. splits.
   rew_heap~. exists~ h1 h2.
   auto.
   auto.
@@ -557,6 +555,114 @@ Qed.
 (********************************************************************)
 (* ** Extraction tactic for local goals *)
 
+Ltac xlocal_core tt :=
+  match goal with |- is_local _ => skip end.
+
+Tactic Notation "xlocal" :=
+  xlocal_core tt.
+
+Lemma hclean_start : forall B (F:~~B) H Q,
+  is_local F -> F ([] \* (H \* [])) Q -> F H Q.
+Proof. intros. rew_heap in *. auto. Qed.
+
+Lemma hclean_step : forall B (F:~~B) H1 H2 H3 Q,
+  F ((H1 \* H2) \* H3) Q -> F (H1 \* (H2 \* H3)) Q.
+Proof. intros. rew_heap in *. auto. Qed.
+
+Lemma hclean_prop : forall B (F:~~B) H1 H2 (P:Prop) Q,
+  is_local F -> (P -> F (H1 \* H2) Q) -> F (H1 \* [P] \* H2) Q.
+Proof.
+  intros. rewrite star_comm_assoc. apply~ local_intro_prop. 
+Qed. 
+
+Lemma hclean_exists : forall B (F:~~B) H1 H2 A (J:A->hprop) Q,
+  is_local F -> 
+  (forall x, F ((H1 \* (J x)) \* H2) Q) ->
+   F (H1 \* (heap_is_pack J \* H2)) Q.
+Proof. 
+  intros. rewrite star_comm_assoc. apply~ local_intro_exists.
+  intros. rewrite star_comm_assoc. rewrite~ star_assoc. 
+Qed. 
 
 
+(*
+Ltac hclean_on contH contQ :=
+  match goal with
+  | |- _ ?H ?Q => contH H; contQ Q
+  | |- _ _ ?H ?Q => contH H; contQ Q
+  | |- _ _ _ ?H ?Q => contH H; contQ Q
+  | |- _ _ _ _ ?H ?Q => contH H; contQ Q
+  end.
+*)
+
+Ltac hclean_onH cont :=
+  match goal with
+  | |- _ ?H ?Q => cont H
+  | |- _ _ ?H ?Q => cont H
+  | |- _ _ _ ?H ?Q => cont H
+  | |- _ _ _ _ ?H ?Q => cont H
+  end.
+
+Ltac hclean_onQ cont :=
+  match goal with
+  | |- _ ?H ?Q => cont Q
+  | |- _ _ ?H ?Q => cont Q
+  | |- _ _ _ ?H ?Q => cont Q
+  | |- _ _ _ _ ?H ?Q => cont Q
+  end.
+
+Ltac hclean_protect tt :=
+  let Q' := fresh "TEMP" in
+  hclean_onQ ltac:(fun Q => set (Q' := Q : ltac_tag_subst _));
+  do 5 try (hclean_onH ltac:(fun H => protect_evars_in H); instantiate).
+
+Ltac hclean_setup tt :=
+  hclean_protect tt;
+  apply hclean_start; [ xlocal | ];
+  autorewrite with hsimpl_assoc.
+
+Ltac hclean_step tt :=
+  let go H :=
+    match H with ?HA \* ?HX \* ?HR => match HX with
+    | [?P] => apply hclean_prop; [ xlocal | intro ]
+    | heap_is_pack ?J => apply hclean_exists; [ xlocal | intro ]
+    | _ => apply hclean_step
+    end end in
+  hclean_onH ltac:(go).
+
+Ltac hclean_cleanup tt :=
+  autorewrite with hsimpl_neutral;
+  unprotect_evars tt.
+
+Ltac hclean_main tt :=
+  hclean_setup tt;
+  pose ltac_mark; 
+  (repeat (hclean_step tt));
+  hclean_cleanup tt;
+  gen_until_mark.
+
+Tactic Notation "hclean" := hclean_main tt.
+Tactic Notation "hclean" "~" := hclean; auto_tilde.
+Tactic Notation "hclean" "*" := hclean; auto_star.
+
+Lemma hclean_demo_1 : forall H1 H2 H3 B (F:~~B) P Q,
+   F (H1 \* [] \* H2 \* [P] \* H3) Q.
+Proof.
+  intros. dup.
+  (* details *)
+  hclean_setup tt.
+  pose ltac_mark.
+  hclean_step tt.
+  hclean_step tt.
+  hclean_step tt.
+  hclean_step tt.
+  hclean_step tt.
+  autorewrite with hsimpl_neutral.
+  unprotect_evars tt.
+  gen_until_mark.
+  skip.
+  (* short *)
+  hclean.
+  skip.
+Qed.  
 
