@@ -194,7 +194,8 @@ let rec coq_of_imp_cf cf =
   let h = Coq_var "H" in
   let q = Coq_var "Q" in
   let funhq tag ?label c = 
-     let f = coq_funs [("H", hprop);("Q", wild_to_hprop)] c in
+     let f_core = coq_funs [("H", hprop);("Q", wild_to_hprop)] c in
+     let f = Coq_app (Coq_var "local", f_core) in
      match label with 
      | None -> coq_tag tag f 
      | Some x -> coq_tag tag ~label:x f 

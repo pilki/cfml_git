@@ -365,82 +365,82 @@ Inductive tag_type : Type :=
 
 Definition tag (t:tag_type) (x:option tag_name) (A:Type) (P:A) := P.
 
-Notation "'!R' P" := (tag tag_ret None P)  
-  (at level 69).
-Notation "'!A' P" := (tag tag_apply None P)  
-  (at level 95).
-Notation "'!V' P" := (tag tag_let_val None P)  
-  (at level 95).
-Notation "'!F' P" := (tag tag_let_fun None P)  
-  (at level 95).
-Notation "'!T' P" := (tag tag_let_trm None P)  
-  (at level 95).
-Notation "'!C' P" := (tag tag_case None P)  
-  (at level 95).
-Notation "'!W' P" := (tag tag_casewhen None P)  
-  (at level 95).
-Notation "'!I' P" := (tag tag_if None P)  
-  (at level 95).
 Notation "'!B' P" := (tag tag_body None P)  
   (at level 95).
-Notation "'!E' P" := (tag tag_fail None P)  
-  (at level 95).
-Notation "'!S' P" := (tag tag_alias None P)  
-  (at level 95).
-Notation "'!D' P" := (tag tag_done None P)  
-  (at level 95).
-Notation "'!M' n P" := (tag (tag_match n) None P)  
+Notation "'!M' n P" := (tag (tag_match n) None P)
   (at level 95, n at level 0).
-Notation "'!Seq' P" := (tag tag_seq None P)  
+Notation "'!R' P" := (tag tag_ret None (local P))  
+  (at level 69).
+Notation "'!A' P" := (tag tag_apply None (local P))  
   (at level 95).
-Notation "'!For' P" := (tag tag_for None P)  
+Notation "'!V' P" := (tag tag_let_val None (local P))  
   (at level 95).
-Notation "'!While' P" := (tag tag_while None P)  
+Notation "'!F' P" := (tag tag_let_fun None (local P))  
   (at level 95).
-Notation "'!TV' P" := (tag tag_top_val None P)  
+Notation "'!T' P" := (tag tag_let_trm None (local P))  
   (at level 95).
-Notation "'!TF' P" := (tag tag_top_fun None P)  
+Notation "'!C' P" := (tag tag_case None (local P))  
   (at level 95).
-Notation "'!TT' P" := (tag tag_top_trm None P)  
+Notation "'!W' P" := (tag tag_casewhen None (local P))  
+  (at level 95).
+Notation "'!I' P" := (tag tag_if None (local P))  
+  (at level 95).
+Notation "'!E' P" := (tag tag_fail None (local P))  
+  (at level 95).
+Notation "'!S' P" := (tag tag_alias None (local P))  
+  (at level 95).
+Notation "'!D' P" := (tag tag_done None (local P))  
+  (at level 95).
+Notation "'!Seq' P" := (tag tag_seq None (local P))  
+  (at level 95).
+Notation "'!For' P" := (tag tag_for None (local P))  
+  (at level 95).
+Notation "'!While' P" := (tag tag_while None (local P))  
+  (at level 95).
+Notation "'!TV' P" := (tag tag_top_val None (local P))  
+  (at level 95).
+Notation "'!TF' P" := (tag tag_top_fun None (local P))  
+  (at level 95).
+Notation "'!TT' P" := (tag tag_top_trm None (local P))  
   (at level 95).
 
-Notation "'!!R' x P" := (tag tag_ret (Some x) P)  
-  (at level 69, x at level 0).
-Notation "'!!A' x P" := (tag tag_apply (Some x) P)  
+Notation "'!!B' x P" := (tag tag_body (Some x) P)
   (at level 95, x at level 0).
-Notation "'!!V' x P" := (tag tag_let_val (Some x) P)  
-  (at level 95, x at level 0).
-Notation "'!!F' x P" := (tag tag_let_fun (Some x) P)  
-  (at level 95, x at level 0).
-Notation "'!!T' x P" := (tag tag_let_trm (Some x) P)  
-  (at level 95, x at level 0).
-Notation "'!!C' x P" := (tag tag_case (Some x) P)  
-  (at level 95, x at level 0).
-Notation "'!:W' x P" := (tag tag_casewhen (Some x) P)  
-  (at level 95, x at level 0).
-Notation "'!!I' x P" := (tag tag_if (Some x) P)  
-  (at level 95, x at level 0).
-Notation "'!!B' x P" := (tag tag_body (Some x) P)  
-  (at level 95, x at level 0).
-Notation "'!!E' x P" := (tag tag_fail (Some x) P)  
-  (at level 95, x at level 0).
-Notation "'!!S' x P" := (tag tag_alias (Some x) P)  
-  (at level 95, x at level 0).
-Notation "'!!D' x P" := (tag tag_done (Some x) P)  
-  (at level 95, x at level 0).
-Notation "'!!M' x n P" := (tag (tag_match n) (Some x) P)  
+Notation "'!!M' x n P" := (tag (tag_match n) (Some x) P)
   (at level 95, x at level 0, n at level 0).
-Notation "'!!Seq' x P" := (tag tag_seq (Some x) P)  
+Notation "'!!R' x P" := (tag tag_ret (Some x) (local P))  
+  (at level 69, x at level 0).
+Notation "'!!A' x P" := (tag tag_apply (Some x) (local P))  
   (at level 95, x at level 0).
-Notation "'!!For' x  P" := (tag tag_for (Some x) P)  
+Notation "'!!V' x P" := (tag tag_let_val (Some x) (local P))  
   (at level 95, x at level 0).
-Notation "'!!While' x P" := (tag tag_while (Some x) P)  
+Notation "'!!F' x P" := (tag tag_let_fun (Some x) (local P))  
   (at level 95, x at level 0).
-Notation "'!!TV' x P" := (tag tag_top_val (Some x) P)  
+Notation "'!!T' x P" := (tag tag_let_trm (Some x) (local P))  
   (at level 95, x at level 0).
-Notation "'!!TF' x P" := (tag tag_top_fun (Some x) P)  
+Notation "'!!C' x P" := (tag tag_case (Some x) (local P))  
   (at level 95, x at level 0).
-Notation "'!!TT' x P" := (tag tag_top_trm (Some x) P)  
+Notation "'!:W' x P" := (tag tag_casewhen (Some x) (local P))  
+  (at level 95, x at level 0).
+Notation "'!!I' x P" := (tag tag_if (Some x) (local P))  
+  (at level 95, x at level 0).
+Notation "'!!E' x P" := (tag tag_fail (Some x) (local P))  
+  (at level 95, x at level 0).
+Notation "'!!S' x P" := (tag tag_alias (Some x) (local P))  
+  (at level 95, x at level 0).
+Notation "'!!D' x P" := (tag tag_done (Some x) (local P))  
+  (at level 95, x at level 0).
+Notation "'!!Seq' x P" := (tag tag_seq (Some x) (local P))  
+  (at level 95, x at level 0).
+Notation "'!!For' x  P" := (tag tag_for (Some x) (local P))  
+  (at level 95, x at level 0).
+Notation "'!!While' x P" := (tag tag_while (Some x) (local P))  
+  (at level 95, x at level 0).
+Notation "'!!TV' x P" := (tag tag_top_val (Some x) (local P))  
+  (at level 95, x at level 0).
+Notation "'!!TF' x P" := (tag tag_top_fun (Some x) (local P))  
+  (at level 95, x at level 0).
+Notation "'!!TT' x P" := (tag tag_top_trm (Some x) (local P))  
   (at level 95, x at level 0).
 
 Lemma add_tag : forall (T:Prop->Prop), (T = fun P:Prop => P) -> 
@@ -469,7 +469,7 @@ Tactic Notation "xuntags" := unfold tag in *.
 (* ** Notation for characteristic formulae *)
 
 Notation "'Ret' v" :=
-  (!R (fun H Q => H heap_empty /\Q v heap_empty))
+  (!R (fun H Q => H heap_empty /\ Q v heap_empty))
   (at level 69) : charac.
 
 Notation "'Fail'" :=
