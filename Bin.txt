@@ -1,4 +1,150 @@
 
+(********************************************************************)
+(* ** Locality *)
+
+(*------------------------------------------------------------------*)
+(* ** Definition of [local] *)
+
+(** Type of post-conditions on values of type B *)
+
+Notation "'~~' B" := (hprop->(B->hprop)->Prop) 
+  (at level 8, only parsing) : type_scope.
+
+(** "Local" = Frame rule + consequence rule + garbage collection *)
+
+Definition local B (F:~~B) : ~~B :=
+  fun (H:hprop) (Q:B->hprop) =>
+    exists H1 H2 Q1 H',
+       H ==> H1 * H2
+    /\ F H1 Q1
+    /\ forall x, (Q1 x) * H2 ==> (Q x) * H'.
+
+(** Characterization of "local" judgments *)
+
+Definition is_local B (F:~~B) :=
+  F = local F.
+
+(** The weakening property is implied by locality *)
+
+Definition weakenable B (F:~~B) :=
+  forall H Q , F H Q ->
+  forall H' Q', H' ==> H -> Q ===> Q' -> F H' Q'.
+
+
+(*------------------------------------------------------------------*)
+(* ** Properties of [local] *)
+
+(** The [local] operator can be freely erased from a conclusion *)
+
+Lemma local_erase : forall B (F:~~B), 
+  forall H Q, F H Q -> local F H Q.
+Proof.
+  intros. exists H [] Q []. splits.
+  rew_heap~. auto. auto.
+Qed.
+
+(** Nested applications [local] are redundant *)
+
+Lemma local_local : forall B (F:~~B),
+  local (local F) = local F.
+Proof.
+  extens. intros H Q. iff M. 
+  destruct M as (H1&H2&Q1&H'&?&N&?).
+  destruct N as (H1'&H2'&Q1'&H''&?&?&?).
+  exists H1' (H2 ** H2') Q1' (H' ** H''). splits.
+  eapply pred_le_trans. eauto.
+   intros h Hh. hnf in Hh. destruct Hh as (h1&h2&?&?&?&?).
+   subst h. applys_to H9 H4. intuit H9. subst h1.
+   rewrite (star_comm H2). rewrite star_assoc.
+   exists __ __. splits~. exists __ __. splits~.
+  eauto.
+  intros.
+  skip. (* todo *)
+  apply~ local_erase.
+Qed.
+
+(** A definition whose head is [local] satisfies [is_local] *)
+
+Lemma local_is_local : forall B (F:~~B),
+  is_local (local F).
+Proof. intros. unfolds. rewrite~ local_local. Qed.
+
+(** Elimination lemma associated with the definition of [local] *)
+
+Lemma local_elim : forall B (F:~~B) H H1 H2 H' Q1 Q,
+  is_local F -> 
+  F H1 Q1 -> 
+  H ==> H1 ** H2 -> 
+  Q1 *** H2 ===> Q *** H' ->
+  F H Q.
+Proof.
+  introv L M WH WQ. rewrite L. exists H1 H2 Q1 H'. splits.
+  auto. auto. intros. rew_heap~. apply WQ.
+Qed.
+
+(** Corrolary for the case where no garbage collection is required *)
+
+Lemma local_frame : forall B (F:~~B) H H1 H2 Q1 Q,
+  is_local F -> 
+  F H1 Q1 -> 
+  H ==> H1 ** H2 -> 
+  Q1 *** H2 ===> Q ->
+  F H Q.
+Proof.
+  intros. eapply local_elim with (H' := []); eauto. rew_heap~.
+Qed.
+
+(** Corrolary for the case where no frame is required *)
+
+Lemma local_weaken : forall B (F:~~B) H H' Q Q',
+  is_local F -> 
+  F H' Q' -> 
+  H ==> H' -> 
+  Q' ===> Q ->
+  F H Q.
+Proof.
+  intros. eapply local_frame with (H2 := []); eauto; rew_heap~.
+Qed.
+
+Lemma local_weaken' : forall B (F:~~B),
+  is_local F -> weakenable F.
+Proof. intros_all. apply* local_weaken. Qed.
+  (* todo: use only one lemma *)
+
+
+Definition local' B (F:~~B) : ~~B :=
+  fun (H:hprop) (Q:B->hprop) =>
+    exists H1 H2 P Q1 H',
+       H ==> H1 * H2 * [P]
+    /\ (P -> F H1 Q1)
+    /\ forall x, (Q1 x) * H2 ==> (Q x) * H'.
+
+Lemma local_intro_prop : forall B (F:~~B) H1 H2 (P:Prop) Q,
+  is_local F -> (P -> F (H1 * H2) Q) -> F (H1 * [P] * H2) Q.
+Proof.
+  introv L M. rewrite L.
+  skip_rewrite (local = local').
+  exists (H1 * H2) [] P Q []. splits.
+  skip. (* heaps *)
+  auto.
+  auto.
+Qed. 
+
+Lemma local_intro_exists : forall B (F:~~B) H1 H2 A (J:A->hprop) Q,
+  is_local F -> (forall x, F (H1 * (J x) * H2) Q) ->
+   F (H1 * heap_is_pack J * H2) Q.
+Proof.
+  introv L M. rewrite L.
+  skip_rewrite (local = local').
+  exists (H1 * H2) [] True Q []. splits.
+  skip. (* heaps *)
+  auto.
+  auto.
+Qed. 
+
+
+
+
 
 (* don't do those, cause need to use spec_elim_3_2 directly
    to know partial apps have no effects

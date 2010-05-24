@@ -265,8 +265,10 @@ Lemma weaken_bool_of : forall (P Q : Prop),
   (P <-> Q) -> ((bool_of P) ==> (bool_of Q)).
 Proof. unfold bool_of. intros_all. rewrite H0. extens*. Qed.
 
+Definition rel_le A B (P Q : A->B->Prop) := 
+  forall x, P x ==> Q x.
 
-Notation "P ===> Q" := (forall x, P x ==> Q x) 
+Notation "P ===> Q" := (rel_le P Q) 
   (at level 55, right associativity) : func.
 
 Open Scope func.
