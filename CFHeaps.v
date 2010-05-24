@@ -80,8 +80,8 @@ Definition heap_is_empty : hprop :=
 
 (** Singleton heap *)
 
-Definition heap_is_single (l:loc) A (P:A->Prop) : hprop := 
-  fun h => exists v, h = heap_single l v /\ P v.
+Definition heap_is_single (l:loc) A (v:A) : hprop := 
+  = heap_single l v.
 
 (** Heap union *)
 
@@ -103,6 +103,12 @@ Definition heap_is_empty_st (H:Prop) : hprop :=
 Definition starpost B (Q:B->hprop) (H:hprop) : B->hprop :=
   fun x => heap_is_star (Q x) H.
 
+(** Label for data structures *)
+
+Definition hdata (S:loc->hprop) (l:loc) : hprop :=
+  S l.
+
+
 (*------------------------------------------------------------------*)
 (* ** Notation for heap predicates *)
 
@@ -116,20 +122,21 @@ Notation "\[ P ]" := (fun v => heap_is_empty_st (P v))
   (at level 0, P at level 99) : heap_scope.
 
 Notation "H1 '\*' H2" := (heap_is_star H1 H2)
-  (at level 40, left associativity) : heap_scope.
-Notation "H1 '*' H2" := (heap_is_star H1 H2)
-  (at level 40, left associativity, only parsing) : heap_scope.
+  (at level 41, right associativity) : heap_scope.
 
-Notation "l '~>|' P" := (heap_is_single l P)
-  (at level 35, no associativity) : heap_scope.
-
-Notation "l '~>' v" := (heap_is_single l (=v))
+Notation "l '~~>' v" := (heap_is_single l v)
   (at level 35, no associativity) : heap_scope.
 
 Notation "'Hexists' x , H" := (heap_is_pack (fun x => H))
   (at level 35, x ident, H at level 200) : heap_scope.
 
 Notation "Q \*+ H" := (starpost Q H) (at level 40).
+
+Notation "'_~>' S" := (hdata S)
+  (at level 34, no associativity) : heap_scope.
+
+Notation "l '~>' S" := (hdata S l)
+  (at level 33, no associativity) : heap_scope.
 
 Open Scope heap_scope.
 Bind Scope heap_scope with hprop.
@@ -151,17 +158,24 @@ Proof. skip. Qed.
 Lemma star_assoc : LibOperation.assoc heap_is_star. 
 Proof. skip. Qed.
 
+Lemma star_comm_assoc : comm_assoc heap_is_star.
+Proof. skip. Qed.
+
 Lemma starpost_neutral : forall B (Q:B->hprop),
   Q \*+ [] = Q.
 Proof. extens. intros. unfold starpost. rewrite~ star_neutral_r. Qed.
+
+Lemma star_cancel : forall H1 H2 H2',
+  H2 ==> H2' -> H1 \* H2 ==> H1 \* H2'.
+Proof. introv W (h1&h2&?). exists* h1 h2. Qed.
 
 
 (*------------------------------------------------------------------*)
 (* ** Normalization of [star] *)
 
 Hint Rewrite 
-  star_neutral_l star_neutral_r star_assoc
-  starpost_neutral : rew_heap.
+  star_neutral_l star_neutral_r starpost_neutral : rew_heap.
+Hint Rewrite <- star_assoc : rew_heap.
 
 Tactic Notation "rew_heap" :=
   autorewrite with rew_heap.
@@ -183,6 +197,137 @@ Tactic Notation "rew_heap" "*" "in" "*" :=
   rew_heap in *; auto_star.
 Tactic Notation "rew_heap" "*" "in" hyp(H) :=
   rew_heap in H; auto_star.
+
+
+(********************************************************************)
+(* ** Simplification and unification tactics for star *)
+
+Hint Rewrite <- star_assoc : hsimpl_assoc.
+Hint Rewrite star_neutral_l star_neutral_r : hsimpl_neutral.
+
+Lemma hsimpl_start : forall H1 H2,
+  H1 \* [] ==> [] \* (H2 \* []) -> H1 ==> H2.
+Proof. intros. rew_heap in *. auto. Qed.
+
+Lemma hsimpl_keep : forall H1 H2 H3 H4,
+  H1 ==> (H2 \* H3) \* H4 -> H1 ==> H2 \* (H3 \* H4).
+Proof. intros. rew_heap in *. auto. Qed.
+
+Lemma hsimpl_extract_prop : forall H1 H2 H3 (P:Prop),
+  H1 ==> H2 \* H3 -> P -> H1 ==> H2 \* ([P] \* H3).
+Proof.
+  introv W HP PH1. destruct (W _ PH1) as (h1&h2&?&?&?&?).
+  exists h1 h2. splits~. exists heap_empty h2. splits~.
+  skip. skip. (* heap *)
+  splits~.
+Qed.
+
+Lemma hsimpl_cancel_1 : forall H HA HR HT,
+  HT ==> HA \* HR -> H \* HT ==> HA \* (H \* HR).
+Proof. intros. rewrite star_comm_assoc. apply~ star_cancel. Qed.
+
+Lemma hsimpl_cancel_2 : forall H HA HR H1 HT,
+  H1 \* HT ==> HA \* HR -> H1 \* H \* HT ==> HA \* (H \* HR).
+Proof. intros. rewrite (star_comm_assoc H1). apply~ hsimpl_cancel_1. Qed.
+
+Lemma hsimpl_cancel_3 : forall H HA HR H1 H2 HT,
+  H1 \* H2 \* HT ==> HA \* HR -> H1 \* H2 \* H \* HT ==> HA \* (H \* HR).
+Proof. intros. rewrite (star_comm_assoc H2). apply~ hsimpl_cancel_2. Qed.
+
+Lemma hsimpl_cancel_4 : forall H HA HR H1 H2 H3 HT,
+  H1 \* H2 \* H3 \* HT ==> HA \* HR -> H1 \* H2 \* H3 \* H \* HT ==> HA \* (H \* HR).
+(*Proof. intros. rewrite (star_comm_assoc H3). apply~ hsimpl_cancel_3. Qed.*)
+Admitted.
+
+Lemma hsimpl_cancel_5 : forall H HA HR H1 H2 H3 H4 HT,
+  H1 \* H2 \* H3 \* H4 \* HT ==> HA \* HR -> H1 \* H2 \* H3 \* H4 \* H \* HT ==> HA \* (H \* HR).
+(*Proof. intros. rewrite (star_comm_assoc H4). apply~ hsimpl_cancel_4. Qed.*)
+Admitted.
+
+Lemma hsimpl_cancel_6 : forall H HA HR H1 H2 H3 H4 H5 HT,
+  H1 \* H2 \* H3 \* H4 \* H5 \* HT ==> HA \* HR -> H1 \* H2 \* H3 \* H4 \* H5 \* H \* HT ==> HA \* (H \* HR).
+(*Proof. intros. rewrite (star_comm_assoc H5). apply~ hsimpl_cancel_5. Qed.*)
+Admitted.
+
+Ltac hsimpl_setup tt :=
+  apply hsimpl_start;
+  autorewrite with hsimpl_assoc.
+
+Ltac hsimpl_find_same H HL :=
+  match HL with
+  | H \* _ => apply hsimpl_cancel_1
+  | _ \* H \* _ => apply hsimpl_cancel_2
+  | _ \* _ \* H \* _ => apply hsimpl_cancel_3
+  | _ \* _ \* _ \* H \* _ => apply hsimpl_cancel_4
+  | _ \* _ \* _ \* _ \* H \* _ => apply hsimpl_cancel_5
+  | _ \* _ \* _ \* _ \* _ \* H \* _ => apply hsimpl_cancel_6
+  end.
+
+Ltac hsimpl_find_data H HL :=
+  match H with hdata _ ?l =>
+  match HL with
+  | hdata _ l \* _ => apply hsimpl_cancel_1
+  | _ \* hdata _ l \* _ => apply hsimpl_cancel_2
+  | _ \* _ \* hdata _ l \* _ => apply hsimpl_cancel_3
+  | _ \* _ \* _ \* hdata _ l \* _ => apply hsimpl_cancel_4
+  | _ \* _ \* _ \* _ \* hdata _ l \* _ => apply hsimpl_cancel_5
+  | _ \* _ \* _ \* _ \* _ \* hdata _ l \* _ => apply hsimpl_cancel_6
+  end end.
+
+Ltac hsimpl_step tt :=
+  match goal with |- ?HL ==> ?HA \* (?H \* ?HR) =>
+    first [ hsimpl_find_same H HL
+          | hsimpl_find_data H HL
+          | apply hsimpl_keep ]
+  end.
+
+Ltac hsimpl_cleanup tt :=
+  autorewrite with hsimpl_neutral;
+  try apply pred_le_refl.
+
+Ltac hsimpl_main tt :=
+  hsimpl_setup tt;
+  (repeat (hsimpl_step tt));
+  hsimpl_cleanup tt.
+
+Tactic Notation "hsimpl" := hsimpl_main tt.
+Tactic Notation "hsimpl" "~" := hsimpl; auto_tilde.
+Tactic Notation "hsimpl" "*" := hsimpl; auto_star.
+
+Lemma hsimpl_demo : forall H1 H2 H3 H4 H5,
+  H1 \* H2 \* H3 \* H4 ==> H4 \* H3 \* H5 \* H2.
+Proof.
+  intros. dup. 
+  (* details *)
+  hsimpl_setup tt.
+  hsimpl_step tt.
+  hsimpl_step tt.
+  hsimpl_step tt.
+  hsimpl_step tt.
+  hsimpl_cleanup tt.
+  skip.
+  (* short *)
+  hsimpl. skip.
+Qed.
+
+Lemma hsimpl_demo_2 : forall l1 l2 S1 S2 H1 H2 H3 H',
+  (forall S1' HG, H1 \* l1 ~> S1' \* H2 \* HG ==> H') ->
+  H1 \* l1 ~> S1 \* l2 ~> S2 \* H3 ==> H'.
+Proof.
+  intros. dup.
+  (* details *)
+  hsimpl_setup tt.
+  hsimpl_step tt.
+  hsimpl_step tt.
+  hsimpl_step tt.
+  hsimpl_step tt.
+  hsimpl_cleanup tt.
+  skip.
+  (* short *)
+   hsimpl. skip.
+Qed.
+
+  
 
 
 
@@ -351,6 +496,9 @@ Proof.
   auto.
 Qed. 
 
+
+(********************************************************************)
+(* ** Extraction tactic for local goals *)
 
 
 

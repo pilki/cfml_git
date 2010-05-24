@@ -1,4 +1,8 @@
 
+Definition heap_is_single (l:loc) A (P:A->Prop) : hprop := 
+  fun h => exists v, h = heap_single l v /\ P v.
+
+
 (********************************************************************)
 (* ** Locality *)
 
