@@ -103,11 +103,6 @@ Definition heap_is_empty_st (H:Prop) : hprop :=
 Definition starpost B (Q:B->hprop) (H:hprop) : B->hprop :=
   fun x => heap_is_star (Q x) H.
 
-(** Label for data structures *)
-
-Definition hdata (S:loc->hprop) (l:loc) : hprop :=
-  S l.
-
 
 (*------------------------------------------------------------------*)
 (* ** Notation for heap predicates *)
@@ -130,13 +125,10 @@ Notation "l '~~>' v" := (heap_is_single l v)
 Notation "'Hexists' x , H" := (heap_is_pack (fun x => H))
   (at level 35, x ident, H at level 200) : heap_scope.
 
+Notation "'Hexists' x : T , H" := (heap_is_pack (fun x:T => H))
+  (at level 35, x ident, H at level 200) : heap_scope.
+
 Notation "Q \*+ H" := (starpost Q H) (at level 40).
-
-Notation "'_~>' S" := (hdata S)
-  (at level 34, no associativity) : heap_scope.
-
-Notation "l '~>' S" := (hdata S l)
-  (at level 33, no associativity) : heap_scope.
 
 Open Scope heap_scope.
 Bind Scope heap_scope with hprop.
@@ -197,6 +189,44 @@ Tactic Notation "rew_heap" "*" "in" "*" :=
   rew_heap in *; auto_star.
 Tactic Notation "rew_heap" "*" "in" hyp(H) :=
   rew_heap in H; auto_star.
+
+
+
+(********************************************************************)
+(* ** Specification predicates for values *)
+
+(** Type of post-conditions on values of type B *)
+
+Notation "'~~' B" := (hprop->(B->hprop)->Prop) 
+  (at level 8, only parsing) : type_scope.
+
+(** Label for data structures *)
+
+Definition hdata (S:loc->hprop) (l:loc) : hprop :=
+  S l.
+
+Notation "'_~>' S" := (hdata S)
+  (at level 34, no associativity) : heap_scope.
+
+Notation "l '~>' S" := (hdata S l)
+  (at level 33, no associativity) : heap_scope.
+
+(** Specification of pure functions: 
+    [pure F P] is equivalent to [F [] \[P]] *)
+
+Definition pure B (R:~~B) := 
+  fun P => R [] \[P].
+
+(** Representation predicate for pure data types *)
+
+Class Rep a A := 
+  { rep : a -> A -> Prop;
+    rep_unique : forall x X Y, rep x X -> rep x Y -> X = Y }.
+
+(** Heap representation for pure data types *)
+
+Definition Pure `{Rep a A} (X:A) (x:a) := 
+  [ rep x X ].
 
 
 (********************************************************************)
@@ -406,11 +436,6 @@ Qed.
 
 (*------------------------------------------------------------------*)
 (* ** Definition of [local] *)
-
-(** Type of post-conditions on values of type B *)
-
-Notation "'~~' B" := (hprop->(B->hprop)->Prop) 
-  (at level 8, only parsing) : type_scope.
 
 (** "Local" = Frame rule + consequence rule + garbage collection *)
 

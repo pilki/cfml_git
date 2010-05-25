@@ -455,27 +455,27 @@ Admitted.
 
 Lemma spec_elim_1_1 : forall A1 B (K: A1 -> ~~B -> Prop) f,
   spec_1 K f -> forall x1 (H : hprop) (Q : B->hprop),
-  (forall R, K x1 R -> R H Q) ->
+  (forall R, is_local R -> K x1 R -> R H Q) ->
   app_1 f x1 H Q.
-Proof. introv S W. apply (W _). apply S. Qed.
+Proof. introv S W. apply (W _). auto. apply S. Qed.
 
 Lemma spec_elim_1_2 : forall A1 A2 (K: A1 -> ~~val -> Prop) f,
   spec_1 K f -> forall x1 (x2:A2) (H : hprop) (Q Q' : val->hprop),
-  (forall R, K x1 R -> R H Q') -> 
+  (forall R, is_local R -> K x1 R -> R H Q') -> 
   (forall g, app_1 g x2 (Q' g) Q) ->
   app_2 f x1 x2 H Q.
 Proof. intros. apply* app_intro_1_2. apply* spec_elim_1_1. Qed.
 
 Lemma spec_elim_1_3 : forall A1 A2 A3 (K: A1 -> ~~val -> Prop) f,
   spec_1 K f -> forall x1 (x2:A2) (x3:A3) (H : hprop) (Q Q' : val->hprop),
-  (forall R, K x1 R -> R H Q') -> 
+  (forall R, is_local R -> K x1 R -> R H Q') -> 
   (forall g, app_2 g x2 x3 (Q' g) Q) ->
   app_3 f x1 x2 x3 H Q.
 Proof. intros. apply* app_intro_1_3. apply* spec_elim_1_1. Qed.
 
 Lemma spec_elim_1_4 : forall A1 A2 A3 A4 (K: A1 -> ~~val -> Prop) f,
   spec_1 K f -> forall x1 (x2:A2) (x3:A3) (x4:A4) (H : hprop) (Q Q' : val->hprop),
-  (forall R, K x1 R -> R H Q') -> 
+  (forall R, is_local R -> K x1 R -> R H Q') -> 
   (forall g, app_3 g x2 x3 x4 (Q' g) Q) ->
   app_4 f x1 x2 x3 x4 H Q.
 Proof. intros. apply* app_intro_1_4. apply* spec_elim_1_1. Qed.
@@ -489,20 +489,20 @@ Proof. intros. destruct H as [I Ap1]. apply~ pureapp_to_app. Qed.
 
 Lemma spec_elim_2_2 : forall A1 A2 B (K: A1 -> A2 -> ~~B -> Prop) f,
   spec_2 K f -> forall x1 x2 (H : hprop) (Q : B->hprop),
-  (forall R, K x1 x2 R -> R H Q) ->
+  (forall R, is_local R -> K x1 x2 R -> R H Q) ->
   app_2 f x1 x2 H Q.
-Proof. introv S W. apply (W _). apply* spec_elim_2. Qed.
+Proof. introv S W. apply (W _). auto. apply* spec_elim_2. Qed.
 
 Lemma spec_elim_2_3 : forall A1 A2 A3 (K: A1 -> A2 -> ~~val -> Prop) f,
   spec_2 K f -> forall x1 x2 (x3:A3) (H : hprop) (Q Q' : val->hprop),
-  (forall R, K x1 x2 R -> R H Q') ->
+  (forall R, is_local R -> K x1 x2 R -> R H Q') ->
   (forall g, app_1 g x3 (Q' g) Q) ->
   app_3 f x1 x2 x3 H Q.
 Proof. intros. apply* app_intro_2_3. apply* spec_elim_2_2. Qed.
 
 Lemma spec_elim_2_4 : forall A1 A2 A3 A4 (K: A1 -> A2 -> ~~val -> Prop) f,
   spec_2 K f -> forall x1 x2 (x3:A3) (x4:A4) (H : hprop) (Q Q' : val->hprop),
-  (forall R, K x1 x2 R -> R H Q') ->
+  (forall R, is_local R -> K x1 x2 R -> R H Q') ->
   (forall g, app_2 g x3 x4 (Q' g) Q) ->
   app_4 f x1 x2 x3 x4 H Q.
 Proof. intros. apply* app_intro_2_4. apply* spec_elim_2_2. Qed.
@@ -552,13 +552,13 @@ auto.
 
 Lemma spec_elim_3_3 : forall A1 A2 A3 B (K: A1 -> A2 -> A3 -> ~~B -> Prop) f,
   spec_3 K f -> forall x1 x2 x3 (H : hprop) (Q : B->hprop),
-  (forall R, K x1 x2 x3 R -> R H Q) ->
+  (forall R, is_local R -> K x1 x2 x3 R -> R H Q) ->
   app_3 f x1 x2 x3 H Q.
-Proof. introv S W. apply (W _). apply* spec_elim_3. Qed.
+Proof. introv S W. apply (W _). auto. apply* spec_elim_3. Qed.
 
 Lemma spec_elim_3_4 : forall A1 A2 A3 A4 (K: A1 -> A2 -> A3 -> ~~val -> Prop) f,
   spec_3 K f -> forall x1 x2 x3 (x4:A4) (H : hprop) (Q Q' : val->hprop),
-  (forall R, K x1 x2 x3 R -> R H Q') ->
+  (forall R, is_local R -> K x1 x2 x3 R -> R H Q') ->
   (forall g, app_1 g x4 (Q' g) Q) ->
   app_4 f x1 x2 x3 x4 H Q.
 Proof. intros. apply* app_intro_3_4. apply* spec_elim_3_3. Qed.
@@ -582,9 +582,9 @@ Proof. skip. Qed. (*todo: cf spec_elim_3_2 *)
 
 Lemma spec_elim_4_4 : forall A1 A2 A3 A4 B (K: A1 -> A2 -> A3 -> A4 -> ~~B -> Prop) f,
   spec_4 K f -> forall x1 x2 x3 x4 (H : hprop) (Q : B->hprop),
-  (forall R, K x1 x2 x3 x4 R -> R H Q) ->
+  (forall R, is_local R -> K x1 x2 x3 x4 R -> R H Q) ->
   app_4 f x1 x2 x3 x4 H Q.
-Proof. introv S W. apply (W _). apply* spec_elim_4. Qed.
+Proof. introv S W. apply (W _). auto. apply* spec_elim_4. Qed.
 
 
 
@@ -780,19 +780,5 @@ Qed.
 *)
 
 
-(********************************************************************)
-(* ** Specification of pure functions *)
 
-(** [pure F P] is equivalent to [F [] \[P]] *)
-
-Definition pure B (R:~~B) := 
-  fun P => R [] \[P].
-
-
-(********************************************************************)
-(* ** Representation predicate *)
-
-Class Rep a A := 
-  { rep : a -> A -> Prop;
-    rep_unique : forall x X Y, rep x X -> rep x Y -> X = Y }.
 

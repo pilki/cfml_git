@@ -111,11 +111,122 @@ Parameter ml_or : val.
 Parameter ml_or_spec : Pure ml_or x y >> = (x || y).
 Hint Extern 1 (RegisterSpec ml_and) => Provide ml_or_spec.
 
+
+Record ref A := { content : A }.
+
+Definition RefOn A (v:A) (l:loc) :=
+  l ~~> v.
+
+(*todo:move*)
+Definition htype A a := A -> a -> hprop.
+
+Definition Ref a A (T:htype A a) (V:A) (l:loc) := 
+  Hexists v, (l ~> RefOn v) \* (T V v).
+  
 Parameter ml_ref : val.
 
 Parameter ml_get : val.
 
 Parameter ml_set : val.
+
+Notation "'~>' S" := (hdata S)
+  (at level 32, no associativity) : heap_scope.
+
+Parameter ml_ref_spec : forall a,
+  Specs ml_ref (v:a) >> [] (~> RefOn v).
+
+
+
+(** todo:move
+    Specification of pure functions: 
+    [pure F P] is equivalent to [F [] \[P]] *)
+
+Definition read B (R:~~B) := 
+  fun H Q => R H (Q \*+ H).
+
+Notation "\= V" := (\[ = V])
+  (at level 0, V at level 99) : heap_scope.
+
+Parameter ml_get_spec : forall a,
+  Spec ml_get (l:loc) |R>> 
+    forall v:a, read R (l ~> RefOn v) (\=v).
+
+Notation "# H" := (fun _:unit => H)
+  (at level 0, H at level 99) : heap_scope.
+
+
+Parameter ml_set_spec : forall a,
+  Spec ml_set (l:loc) (v:a) |R>> 
+    forall v':a, R (l ~> RefOn v') (# l ~> RefOn v').
+ 
+
+(** Derived specifications for references *)
+
+ Opaque heap_union heap_single heap_is_star heap_is_pack. (*todo:move *)
+
+Lemma hdata_unfold : forall (l l' : loc) (P:loc->hprop),
+  hdata (fun l' => P l') l = hdata P l.
+Proof. auto. Qed.
+
+Axiom heap_union_neutral_l : 
+  neutral_l heap_union heap_empty.
+Axiom heap_union_neutral_r : 
+  neutral_r heap_union heap_empty.
+
+
+Lemma heap_star_prop_elim : forall (P:Prop) H h,
+  ([P] \* H) h -> P /\ H h.
+Proof.
+  introv (?&?&?&?&N&?). destruct N. subst. rewrite~ heap_union_neutral_l.
+Qed.
+
+
+Lemma heap_extract_prop : forall (P:Prop) H H',
+  (P -> H ==> H') -> ([P] \* H) ==> H'.
+Proof. introv W Hh. applys_to Hh heap_star_prop_elim. auto*. Qed.
+
+Lemma heap_weaken_pack : forall A (x:A) H J,
+  H ==> J x -> H ==> (heap_is_pack J).
+Proof. introv W h. exists x. apply~ W. Qed.
+
+  
+Lemma ml_ref_spec_linear : forall A a,
+  Spec ml_ref (v:a) |R>> forall (V:A) (T:htype A a),
+    R (T V v) (~> Ref T V).
+Proof.
+  intros. applys spec_weaken_1 ml_ref_spec.
+  intros_all. unfolds rel_le, pred_le. auto*. (* xisspec *)
+  introv L M. intros.
+  applys local_wframe. auto. eauto.
+  hsimpl. unfold Ref. intros l.
+  unfold starpost. (*todo: as notation *) 
+  simpl. unfold hdata.
+  apply~ (heap_weaken_pack x1).
+Qed.
+
+Lemma ml_get_spec_linear : forall A a,
+  Spec ml_get (l:loc) |R>> 
+    forall (V:A) (T:htype A a), 
+    R (l ~> Ref T V) (fun v => l ~> RefOn v \* T V v).
+Proof.
+  intros. applys spec_weaken_1 ml_get_spec.
+  intros_all. unfolds rel_le, pred_le. auto*. (* xisspec *)
+  introv L M. intros. unfold hdata.
+  unfold Ref. hclean. intros v.
+  specializes M v.
+  applys local_wframe. auto. eauto. hsimpl.
+  intros l. unfold starpost. (*todo: as notation *) 
+  simpl. unfold hdata.
+  (* todo: tactic hsimpl_left should do it *)
+  hsimpl. apply heap_extract_prop. intro_subst. auto.
+Qed.
+
+
+
+
+
+
+
 
 
 

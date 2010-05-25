@@ -95,7 +95,8 @@ IMP=\
 	CFHeaps.v \
 	CFSpec.v \
 	CFPrint.v \
-	CFPrim.v 
+	CFPrim.v \
+	CFTactics.v 
 
 
 # 	
@@ -172,6 +173,9 @@ edith:
 	coqide -I lib $(OKAH) &
 edits:
 	coqide -I lib $(OKAS) &
+editi:
+	coqide -I lib $(IMP) &
+
 
 stats:
 	@php -f stats.php $(OKAQ) $(OKAH) $(OKAO) > stats.txt
