@@ -804,13 +804,33 @@ Lemma xframe_lemma : forall B H1 H2 Q1 (F:~~B) H Q,
   F H Q.
 Proof. intros. apply* local_wframe. Qed.
 
+
+(*move*)
+
+Lemma hchange_lemma : forall H1 H1' H H' H2,
+  (H1 ==> H1') -> (H ==> H1 \* H2) -> (H1' \* H2 ==> H') -> (H ==> H').
+Proof.
+  intros. applys* (@pred_le_trans heap) (H1 \* H2). 
+  applys* (@pred_le_trans heap) (H1' \* H2). hsimpl~. 
+Qed.
+
+Ltac hchange_core H :=
+  first [ apply (@hchange_lemma H)
+        | applys hchange_lemma H ]; 
+  hsimpl.
+
+Tactic Notation "hchange" constr(H) :=
+  hchange_core H.
+Tactic Notation "hchange" "~" constr(H) :=
+  hchange_core H; auto_tilde.
+Tactic Notation "hchange" "*" constr(H) :=
+  hchange_core H; auto_star.
+
 Lemma xch_lemma : forall H1 H1' H2 B H Q (F:~~B),
   (H1 ==> H1') -> is_local F -> (H ==> H1 \* H2) -> F (H1' \* H2) Q -> F H Q.
 Proof.
-  intros. applys local_wframe __ []; eauto.
-  hsimpl.
-  applys pred_le_trans. eauto. hsimpl~.
-  rew_heap~. 
+  introv W1 L W2 M. applys local_wframe __ []; eauto.
+  hsimpl. hchange~ W2. rew_heap~. 
 Qed.
 
 

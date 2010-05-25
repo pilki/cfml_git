@@ -151,6 +151,8 @@ Ltac get_spec_weaken_x x :=
 Lemma id_proof : forall (P:Prop), P -> P.
 Proof. auto. Qed.
 
+(*TODO
+
 Ltac get_app_intro_x_y x y :=
   match constr:(x,y) with
   | (1%nat,1%nat) => constr:(id_proof)
@@ -170,16 +172,7 @@ Ltac get_app_intro_x_y x y :=
   | (4%nat,3%nat) => constr:(app_intro_4_3)
   | (4%nat,4%nat) => constr:(id_proof)
   end.
-
-(** Returns the lemma [app_weaken_n] *)
-
-Ltac get_app_weaken_x x :=
-  match x with
-     | 1%nat => constr:(app_weaken_1)
-     | 2%nat => constr:(app_weaken_2)
-     | 3%nat => constr:(app_weaken_3)
-     | 4%nat => constr:(app_weaken_4)
-  end.
+*)
 
 
 (*--------------------------------------------------------*)
@@ -260,7 +253,7 @@ Ltac xcf_for_core f :=
   ltac_database_get database_cf f;
   let H := fresh "TEMP" in intros H; 
   match type of H with
-  | tag tag_topfun _ _ => sapply H; instantiate; try solve_type; [ try xisspec | ]
+  | tag tag_top_fun _ _ => sapply H; instantiate; try solve_type; [ try xisspec | ]
   | _ => sapply H; try solve_type
   end; clear H; xcf_post tt.
 
@@ -327,76 +320,38 @@ Ltac xcurried_core :=
 
 Tactic Notation "xcurried" := xcurried_core.
 
+(*--------------------------------------------------------*)
+(* ** [xpre] *)
+
+Tactic Notation "xextract" := 
+  hclean.
+
 
 (*--------------------------------------------------------*)
 (* ** [xlet] *)
 
 (** [xlet] is used to reason on a let-node, i.e. on a goal
     of the form [(Let x := Q1 in Q2) P]. The general form
-    is [xlet Q as y H], where [y] is the name to be used
-    in place of [x], where [H] is the name given to the
-    hypothesis generated for [x] when reasoning on the
-    continuation, and where [Q] is the post-condition for [x].
+    is [xlet Q as y], where [y] is the name to be used
+    in place of [x].
     The arguments are optional, so the following forms are
-    allowed: [xlet], [xlet as x], [xlet as x H], and
-    [xlet Q], [xlet Q as x], [xlet Q as x H]. *)
+    allowed: [xlet], [xlet as x], [xlet Q], [xlet Q as x]. *)
 
 Ltac xlet_core cont0 cont1 cont2 :=
-  cont0 tt; instantiate; split; [ cont1 tt | instantiate; cont2 tt ].
+  cont0 tt; split; [ | cont1 tt; cont2 tt ].
 
-Ltac xlet_intro2_simpl tt := 
-  intro; 
-  let x := get_last_hyp tt in 
-  let Hx := fresh "P" x in
-  intro Hx; instantiate; cbv beta in Hx.
+Tactic Notation "xlet_def" tactic(c0) tactic(c1) tactic(c2) :=
+  xlet_core ltac:(c0) ltac:(c1) ltac:(c2).
 
-Ltac xlet_intro2_subst tt := 
-  let x := fresh "TEMP" in let H := fresh "TEMP" in
-  intros x H; instantiate; cbv beta in H; substs x.
-
-Ltac xlet_esplit_equality tt :=
-  hnf; match goal with |- @ex (?T->Prop) _ =>
-    let V := fresh in evar(V:T);
-    let H := fresh "TEMP" in
-    exists (= V); subst V
-  end.
-
-Tactic Notation "xlet" "as" :=
-  xlet_core
-    ltac:(fun _ => esplit)
-    ltac:(fun _ => idtac)
-    ltac:(fun _ => idtac).
-Tactic Notation "xlet" constr(Q) "as" ident(x) simple_intropattern(H) := 
-  xlet_core
-    ltac:(fun _ => exists Q)
-    ltac:(fun _ => idtac)
-    ltac:(fun _ => intros x H; instantiate; try cbv beta in H).
-Tactic Notation "xlet" constr(Q) "as" ident(x) := 
-  let Hx := fresh "P" x in xlet Q as x Hx.
+Tactic Notation "xlet" constr(Q) "as" ident(x) :=
+  xlet_def (fun _ => exists Q) (fun _ => intros x) (fun _ => xextract).
 Tactic Notation "xlet" constr(Q) :=
-  xlet_core
-    ltac:(fun _ => exists Q)
-    ltac:(fun _ => idtac)
-    ltac:(xlet_intro2_simpl).
-
-Tactic Notation "xlet" "as" ident(x) simple_intropattern(H) :=
-  xlet_core
-    ltac:(fun _ => esplit)
-    ltac:(fun _ => idtac)
-    ltac:(fun _ => intros x H; instantiate; try cbv beta in H).
-Tactic Notation "xlet" "as" ident(x) := 
-  let Hx := fresh "P" x in xlet as x Hx.
+  xlet_def (fun _ => exists Q) (fun _ => intro) (fun _ => xextract).
+Tactic Notation "xlet" "as" ident(x) :=
+  xlet_def (fun _ => esplit) (fun _ => intros x) (fun _ => xextract).
 Tactic Notation "xlet" :=
-  xlet_core
-    ltac:(fun _ => esplit)
-    ltac:(fun _ => idtac)
-    ltac:(xlet_intro2_simpl).
+  xlet_def (fun _ => esplit) (fun _ => intro) (fun _ => xextract).
 
-Ltac xlet_with cont1 cont2 :=
-  xlet_core
-    ltac:(fun _ => esplit)
-    ltac:(fun _ => cont1 tt)
-    ltac:(fun _ => instantiate; xlet_intro2_simpl tt; cont2 tt).
 
 Tactic Notation "xlet" "~" := xlet; auto~. (*todo: xauto ! *)
 Tactic Notation "xlet" "~" "as" ident(x) := xlet as x; auto~.
@@ -407,75 +362,59 @@ Tactic Notation "xlet" "*" "as" ident(x) := xlet as x; auto*.
 Tactic Notation "xlet" "*" constr(Q) := xlet Q; auto*.
 Tactic Notation "xlet" "*" constr(Q) "as" ident(x) := xlet Q as x; auto*.
 
-(** [xlets] is a specialization of [xlet] for the cases where
-    the specification of [x] is of the form [= V], meaning
-    that [x] is fully-specified through its exact value.
-    [xlets v] is indeed equivalent to [xlet (= v)], with the
-    extra feature that [v] is substituted for [x] in the
-    continuation. As for [xlet], many forms are supported. *)
-    
-Tactic Notation "xlets" constr(V) "as" ident(x) simple_intropattern(H) := 
-  xlet_core  
-    ltac:(fun _ => exists (= V))
-    ltac:(fun _ => idtac)
-    ltac:(fun _ => intros x H; instantiate; try cbv beta in H; subst x).
-Tactic Notation "xlets" constr(V) "as" ident(x) := 
-  let Hx := fresh "P" x in xlets V as x Hx.
-Tactic Notation "xlets" constr(V) :=
-  xlet_core
-    ltac:(fun _ => exists (= V))
-    ltac:(fun _ => idtac)
-    ltac:(xlet_intro2_subst).
-Tactic Notation "xlets" :=
-  xlet_core
-    ltac:(xlet_esplit_equality)
-    ltac:(fun _ => idtac)
-    ltac:(xlet_intro2_subst).
-
-Tactic Notation "xlets" "~" := xlets; auto~.
-Tactic Notation "xlets" "~" constr(V) := xlets V; auto~.
-Tactic Notation "xlets" "*" := xlets; auto*.
-Tactic Notation "xlets" "*" constr(V) := xlets V; auto*.
-
-(** [xleteq] is the same as [xlets] except that it does not
-    perform the substitution. *)
-(* TODO: is really needed? rename to [xlets_nosubst] ? *)
-
-Tactic Notation "xleteq" constr(V) "as" ident(x) simple_intropattern(H) := 
-  xlet_core
-    ltac:(fun _ => exists (= V))
-    ltac:(fun _ => idtac)
-    ltac:(fun _ => intros x H; instantiate; try cbv beta in H).
-Tactic Notation "xleteq" constr(V) "as" ident(x) := 
-  let Hx := fresh "P" x in xlets V as x Hx.
-Tactic Notation "xleteq" constr(V) :=
-  xlet_core
-    ltac:(fun _ => exists (= V))
-    ltac:(fun _ => idtac)
-    ltac:(xlet_intro2_simpl).
-Tactic Notation "xleteq" :=
-  xlet_core
-    ltac:(xlet_esplit_equality)
-    ltac:(fun _ => idtac)
-    ltac:(xlet_intro2_simpl).
 
 
 (*--------------------------------------------------------*)
-(* ** [xret], [xfail], [xdone] *)
+(* ** [xval] *)
+
+(** [xval] is used to reason on a let-node binding a value. *)
+
+Tactic Notation "xval" "as" ident(x) ident(Hx) :=
+  intros x Hx.
+
+Tactic Notation "xval" "as" ident(x) :=
+  let Hx := fresh "P" x in xval as x Hx.
+
+Tactic Notation "xval" :=
+  intro; let x := get_last_hyp tt in revert x; xval as x.
+
+(** [xvals] substitutes the bound value right away. *)
+
+Tactic Notation "xvals" :=
+  intro; intro_subst.
+
+(** [xval_st P] is used to assign an abstract specification to the value *)
+
+Tactic Notation "xval_st" constr(P) "as" ident(x) ident(Hx) :=
+  intros x; asserts Hx: (P x); [ intro_subst | intros _ ].
+
+Tactic Notation "xval_st" constr(P) "as" ident(x) :=
+  let Hx := fresh "P" x in xval_st P as x Hx.
+
+Tactic Notation "xval_st" constr(P) :=
+  intro; let x := get_last_hyp tt in revert x; xval_st P as x.
+
+
+(*--------------------------------------------------------*)
+(* ** [xret] *)
 
 (** [xret] simplifies a proof obligation of the form 
     [Ret v P], which is in fact equivalent to [P v]. 
     [xret_noclean] can be used to skip beautification phase. *)
 
 Ltac xret_core :=
-  xuntag tag_ret.
-     (* (!R: fun H Q => H empty /\ Q v empty *)
+  xuntag tag_ret;  (* not really necessary *)
+  apply xret_lemma.
 
+Ltac xret_pre cont := cont tt.
+
+(* deprecated
 Ltac xret_pre cont := 
   match ltac_get_tag tt with
   | tag_ret => cont tt
-  | tag_let => xlet; [ cont tt | instantiate ]
+  | tag_let_pure => xlet; [ cont tt | instantiate ]
   end.  
+*)
 
 Tactic Notation "xret_noclean" := 
   xret_pre ltac:(fun _ => xret_core).
@@ -486,6 +425,9 @@ Tactic Notation "xret" "~" :=
 Tactic Notation "xret" "*" :=  
   xret; xauto*.
 
+
+(*--------------------------------------------------------*)
+(* ** [xfail], [xdone] *)
 
 (** [xfail] simplifies a proof obligation of the form [Fail],
     which is in fact equivalent to [False].
@@ -505,6 +447,7 @@ Tactic Notation "xfail" "*" :=
 
 Tactic Notation "xdone" :=
   xuntag tag_done; split.
+
 
 (*--------------------------------------------------------*)
 (* ** [ximpl] *)
