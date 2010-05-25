@@ -515,9 +515,9 @@ Lemma local_weaken' : forall B (F:~~B),
 Proof. intros_all. apply* local_weaken. Qed.
     (* todo: use only one lemma *)
 
-(** Garbage collection from [local] *)
+(** Garbage collection on post-condition from [local] *)
 
-Lemma local_gc : forall B H' Q' (F:~~B) H Q,
+Lemma local_gc_post : forall B H' Q' (F:~~B) H Q,
   is_local F -> 
   F H Q' ->
   Q' ===> Q \*+ H' ->
@@ -525,6 +525,21 @@ Lemma local_gc : forall B H' Q' (F:~~B) H Q,
 Proof.
   introv L M W. rewrite L. introv Ph.
   exists H [] Q' H'. splits; rew_heap~.
+Qed.
+
+(** Garbage collection on precondition from [local] *)
+
+Lemma local_gc_pre : forall B HG H' (F:~~B) H Q,
+  is_local F -> 
+  H ==> HG \* H' ->
+  F H' Q ->
+  F H Q.
+Proof.
+  introv L M W. rewrite L. introv Ph.
+  exists H' HG Q HG. splits.
+  rewrite star_comm. apply~ M.
+  auto.
+  auto.
 Qed.
 
 (** Extraction of premisses from [local] *)
