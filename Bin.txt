@@ -1,4 +1,7 @@
 
+Lemma hdata_unfold : forall (l l' : loc) (P:loc->hprop),
+  hdata (fun l' => P l') l = hdata P l.
+Proof. auto. Qed.
 
 
 

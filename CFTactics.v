@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-Require Export CFPrim.
+Require Export LibInt CFSpec CFPrint.
 
 
 (********************************************************************)

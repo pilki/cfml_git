@@ -95,8 +95,8 @@ IMP=\
 	CFHeaps.v \
 	CFSpec.v \
 	CFPrint.v \
-	CFPrim.v \
-	CFTactics.v 
+	CFTactics.v \
+	CFPrim.v 
 
 
 # 	

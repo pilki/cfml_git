@@ -62,6 +62,14 @@ Definition heap_union (h1 h2 : heap) : heap :=
   | _,_ => None
   end.
 
+(*------------------------------------------------------------------*)
+(* ** Properties of operations on heaps *)
+
+Axiom heap_union_neutral_l : 
+  neutral_l heap_union heap_empty.
+Axiom heap_union_neutral_r : 
+  neutral_r heap_union heap_empty.
+
 
 (********************************************************************)
 (* ** Predicate on Heaps *)
@@ -104,17 +112,26 @@ Definition starpost B (Q:B->hprop) (H:hprop) : B->hprop :=
   fun x => heap_is_star (Q x) H.
 
 
+Opaque heap_union heap_single heap_is_star heap_is_pack.
+
 (*------------------------------------------------------------------*)
 (* ** Notation for heap predicates *)
 
 Notation "[]" := (heap_is_empty) 
   (at level 0) : heap_scope.
 
+Open Scope heap_scope.
+Bind Scope heap_scope with hprop.
+Delimit Scope heap_scope with h.
+
 Notation "[ L ]" := (heap_is_empty_st L) 
   (at level 0, L at level 99) : heap_scope.
 
 Notation "\[ P ]" := (fun v => heap_is_empty_st (P v)) 
   (at level 0, P at level 99) : heap_scope.
+
+Notation "\= V" := (\[ = V])
+  (at level 40) : heap_scope.
 
 Notation "H1 '\*' H2" := (heap_is_star H1 H2)
   (at level 41, right associativity) : heap_scope.
@@ -128,11 +145,11 @@ Notation "'Hexists' x , H" := (heap_is_pack (fun x => H))
 Notation "'Hexists' x : T , H" := (heap_is_pack (fun x:T => H))
   (at level 35, x ident, H at level 200) : heap_scope.
 
-Notation "Q \*+ H" := (starpost Q H) (at level 40).
+Notation "Q \*+ H" := (starpost Q H) 
+  (at level 40) : heap_scope.
 
-Open Scope heap_scope.
-Bind Scope heap_scope with hprop.
-Delimit Scope heap_scope with h.
+Notation "# H" := (fun _:unit => H)
+  (at level 0, H at level 99) : heap_scope.
 
 
 (*------------------------------------------------------------------*)
@@ -160,6 +177,20 @@ Proof. extens. intros. unfold starpost. rewrite~ star_neutral_r. Qed.
 Lemma star_cancel : forall H1 H2 H2',
   H2 ==> H2' -> H1 \* H2 ==> H1 \* H2'.
 Proof. introv W (h1&h2&?). exists* h1 h2. Qed.
+
+Lemma heap_star_prop_elim : forall (P:Prop) H h,
+  ([P] \* H) h -> P /\ H h.
+Proof.
+  introv (?&?&?&?&N&?). destruct N. subst. rewrite~ heap_union_neutral_l.
+Qed.
+
+Lemma heap_extract_prop : forall (P:Prop) H H',
+  (P -> H ==> H') -> ([P] \* H) ==> H'.
+Proof. introv W Hh. applys_to Hh heap_star_prop_elim. auto*. Qed.
+
+Lemma heap_weaken_pack : forall A (x:A) H J,
+  H ==> J x -> H ==> (heap_is_pack J).
+Proof. introv W h. exists x. apply~ W. Qed.
 
 
 (*------------------------------------------------------------------*)
@@ -205,8 +236,8 @@ Notation "'~~' B" := (hprop->(B->hprop)->Prop)
 Definition hdata (S:loc->hprop) (l:loc) : hprop :=
   S l.
 
-Notation "'_~>' S" := (hdata S)
-  (at level 34, no associativity) : heap_scope.
+Notation "'~>' S" := (hdata S)
+  (at level 32, no associativity) : heap_scope.
 
 Notation "l '~>' S" := (hdata S l)
   (at level 33, no associativity) : heap_scope.
@@ -227,6 +258,12 @@ Class Rep a A :=
 
 Definition Pure `{Rep a A} (X:A) (x:a) := 
   [ rep x X ].
+
+(** Specification of pure functions: 
+    [pure F P] is equivalent to [F [] \[P]] *)
+
+Definition read B (R:~~B) := 
+  fun H Q => R H (Q \*+ H).
 
 
 (********************************************************************)
@@ -542,7 +579,7 @@ Proof. intros_all. apply* local_weaken. Qed.
 
 (** Garbage collection on post-condition from [local] *)
 
-Lemma local_gc_post : forall B H' Q' (F:~~B) H Q,
+Lemma local_gc_post : forall H' B Q' (F:~~B) H Q,
   is_local F -> 
   F H Q' ->
   Q' ===> Q \*+ H' ->
@@ -554,7 +591,7 @@ Qed.
 
 (** Garbage collection on precondition from [local] *)
 
-Lemma local_gc_pre : forall B HG H' (F:~~B) H Q,
+Lemma local_gc_pre : forall HG H' B (F:~~B) H Q,
   is_local F -> 
   H ==> HG \* H' ->
   F H' Q ->
