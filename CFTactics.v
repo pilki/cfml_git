@@ -240,7 +240,8 @@ Tactic Notation "xisspec" :=
 (* ** [xlocal] *)
 
 Ltac xlocal_core :=
-  first [ apply local_is_local 
+  first [ assumption
+ 	| apply local_is_local 
         | apply app_local_1
    (* not needed
         | apply app_local_2
@@ -372,16 +373,23 @@ Tactic Notation "xlet" "as" ident(x) :=
   xlet_def (fun _ => esplit) (fun _ => intros x) (fun _ => idtac).
 Tactic Notation "xlet" :=
   xlet_def (fun _ => esplit) (fun _ => intro) (fun _ => idtac).
+Tactic Notation "xseq" constr(Q) :=
+  xlet_def (fun _ => exists Q) (fun _ => idtac) (fun _ => try xextract).
+Tactic Notation "xseq" :=
+  xlet_def (fun _ => esplit) (fun _ => idtac) (fun _ => idtac).
 
 Tactic Notation "xlet" "~" := xlet; auto~. (*todo: xauto ! *)
 Tactic Notation "xlet" "~" "as" ident(x) := xlet as x; auto~.
+Tactic Notation "xseq" "~" := xseq; auto~. (*todo: xauto ! *)
 Tactic Notation "xlet" "~" constr(Q) := xlet Q; auto~.
 Tactic Notation "xlet" "~" constr(Q) "as" ident(x) := xlet Q as x; auto~.
+Tactic Notation "xseq" "~" constr(Q) := xseq Q; auto~.
 Tactic Notation "xlet" "*" := xlet; auto*.
 Tactic Notation "xlet" "*" "as" ident(x) := xlet as x; auto*.
+Tactic Notation "xseq" "*" := xseq; auto*. (*todo: xauto ! *)
 Tactic Notation "xlet" "*" constr(Q) := xlet Q; auto*.
 Tactic Notation "xlet" "*" constr(Q) "as" ident(x) := xlet Q as x; auto*.
-
+Tactic Notation "xseq" "*" constr(Q) := xseq Q; auto*.
 
 
 (*--------------------------------------------------------*)
@@ -473,13 +481,13 @@ Tactic Notation "xret" "*" :=
 
 Ltac xgc_remove_core H :=
   eapply local_gc_pre with (HG := H);
-    [ try apply local_is_local (* todo: xlocal *)
+    [ try xlocal
     | hsimpl
     | ].
 
 Ltac xgc_keep_core H :=
   eapply local_gc_pre with (H' := H);
-    [ try apply local_is_local (* todo: xlocal *)
+    [ try xlocal
     | hsimpl
     | ].
 
@@ -495,14 +503,14 @@ Tactic Notation "xgc" "-" constr(H) :=
 
 Ltac xframe_remove_core H :=
   eapply xframe_lemma with (H2 := H);
-    [ try apply local_is_local (* todo: xlocal *)
+    [ try xlocal
     | hsimpl
     | 
     | ].
 
 Ltac xframe_keep_core H :=
   eapply xframe_lemma with (H1 := H);
-    [ try apply local_is_local (* todo: xlocal *)
+    [ try xlocal
     | hsimpl
     | 
     | ].
@@ -618,7 +626,7 @@ Ltac xapp_spec_core H cont :=
    match constr:(arity_goal, arity_hyp) with (?n,?n) => idtac | _ => fail 1 end;
    let lemma := get_spec_elim_x_y arity_hyp arity_goal in
    eapply local_wframe; 
-     [ try apply local_is_local 
+     [ xlocal
      | eapply lemma; [ apply H | cont tt ] 
      | hsimpl 
      | xok ].
@@ -642,7 +650,7 @@ Ltac xapp_then spec cont :=
   xapp_pre ltac:(fun _ => xapp_core spec cont).
 
 Ltac xapp_with spec args solver :=
-  xapp_then ltac:(fun _ => xapp_inst args solver).
+  xapp_then spec ltac:(fun _ => xapp_inst args solver).
 
 Tactic Notation "xapp" := 
   xapp_with ___ (>>>) ltac:(fun _ => idtac).
@@ -697,7 +705,7 @@ Tactic Notation "xapp_spec" "*" constr(H) constr(E) :=
 
 Ltac xapp_manual_intros tt :=
   let R := fresh "R" in let LR := fresh "L" R in 
-  let KR := fresh "K" R in intros R LR KR.
+  let KR := fresh "K" R in intros R LR KR; cbv in KR.
 
 Tactic Notation "xapp_manual" := 
   xapp_then ___ ltac:(xapp_manual_intros).

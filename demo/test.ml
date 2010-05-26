@@ -8,7 +8,13 @@ let imp1 () =
    let z = !x in
    y + z
 
-let imp2 x y =
+let imp2 () =
+  let x = ref 3 in
+  let y = ref (!x+1) in
+  x := !y+1;
+  !x
+
+let imp3 x y =
    let g n =
       x := n + !y;
       y := n + !x;

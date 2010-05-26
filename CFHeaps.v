@@ -106,10 +106,11 @@ Definition heap_is_pack A (Hof : A -> hprop) : hprop :=
 Definition heap_is_empty_st (H:Prop) : hprop :=
   fun h => h = heap_empty /\ H.
 
-(** Star with post-conditions (predicates of type [B->hprop]) *)
+(** Star with post-conditions (predicates of type [B->hprop]) 
 
 Definition starpost B (Q:B->hprop) (H:hprop) : B->hprop :=
   fun x => heap_is_star (Q x) H.
+*)
 
 
 Opaque heap_union heap_single heap_is_star heap_is_pack.
@@ -145,7 +146,9 @@ Notation "'Hexists' x , H" := (heap_is_pack (fun x => H))
 Notation "'Hexists' x : T , H" := (heap_is_pack (fun x:T => H))
   (at level 35, x ident, H at level 200) : heap_scope.
 
-Notation "Q \*+ H" := (starpost Q H) 
+Notation "Q \*+ H" :=
+  (fun x => heap_is_star (Q x) H)
+  (* (starpost Q H)  *)
   (at level 40) : heap_scope.
 
 Notation "# H" := (fun _:unit => H)
@@ -172,7 +175,7 @@ Proof. skip. Qed.
 
 Lemma starpost_neutral : forall B (Q:B->hprop),
   Q \*+ [] = Q.
-Proof. extens. intros. unfold starpost. rewrite~ star_neutral_r. Qed.
+Proof. extens. intros. (* unfold starpost. *) rewrite~ star_neutral_r. Qed.
 
 Lemma star_cancel : forall H1 H2 H2',
   H2 ==> H2' -> H1 \* H2 ==> H1 \* H2'.
@@ -521,7 +524,7 @@ Proof.
    rewrite star_assoc.
    exists~ h1 h2.
    auto.
-   intros x. specializes Qle x. specializes Qle' x. unfolds starpost.
+   intros x. specializes Qle x. specializes Qle' x. (* unfolds starpost.*)
     rewrite star_assoc. applys heap_weaken_star Qle'.
     rewrite (star_assoc (Q x)). 
     skip_cuts (Q1 x \* H2 ==> Q x \* H'). auto.
@@ -678,6 +681,8 @@ Ltac hclean_onH cont :=
   | |- _ _ ?H ?Q => cont H
   | |- _ _ _ ?H ?Q => cont H
   | |- _ _ _ _ ?H ?Q => cont H
+  | |- _ _ _ _ _ ?H ?Q => cont H
+  | |- _ _ _ _ _ _ ?H ?Q => cont H
   end.
 
 Ltac hclean_onQ cont :=
@@ -686,6 +691,8 @@ Ltac hclean_onQ cont :=
   | |- _ _ ?H ?Q => cont Q
   | |- _ _ _ ?H ?Q => cont Q
   | |- _ _ _ _ ?H ?Q => cont Q
+  | |- _ _ _ _ _ ?H ?Q => cont Q
+  | |- _ _ _ _ _ _ ?H ?Q => cont Q
   end.
 
 Ltac hclean_protect tt :=

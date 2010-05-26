@@ -8,31 +8,124 @@ Require Import test_ml.
 (********************************************************)
 (* imperative *)
 
- 
+Opaque heap_is_empty hdata heap_is_single heap_is_empty_st RefOn.
+
+Tactic Notation "xextract" := 
+  simpl; hclean. (* ou unfold starpost *)
+
+Tactic Notation "xret" := 
+  let r := fresh "r" in
+  xret_pre ltac:(fun _ => xret_core; xclean; intros r).
+Tactic Notation "xret" "as" := 
+  xret_pre ltac:(fun _ => xret_core; xclean).
+Tactic Notation "xret" "as" ident(r) := 
+  xret_pre ltac:(fun _ => xret_core; xclean; intros r).
+
+Lemma hsimpl_prop_1 : forall (P1:Prop),
+  P1 -> [] ==> [P1].
+Proof. introv H K. (*surprenant: destruct K.*)
+  skip. (* todo *)
+Qed.
+
 Lemma imp1_spec : Specs imp1 () >> [] (\=7).
 Proof.
   xcf.
   xlet.
-  xapp_manual. xlocal. 
- eapply local_wframe; 
-     [ xlocal
+  xapp.
+  xextract.
+  xlet.
+  xapp.
+  xextract.
+  intros Py.
+  xseq.
+  xapp.
+  xextract.
+  xlet.
+  xapp.
+  xextract. 
+  intros Pz.
+  xgc - [].
+  xret.
+  apply heap_extract_prop. intros Pr.
+  apply hsimpl_prop_1. math.
+Qed.
+   
+Opaque heap_is_star.
+
+Tactic Notation "xgc_post" :=
+  eapply local_gc_post; [ xlocal | | ].
+
+
+Lemma imp2_spec : Specs imp2 () >> [] (\=5).
+Proof.
+  xcf.
+  xlet.
+  xapp.
+  xextract.
+  xlet as u.
+  xapp.
+  xextract.
+  intros Pu.
+  xlet.
+  xapp.
+  xextract.
+  xlet as v.
+  (* details de xapp *)
+    xapp_manual.
+    eapply local_wframe. xlocal. sapply KR. hsimpl. xok.
+  xextract. 
+  intros Pv.
+  xseq.
+  xapp.
+  xextract.
+  xgc_post.
+  xapp.
+  intros m.
+  hsimpl.
+  skip. (*htactics*)
+Admitted.
+    
+
+
+
+
+  (* détails de xapp
+  xapp_manual. applys KR. hsimpl.
+
+  xfind ml_ref; let H := fresh in intro H.
+  lets K: spec_elim_1_1.
+  xapp_manual as.
+  xapp_inst (>>>) ltac:(fun _ => eauto).
+  hsimpl.
+  *)
+
+
+
+  
+
+Ltac xapp_compact KR args :=
+  let args := ltac_args args in
+  match args with (boxer ?mode)::?vs => 
+  let args := constr:((boxer mode)::(boxer KR)::vs) in
+  constr:(args)
+  end.
+
+Ltac xapp_inst args solver :=
+  let R := fresh "R" in let LR := fresh "L" R in 
+  let KR := fresh "K" R in let IR := fresh "I" R in
+  intros R LR KR;
+  let H := xapp_compact KR args in
+  forwards IR: H; solver tt; try sapply IR. 
+
+
+
+  eapply local_wframe.
+     [ try xlocal
      | eapply K; [ apply H | idtac ] 
      | hsimpl 
      | xok ].
   xapp_inst (>>>) ltac:(fun _ => eauto).
   
-  match ltac_get_tag tt with
-  | tag_apply => xuntag tag_apply
-  | tag_let_trm => idtac
-  end.  
-  let f := spec_goal_fun tt in
-  xfind f; let H := fresh in intro H.
-   
-     let arity_goal := spec_goal_arity tt in
-   let arity_hyp := spec_term_arity H in
-   match constr:(arity_goal, arity_hyp) with (?n,?n) => idtac n | _ => fail 1 end;
-   let lemma := get_spec_elim_x_y arity_hyp arity_goal in
-   lets K: lemma.
   eapply local_wframe; 
      [ xlocal
      | eapply K; [ apply H | idtac ] 

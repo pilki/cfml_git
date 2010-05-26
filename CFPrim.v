@@ -138,7 +138,7 @@ Parameter ml_get_spec : forall a,
 
 Parameter ml_set_spec : forall a,
   Spec ml_set (l:loc) (v:a) |R>> 
-    forall v':a, R (l ~> RefOn v') (# l ~> RefOn v').
+    forall v':a, R (l ~> RefOn v') (# l ~> RefOn v).
  
 
 Hint Extern 1 (RegisterSpec ml_ref) => Provide ml_ref_spec.
@@ -157,7 +157,7 @@ Proof.
   introv L M. intros.
   applys local_wframe. auto. eauto.
   hsimpl. unfold Ref. intros l.
-  unfold starpost. (*todo: as notation *) 
+  (*unfold starpost. todo: as notation *) 
   simpl. unfold hdata.
   apply~ (heap_weaken_pack x1).
 Qed.
@@ -173,7 +173,7 @@ Proof.
   unfold Ref. hclean. intros v.
   specializes M v.
   applys local_wframe. auto. eauto. hsimpl.
-  intros l. unfold starpost. (*todo: as notation *) 
+  intros l. (* unfold starpost. todo: as notation *) 
   simpl. unfold hdata.
   (* todo: tactic hsimpl_left should do it *)
   hsimpl. apply heap_extract_prop. intro_subst. auto.
