@@ -237,6 +237,21 @@ Tactic Notation "xisspec" :=
 
 
 (*--------------------------------------------------------*)
+(* ** [xlocal] *)
+
+Ltac xlocal_core :=
+  first [ apply local_is_local 
+        | apply app_local_1
+   (* not needed
+        | apply app_local_2
+        | apply app_local_3
+        | apply app_local_4 *) ].
+
+Tactic Notation "xlocal" :=
+  xlocal_core.
+
+
+(*--------------------------------------------------------*)
 (* ** [xcf] *)
 
 (** [xcf] applies to a goal of the form [Spec_n f K]
@@ -583,11 +598,19 @@ Tactic Notation "ximpl" "*" :=
 
 (* todo: when arities differ *)
 
+Ltac xapp_compact KR args :=
+  let args := ltac_args args in
+  match args with (boxer ?mode)::?vs => 
+  let args := constr:((boxer mode)::(boxer KR)::vs) in
+  constr:(args)
+  end.
+
 Ltac xapp_inst args solver :=
   let R := fresh "R" in let LR := fresh "L" R in 
   let KR := fresh "K" R in let IR := fresh "I" R in
   intros R LR KR;
-  forwards IR: KR args; solver tt; try sapply IR.
+  let H := xapp_compact KR args in
+  forwards IR: H; solver tt; try sapply IR. 
 
 Ltac xapp_spec_core H cont :=
    let arity_goal := spec_goal_arity tt in

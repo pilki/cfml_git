@@ -8,58 +8,18 @@ Require Import test_ml.
 (********************************************************)
 (* imperative *)
 
-
-Ltac xcf_for_core f ::=
-  ltac_database_get database_cf f;
-  let H := fresh "TEMP" in intros H; 
-  match type of H with
-  | tag tag_top_fun _ _ => sapply H; instantiate; try solve_type; [ try xisspec | ]
-  | _ => sapply H; try solve_type
-  end; clear H; xcf_post tt.
-
-Ltac xapp_inst args solver ::=
-  let R := fresh "R" in let LR := fresh "L" R in 
-  let KR := fresh "K" R in let IR := fresh "I" R in
-  intros R LR KR;
-
-  let args := ltac_args args in
-  match args with (boxer ?mode)::?vs => 
-  let args := constr:((boxer mode)::(boxer KR)::vs) in
-  forwards IR: args
-  end; 
  
-  solver tt; try sapply IR.
-  
-
-Ltac xapp_spec_core H cont ::=
-   let arity_goal := spec_goal_arity tt in
-   let arity_hyp := spec_term_arity H in
-   match constr:(arity_goal, arity_hyp) with (?n,?n) => idtac | _ => fail 1 end;
-   let lemma := get_spec_elim_x_y arity_hyp arity_goal in
-   eapply local_wframe; 
-     [ try apply local_is_local 
-     | eapply lemma; [ apply H | cont tt ] 
-     | hsimpl 
-     | xok ].
-
-
-Ltac xlocal_core :=
-  first [ apply local_is_local 
-        | apply app_local_1
-   (* not needed
-        | apply app_local_2
-        | apply app_local_3
-        | apply app_local_4 *) ].
-
-Tactic Notation "xlocal" :=
-  xlocal_core.
-
 Lemma imp1_spec : Specs imp1 () >> [] (\=7).
 Proof.
   xcf.
   xlet.
-  xapp_manual.
-
+  xapp_manual. xlocal. 
+ eapply local_wframe; 
+     [ xlocal
+     | eapply K; [ apply H | idtac ] 
+     | hsimpl 
+     | xok ].
+  xapp_inst (>>>) ltac:(fun _ => eauto).
   
   match ltac_get_tag tt with
   | tag_apply => xuntag tag_apply
