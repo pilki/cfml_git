@@ -20,22 +20,22 @@ Ltac spec_fun_arity S :=
   | spec_2 _ ?f => constr:(2%nat,f)
   | spec_3 _ ?f => constr:(3%nat,f)
   | spec_4 _ ?f => constr:(4%nat,f)
-  | app_1 ?f _ _ => constr:(1%nat,f)
-  | app_2 ?f _ _ _ => constr:(2%nat,f)
-  | app_3 ?f _ _ _ _ => constr:(3%nat,f)
-  | app_4 ?f _ _ _ _ => constr:(4%nat,f)
-  | curried_1 ?f => constr:(1%nat,f)
-  | curried_2 _ ?f => constr:(2%nat,f)
-  | curried_3 _ _ ?f => constr:(3%nat,f)
-  | curried_4 _ _ ?f => constr:(4%nat,f)
+  | app_1 ?f _ _ _ => constr:(1%nat,f)
+  | app_2 ?f _ _ _ _ => constr:(2%nat,f)
+  | app_3 ?f _ _ _ _ _ => constr:(3%nat,f)
+  | app_4 ?f _ _ _ _ _ _ => constr:(4%nat,f)
+  | curried_1 _ _ ?f => constr:(1%nat,f)
+  | curried_2 _ _ _ ?f => constr:(2%nat,f)
+  | curried_3 _ _ _ _ ?f => constr:(3%nat,f)
+  | curried_4 _ _ _ _ _ ?f => constr:(4%nat,f)
   | context [ spec_1 _ ?f ] => constr:(1%nat,f)
   | context [ spec_2 _ ?f ] => constr:(2%nat,f)
   | context [ spec_3 _ ?f ] => constr:(3%nat,f)
   | context [ spec_4 _ ?f ] => constr:(4%nat,f)
-  | context [ app_1 ?f _ _ ] => constr:(1%nat,f)
-  | context [ app_2 ?f _ _ _ ] => constr:(2%nat,f)
-  | context [ app_3 ?f _ _ _ _ ] => constr:(3%nat,f)
-  | context [ app_4 ?f _ _ _ _ ] => constr:(4%nat,f)
+  | context [ app_1 ?f _ _ _ ] => constr:(1%nat,f)
+  | context [ app_2 ?f _ _ _ _ ] => constr:(2%nat,f)
+  | context [ app_3 ?f _ _ _ _ _ ] => constr:(3%nat,f)
+  | context [ app_4 ?f _ _ _ _ _ _ ] => constr:(4%nat,f)
   end. 
 
 Ltac spec_fun S :=
@@ -199,7 +199,7 @@ Ltac math_0 ::= xclean.
 
 Ltac check_not_a_tag tt :=
   match goal with 
-  | |- tag _ _ _ => fail 1
+  | |- tag _ _ _ _ => fail 1
   | |- _ => idtac
   end.
 
@@ -230,7 +230,7 @@ Tactic Notation "xauto" := xauto~.
     involving case analysis. *)
 
 Ltac xisspec_core :=
-  solve [ intros_all; auto; auto* ].
+  solve [ intros_all; unfolds rel_le, pred_le; auto; auto* ].
 
 Tactic Notation "xisspec" :=
   check_noevar_goal; xisspec_core.
@@ -244,7 +244,10 @@ Tactic Notation "xisspec" :=
     in order to get started proving the goal. *)
 
 Ltac xcf_post tt :=
-  cbv beta.
+  cbv beta;
+  repeat match goal with 
+  | |- unit -> _ => intros _
+  end.
 
 Ltac solve_type :=
   match goal with |- Type => exact unit end.
@@ -341,20 +344,19 @@ Tactic Notation "xok" :=
     allowed: [xlet], [xlet as x], [xlet Q], [xlet Q as x]. *)
 
 Ltac xlet_core cont0 cont1 cont2 :=
-  cont0 tt; split; [ | cont1 tt; cont2 tt ].
+  apply local_erase; cont0 tt; split; [ | cont1 tt; cont2 tt ].
 
 Tactic Notation "xlet_def" tactic(c0) tactic(c1) tactic(c2) :=
   xlet_core ltac:(c0) ltac:(c1) ltac:(c2).
 
 Tactic Notation "xlet" constr(Q) "as" ident(x) :=
-  xlet_def (fun _ => exists Q) (fun _ => intros x) (fun _ => xextract).
+  xlet_def (fun _ => exists Q) (fun _ => intros x) (fun _ => try xextract).
 Tactic Notation "xlet" constr(Q) :=
-  xlet_def (fun _ => exists Q) (fun _ => intro) (fun _ => xextract).
+  xlet_def (fun _ => exists Q) (fun _ => intro) (fun _ => try xextract).
 Tactic Notation "xlet" "as" ident(x) :=
-  xlet_def (fun _ => esplit) (fun _ => intros x) (fun _ => xextract).
+  xlet_def (fun _ => esplit) (fun _ => intros x) (fun _ => idtac).
 Tactic Notation "xlet" :=
-  xlet_def (fun _ => esplit) (fun _ => intro) (fun _ => xextract).
-
+  xlet_def (fun _ => esplit) (fun _ => intro) (fun _ => idtac).
 
 Tactic Notation "xlet" "~" := xlet; auto~. (*todo: xauto ! *)
 Tactic Notation "xlet" "~" "as" ident(x) := xlet as x; auto~.
@@ -602,8 +604,8 @@ Ltac xapp_core spec cont :=
   match spec with
   | ___ =>
       let f := spec_goal_fun tt in
-      let H := get_spec_hyp f in 
-      xapp_spec_core H cont
+      xfind f; let H := fresh in intro H;
+      xapp_spec_core H cont; clear H
   | ?H => xapp_spec_core H cont
   end.
 

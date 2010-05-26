@@ -24,6 +24,12 @@ Notation "'Spec_4' f K" := (spec_4 K f)
 (*------------------------------------------------------------------*)
 (* ** Printing general specifications *)
 
+Notation "'Spec' f '()' | R >> H"
+  := (Spec_1 f (fun (_:unit) R => H))
+     (at level 69, f at level 0, 
+      R ident, H at level 90,
+      format "Spec  f  '()'  | R >>  '/'   '[v' H ']'") : func.
+ 
 Notation "'Spec' f x1 | R >> H"
   := (Spec_1 f (fun x1 R => H))
      (at level 69, f at level 0, x1 ident, 
@@ -74,6 +80,11 @@ Notation "'Spec' f ( x1 : A1 ) ( x2 : A2 ) ( x3 : A3 ) ( x4 : A4 ) | R >> H"
 
 (*------------------------------------------------------------------*)
 (* ** Printing specifications without auxiliary variables *)
+
+Notation "'Specs' f '()' >> H Q"
+  := (Spec f () | R >> R H Q)
+     (at level 69, f at level 0, H at level 0,
+      format "Specs  f  ()  >>  '/'   '[v' H ']'  '[v' Q ']'") : func.
 
 Notation "'Specs' f x1 >> H Q"
   := (Spec f x1 | R >> R H Q)
@@ -369,10 +380,10 @@ Notation "'!B' P" := (tag tag_body None P)
   (at level 95).
 Notation "'!M' n P" := (tag (tag_match n) None P)
   (at level 95, n at level 0).
+Notation "'!A' P" := (tag tag_apply None P)  
+  (at level 95).
 Notation "'!R' P" := (tag tag_ret None (local P))  
   (at level 69).
-Notation "'!A' P" := (tag tag_apply None (local P))  
-  (at level 95).
 Notation "'!V' P" := (tag tag_let_val None (local P))  
   (at level 95).
 Notation "'!F' P" := (tag tag_let_fun None (local P))  
@@ -408,10 +419,10 @@ Notation "'!!B' x P" := (tag tag_body (Some x) P)
   (at level 95, x at level 0).
 Notation "'!!M' x n P" := (tag (tag_match n) (Some x) P)
   (at level 95, x at level 0, n at level 0).
+Notation "'!!A' x P" := (tag tag_apply (Some x) P)  
+  (at level 95, x at level 0).
 Notation "'!!R' x P" := (tag tag_ret (Some x) (local P))  
   (at level 69, x at level 0).
-Notation "'!!A' x P" := (tag tag_apply (Some x) (local P))  
-  (at level 95, x at level 0).
 Notation "'!!V' x P" := (tag tag_let_val (Some x) (local P))  
   (at level 95, x at level 0).
 Notation "'!!F' x P" := (tag tag_let_fun (Some x) (local P))  
@@ -451,16 +462,16 @@ Ltac ltac_add_tag T :=
   apply (@add_tag T (refl_equal _)).
 
 Ltac ltac_get_tag tt :=
-  match goal with |- tag ?t _ _ _ => constr:(t) end.  
+  match goal with |- tag ?t _ _ _ _ => constr:(t) end.  
 
 Ltac ltac_get_label tt :=
-  match goal with |- tag _ (Some ?l) _ _ => constr:(l) end.  
+  match goal with |- tag _ (Some ?l) _ _ _ => constr:(l) end.  
 
 Tactic Notation "xuntag" constr(t) :=
-  match goal with |- tag t _ _ _ => unfold tag at 1 end.
+  match goal with |- tag t _ _ _ _ => unfold tag at 1 end.
 
 Tactic Notation "xuntag" :=
-  match goal with |- tag _ _ _ _ => unfold tag at 1 end.
+  match goal with |- tag _ _ _ _ _ => unfold tag at 1 end.
 
 Tactic Notation "xuntags" := unfold tag in *.
 

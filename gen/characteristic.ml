@@ -54,6 +54,9 @@ let lift_full_path_name p =
 (*#########################################################################*)
 (* Lifting of types *)
 
+let loc_type =
+  Coq_var "CFHeaps.loc"
+
 let rec fv_btyp ?(through_arrow = true) t =
    let aux = fv_btyp in
    match t with
@@ -73,7 +76,7 @@ let rec lift_btyp t =
    | Btyp_arrow (t1,t2) -> 
       val_type
    | Btyp_constr (id,[t]) when Path.name id = "ref" || Path.name id = "Pervasives.ref" -> 
-      aux t  
+      loc_type
    | Btyp_constr (id,[t]) when Path.same id Predef.path_lazy_t || Path.name id = "Lazy.t" -> 
       aux t  (* todo: les Lazy provenant des patterns ne sont pas identique à Predef.path_lazy_t *)
    | Btyp_constr (id,[t]) when Path.name id = "Stream.stream" || Path.name id = "stream" -> 

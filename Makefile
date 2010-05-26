@@ -221,11 +221,11 @@ $(MYOCAMLDEP):
 	@echo "MAKING CMI: $@"
 	@$(GENERATOR) -onlycmi $(INCLUDES) $<
 
-%_ml.vo: %_ml.v %_ml.d FuncPrim.vo #LibCore.vo 
+%_ml.vo: %_ml.v %_ml.d CFPrim.vo #FuncPrim.vo  LibCore.vo 
 	@echo "COQC $<"
 	@$(COQC) $< 
 
-%_proof.vo: %_proof.v %_ml.vo %_proof.d FuncTactics.vo #LibCore.vo 
+%_proof.vo: %_proof.v %_ml.vo %_proof.d CFTactics.vo #FuncTactics.vo LibCore.vo 
 	@echo "COQC $<"
 	@$(COQC) $<
 

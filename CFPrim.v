@@ -140,6 +140,12 @@ Parameter ml_set_spec : forall a,
   Spec ml_set (l:loc) (v:a) |R>> 
     forall v':a, R (l ~> RefOn v') (# l ~> RefOn v').
  
+
+Hint Extern 1 (RegisterSpec ml_ref) => Provide ml_ref_spec.
+Hint Extern 1 (RegisterSpec ml_get) => Provide ml_get_spec.
+Hint Extern 1 (RegisterSpec ml_set) => Provide ml_set_spec.
+
+
 (** Derived specifications for references *)
 
 Lemma ml_ref_spec_linear : forall A a,
