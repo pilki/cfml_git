@@ -1,4 +1,35 @@
 
+(********************************************************************)
+(* ** Low-level axioms *)
+
+(** The type of terms *)
+
+Axiom trm : Type. 
+
+(** The type Func *)
+
+Axiom val : Type. 
+
+(** The type Func is inhabited *)
+
+Axiom val_inhab : Inhab val. 
+Existing Instance val_inhab.
+
+(** The construction of applications *)
+
+Axiom app_trm : forall A, val -> A -> trm. (* todo: as relation *)
+
+(** The evaluation predicate: [eval t h v h'] *)
+
+Axiom eval : forall A, trm -> heap -> A -> heap -> Prop.
+
+(** Evaluation is deterministic *)
+
+Axiom eval_deterministic : forall A t h (v1 v2:A) h1 h2,
+  eval t h v1 h1 -> eval t h v2 h2 -> v1 = v2 /\ h1 = h2.
+  
+
+
 Lemma hdata_unfold : forall (l l' : loc) (P:loc->hprop),
   hdata (fun l' => P l') l = hdata P l.
 Proof. auto. Qed.

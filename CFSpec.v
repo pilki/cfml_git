@@ -353,6 +353,11 @@ Lemma spec_intro_1 : forall A1 B f (K:A1->~~B->Prop),
   spec_1 K f.
 Proof. introv S _ H. split~. Qed.
 
+
+
+Axiom pureapp_and_app' : forall A B (F:val) (V:A) (V':B) (H:hprop) (Q:B->hprop) h,
+  pureapp F V (= V') -> app_1 F V H Q -> H h -> exists H', (Q V' \* H') h. 
+
 Lemma spec_intro_2 : forall A1 A2 B f (K:A1->A2->~~B->Prop),
   is_spec_2 K ->
   curried_2 A1 A2 B f ->
@@ -367,10 +372,20 @@ Proof.
   rewrite app_local_1. introv Hh.
   destruct (M _ Hh) as (H1&H2&Q1&H'&?&N&?).
   destruct N as (Q'&Ap1&Ap2).
-  specializes Ap2 g.
+  specializes Ap2 g. 
+(*
+  lets (h1&h2&?&?&?&?): H0.
+  forwards~ (HG&WH): (pureapp_and_app' h1 Hg Ap1).
+  exists H1 H2. exists Q1 (H' \* HG). splits~.
+  apply* local_weaken_pre.
+  skip.
+  intros r. 
+*)
+
   lets WH: (pureapp_and_app Hg Ap1). (* todo : bug forwards ? *)  
   exists H1 H2. exists Q1 H'. splits~.
   apply* local_weaken_pre.
+
 Qed. 
 
 (*

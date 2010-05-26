@@ -8,10 +8,6 @@ Axiom heap_disjoint : heap -> heap -> Prop.
 (********************************************************************)
 (* ** Low-level axioms *)
 
-(** The type of terms *)
-
-Axiom trm : Type. 
-
 (** The type Func *)
 
 Axiom val : Type. 
@@ -21,18 +17,14 @@ Axiom val : Type.
 Axiom val_inhab : Inhab val. 
 Existing Instance val_inhab.
 
-(** The construction of applications *)
+(** The evaluation predicate for functions: [eval f v h v' h'] *)
 
-Axiom app_trm : forall A, val -> A -> trm. (* todo: as relation *)
-
-(** The evaluation predicate: [eval t h v h'] *)
-
-Axiom eval : forall A, trm -> heap -> A -> heap -> Prop.
+Axiom eval : forall A B, val -> A -> heap -> B -> heap -> Prop.
 
 (** Evaluation is deterministic *)
 
-Axiom eval_deterministic : forall A t h (v1 v2:A) h1 h2,
-  eval t h v1 h1 -> eval t h v2 h2 -> v1 = v2 /\ h1 = h2.
+Axiom eval_deterministic : forall A B f (v:A) h (v1' v2':B) h1' h2',
+  eval f v h v1' h1' -> eval f v h v2' h2' -> v1' = v2' /\ h1' = h2'.
   
 
 (********************************************************************)
@@ -42,21 +34,31 @@ Axiom eval_deterministic : forall A t h (v1 v2:A) h1 h2,
 
 Definition app_1 A B (f:val) (x:A) (H:hprop) (Q:B->hprop) :=  
   forall h i, heap_disjoint h i -> H h -> 
-    exists v' h' h'', heap_disjoint h' i /\ Q v' h' /\
-      eval (app_trm f x) (heap_union h i) v' (heap_union h' (heap_union h'' i)).
+    exists v' h' h'', (heap_disjoint h' i /\ heap_disjoint h'' i /\ heap_disjoint h'' h') /\ Q v' h' /\
+      eval f x (heap_union h i) v' (heap_union h' (heap_union h'' i)).
 
 (** The predicate AppPure *)
 
 Definition pureapp A B f (x:A) (P:B->Prop) := 
-  exists v:B, forall h,
-    eval (app_trm f x) h v h /\ P v.
+  exists v:B, forall h, eval f x h v h /\ P v.
 
 (** AppReturns is a local property *)
 
 Lemma app_local_1 : forall B A1 (x1:A1) f,
   is_local (app_1 (B:=B) f x1).
 Proof.
- skip.
+  intros. extens. intros H Q. iff M. apply~ local_erase.
+  introv Dhi Hh. destruct (M h Hh) as (H1&H2&Q'&H'&D12&N&HQ).
+  destruct D12 as (h1&h2&?&?&?&?).
+  destruct~ (N h1 (heap_union i h2)) as (v'&h1'&i'&?&HQ'&E). 
+  skip. (* disjoint *)
+  sets h': (heap_union h1' h2).
+  forwards Hh': (HQ v' h'). subst h'. exists___. splits~. skip. (* disjoint *)
+  destruct Hh' as (h3'&h4'&?&?&?&?).
+  exists v' h3' (heap_union h4' i'). splits.
+    splits. skip. skip. skip. (* disjoint *) 
+    auto.
+    subst h h'. skip. (* union commute *)
 Qed. 
 
 (** AppPure satisfies the witness property *)
@@ -94,12 +96,16 @@ Qed.
 
 (** Overlapping of AppPure and AppReturns *)
 
-Lemma pureapp_and_app : forall A B (F:val) (V:A) (V':B) (H:hprop) (Q:B->hprop),
-  pureapp F V (= V') -> app_1 F V H Q -> (H ==> Q V').
+Lemma pureapp_and_app : forall A B (F:val) (V:A) (V':B) (H:hprop) (Q:B->hprop) h,
+  pureapp F V (= V') -> app_1 F V H Q -> H h -> exists H', (Q V' \* H') h.  (* H ==> Q V' \* H' *)
 Proof.
-  
-
-
+  introv (V''&N) M Hh. destruct (N h) as (HE&?). clear N.
+  subst. hnf in M. destruct (M h heap_empty) as (V''&h1&h2&?&HQ&HE'). 
+    skip. (* disjoint *)
+    auto.
+    do 2 rewrite heap_union_neutral_r in HE'.
+    forwards [? R]: (eval_deterministic HE HE'). exists (=h2). subst.
+    destructs H0. exists h1 h2. splits~. skip. (* disjoint *)
 Qed.
 
 
