@@ -750,7 +750,7 @@ Ltac xapp_cont_r_with E solver := (* todo factorize with above *)
 
 
 (*--------------------------------------------------------*)
-(* ** [xweak] *)
+(* ** [xweak] --TODO
 
 Ltac xweak_partial cont := 
   cont tt.
@@ -792,8 +792,11 @@ Tactic Notation "xweaks" :=
        intros x Hx; instantiate; cbv beta in Hx; try if_eq in Hx;
        try substs x ]).
 
+*)
+
+
 (*--------------------------------------------------------*)
-(* ** [xinduction] *)
+(* ** [xinduction] --TODO
 
 (** [xinduction E] applies to a goal of the form [Spec_n f K] 
     and replaces it with a weaker goal, which describes the same
@@ -857,6 +860,8 @@ Proof. auto*. Qed.
 Lemma mutual_quantif_2 : forall T (P Q : T -> Prop),
   (forall n, P n /\ Q n) -> (forall n, P n) /\ (forall n, Q n).
 Proof. introv H. split; intros; eapply H. Qed.
+
+*)
 
 
 (*--------------------------------------------------------*)
@@ -986,6 +991,8 @@ Ltac unfolds_to_spec tt :=
   | _ => progress(unfolds); unfolds_to_spec tt
   end. 
 
+(* -- TODO
+
 Tactic Notation "xfun_induction" constr(S) constr(I) :=
   xfun_core S ltac:(fun _ => 
     intro; unfolds_to_spec tt; xinduction I; xbody).
@@ -994,6 +1001,7 @@ Tactic Notation "xfun_induction_nointro" constr(S) constr(I) :=
   xfun_core S ltac:(fun _ => 
     intro; unfolds_to_spec tt; xinduction I; xbody_nointro).
 
+*)
 
 (*--------------------------------------------------------*)
 (* ** [xintros] *)
@@ -1209,6 +1217,7 @@ Ltac post_is_meta tt :=
 Ltac arg_of_if tt :=
   match goal with |- (?x = _ -> _) /\ (?x = _ -> _) => x end.
 
+(*TODO
 Lemma analysis_for_if : forall (B: Type) x t1 l1 t2 l2,
   forall (P1 P2:(B->Prop)) (Q1 Q2:~~B),
   (x = true -> ((tag t1 l1 Q1) P1)) -> 
@@ -1224,6 +1233,7 @@ Lemma analysis_for_if_eq : forall (B: Type) x t1 l1 t2 l2,
      (x = true -> (tag t1 l1 Q1) (= if x then V1 else V2))
   /\ (x = false -> (tag t2 l2 Q2) (= if x then V1 else V2)).
 Proof. intros. case_if; split; intros; auto; tryfalse. Qed.
+*)
 
 Ltac xif_post H :=
    calc_partial_eq tt;
@@ -1239,12 +1249,15 @@ Ltac xif_core_nometa H :=
   xuntag tag_if; split; intros H; xif_post H.
 
 Ltac xif_core_meta H :=
+ fail.
+(* TODO
   xuntag tag_if; let x := arg_of_if tt in
   calc_partial_eq tt; try subst x; 
   (* sapply analysis_for_if;*)
   first [ let K := fresh in forwards K: analysis_for_if; [ | | apply K ]
         | let K := fresh in forwards K: analysis_for_if_eq; [ | | apply K ] ];
   intros H; xif_post H.
+*)
 
 Tactic Notation "xif" ident(H) :=
   match post_is_meta tt with
@@ -1497,9 +1510,9 @@ Tactic Notation "xgo1" :=
 Tactic Notation "xgo" :=
   xgo_base ltac:(fun tt => idtac).
 Tactic Notation "xgo" "~" := 
-  xgo_base ltac:(fun tt => xauto~); instantiate; xauto~.
+  xgo_base ltac:(fun tt => xauto~ ); instantiate; xauto~.
 Tactic Notation "xgo" "*" := 
-  xgo_base ltac:(fun tt => xauto*); instantiate; xauto*. 
+  xgo_base ltac:(fun tt => xauto* ); instantiate; xauto*. 
 
 Tactic Notation "xgo" constr(a1) constr(h1) := 
   add_hint a1 h1; xgo.
