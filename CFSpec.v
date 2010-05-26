@@ -796,7 +796,7 @@ Proof.
   apply local_erase. split. reflexivity. hnfs~. hsimpl. auto.
 Qed.
 
-Lemma xframe_lemma : forall B H1 H2 Q1 (F:~~B) H Q,
+Lemma xframe_lemma : forall H1 H2 B Q1 (F:~~B) H Q,
   is_local F -> 
   H ==> H1 \* H2 -> 
   F H1 Q1 -> 
@@ -826,8 +826,8 @@ Tactic Notation "hchange" "~" constr(H) :=
 Tactic Notation "hchange" "*" constr(H) :=
   hchange_core H; auto_star.
 
-Lemma xch_lemma : forall H1 H1' H2 B H Q (F:~~B),
-  (H1 ==> H1') -> is_local F -> (H ==> H1 \* H2) -> F (H1' \* H2) Q -> F H Q.
+Lemma xchange_lemma : forall H1 H1' H2 B H Q (F:~~B),
+  is_local F -> (H1 ==> H1') -> (H ==> H1 \* H2) -> F (H1' \* H2) Q -> F H Q.
 Proof.
   introv W1 L W2 M. applys local_wframe __ []; eauto.
   hsimpl. hchange~ W2. rew_heap~. 

@@ -399,6 +399,29 @@ Tactic Notation "xval_st" constr(P) :=
 
 
 (*--------------------------------------------------------*)
+(* ** [xfail], [xdone] *)
+
+(** [xfail] simplifies a proof obligation of the form [Fail],
+    which is in fact equivalent to [False].
+    [xfail_noclean] is also available. *)
+
+Tactic Notation "xfail_noclean" :=
+  xuntag tag_fail.
+Tactic Notation "xfail" := 
+  xfail_noclean; xclean.
+Tactic Notation "xfail" "~" :=  
+  xfail; xauto~.
+Tactic Notation "xfail" "*" :=  
+  xfail; xauto*.
+
+(** [xdone] proves a goal of the form [Done],
+    which is in fact equivalent to [True]. *)
+
+Tactic Notation "xdone" :=
+  xuntag tag_done; split.
+
+
+(*--------------------------------------------------------*)
 (* ** [xret] *)
 
 (** [xret] simplifies a proof obligation of the form 
@@ -428,28 +451,78 @@ Tactic Notation "xret" "~" :=
 Tactic Notation "xret" "*" :=  
   xret; xauto*.
 
+(*--------------------------------------------------------*)
+(* ** [xgc] *)
+
+Ltac xgc_remove_core H :=
+  eapply local_gc_pre with (HG := H);
+    [ try apply local_is_local (* todo: xlocal *)
+    | hsimpl
+    | ].
+
+Ltac xgc_keep_core H :=
+  eapply local_gc_pre with (H' := H);
+    [ try apply local_is_local (* todo: xlocal *)
+    | hsimpl
+    | ].
+
+Tactic Notation "xgc" constr(H) := 
+  xgc_remove_core H.
+
+Tactic Notation "xgc" "-" constr(H) := 
+  xgc_keep_core H.
+
 
 (*--------------------------------------------------------*)
-(* ** [xfail], [xdone] *)
+(* ** [xframe] *)
 
-(** [xfail] simplifies a proof obligation of the form [Fail],
-    which is in fact equivalent to [False].
-    [xfail_noclean] is also available. *)
+Ltac xframe_remove_core H :=
+  eapply xframe_lemma with (H2 := H);
+    [ try apply local_is_local (* todo: xlocal *)
+    | hsimpl
+    | 
+    | ].
 
-Tactic Notation "xfail_noclean" :=
-  xuntag tag_fail.
-Tactic Notation "xfail" := 
-  xfail_noclean; xclean.
-Tactic Notation "xfail" "~" :=  
-  xfail; xauto~.
-Tactic Notation "xfail" "*" :=  
-  xfail; xauto*.
+Ltac xframe_keep_core H :=
+  eapply xframe_lemma with (H1 := H);
+    [ try apply local_is_local (* todo: xlocal *)
+    | hsimpl
+    | 
+    | ].
 
-(** [xdone] proves a goal of the form [Done],
-    which is in fact equivalent to [True]. *)
+Tactic Notation "xframe" constr(H) := 
+  xframe_remove_core H.
 
-Tactic Notation "xdone" :=
-  xuntag tag_done; split.
+Tactic Notation "xframe" "-" constr(H) := 
+  xframe_keep_core H.
+
+
+(*--------------------------------------------------------*)
+(* ** [xchange] *)
+
+Ltac xchange_lemma_core L :=
+  eapply xchange_lemma; 
+    [ try apply local_is_local
+    | applys L
+    | hsimpl
+    | ].
+
+Ltac xchange_with_core H H' :=
+  eapply xchange_lemma with (H1:=H) (H1':=H'); 
+    [ try apply local_is_local
+    | 
+    | hsimpl
+    | ].
+
+Ltac xchange_core E :=
+  match E with
+  | ?H ==> ?H' => xchange_with_core H H'
+  | _ => xchange_lemma_core E
+  end.
+
+Tactic Notation "xchange" constr(E) :=
+  xchange_core E.
+
 
 
 (*--------------------------------------------------------*)
