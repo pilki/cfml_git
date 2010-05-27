@@ -1,4 +1,101 @@
 
+(*
+Proof.
+  intros. extens. intros H Q. iff M.
+  apply~ local_erase.
+  introv Hh. destruct (M _ Hh) as (H1&H2&Q1&H'&R&N&?).
+  lets (h1&h2&?&?&?&?): R. clear R.
+  destruct~ (N h1) as (H1'&H2'&Q1'&?&?&?).
+  exists H1' (H2 \* H2') Q1'.
+  splits~. rewrite (star_comm H2). rewrite star_assoc. exists h1 h2. splits~.
+  intros g. specializes H9 g.
+  rewrite (star_comm H2). rewrite star_assoc.
+  apply* local_wgframe.
+Qed.
+*)
+(*
+  introv Hh. destruct (M _ Hh) as (H1&H2&Q1&H'&R&N&?).
+  destruct R as (h1&h2&?&?&?&?).
+  destruct~ (N h1) as (Q'&?&?).
+  exists (Q' \*+ H2). split.
+  rewrite app_local_1. introv Hh'.
+  apply* local_wframe.
+*)
+
+(*
+  destruct M as (H1&H2&Q1&H'&?&(Qg&?&Hg)&?).
+  exists (fun g => Qg g ** H2). splits.
+    apply* local_frame.
+    intros. specializes Hg g. apply* local_elim.
+*)
+
+
+
+
+(*  forall h, H h ->
+  exists H1 H2 Q1, 
+     (H1 \* H2) h 
+  /\ app_1 f x1 H1 Q1 
+  /\ forall g, app_1 g x2 (Q1 g \* H2) Q.
+*)
+
+(*
+  forall h, H h ->
+  exists Q', app_1 f x1 H Q' 
+          /\ forall g, app_1 g x2 (Q' g) Q.
+*)
+
+
+(********************************************************************)
+(* ** OLD Axioms *)
+
+(** The type Func *)
+
+Axiom val : Type. 
+
+(** The type Func is inhabited *)
+
+Axiom val_inhab : Inhab val. 
+Existing Instance val_inhab.
+
+(** The predicate AppReturns *)
+
+Axiom app_1 : forall A B,  
+  val -> A -> hprop -> (B -> hprop) -> Prop.
+
+(** The predicate AppPure *)
+
+Axiom pureapp : forall A B,  
+  val -> A -> (B -> Prop) -> Prop.
+
+(** AppReturns is a local property *)
+
+Axiom app_local_1 : forall B A1 (x1:A1) f,
+  is_local (app_1 (B:=B) f x1). 
+
+(** AppPure satisfies the witness property *)
+
+Axiom pureapp_concrete : forall A B (F:val) (V:A) (P:B->Prop),
+  pureapp F V P <-> exists V', P V' /\ pureapp F V (= V').
+
+(** AppPure satisfies the determinacy property *)
+
+Axiom pureapp_deterministic : forall A B (F:val) (V:A) (V1' V2':B),
+  pureapp F V (= V1') -> pureapp F V (= V2') -> V1' = V2'.          
+
+(** From AppPure to AppReturns *)
+
+Axiom pureapp_to_app : forall A B (F:val) (V:A) (P:B->Prop),
+  pureapp F V P -> app_1 F V [] \[P].
+  (* Could also be stated: [pureapp F V ==> pure (app_1 F V)] *)
+
+(** Overlapping of AppPure and AppReturns *)
+
+Axiom pureapp_and_app : forall A B (F:val) (V:A) (V':B) (H:hprop) (Q:B->hprop),
+  pureapp F V (= V') -> app_1 F V H Q -> (H ==> Q V').
+
+
+
 (********************************************************************)
 (* ** Low-level axioms *)
 

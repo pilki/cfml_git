@@ -10,6 +10,56 @@ Lemma heap_union_assoc : forall h1 h2 h3,
   \# h1 h2 h3 -> h1 \+ (h2 \+ h3) = (h1 \+ h2) \+ h3.
 Proof. skip. Qed.
 
+Hint Resolve heap_disjoint_empty_l heap_disjoint_empty_r.
+
+
+Lemma heap_disjoint_union_inv' : forall h1 h2 h3,
+  \# (heap_union h2 h3) h1 = (\# h2 h1 /\ \# h3 h1).
+Proof. skip. Qed.
+
+Lemma heaps_disjoint_3 : forall h1 h2 h3,
+  \# h1 h2 h3 = (\# h1 h2 /\ \# h2 h3 /\ \# h1 h3).
+Proof. skip. Qed.
+
+Hint Rewrite 
+  heap_disjoint_union_inv 
+  heap_disjoint_union_inv'
+  heaps_disjoint_3 : rew_disjoint.
+
+Tactic Notation "rew_disjoint" :=
+  autorewrite with rew_disjoint in *.
+Tactic Notation "rew_disjoint" "*" :=
+  rew_disjoint; auto_star.
+
+
+
+(** TODO; move Extraction of premisses from [local] *)
+
+
+(* todo move *)
+Lemma local_weaken_pre : forall H' B (F:~~B) H Q,
+  is_local F -> 
+  F H' Q -> 
+  H ==> H' -> 
+  F H Q.
+Proof. intros. apply* local_weaken. Qed.
+
+
+Lemma local_intro_prop : forall B (F:~~B) (H:hprop) (P:Prop) Q,
+  is_local F -> (forall h, H h -> P) -> (P -> F H Q) -> F H Q.
+Proof.
+  introv L W M. rewrite L. introv Hh. forwards~: (W h).
+  exists H [] Q []. splits; rew_heap~.
+Qed. 
+(*
+Lemma app_intro_prop_1 : forall (U:Prop) A B (F:val) (V:A) (H:hprop) (Q:B->hprop),
+  (H ==> [U]) -> (U -> app_1 F V H Q) -> app_1 F V H Q.
+Proof.
+  introv W M. eapply local_intro_prop.
+Qed.
+*)
+
+
 
 (********************************************************************)
 (* ** Axioms *)
@@ -32,7 +82,6 @@ Axiom eval : forall A B, val -> A -> heap -> B -> heap -> Prop.
 Axiom eval_deterministic : forall A B f (v:A) h (v1' v2':B) h1' h2',
   eval f v h v1' h1' -> eval f v h v2' h2' -> v1' = v2' /\ h1' = h2'.
   
-
 
 (********************************************************************)
 (* ** Definition and properties of AppPure *)
@@ -105,25 +154,6 @@ Definition app_1 A B (f:val) (x:A) (H:hprop) (Q:B->hprop) :=
 
 (** AppReturns is a local property *)
 
-
-Lemma heap_disjoint_union_inv' : forall h1 h2 h3,
-  \# (heap_union h2 h3) h1 = (\# h2 h1 /\ \# h3 h1).
-Proof. skip. Qed.
-
-Lemma heaps_disjoint_3 : forall h1 h2 h3,
-  \# h1 h2 h3 = (\# h1 h2 /\ \# h2 h3 /\ \# h1 h3).
-Proof. skip. Qed.
-
-Hint Rewrite 
-  heap_disjoint_union_inv 
-  heap_disjoint_union_inv'
-  heaps_disjoint_3 : rew_disjoint.
-
-Tactic Notation "rew_disjoint" :=
-  autorewrite with rew_disjoint in *.
-Tactic Notation "rew_disjoint" "*" :=
-  rew_disjoint; auto_star.
-
 Lemma app_local_1 : forall B A1 (x1:A1) f,
   is_local (app_1 (B:=B) f x1).
 Proof.
@@ -139,7 +169,7 @@ Proof.
   destruct~ (N h1 (heap_union i h2)) as (v'&h1'&i'&?&HQ'&E).
   subst h. rew_disjoint*.
   sets h': (heap_union h1' h2).
-  forwards Hh': (HQ v' h'). subst h'. exists___. splits~. rew_disjoint*.
+  forwards Hh': (HQ v' h'). subst h'. exists h1' h2. rew_disjoint*.
   destruct Hh' as (h3'&h4'&?&?&?&?).
      asserts Hint4: (forall h : heap, \# h h1' -> \# h h2 -> \# h h3'). skip. 
      asserts Hint5: (forall h : heap, \# h h1' -> \# h h2 -> \# h h4'). skip.
@@ -154,9 +184,7 @@ Proof.
       rewrite* <- heap_union_assoc.
 Qed.
 
-
-
-
+Hint Resolve app_local_1.
 
 
 (********************************************************************)
@@ -187,120 +215,30 @@ Lemma pureapp_and_app : forall A B (F:val) (V:A) (V':B) (H:hprop) (Q:B->hprop) h
   pureapp F V (= V') -> app_1 F V H Q -> H h -> exists H', (Q V' \* H') h.  (* H ==> Q V' \* H' *)
 Proof.
   introv (V''&N) M Hh. destruct (N h) as (HE&?). clear N.
-  subst. hnf in M. destruct (M h heap_empty) as (V''&h1&h2&?&HQ&HE'). 
-    skip. (* disjoint *)
-    auto.
-    do 2 rewrite heap_union_neutral_r in HE'.
-    forwards [? R]: (eval_deterministic HE HE'). exists (=h2). subst.
-    destructs H0. exists h1 h2. splits~. skip. (* disjoint *)
+  subst. hnf in M. destruct~ (M h heap_empty) as (V''&h1&h2&?&HQ&HE'). 
+  do 2 rewrite heap_union_neutral_r in HE'.
+  forwards [? R]: (eval_deterministic HE HE').
+  subst. exists (=h2). exists h1 h2. rew_disjoint*.
 Qed.
 
 
-
-
-
 (********************************************************************)
-(* ** OLD Axioms *)
-
-(** The type Func *)
-
-Axiom val : Type. 
-
-(** The type Func is inhabited *)
-
-Axiom val_inhab : Inhab val. 
-Existing Instance val_inhab.
-
-(** The predicate AppReturns *)
-
-Axiom app_1 : forall A B,  
-  val -> A -> hprop -> (B -> hprop) -> Prop.
-
-(** The predicate AppPure *)
-
-Axiom pureapp : forall A B,  
-  val -> A -> (B -> Prop) -> Prop.
-
-(** AppReturns is a local property *)
-
-Axiom app_local_1 : forall B A1 (x1:A1) f,
-  is_local (app_1 (B:=B) f x1). 
-
-(** AppPure satisfies the witness property *)
-
-Axiom pureapp_concrete : forall A B (F:val) (V:A) (P:B->Prop),
-  pureapp F V P <-> exists V', P V' /\ pureapp F V (= V').
-
-(** AppPure satisfies the determinacy property *)
-
-Axiom pureapp_deterministic : forall A B (F:val) (V:A) (V1' V2':B),
-  pureapp F V (= V1') -> pureapp F V (= V2') -> V1' = V2'.          
-
-(** From AppPure to AppReturns *)
-
-Axiom pureapp_to_app : forall A B (F:val) (V:A) (P:B->Prop),
-  pureapp F V P -> app_1 F V [] \[P].
-  (* Could also be stated: [pureapp F V ==> pure (app_1 F V)] *)
-
-(** Overlapping of AppPure and AppReturns *)
-
-Axiom pureapp_and_app : forall A B (F:val) (V:A) (V':B) (H:hprop) (Q:B->hprop),
-  pureapp F V (= V') -> app_1 F V H Q -> (H ==> Q V').
-
-
-(********************************************************************)
-(* ** Immediate corrolaries *)
-
-Hint Resolve app_local_1.
-
-
-
-
-
-(** TODO; move Extraction of premisses from [local] *)
-
-Lemma local_intro_prop : forall B (F:~~B) (H:hprop) (P:Prop) Q,
-  is_local F -> (forall h, H h -> P) -> (P -> F H Q) -> F H Q.
-Proof.
-  introv L W M. rewrite L. introv Hh. forwards~: (W h).
-  exists H [] Q []. splits; rew_heap~.
-Qed. 
-(*
-Lemma app_intro_prop_1 : forall (U:Prop) A B (F:val) (V:A) (H:hprop) (Q:B->hprop),
-  (H ==> [U]) -> (U -> app_1 F V H Q) -> app_1 F V H Q.
-Proof.
-  introv W M. eapply local_intro_prop.
-Qed.
-*)
-
-(********************************************************************)
-(* ** Applications of higher arity *)
-
+(* ** Definition of [AppReturns_n] *)
 
 Definition app_2 A1 A2 B f (x1:A1) (x2:A2) :=
   local (fun H (Q:B->hprop) =>
     exists Q', app_1 f x1 H Q' 
             /\ forall g, app_1 g x2 (Q' g) Q).
 
-(*  forall h, H h ->
-  exists H1 H2 Q1, 
-     (H1 \* H2) h 
-  /\ app_1 f x1 H1 Q1 
-  /\ forall g, app_1 g x2 (Q1 g \* H2) Q.
-*)
+Definition app_3 A1 A2 A3 B f (x1:A1) (x2:A2) (x3:A3) := 
+  local (fun H (Q:B->hprop) => 
+    exists Q', app_1 f x1 H Q' 
+            /\ forall g, app_2 g x2 x3 (Q' g) Q).
 
-(*
-  forall h, H h ->
-  exists Q', app_1 f x1 H Q' 
-          /\ forall g, app_1 g x2 (Q' g) Q.
-*)
-Definition app_3 A1 A2 A3 B f (x1:A1) (x2:A2) (x3:A3) (H:hprop) (Q:B->hprop) := 
-  exists Q', app_1 f x1 H Q' 
-          /\ forall g, app_2 g x2 x3 (Q' g) Q.
-
-Definition app_4 A1 A2 A3 A4 B f (x1:A1) (x2:A2) (x3:A3) (x4:A4) (H:hprop) (Q:B->hprop) := 
-  exists Q', app_1 f x1 H Q' 
-          /\ forall g, app_3 g x2 x3 x4 (Q' g) Q.
+Definition app_4 A1 A2 A3 A4 B f (x1:A1) (x2:A2) (x3:A3) (x4:A4) := 
+  local (fun H (Q:B->hprop) => 
+    exists Q', app_1 f x1 H Q' 
+            /\ forall g, app_3 g x2 x3 x4 (Q' g) Q).
 
 
 (********************************************************************)
@@ -310,44 +248,13 @@ Lemma app_local_2 : forall B A1 A2 (x1:A1) (x2:A2) f,
   is_local (app_2 (B:=B) f x1 x2).
 Proof. intros. apply local_is_local. Qed.
 
-(*
-Proof.
-  intros. extens. intros H Q. iff M.
-  apply~ local_erase.
-  introv Hh. destruct (M _ Hh) as (H1&H2&Q1&H'&R&N&?).
-  lets (h1&h2&?&?&?&?): R. clear R.
-  destruct~ (N h1) as (H1'&H2'&Q1'&?&?&?).
-  exists H1' (H2 \* H2') Q1'.
-  splits~. rewrite (star_comm H2). rewrite star_assoc. exists h1 h2. splits~.
-  intros g. specializes H9 g.
-  rewrite (star_comm H2). rewrite star_assoc.
-  apply* local_wgframe.
-Qed.
-*)
-(*
-  introv Hh. destruct (M _ Hh) as (H1&H2&Q1&H'&R&N&?).
-  destruct R as (h1&h2&?&?&?&?).
-  destruct~ (N h1) as (Q'&?&?).
-  exists (Q' \*+ H2). split.
-  rewrite app_local_1. introv Hh'.
-  apply* local_wframe.
-*)
-
-(*
-  destruct M as (H1&H2&Q1&H'&?&(Qg&?&Hg)&?).
-  exists (fun g => Qg g ** H2). splits.
-    apply* local_frame.
-    intros. specializes Hg g. apply* local_elim.
-*)
-
-
 Lemma app_local_3 : forall B A1 A2 A3 (x1:A1) (x2:A2) (x3:A3) f,
   is_local (app_3 (B:=B) f x1 x2 x3).
-Admitted.
+Proof. intros. apply local_is_local. Qed.
 
 Lemma app_local_4 : forall B A1 A2 A3 A4 (x1:A1) (x2:A2) (x3:A3) (x4:A4) f,
   is_local (app_4 (B:=B) f x1 x2 x3 x4).
-Admitted.
+Proof. intros. apply local_is_local. Qed.
 
 Hint Resolve app_local_2 app_local_3 app_local_4.
 
@@ -452,30 +359,40 @@ Lemma app_intro_1_2 :
   app_1 f x1 H Q' ->
   (forall g, app_1 g x2 (Q' g) Q) ->
   app_2 f x1 x2 H Q.
-Proof. introv M1 M2 Hh. exists H [] Q []. splits; rew_heap*. Qed.
+Proof. intros. apply* local_erase. Qed.
 
 Lemma app_intro_1_3 : 
   app_1 f x1 H Q' ->
   (forall g, app_2 g x2 x3 (Q' g) Q) ->
   app_3 f x1 x2 x3 H Q.
-Proof. Admitted.
+Proof. intros. apply* local_erase. Qed.
 
 Lemma app_intro_1_4 : 
   app_1 f x1 H Q' ->
   (forall g, app_3 g x2 x3 x4 (Q' g) Q) ->
   app_4 f x1 x2 x3 x4 H Q.
-Proof. Admitted.
+Proof. intros. apply* local_erase. Qed.
 
 Lemma app_intro_2_3 : 
   app_2 f x1 x2 H Q' ->
   (forall g, app_1 g x3 (Q' g) Q) ->
   app_3 f x1 x2 x3 H Q.
-Proof. Admitted.
+Proof. 
 (*
+  introv M1 M2. introv Hh.
+  specializes M1 Hh. destruct M1 as (H1&H2&Q1&H'&?&(Q''&?&?)&?).
+  exists___. splits. eauto. esplit. split. eauto. intros g.
+  apply* local_erase. (* apply app_intro_1_2.*)
+  exists Q1. split~. intros g'. specializes M2 g'.
+  unfolds in M1. unfolds in M1.
+  exists Q'.
+
+
   introv M1 M2 Hh. exists H [] Q [].
   introv (Q1&M1&M2) M. exists Q1. split~.
   intros g. exists~ Q'. 
 *)
+Admitted.
 
 Lemma app_intro_2_4 : 
   app_2 f x1 x2 H Q' ->
@@ -508,14 +425,6 @@ End AppIntro.
 
 (********************************************************************)
 (* ** Introduction lemmas *)
-
-(* todo move *)
-Lemma local_weaken_pre : forall H' B (F:~~B) H Q,
-  is_local F -> 
-  F H' Q -> 
-  H ==> H' -> 
-  F H Q.
-Proof. intros. apply* local_weaken. Qed.
 
 Lemma spec_intro_1 : forall A1 B f (K:A1->~~B->Prop),
   is_spec_1 K ->
