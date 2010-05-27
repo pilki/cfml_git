@@ -71,8 +71,13 @@ Proof.
   xextract.
   xlet as v.
   (* details de xapp *)
-    xapp_manual.
-    eapply local_wframe. xlocal. sapply KR. hsimpl. xok.
+  eapply local_wframe.
+    xlocal.
+    eapply spec_elim_1_1. apply ml_get_spec.
+    intros R LR KR. simpl in KR. sapply KR.
+    hsimpl.
+    xok.
+    simpl.
   xextract. 
   intros Pv.
   xseq.

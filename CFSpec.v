@@ -3,8 +3,204 @@ Require Export LibCore LibEpsilon Shared.
 Require Export CFHeaps.
 
 
+Notation "h1 \+ h2" := (heap_union h1 h2)
+   (at level 51, right associativity).
+
+Lemma heap_union_assoc : forall h1 h2 h3,
+  \# h1 h2 h3 -> h1 \+ (h2 \+ h3) = (h1 \+ h2) \+ h3.
+Proof. skip. Qed.
+
+
 (********************************************************************)
 (* ** Axioms *)
+
+(** The type Func *)
+
+Axiom val : Type. 
+
+(** The type Func is inhabited *)
+
+Axiom val_inhab : Inhab val. 
+Existing Instance val_inhab.
+
+(** The evaluation predicate for functions: [eval f v h v' h'] *)
+
+Axiom eval : forall A B, val -> A -> heap -> B -> heap -> Prop.
+
+(** Evaluation is deterministic *)
+
+Axiom eval_deterministic : forall A B f (v:A) h (v1' v2':B) h1' h2',
+  eval f v h v1' h1' -> eval f v h v2' h2' -> v1' = v2' /\ h1' = h2'.
+  
+
+
+(********************************************************************)
+(* ** Definition and properties of AppPure *)
+
+(** The predicate AppPure *)
+
+Definition pureapp A B (f:val) (x:A) (P:B->Prop) := 
+  exists v, forall h, eval f x h v h /\ P v.
+
+(** AppPure satisfies the witness property *)
+
+Lemma pureapp_concrete : forall A B (F:val) (V:A) (P:B->Prop),
+  pureapp F V P <-> exists V', P V' /\ pureapp F V (= V').
+Proof.
+  iff H.
+  destruct H as (V'&N). destruct (N heap_empty). exists V'. split~.
+    exists V'. intros h. destruct (N h). split~.
+  destruct H as (V'&?&N). destruct N as (V''&N).
+    exists V'. intros h. destruct (N h). subst~.
+Qed.
+
+(** Corrolaries of the previous equivalence *)
+
+Lemma pureapp_witness : forall A B (F:val) (V:A) (P:B->Prop),
+  pureapp F V P -> exists V', P V' /\ pureapp F V (= V').
+Proof. intros. apply* pureapp_concrete. Qed.
+
+Lemma pureapp_abstract : forall A B (F:val) (V:A) (V':B) (P:B->Prop),
+  pureapp F V (= V') -> P V' -> pureapp F V P.
+Proof. intros. apply* pureapp_concrete. Qed.
+
+(** AppPure satisfies the determinacy property *)
+
+Lemma pureapp_deterministic : forall A B (F:val) (V:A) (V1' V2':B),
+  pureapp F V (= V1') -> pureapp F V (= V2') -> V1' = V2'.
+Proof.
+  introv (V1&N1) (V2&N2).
+  destruct (N1 heap_empty). destruct (N2 heap_empty).
+  subst. apply* eval_deterministic.
+Qed.          
+
+(** Corroloary of the witness and determinacy properties *)
+
+Lemma pureapp_join : forall A B (F:val) (V:A) (V':B) (P:B->Prop),
+  pureapp F V (= V') -> pureapp F V P -> P V'.    
+Proof.
+  introv HE1 H. lets [V'' [HP HE2]]: (pureapp_witness H). subst.
+  replace V' with V''. auto. apply* pureapp_deterministic.
+Qed.
+
+(** AppPure is compatible with weakening *)
+
+Lemma pureapp_weaken : forall A B (F:val) (V:A) (P P':B->Prop),
+  pureapp F V P -> P ==> P' -> pureapp F V P'.
+Proof.
+  introv M W. lets [x [Px Hx]]: (pureapp_witness M). 
+  apply* pureapp_abstract.
+Qed.
+
+
+(********************************************************************)
+(* ** Definition and properties of AppReturns *)
+
+(** The predicate AppReturns *)
+
+Definition app_1 A B (f:val) (x:A) (H:hprop) (Q:B->hprop) :=  
+  forall h i, \# h i -> H h -> 
+    exists v' h' g, \# h' g i /\ Q v' h' /\
+      eval f x (h \+ i) v' (h' \+ g \+ i).
+
+(** AppReturns is a local property *)
+
+
+Lemma heap_disjoint_union_inv' : forall h1 h2 h3,
+  \# (heap_union h2 h3) h1 = (\# h2 h1 /\ \# h3 h1).
+Proof. skip. Qed.
+
+Lemma heaps_disjoint_3 : forall h1 h2 h3,
+  \# h1 h2 h3 = (\# h1 h2 /\ \# h2 h3 /\ \# h1 h3).
+Proof. skip. Qed.
+
+Hint Rewrite 
+  heap_disjoint_union_inv 
+  heap_disjoint_union_inv'
+  heaps_disjoint_3 : rew_disjoint.
+
+Tactic Notation "rew_disjoint" :=
+  autorewrite with rew_disjoint in *.
+Tactic Notation "rew_disjoint" "*" :=
+  rew_disjoint; auto_star.
+
+Lemma app_local_1 : forall B A1 (x1:A1) f,
+  is_local (app_1 (B:=B) f x1).
+Proof.
+  asserts Hint1: (forall h1 h2, \# h1 h2 -> \# h2 h1).
+    intros. rewrite~ heap_disjoint_comm.
+  asserts Hint2: (forall h1 h2 h3, \# h1 h2 -> \# h1 h3 -> \# h1 (heap_union h2 h3)).
+    intros. rewrite* heap_disjoint_union_inv.
+  asserts Hint3: (forall h1 h2 h3, \# h1 h2 -> \# h2 h3 -> \# h1 h3 -> \# h1 h2 h3) .
+    intros. rewrite~ heaps_disjoint_3.
+  intros. extens. intros H Q. iff M. apply~ local_erase.
+  introv Dhi Hh. destruct (M h Hh) as (H1&H2&Q'&H'&D12&N&HQ).
+  destruct D12 as (h1&h2&?&?&?&?).
+  destruct~ (N h1 (heap_union i h2)) as (v'&h1'&i'&?&HQ'&E).
+  subst h. rew_disjoint*.
+  sets h': (heap_union h1' h2).
+  forwards Hh': (HQ v' h'). subst h'. exists___. splits~. rew_disjoint*.
+  destruct Hh' as (h3'&h4'&?&?&?&?).
+     asserts Hint4: (forall h : heap, \# h h1' -> \# h h2 -> \# h h3'). skip. 
+     asserts Hint5: (forall h : heap, \# h h1' -> \# h h2 -> \# h h4'). skip.
+  exists v' h3' (heap_union h4' i'). splits.
+    subst h h'. rew_disjoint*.
+    auto.
+    subst h h'. rew_disjoint. intuition. applys_eq E 1 3.
+      rewrite* <- heap_union_assoc. rewrite~ (heap_union_comm h2).
+      rewrite* <- heap_union_assoc. rewrite heap_union_assoc; [ | apply* Hint3 ].
+      rewrite <- H8. rewrite* <- heap_union_assoc. rewrite (heap_union_comm i).
+      rewrite* (@heap_union_assoc i'). rewrite (heap_union_comm i' h2).
+      rewrite* <- heap_union_assoc.
+Qed.
+
+
+
+
+
+
+(********************************************************************)
+(* ** Interaction between AppPure and AppReturns *)
+
+(** From AppPure to AppReturns *)
+
+Lemma pureapp_to_app : forall A B (F:val) (V:A) (P:B->Prop),
+  pureapp F V P -> app_1 F V [] \[P].
+Proof.
+  introv (v'&N). introv Dhi Hh. exists v' heap_empty heap_empty. splits.
+  skip. (* heap_disjoint heap_empty *)
+  destruct (N heap_empty). split~.
+  hnf in Hh. subst. do 2 rewrite heap_union_neutral_l. destruct~ (N i).
+Qed.
+
+(** Corrolary with the frame rule integrated *)
+
+Lemma pureapp_app_1 : forall  A B (F:val) (V:A) (P:B->Prop) (H:hprop) (Q:B->hprop),
+  pureapp F V P -> (\[P] \*+ H ===> Q) -> app_1 F V H Q.
+Proof.
+  intros. apply* local_wframe. apply~ pureapp_to_app. rew_heap~.
+Qed. 
+
+(** Overlapping of AppPure and AppReturns *)
+
+Lemma pureapp_and_app : forall A B (F:val) (V:A) (V':B) (H:hprop) (Q:B->hprop) h,
+  pureapp F V (= V') -> app_1 F V H Q -> H h -> exists H', (Q V' \* H') h.  (* H ==> Q V' \* H' *)
+Proof.
+  introv (V''&N) M Hh. destruct (N h) as (HE&?). clear N.
+  subst. hnf in M. destruct (M h heap_empty) as (V''&h1&h2&?&HQ&HE'). 
+    skip. (* disjoint *)
+    auto.
+    do 2 rewrite heap_union_neutral_r in HE'.
+    forwards [? R]: (eval_deterministic HE HE'). exists (=h2). subst.
+    destructs H0. exists h1 h2. splits~. skip. (* disjoint *)
+Qed.
+
+
+
+
+
+(********************************************************************)
+(* ** OLD Axioms *)
 
 (** The type Func *)
 
@@ -57,33 +253,8 @@ Axiom pureapp_and_app : forall A B (F:val) (V:A) (V':B) (H:hprop) (Q:B->hprop),
 
 Hint Resolve app_local_1.
 
-Lemma pureapp_witness : forall A B (F:val) (V:A) (P:B->Prop),
-  pureapp F V P -> exists V', P V' /\ pureapp F V (= V').
-Proof. intros. apply* pureapp_concrete. Qed.
 
-Lemma pureapp_abstract : forall A B (F:val) (V:A) (V':B) (P:B->Prop),
-  pureapp F V (= V') -> P V' -> pureapp F V P.
-Proof. intros. apply* pureapp_concrete. Qed.
 
-Lemma pureapp_join : forall A B (F:val) (V:A) (V':B) (P:B->Prop),
-  pureapp F V (= V') -> pureapp F V P -> P V'.    
-Proof.
-  introv HE1 H. lets [V'' [HP HE2]]: (pureapp_witness H). subst.
-  replace V' with V''. auto. apply* pureapp_deterministic.
-Qed.
-
-Lemma pureapp_weaken : forall A B (F:val) (V:A) (P P':B->Prop),
-  pureapp F V P -> P ==> P' -> pureapp F V P'.
-Proof.
-  introv M W. lets [x [Px Hx]]: (pureapp_witness M). 
-  apply* pureapp_abstract.
-Qed.
-
-Lemma pureapp_app_1 : forall  A B (F:val) (V:A) (P:B->Prop) (H:hprop) (Q:B->hprop),
-  pureapp F V P -> (\[P] \*+ H ===> Q) -> app_1 F V H Q.
-Proof.
-  intros. apply* local_wframe. apply~ pureapp_to_app. rew_heap~.
-Qed. 
 
 
 (** TODO; move Extraction of premisses from [local] *)

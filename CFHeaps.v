@@ -62,13 +62,71 @@ Definition heap_union (h1 h2 : heap) : heap :=
   | _,_ => None
   end.
 
+Definition heaps_union (hs : list heap) : heap :=
+  LibList.fold_right heap_union heap_empty hs.
+
+(** Heap well-defineteness *)
+
+Definition heap_defined (h : heap) : Prop :=
+  h <> None.
+ 
+(** Heap disjointness *)
+
+Definition heaps_disjoint (hs : list heap) : Prop :=
+  heap_defined (heaps_union hs).
+
+Notation "\# h1 h2" := (heaps_disjoint (h2::h1::nil))
+  (at level 40, h1 at level 0, h2 at level 0, no associativity).
+Notation "\# h1 h2 h3" := (heaps_disjoint (h3::h2::h1::nil))
+  (at level 40, h1 at level 0, h2 at level 0, h3 at level 0, no associativity).
+
+(*
+Lemma test : forall h1 h2 h3, (\# h1 h2) = (\# h1 h2) /\ (\# h1 h2 h3) = (\# h1 h2 h3).
+*)
+
+
 (*------------------------------------------------------------------*)
 (* ** Properties of operations on heaps *)
 
-Axiom heap_union_neutral_l : 
+Lemma heap_union_neutral_l : 
   neutral_l heap_union heap_empty.
-Axiom heap_union_neutral_r : 
+Proof. skip. Qed.
+
+Lemma heap_union_neutral_r : 
   neutral_r heap_union heap_empty.
+Proof. skip. Qed.
+
+Lemma heap_union_comm : comm heap_union.
+Proof. skip. Qed.
+
+Lemma heap_disjoint_comm : forall h1 h2,
+  \# h1 h2 = \# h2 h1.
+Proof. skip. Qed.
+  (*
+  intros [|] [|]; unfold heap_disjoint, heap_defined; simpl; introv H.
+  skip_rewrite (disjoint (dom_impl m0) (dom_impl m) = disjoint (dom_impl m) (dom_impl m0)).
+  case_if. 
+    skip_rewrite (m0 \u m = m \u m0). auto.
+    false.
+  auto.
+  auto.
+  auto.
+  *)
+
+Lemma heap_disjoint_empty_r : forall h,
+  \# h heap_empty.
+Proof. skip. Qed.
+
+Lemma heap_disjoint_empty_l : forall h,
+  \# heap_empty h.
+Proof. intros. rewrite heap_disjoint_comm. apply heap_disjoint_empty_r. Qed.
+
+Lemma heap_disjoint_union_inv : forall h1 h2 h3,
+  \# h1 (heap_union h2 h3) = (\# h1 h2 /\ \# h1 h3).
+Proof. skip. Qed.
+
+
+
 
 
 (********************************************************************)
@@ -94,7 +152,7 @@ Definition heap_is_single (l:loc) A (v:A) : hprop :=
 (** Heap union *)
 
 Definition heap_is_star (H1 H2 : hprop) : hprop := 
-  fun h => exists h1 h2, h = heap_union h1 h2 /\ h <> None /\ H1 h1 /\ H2 h2.
+  fun h => exists h1 h2, \# h1 h2 /\ h = heap_union h1 h2 /\ H1 h1 /\ H2 h2.
 
 (** Pack in heaps *)
 
