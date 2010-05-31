@@ -186,6 +186,12 @@ Qed.
 
 Hint Resolve app_local_1.
 
+(** AppReturns with frame *)
+
+Lemma app_frame_1 : forall B A1 (x1:A1) f H (Q:B->hprop) H',
+  app_1 f x1 H Q -> app_1 f x1 (H \* H') (Q \*+ H').
+Proof. intros. applys* local_wframe. Qed.
+
 
 (********************************************************************)
 (* ** Interaction between AppPure and AppReturns *)
@@ -378,21 +384,15 @@ Lemma app_intro_2_3 :
   (forall g, app_1 g x3 (Q' g) Q) ->
   app_3 f x1 x2 x3 H Q.
 Proof. 
-(*
-  introv M1 M2. introv Hh.
-  specializes M1 Hh. destruct M1 as (H1&H2&Q1&H'&?&(Q''&?&?)&?).
-  exists___. splits. eauto. esplit. split. eauto. intros g.
-  apply* local_erase. (* apply app_intro_1_2.*)
-  exists Q1. split~. intros g'. specializes M2 g'.
-  unfolds in M1. unfolds in M1.
-  exists Q'.
-
-
-  introv M1 M2 Hh. exists H [] Q [].
-  introv (Q1&M1&M2) M. exists Q1. split~.
-  intros g. exists~ Q'. 
-*)
-Admitted.
+  introv M1 M2.
+  introv Hh. specializes M1 Hh. destruct M1 as (H1&H2&Q1&H'&?&(Q''&Ap1&Ap2)&Po).
+  exists (= h) [] Q []. splits; rew_heap~.
+  exists (Q'' \*+ H2). split.
+    applys* local_wframe. intros h'. intro_subst~.
+    intros. apply local_erase. exists __. split.
+       apply* local_wframe.
+       intros g'. specializes Po g'. applys* local_wgframe.
+Qed.
 
 Lemma app_intro_2_4 : 
   app_2 f x1 x2 H Q' ->
@@ -435,6 +435,23 @@ Proof. introv S _ H. split~. Qed.
 
 
 
+Lemma pureapp_and_app_1 : forall A B (F:val) (V:A) (V':B) (H:hprop) (Q:B->hprop),
+  pureapp F V (= V') -> app_1 F V H Q -> 
+     forall h, H h -> 
+       (exists H', (Q V' \* H') h).
+(*    /\ (forall V'', Q V'' h -> V'' = V').*)
+Proof. 
+  introv (v'&N). introv Dhi Hh. destruct (N h). subst.
+  hnf in Dhi. specializes Dhi h heap_empty Hh.
+    skip.
+  destruct Dhi as (v'&h'&g&?&?&?).
+  repeat rewrite heap_union_neutral_r in *.
+  forwards (?&?): (eval_deterministic H0 H3). (*split.*)
+    exists (= g). exists h' g. splits~. skip. subst~.
+    
+Qed.
+
+
 Axiom pureapp_and_app' : forall A B (F:val) (V:A) (V':B) (H:hprop) (Q:B->hprop) h,
   pureapp F V (= V') -> app_1 F V H Q -> H h -> exists H', (Q V' \* H') h. 
 
@@ -450,30 +467,15 @@ Proof.
   apply HK.
   intros H Q M.
   rewrite app_local_1. introv Hh.
-  destruct (M _ Hh) as (H1&H2&Q1&H'&?&N&?).
-  destruct N as (Q'&Ap1&Ap2).
-  specializes Ap2 g. 
-(*
-  lets (h1&h2&?&?&?&?): H0.
-  forwards~ (HG&WH): (pureapp_and_app' h1 Hg Ap1).
-  exists H1 H2. exists Q1 (H' \* HG). splits~.
-  apply* local_weaken_pre.
-  skip.
-  intros r. 
-*)
-
-  lets WH: (pureapp_and_app Hg Ap1). (* todo : bug forwards ? *)  
-  exists H1 H2. exists Q1 H'. splits~.
-  apply* local_weaken_pre.
-
-Qed. 
-
-(*
-  intros H Q (Q'&Ap1&Ap2). 
-  lets WH: (pureapp_and_app Hg Ap1). (* todo : bug forwards ? *)
-  apply* local_weaken.
-Qed.
-*)
+  destruct (M _ Hh) as (H1&H2&Q1&H'&?&(Q'&Ap1&Ap2)&Po).
+  specializes Ap2 g.
+  destruct H0 as (h1&h2&?&?&?&?).
+  forwards* (H''&Ro): (>>> (@pureapp_and_app_1) f x1).
+  exists (Q' g \* H'') H2 __ (H' \* H''). splits.
+    subst. exists___*.
+    apply* local_wframe.
+    intros r. specializes Po r. hsimpl. auto.
+Admitted. (* existentials *)
 
 Lemma spec_intro_3 : forall A1 A2 A3 B f (K:A1->A2->A3->~~B->Prop),
   is_spec_3 K ->
