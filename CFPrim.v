@@ -1,5 +1,33 @@
 Set Implicit Arguments.
-Require Export LibInt CFSpec CFPrint CFTactics.
+
+Record dynamic := dyn { 
+  dyn_type : Type; 
+  dyn_value : dyn_type }.
+
+Inductive heap_c : Type :=
+| empty_c : heap_c
+| cons_c : nat -> dynamic -> heap_c -> heap_c.
+
+Definition array A := nat -> A -> Prop.
+Definition map A B := A -> B -> Prop.
+Definition map' := map.
+Definition heap := map nat dynamic.
+Definition f (y:array nat) := dyn y.
+Require Import List.
+Print list.
+(* map nat nat*)
+
+
+
+
+Definition map A B := A -> B.
+Definition heap := map nat dynamic.
+Definition f (y:map nat nat) := 
+  fun x:nat => dyn y.
+
+
+
+Require Export LibInt LibArray CFSpec CFPrint CFTactics.
 
 Hint Resolve (0%nat) : typeclass_instances.
 Hint Resolve (0%Z) : typeclass_instances.
@@ -179,6 +207,51 @@ Proof.
   hsimpl. apply heap_extract_prop. intro_subst. auto.
 Qed.
 
+
+(** Arrays *)
+
+Definition ArrayOn A (v:array A) (l:loc) :=
+  l ~~> v.
+
+Parameter ml_array_make : val.
+
+Parameter ml_array_get : val.
+
+Parameter ml_array_set : val.
+
+Parameter ml_array_make_spec : forall a,
+  Spec ml_array_make (n:int) (v:a) |R>> 
+    R [] (_~> ArrayOn (Array.make n V)).
+
+Parameter ml_array_get_spec : forall a A,
+  Spec ml_array_get (l:loc) (i:int) |R>> 
+    index t i -> read R (l ~> ArrayOn t) (= t\[i]).
+
+Parameter ml_array_set_spec : forall a,
+  Spec ml_array_set (l:loc) (i:int) (v:a) |R>> 
+    index t i -> R (l ~> ArrayOn t) (# l ~> ArrayOn t'[i:=v]).
+
+
+(*
+Parameter ml_array_make_spec : forall a,
+  Specs ml_array_make (n:int) (v:a) |R>> 
+    forall (V:A) (T:htype A a) (t:array A),
+    R (T V v) (_~> Array T (Array.make n V)).
+
+Parameter ml_array_get_spec : forall a A,
+  Spec ml_array_get (l:loc) (i:int) |R>> 
+    forall (T:htype A a) (t:array A), dup T -> index t i -> 
+    read R (l ~> Array T t) (T t[i]).
+
+Parameter ml_array_set_spec : forall a,
+  Spec ml_array_set (l:loc) (i:int) (v:a) |R>> 
+    forall (V:A) (T:htype A a) (t:array A), dup T -> index t i -> 
+    R (l ~> Array T t \* T V v) (l ~> Array T (t[i:=v]).
+ *)
+
+Hint Extern 1 (RegisterSpec ml_array_make) => Provide ml_array_make_spec.
+Hint Extern 1 (RegisterSpec ml_array_get) => Provide ml_array_get_spec.
+Hint Extern 1 (RegisterSpec ml_array_set) => Provide ml_array_set_spec.
 
 
 

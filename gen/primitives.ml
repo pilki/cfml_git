@@ -63,6 +63,9 @@ let all_primitives_table = (*todo:complete*)
     "Pervasives.ref", "ml_ref";    
     "Pervasives.!", "ml_get";
     "Pervasives.:=", "ml_set";
+    "Array.make", "ml_array_make";    
+    "Array.get", "ml_array_get";
+    "Array.set", "ml_array_set";
     "List.hd", "ml_list_hd";
     "List.tl", "ml_list_tl";
     "List.rev", "ml_rev";
