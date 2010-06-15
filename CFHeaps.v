@@ -689,6 +689,19 @@ Proof.
   auto.
 Qed. 
 
+(** Extraction of heap representation from [local] *)
+
+Lemma local_name_heap : forall B (F:~~B) (H:hprop) Q,
+  is_local F -> 
+  (forall h, H h -> F (= h) Q) ->
+  F H Q.
+Proof.
+  introv L M. rewrite L. introv Hh. exists (= h) [] Q []. splits.
+  exists h heap_empty. skip.
+  apply~ M.
+  auto.
+Qed.
+
 
 (********************************************************************)
 (* ** Extraction tactic for local goals *)
