@@ -18,7 +18,10 @@ let rec find s a =
 let union s a b =
    let ra = find s a in
    let rb = find s b in
-   s.parent.(ra) <- rb
+   if ra <> rb then begin
+      s.parent.(ra) <- rb;
+      s.nb_compo <- s.nb_compo - 1;
+   end
 
 let same_compo s a b =
    find s a = find s b

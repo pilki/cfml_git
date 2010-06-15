@@ -25,7 +25,8 @@ Definition Sarray (T:array int) l :=
   * [ repr_valid n Back Val T ].
 
 
-Lemma used_cell_test_correct : forall n Back Idx i, index L i -> 
+Lemma used_cell_test_correct : forall n Back Idx i, 
+  index L i -> idx_back_coherent n Back Idx ->
   (back_pointed n Back i) <-> (index n (Idx\[i]) /\ Back\[Idx\[i]] = i).
 
 
