@@ -15,7 +15,7 @@ Definition Composite (G : nw_s_graph loc int) :=
   hexists M : map loc cell, Group M *
     [ nodes G = dom M 
     /\ forest G
-    /\ foreach (nodes G) (fun x => node_inv G x (M\[x])) ].
+    /\ foreach (nodes G) (fun x => node_inv G x (M\[x])).
 
 
 (* termination: length of (the unique) path in "transpose G" from x *)
