@@ -34,7 +34,7 @@ let cmp (p1 : 'a ref) (p2 : 'b ref) : bool =
 
 (** Nullable references *)
 
-let null_impl = ()
+let null_impl = ref ()
 
 let null () : 'a ref = 
    magic null_impl
