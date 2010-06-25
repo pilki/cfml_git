@@ -1,6 +1,82 @@
 
+module type StrongSig = sig 
+   type sref
+   val alloc : unit -> sref
+   val ref : 'a -> sref 
+   val get : sref -> 'a 
+   val set : sref -> 'a -> unit 
+   val same : sref -> sref -> bool
+   val null : sref 
+   val is_null : sref -> bool
+end
+
+module type WeakSig = sig 
+   (*
+   type 'a ref
+   val ref : 'a -> 'a ref
+   val get : 'a ref -> 'a 
+   val set : 'a ref -> 'a -> unit 
+   *)
+
+   val alloc : unit -> 'a ref
+   val sref : 'a -> 'b ref
+   val sget : 'a ref -> 'b 
+   val sset : 'a ref -> 'b -> unit 
+   
+   val same : 'a ref -> 'b ref -> bool
+   val cast : 'a ref -> 'b ref 
+
+   val null : unit -> 'a ref
+   val is_null : 'a ref -> bool
+end
+
+
 let magic = Obj.magic
 
+module Strong : StrongSig = struct
+   type sref = unit ref 
+   let alloc () = ref ()
+   let ref x = magic (ref x)
+   let get p = !(magic p)
+   let set p x = (magic p) := x
+   let same p1 p2 = (p1 == p2)
+   let null = ref ()
+   let is_null p = same null p
+end
+
+module Weak : WeakSig = struct
+   (*
+   type 'a ref = 'a Pervasives.ref
+   let ref = Pervasives.ref
+   let get = (!)
+   let set = (:=)
+   *)
+
+   let alloc () = magic (ref ())
+   let sref x = magic (ref x)
+   let sget p = !(magic p)
+   let sset p x = (magic p) := x
+   
+   let same p1 p2 = ((magic p1) == p2) 
+   let cast p = magic p
+
+   let nullref = ref ()
+   let null () = magic nullref
+   let is_null p = same (magic nullref) p
+end
+
+
+
+
+
+(*
+   let is_null = same (magic nullref)
+let is_null (p : 'a ref) : bool =
+   p == (magic null_impl)*)
+
+
+
+(*
 
 (** Standard manipulation of references *)
 
@@ -88,3 +164,5 @@ let () =
    sset x (3.54);
    let r : float = sget x in
    print_float r
+
+*)
