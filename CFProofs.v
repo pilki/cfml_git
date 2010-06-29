@@ -11,7 +11,7 @@ Require Import LibCore LibEpsilon.
 
 
 (************************************************************)
-(* * Source language syntax and semantics *)
+(* * Source language syntax *)
 
 (** Representation of variables *)
 
@@ -27,8 +27,8 @@ Inductive trm : Type :=
   | trm_fix : var -> var -> trm -> trm
   | trm_let : var -> trm -> trm -> trm
   | trm_app : trm -> trm -> trm
-  | trm_fail : trm 
-  | trm_ext : forall (A:Type), A -> trm.
+  | trm_ifz : trm -> trm -> trm -> trm
+  | trm_fail : trm.
 
 (** Characterization of values from the source language *)
 
@@ -40,9 +40,11 @@ Inductive value : trm -> Prop :=
   | value_inj : forall b v1,
       value v1 -> value (trm_inj b v1)
   | value_fix : forall f x t, 
-      value (trm_fix f x t)
-  | value_ext : forall A (V:A),
-      value (trm_ext V).
+      value (trm_fix f x t).
+
+
+(************************************************************)
+(* * Source language semantics *)
 
 (** Definition of capture-avoiding substitution *)
 
@@ -57,8 +59,8 @@ Fixpoint subst (x : var) (v : trm) (t : trm) {struct t} : trm :=
   | trm_let y t1 t2 => if x == y then trm_let y (subst x v t1) t2
                        else trm_let y (subst x v t1) (subst x v t2)
   | trm_app t1 t2 => trm_app (subst x v t1) (subst x v t2)
+  | trm_ifz t1 t2 t3 => trm_ifz (subst x v t1) (subst x v t2) (subst x v t3)
   | trm_fail => trm_fail
-  | trm_ext _ V => trm_ext V
   end.
 
 (** Big-step semantics of the source language *)
@@ -73,7 +75,11 @@ Inductive red : trm -> trm -> Prop :=
       red (trm_let x t1 t2) v2
   | red_fix : forall f x t v1 v2,
       red (subst f (trm_fix f x t) (subst x v1 t)) v2 ->
-      red (trm_app (trm_fix f x t) v1) v2.
+      red (trm_app (trm_fix f x t) v1) v2
+  | red_ifz : forall t1 t2 t3 n v,
+      red t1 (trm_int n) ->
+      red (if n '= 0 then t2 else t3) v ->
+      red (trm_ifz t1 t2 t3) v.
 
 (** Proof that the source language is deterministic *)
 
@@ -84,7 +90,12 @@ Proof.
   inversions Red2; try solve [inversions H]. auto.
   inversions Red2. inversions H. rewrite~ (IHRed1_1 v3) in IHRed1_2.
   inversions Red2. inversions H. auto. 
+  inversions Red2. inversions H.
+    forwards* K: IHRed1_1. inverts K. eauto.
 Qed.
+
+(************************************************************)
+(* * Source language typign *)
 
 (** Grammar of ground types *)
 
@@ -92,8 +103,226 @@ Inductive typ : Type :=
   | typ_int   : typ
   | typ_prod  : typ -> typ -> typ
   | typ_sum   : typ -> typ -> typ
-  | typ_arrow : typ -> typ -> typ
-  | typ_ext   : Type -> typ.
+  | typ_arrow : typ -> typ -> typ.
+
+(** Typing contexts *)
+
+Definition ctx := list (var * typ).
+
+Definition binds x T (E:ctx) :=
+  In (x,T) E.
+
+(** Typing judgment *)
+
+Reserved Notation "E |= t ~: T" (at level 69).
+
+Inductive typing : ctx -> trm -> typ -> Prop :=
+  | typing_var : forall E x T,
+      binds x T E ->
+      E |= (trm_var x) ~: T
+  | typing_int : forall E n,
+      E |= (trm_int n) ~: typ_int
+  | typing_pair : forall E t1 t2 T1 T2,
+      E |= t1 ~: T1 ->
+      E |= t2 ~: T2 ->
+      E |= (trm_pair t1 t2) ~: typ_prod T1 T2
+  | typing_inj : forall E (b:bool) t1 T1 T2,
+      E |= t1 ~: (if b then T1 else T2) ->
+      E |= (trm_inj b t1) ~: typ_sum T1 T2
+  | typing_fix : forall E T1 T2 f x t1,
+      ((f,typ_arrow T1 T2)::(x,T1)::E) |= t1 ~: T2 ->
+      E |= (trm_fix f x t1) ~: (typ_arrow T1 T2)
+  | typing_app : forall T1 T2 E t1 t2,
+      E |= t1 ~: (typ_arrow T1 T2) -> 
+      E |= t2 ~: T1 ->
+      E |= (trm_app t1 t2) ~: T2
+  | typing_let : forall E x T1 T2 t1 t2,
+      E |= t1 ~: T1 ->
+      ((x,T1)::E) |= t2 ~: T2 ->
+      E |= (trm_let x t1 t2) ~: T2
+  | typing_ifz : forall E t1 t2 t3 T,
+      E |= t1 ~: typ_int ->
+      E |= t2 ~: T ->
+      E |= t3 ~: T ->
+      E |= (trm_ifz t1 t2 t3) ~: T
+  | typing_fail : forall E T,
+      E |= trm_fail ~: T
+
+where "E |= t ~: T" := (typing E t T).
+
+Notation "|= t ~: T" := (nil |= t ~: T) (at level 68).
+
+(** Well-typed values *)
+
+Definition well_typed_value (v:trm) :=
+  value v /\ (exists T, |= v ~: T).
+
+
+(************************************************************)
+(* * Construction of the type Func *)
+
+(** Definition of [Func] as the set of ML functions *)
+
+Definition Func := { v:trm | exists f x t T1 T2, 
+         v = trm_fix f x t 
+      /\ |= v ~: typ_arrow T1 T2}.
+
+(** Coercion for viewing a value of type [Func] as the type [trm] *)
+
+Coercion Func_to_trm (F:Func) : trm := let (v,_) := F in v.
+
+(** [Func] is inhabited *)
+
+Instance Func_inhab : Inhab Func.
+Proof.
+  constructor. econstructor.
+  exists 0%nat 0%nat (trm_int 0) typ_int typ_int. split~.
+  apply typing_fix. apply typing_int.
+Qed.
+
+
+(************************************************************)
+(* ** Reflection of types *)
+
+(** Computation of <T> from a type T *)
+
+Fixpoint lift (T:typ) {struct T} : Type :=
+  match T with
+  | typ_int => int
+  | typ_prod T1 T2 => prod (lift T1) (lift T2)
+  | typ_sum T1 T2 => sum (lift T1) (lift T2)
+  | typ_arrow T1 T2 => Func
+  end.
+
+(** A reflected type, or [RType], is a Coq type of the form <T> *)
+
+Record RType := 
+  { RType_coq :> Type; 
+    RType_typ : typ;
+    RType_eq : RType_coq = lift RType_typ }.
+
+
+(************************************************************)
+(* ** Reflection of values *)
+
+(** Definition of encoding, as a function of type [forall T, <T> -> trm] *)
+
+Program Definition encode (T:typ) (V:lift T) : trm.
+  intros T. induction T; simpl; intro V.
+  exact (trm_int V).
+  destruct V as (V1,V2). exact (trm_pair (IHT1 V1) (IHT2 V2)).
+  destruct V as [V1|V2]. exact (trm_inj true (IHT1 V1)). exact (trm_inj false (IHT2 V2)).
+  exact V.
+Defined.
+
+Implicit Arguments encode [T].
+
+(** Image of encoding includes only well-typed values *)
+
+Hint Constructors value typing.
+
+Lemma encode_typed_values : forall (T:typ) (V:lift T),
+  well_typed_value (encode V).
+Proof.
+  induction T; simpl; intros V.
+  split*.
+  destruct V as (V1,V2). intuit (IHT1 V1). intuit (IHT2 V2). split*.
+  destruct V as [V1|V2].
+    intuit (IHT1 V1). split. eauto. exists* (typ_sum x T2).
+    intuit (IHT2 V2). split. eauto. exists* (typ_sum T1 x).
+  destruct V as (f,H). simpl. intuit H. subst. split*.
+Qed.
+
+(** Injectivity of encoding *)
+
+Lemma encode_inj : forall (T:typ) (V1 V2 :lift T),
+  encode V1 = encode V2 -> V1 = V2.
+Proof.
+  induction T; simpl; intros V1 V2 H.
+  inverts~ H.
+  destruct V1; destruct V2. inverts H. fequal~.
+  destruct V1; destruct V2; inverts H; fequal~.
+  destruct V1; destruct V2.
+  unfolds Func_to_trm. subst x. pi_rewrite~ e.
+Qed.
+
+(** Surjectivity of encoding *)
+
+Lemma encode_surj : forall (T:typ) (v:trm),
+  value v -> 
+  exists t : trm
+
+
+(** Definition of decoding, as a function of type [forall T, trm -> <T> option] *)
+
+Axiom decode : forall T, trm -> option (lift T).
+
+
+
+(** Coercion *)
+
+Program Definition coerce (A:Type) (X:A) (B:Type) (H: A = B) : B.
+Proof. intros. subst. auto. Defined.
+Implicit Arguments coerce [A].
+
+
+(** Encoding on reflected types *)
+
+Definition Encode (A:RType) (V:A) : trm :=
+  encode (RType_typ A) (coerce V _ (RType_eq _)).
+
+Lemma Encode_inj : forall (A:Rtype) V1 V2,
+  Encode V1 = Encode V2 -> V1 = V2.
+
+
+
+
+(************************************************************)
+(* ** Construction of AppEval *)
+
+(** Definition of AppEval *)
+
+Definition AppEval (A B:RType) (F:Func) (V:A) (V':B) :=
+  red (trm_app F (Encode V)) (Encode V').
+
+Implicit Arguments AppEval [A B].
+
+Lemma AppEval_deterministic :
+  forall (A B:RType) (F:Func) (V:A) (V1' V2':B),
+  AppEval F V V1' -> AppEval F V V2' -> V1' = V2'.
+Proof.
+  introv H1 H2. unfolds AppEval.
+  forwards: (red_deterministic H1 H2).
+  apply Encode_injective.
+Qed. 
+
+Lemma AppReturns_concrete : 
+  forall {A B:RType} (F:Func) (V:A) (P:B->Prop),
+  AppReturns F V P <-> exists V', P V' /\ AppReturns F V (= V').
+Proof.
+  split; intros H.
+  destruct H as [V' [H1 H2]]. exists V'. split. auto.
+   exists V'. split. auto. auto.
+  destruct H as [V' [H1 [V'' [H2 H3]]]]. exists V'.
+   split. auto. subst. auto.
+Qed.
+
+Lemma AppReturns_deterministic :
+  forall {A B:RType} (F:Func) (V:A) (V1' V2':B),
+  AppReturns F V (= V1') -> AppReturns F V (= V2') -> V1' = V2'.
+Proof.
+  introv [VA' [H11 H12]] [VB' [H21 H22]]. subst.
+  apply* encode_inj. eapply red_deterministic; eauto. 
+Qed. 
+
+
+
+
+
+
+
+
+
 
 (** Terms, ML types and Coq types are inhabited *)
 
@@ -108,36 +337,9 @@ Proof. constructor. exact int. Defined.
 
 
 
-(************************************************************)
-(* * Construction of the type Func *)
-
-(** Definition of [Func] as the set of ML functions *)
-
-Definition Func := {v:trm | exists f x t, v = trm_fix f x t}.
-
-(** Coercion for viewing a value of type [Func] as the type [trm] *)
-
-Coercion Func_to_trm (F:Func) := let (v,_) := F in v.
-
-(** [Func] is inhabited *)
-
-Instance Func_inhab : Inhab Func.
-Proof. constructor. econstructor. exists~ 0%nat 0%nat (trm_int 0). Qed.
 
 
-(************************************************************)
-(* ** ML reflected types *)
 
-(** Computation of <T> from a type T *)
-
-Fixpoint lift_typ (T:typ) {struct T} : Type :=
-  match T with
-  | typ_int => int
-  | typ_prod T1 T2 => prod (lift_typ T1) (lift_typ T2)
-  | typ_sum T1 T2 => sum (lift_typ T1) (lift_typ T2)
-  | typ_arrow T1 T2 => Func
-  | typ_ext A => A
-  end.
 
 (** [ml_type T] holds if [T] is a real ML type,
     i.e. without external components *)
@@ -161,6 +363,12 @@ Definition lifted_ml_type (A:Type) :=
 
 (************************************************************)
 (* ** Definition of encoders and decoders *)
+
+  | trm_ext : forall (A:Type), A -> trm.
+  | value_ext : forall A (V:A),
+      value (trm_ext V).
+
+
 
 (* Conversions difficiles...
 Program Fixpoint encode_ml (T : typ) (V : lift_typ T) : trm :=
@@ -206,9 +414,7 @@ Defined.
 
 (** [encode A V] encoders the Coq value [V] into an ML value *)
 
-Program Definition coerce (A:Type) (X:A) (B:Type) (H: A = B) : B.
-Proof. intros. subst. auto. Defined.
-Implicit Arguments coerce [A].
+
 
 Lemma prop_dec : forall (P:Prop), {P}+{~P}.
 Proof. 
