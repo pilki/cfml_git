@@ -163,9 +163,10 @@ Definition well_typed_value (v:trm) :=
 
 (** Definition of [Func] as the set of ML functions *)
 
-Definition Func := { v:trm | exists f x t T1 T2, 
-         v = trm_fix f x t 
-      /\ |= v ~: typ_arrow T1 T2}.
+Definition well_typed_function (v:trm) :=
+  exists f x t T1 T2, v = trm_fix f x t /\ |= v ~: typ_arrow T1 T2.
+
+Definition Func : Type := { v:trm | well_typed_function v }.
 
 (** Coercion for viewing a value of type [Func] as the type [trm] *)
 
@@ -200,6 +201,17 @@ Record RType :=
   { RType_coq :> Type; 
     RType_typ : typ;
     RType_eq : RType_coq = lift RType_typ }.
+
+(** Reflected types are all inhabited *)
+
+Instance lift_inhab : forall T, Inhab (lift T).
+Proof.
+  constructor. induction T; simpl.
+  exact (0%Z).
+  exact (IHT1,IHT2).
+  exact (inl IHT1).
+  exact arbitrary.
+Qed.
 
 
 (************************************************************)
@@ -243,37 +255,83 @@ Proof.
   destruct V1; destruct V2. inverts H. fequal~.
   destruct V1; destruct V2; inverts H; fequal~.
   destruct V1; destruct V2.
-  unfolds Func_to_trm. subst x. pi_rewrite~ e.
+  unfolds Func_to_trm. subst x. pi_rewrite~ w.
 Qed.
 
 (** Surjectivity of encoding *)
 
 Lemma encode_surj : forall (T:typ) (v:trm),
-  value v -> 
-  exists t : trm
+  value v -> |= v ~: T ->
+  exists V : lift T, v = encode V.
+Proof.
+  induction T; intros v Hval Htyp.
+  inverts Htyp; inverts Hval. exists~ n.
+  inverts Htyp; inverts Hval. 
+    forwards~ [V1 E1]: (IHT1 t1).
+    forwards~ [V2 E2]: (IHT2 t2).
+    subst. exists~ (V1,V2).
+  inverts Htyp; inverts Hval. destruct b.
+    forwards~ [V1 E1]: (IHT1 t1). subst. exists~ (inl (B:=lift T2) V1).
+    forwards~ [V2 E2]: (IHT2 t1). subst. exists~ (inr (A:=lift T1) V2).
+  asserts K: (well_typed_function v).
+    inverts keep Htyp; inverts keep Hval. exists___*.
+   exists~ (@exist _ _ v K).
+Qed.
+
+(** Definition of decoding as the reciprocal of encoding *)
+
+Definition decode (T:typ) (v:trm) : lift T :=
+  epsilon (fun V => v = encode V).
 
 
-(** Definition of decoding, as a function of type [forall T, trm -> <T> option] *)
-
-Axiom decode : forall T, trm -> option (lift T).
-
-
-
-(** Coercion *)
+(** Type coercion to exploit equalities between types *)
 
 Program Definition coerce (A:Type) (X:A) (B:Type) (H: A = B) : B.
-Proof. intros. subst. auto. Defined.
+Proof. intros. refine (@eq_rect Type A (fun T => T) X B H). Defined.
+
 Implicit Arguments coerce [A].
+
+Lemma coerce_inj : forall A B (V1 V2 : A) (E : A = B),
+  @coerce A V1 B E = @coerce A V2 B E -> V1 = V2.
+Proof.
+  unfold coerce. unfold eq_rect. intros. skip.
+(*
+dependent rewrite H. 
+Require Import JMeq.
+Print JMeq.
+ destruct E.
+  intros.
+*)
+Qed.
+  
+
+(** Lifting to RType *)
+
+Program Definition Lift (T:typ) : RType :=
+  @Build_RType (lift T) T (eq_refl _).
+
+Coercion Lift : typ >-> RType.
 
 
 (** Encoding on reflected types *)
 
 Definition Encode (A:RType) (V:A) : trm :=
-  encode (RType_typ A) (coerce V _ (RType_eq _)).
+  encode (coerce V _ (RType_eq _)).
 
-Lemma Encode_inj : forall (A:Rtype) V1 V2,
+Implicit Arguments Encode [A].
+
+Lemma Encode_inj : forall (A:RType) (V1 V2:A),
   Encode V1 = Encode V2 -> V1 = V2.
+Proof.
+  destruct A as [A T E]. unfold Encode. simpl. intros.
+  lets R: (>>> encode_inj H).  
+  apply (@coerce_inj _ (lift T) _ _ _ R).
+Qed.
 
+(** Decoding on reflected types *)
+
+Definition Decode (A:RType) (v:trm) : A :=
+  coerce (decode (RType_typ A) v) _ (sym_eq (RType_eq _)).
 
 
 
@@ -291,10 +349,91 @@ Lemma AppEval_deterministic :
   forall (A B:RType) (F:Func) (V:A) (V1' V2':B),
   AppEval F V V1' -> AppEval F V V2' -> V1' = V2'.
 Proof.
-  introv H1 H2. unfolds AppEval.
-  forwards: (red_deterministic H1 H2).
-  apply Encode_injective.
+  introv H1 H2. unfolds AppEval. 
+   apply Encode_inj. apply* red_deterministic.
 Qed. 
+
+
+
+(************************************************************)
+(* ** Alternative construction of AppEval *)
+
+(*
+Definition Func' : RType := Build_RType Func (typ_int 
+
+Inductive AppEval' : forall (A B:RType) (F:Func) (V:A) (V':B), Prop :=
+  | app_eval : forall T T' f v v',
+      well_typed_function f -> |= v ~: T -> |= v' ~: T' -> 
+      red (trm_app f v) v' ->
+      AppEval' (Lift T) (Lift T') (@Decode Func f) (decode T v) (decode T' v').
+*)
+
+
+
+Inductive AppEval' : forall (A B:RType) (F:Func) (V:A) (V':B), Prop :=
+  | app_eval : forall T T' f v v',
+      well_typed_function f -> |= v ~: T -> |= v' ~: T' -> 
+      red (trm_app f v) v' ->
+      AppEval' (Lift T) (Lift T') (decode (typ_arrow T T') f) (decode T v) (decode T' v').
+
+Implicit Arguments AppEval' [A B].
+
+(*
+Lemma AppEval_equiv : forall (A B:RType) (F:Func) (V:A) (V':B),
+  AppEval F V V' <-> AppEval' F V V'.
+Proof.
+  unfold AppEval. iff H. 
+  destruct A as [A T E]. destruct B as [A' T' E'].   
+Qed.
+*)
+
+
+
+
+
+
+(************************************************************)
+(************************************************************)
+(************************************************************)
+
+Parameter x : int.
+
+Definition t := trm_ifz (trm_int x) (trm_int 1) (trm_int 2).
+
+Definition T := 
+  epsilon (fun V : int => red t (@encode typ_int V)).
+
+Definition cf := 
+  fun (P : int -> Prop) => (x = 0 -> P 1) /\ (x <> 0 -> P 2).
+
+Hint Constructors red value.
+
+Lemma T_cf : forall P, cf P -> P T.
+Proof.
+  intros.
+  unfolds in H. destruct H.
+  unfold T. unfold t. 
+  destruct (classic (x = 0)).
+  spec_epsilon as V HV. 
+   exists 1. apply* red_ifz. case_if; simple*. 
+   inverts HV. inverts H6. case_if; tryfalse. inverts H7. auto.
+  skip.
+Qed.
+
+
+
+
+(************************************************************)
+(************************************************************)
+(************************************************************)
+
+
+
+
+
+
+
+
 
 Lemma AppReturns_concrete : 
   forall {A B:RType} (F:Func) (V:A) (P:B->Prop),
