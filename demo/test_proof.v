@@ -125,17 +125,7 @@ Ltac xfor_core I := (* todo: add xframe *)
 
 
 (********************************************************)
-(* while loops *)
-
-Lemma decr_while_spec : Spec decr_while x |R>> 
-  forall n, n >= 0 -> R (x ~> RefOn n) (# x ~> RefOn 0).
-Proof.
-  xcf.
-
-
-
-(********************************************************)
-(* for loops *)
+(* references *)
 
 Lemma decr_spec : Spec decr x |R>> 
   forall n, R (x ~> RefOn n) (# x ~> RefOn (n-1)).
@@ -145,7 +135,36 @@ Proof.
   xapp. intros _. hsimpl.
 Qed.
 
+
 Hint Extern 1 (RegisterSpec decr) => Provide decr_spec.
+
+
+
+(********************************************************)
+(* while loops *)
+
+Lemma decr_while_spec : Spec decr_while x |R>> 
+  forall n, n >= 0 -> R (x ~> RefOn n) (# x ~> RefOn 0).
+Proof.
+  xcf. intros.
+  apply local_erase.
+  exists int. exists (fun i:int => x ~> RefOn i).
+   exists (measure (fun i:int => abs i)). splits (3%nat).
+  apply measure_wf.
+  esplit. hsimpl.
+  intros i. exists (\[ bool_of (i>=0)] \*+ (x ~> RefOn i)). (* todo: optimize read_only *)
+  splits (3%nat).
+  xlet. xapp. xextract. intro_subst. xret. hsimpl. skip.
+  xapp. intros _. (* todo: automate intros _ on #_==>#_ *)
+   skip.
+    (* todo: hexists (i-1). *)
+  skip.
+Qed.
+
+
+(********************************************************)
+(* for loops *)
+
 
 Lemma sum_spec : Spec sum (n:int) |R>> n > 0 -> R [] (\= 0).
 Proof.
@@ -156,10 +175,8 @@ Proof.
     math_rewrite (n+1-1 = n). hsimpl.
     xapp. intros _. hsimpl. math_rewrite (n + 1 - i - 1 = n + 1 - (i + 1)). auto.
     math_rewrite (n+1-(n+1) = 0). auto.
-  xapp. xextract. intros.
-  xgc_all. xret.
-  (*  hsimpl. *) skip_cuts (r = 0). 
-  auto. 
+  eapply local_gc_post. xlocal.
+  xapp. intros r. hsimpl.
 Qed.
 
 
