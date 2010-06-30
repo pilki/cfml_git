@@ -172,7 +172,7 @@ let rec coq_of_pure_cf cf =
 
 
 (*#########################################################################*)
-(* Conversion of IMPERATIVE characteristic formulae to Coq *)
+(* Specific coq *)
 
 let heap =
    Coq_var "heap"
@@ -189,6 +189,22 @@ let formula_type =
 let heap_empty =
    Coq_var "heap_empty"
 
+let heap_impl h1 h2 =
+  coq_apps (Coq_var "pred_le") [h1;h2]
+
+let heap_impl_unit h1 q2 =
+  heap_impl h1 (Coq_app (q2, coq_tt))
+
+let post_impl q1 q2 =
+  coq_apps (Coq_var "rel_le") [q1;q2]
+
+let post_unit h =
+  Coq_fun (("_",coq_unit), h)
+
+
+(*#########################################################################*)
+(* Conversion of IMPERATIVE characteristic formulae to Coq *)
+
 let rec coq_of_imp_cf cf =
   let coq_of_cf = coq_of_imp_cf in
   let h = Coq_var "H" in
@@ -203,8 +219,9 @@ let rec coq_of_imp_cf cf =
 
   match cf with
 
-  | Cf_ret v -> funhq "tag_ret" (coq_conj (Coq_app (h,heap_empty)) (coq_apps q [v;heap_empty]))
-     (* (!R: fun H Q => H empty /\ Q v empty *)
+  | Cf_ret v -> funhq "tag_ret" (heap_impl h (Coq_app (q,v)))
+        (* deprecated (coq_conj (Coq_app (h,heap_empty)) (coq_apps q [v;heap_empty]))*)
+     (* (!R: fun H Q => H ==> Q v *)
 
   | Cf_fail -> funhq "tag_fail" coq_false
 
@@ -306,13 +323,26 @@ let rec coq_of_imp_cf cf =
      coq_tag (Printf.sprintf "(tag_match %d%snat)" n "%") ~label:label (coq_of_cf cf1)
 
   | Cf_seq (cf1,cf2) -> 
-      let q1_type = Coq_impl (Coq_var "unit", hprop) in
-      let c1 = coq_apps (coq_of_cf cf1) [h; Coq_var "Q1"] in
-      let c2 = coq_apps (coq_of_cf cf2) [Coq_app (Coq_var "Q1", coq_tt); Coq_var "Q"]  in
-      funhq "tag_seq" (coq_exist "Q1" q1_type (coq_conj c1 c2))
-      (* (!S: fun H Q => exists Q1, F1 H Q1 /\ F2 (Q1 tt) Q *)
+      let c1 = coq_apps (coq_of_cf cf1) [h; post_unit (Coq_var "H1")] in
+      let c2 = coq_apps (coq_of_cf cf2) [Coq_var "H1"; Coq_var "Q"]  in
+      funhq "tag_seq" (coq_exist "H1" hprop (coq_conj c1 c2))
+      (* (!S: fun H Q => exists H1, F1 H (#H1) /\ F2 H1 Q *)
 
-  | Cf_for (i,v1,v2,cf) -> unsupported "for-expression not yet supported" (* todo *)
+  | Cf_for (i,v1,v2,cf) -> 
+      let inv = Coq_var "I" in
+      let c1 = Coq_impl (coq_gt v1 v2, heap_impl_unit h q) in
+      let p1 = heap_impl h (Coq_app (inv, v1)) in
+      let i_var = Coq_var i in
+      let i_hyp = coq_conj (coq_le v1 i_var) (coq_le i_var v2) in
+      let step = coq_apps (coq_of_cf cf) [ Coq_app (inv, i_var); post_unit (Coq_app (inv, coq_plus i_var (Coq_var "1"))) ] in
+      let p2 = Coq_forall ((i,coq_int), Coq_impl (i_hyp, step)) in
+      let p3 = heap_impl (Coq_app (inv, coq_plus v2 (Coq_var "1"))) (Coq_app (q, coq_tt)) in
+      let c2 = Coq_impl (coq_le v1 v2, coq_exist "I" (Coq_impl (coq_int, hprop)) (coq_conjs [p1;p2;p3])) in
+      funhq "tag_for" (coq_conj c1 c2)
+      (* (!For: (fun H Q => (v1 > v2 -> H ==> Q tt) /\ (v1 <= v2 ->
+              exists I, H ==> I v1 
+                    /\  forall i, v1 <= i /\ i <= v2 -> F1 (I i) (# I (i+1)) 
+                    /\  I (b+1) ==> Q tt *)
       
   | Cf_while (cf1,cf2) -> unsupported "while-expression not yet supported" (* todo *)
 

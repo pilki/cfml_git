@@ -146,6 +146,15 @@ let coq_prod cs =
 let coq_eq c1 c2 =
   coq_apps (Coq_var "Logic.eq") [ c1; c2 ]
 
+let coq_le c1 c2 =
+  coq_apps (Coq_var "LibOrder.le") [ c1; c2 ]
+
+let coq_gt c1 c2 =
+  coq_apps (Coq_var "LibOrder.gt") [ c1; c2 ]
+
+let coq_plus c1 c2 =
+  coq_apps (Coq_var "Zplus") [ c1; c2 ]
+
 let coq_neq c1 c2 =
   coq_apps (Coq_var "Logic.not") [coq_eq c1 c2]
 
@@ -177,6 +186,13 @@ let coq_true =
 
 let coq_tt =
   Coq_var "tt"
+
+let coq_unit =
+  Coq_var "unit"
+
+let coq_int =
+  Coq_var "int" 
+
 
 
 

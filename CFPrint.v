@@ -694,6 +694,13 @@ Notation "'Alias' x ':=' v 'in' Q" :=
   (!S (fun H Q => forall x, x = v -> Q H Q))
   (at level 69, x ident) : charac.
 
+
+Notation "'For' i '=' a 'To' b 'Do' Q1 'Done'" :=
+  (!For (fun H Q => (a > b -> H ==> (Q tt)) /\ (a <= b -> exists I,
+     H ==> I a /\ (forall i, a <= i /\ i <= b -> Q1 (I i) (# I(i+1))) /\ (I (b+1) ==> Q tt))
+  (at level 69, i ident) : charac.
+
+
 Open Scope charac.
 
 Notation "'LetFunc' a f1 ':=' Q1 'in' F" :=

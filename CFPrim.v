@@ -1,32 +1,4 @@
 Set Implicit Arguments.
-
-Record dynamic := dyn { 
-  dyn_type : Type; 
-  dyn_value : dyn_type }.
-
-Inductive heap_c : Type :=
-| empty_c : heap_c
-| cons_c : nat -> dynamic -> heap_c -> heap_c.
-
-Definition array A := nat -> A -> Prop.
-Definition map A B := A -> B -> Prop.
-Definition map' := map.
-Definition heap := map nat dynamic.
-Definition f (y:array nat) := dyn y.
-Require Import List.
-Print list.
-(* map nat nat*)
-
-
-
-
-Definition map A B := A -> B.
-Definition heap := map nat dynamic.
-Definition f (y:map nat nat) := 
-  fun x:nat => dyn y.
-
-
-
 Require Export LibInt LibArray CFSpec CFPrint CFTactics.
 
 Hint Resolve (0%nat) : typeclass_instances.
@@ -208,7 +180,7 @@ Proof.
 Qed.
 
 
-(** Arrays *)
+(** Arrays 
 
 Definition ArrayOn A (v:array A) (l:loc) :=
   l ~~> v.
@@ -230,7 +202,7 @@ Parameter ml_array_get_spec : forall a A,
 Parameter ml_array_set_spec : forall a,
   Spec ml_array_set (l:loc) (i:int) (v:a) |R>> 
     index t i -> R (l ~> ArrayOn t) (# l ~> ArrayOn t'[i:=v]).
-
+*)
 
 (*
 Parameter ml_array_make_spec : forall a,
@@ -249,10 +221,12 @@ Parameter ml_array_set_spec : forall a,
     R (l ~> Array T t \* T V v) (l ~> Array T (t[i:=v]).
  *)
 
+(*
 Hint Extern 1 (RegisterSpec ml_array_make) => Provide ml_array_make_spec.
 Hint Extern 1 (RegisterSpec ml_array_get) => Provide ml_array_get_spec.
 Hint Extern 1 (RegisterSpec ml_array_set) => Provide ml_array_set_spec.
 
+*)
 
 
 

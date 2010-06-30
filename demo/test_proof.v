@@ -4,10 +4,6 @@ Require Import LibCore.
 Require Import CFPrim.
 Require Import test_ml.
 
-
-(********************************************************)
-(* imperative *)
-
 Opaque heap_is_empty hdata heap_is_single heap_is_empty_st RefOn.
 
 Tactic Notation "xextract" := 
@@ -26,6 +22,33 @@ Lemma hsimpl_prop_1 : forall (P1:Prop),
 Proof. introv H K. (*surprenant: destruct K.*)
   skip. (* todo *)
 Qed.
+
+
+(********************************************************)
+(* for loops *)
+
+Lemma decr_spec : Spec decr x |R>> 
+  forall n, R (x ~> RefOn n) (# x ~> RefOn (n-1)).
+Proof.
+  xcf. intros.
+  xlet. xapp. xextract. intro_subst.
+  xapp. intros _. hsimpl.
+Qed.
+
+let decr x =  
+  let n = !x in x := n-1
+
+let sum n =
+  let x = ref n in
+  for i = 1 to n do decr x done;
+  !x
+
+
+
+(********************************************************)
+(* imperative *)
+
+
 
 Lemma imp1_spec : Specs imp1 () >> [] (\=7).
 Proof.

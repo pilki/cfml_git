@@ -1,5 +1,22 @@
 (* ---------------------------------------------------------*)
-(* arrays *)
+(* loops *)
+
+let decr x =  
+  let n = !x in x := n-1
+
+let sum n =
+  let x = ref n in
+  for i = 1 to n do decr x done;
+  !x
+
+(*
+let f x = 
+  while !x >= 0 do decr x done; 
+  !x
+*)
+
+(* ---------------------------------------------------------*)
+(* arrays 
 
 let array1 () =  
    let t = Array.make 3 4 in
@@ -8,7 +25,7 @@ let array1 () =
    t.(1) <- 5;
    let y = t.(1) in
    x + y
-
+*)
 
 (* ---------------------------------------------------------*)
 (* references 
