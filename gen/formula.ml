@@ -365,7 +365,7 @@ let rec coq_of_imp_cf cf =
       let c3 = heap_impl_unit (Coq_app (Coq_var "Q'", coq_bool_false)) q in
       let p3 = Coq_forall (("X", Coq_var "A"), coq_exist "Q'" (Coq_impl (coq_bool, hprop)) (coq_conjs [c1;c2;c3])) in
       let fr = coq_exist "R" (coq_impls [Coq_var "A"; Coq_var "A"] Coq_prop) (coq_conjs [p1;p2;p3]) in
-      funhq "tag_for" (coq_exist "A" Coq_type (coq_exist "I" (Coq_impl (Coq_var "A", hprop)) fr)) 
+      funhq "tag_while" (coq_exist "A" Coq_type (coq_exist "I" (Coq_impl (Coq_var "A", hprop)) fr)) 
       (* (!While: (fun H Q => exists A, exists I, exists R, 
                wf R
             /\ (exists x, H ==> I x)

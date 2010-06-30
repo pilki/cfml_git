@@ -127,6 +127,12 @@ Ltac xfor_core I := (* todo: add xframe *)
 (********************************************************)
 (* while loops *)
 
+Lemma decr_while_spec : Spec decr_while x |R>> 
+  forall n, n >= 0 -> R (x ~> RefOn n) (# x ~> RefOn 0).
+Proof.
+  xcf.
+
+
 
 (********************************************************)
 (* for loops *)
