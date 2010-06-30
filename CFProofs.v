@@ -195,13 +195,6 @@ Fixpoint lift (T:typ) {struct T} : Type :=
   | typ_arrow T1 T2 => Func
   end.
 
-(** A reflected type, or [RType], is a Coq type of the form <T> *)
-
-Record RType := 
-  { RType_coq :> Type; 
-    RType_typ : typ;
-    RType_eq : RType_coq = lift RType_typ }.
-
 (** Reflected types are all inhabited *)
 
 Instance lift_inhab : forall T, Inhab (lift T).
@@ -304,6 +297,62 @@ Print JMeq.
 *)
 Qed.
   
+
+
+Require Import Program.
+
+Instance typ_inhab : Inhab typ.
+Proof. constructor. exact typ_int. Defined.
+
+
+(** A reflected type, or [RType], is a Coq type of the form <T> *)
+
+Definition RType := { A : Type | exists T, lift T = A }.
+ 
+Definition unlifts (A:Type) (T:typ) := lift T = A.
+
+Definition unlift (A:Type) := epsilon (unlifts A).
+
+Lemma unlift_spec : forall A, (exists T, lift T = A) ->
+  lift (unlift A) = A.
+Proof.
+  intros. apply (epsilon_spec_exists _ H). 
+Qed.
+
+Program Definition Encode (A:RType) (V:`A) : trm.
+intros A. case A. simpl. intros.
+generalize (unlift_spec e). generalize (unlift x).
+intros. subst. exact (encode V). Defined.
+Print Encode.
+
+
+Implicit Arguments Encode [A].
+
+Lemma Encode_inj : forall (A:RType) (V1 V2:`A),
+  Encode V1 = Encode V2 -> V1 = V2.
+Proof.
+  intros A. destruct A. simpl. 
+  lets: (unlift_spec e). 
+  intros V1 V2.  intros. elim_eq_rect.
+  
+  unfolds unlift.
+
+   destruct (indefinite_description (fun T : typ => lift T = x) e).
+  destruct A as [A T E]. unfold Encode. simpl. intros.
+  lets R: (>>> encode_inj H).  
+  apply (@coerce_inj _ (lift T) _ _ _ R).
+Qed.
+
+
+
+(*
+Record RType := 
+  { RType_coq :> Type; 
+    RType_typ : typ;
+    RType_eq : RType_coq = lift RType_typ }.
+*)
+
+
 
 (** Lifting to RType *)
 
@@ -468,8 +517,7 @@ Qed.
 Instance trm_inhab : Inhab trm.
 Proof. constructor. exact (trm_int 0). Defined.
 
-Instance typ_inhab : Inhab typ.
-Proof. constructor. exact typ_int. Defined.
+
 
 Instance type_inhab : Inhab Type.
 Proof. constructor. exact int. Defined.
