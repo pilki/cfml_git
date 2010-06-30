@@ -201,6 +201,15 @@ let post_impl q1 q2 =
 let post_unit h =
   Coq_fun (("_",coq_unit), h)
 
+let heap_star h1 h2 = 
+  coq_apps (Coq_var "heap_is_star") [h1;h2]
+
+let heap_exists xname xtype h =
+   Coq_app (Coq_var "heap_is_pack", Coq_fun ((xname, xtype), h))
+
+let heap_pred c =
+   Coq_app (Coq_var "heap_is_empty_st", c)
+
 
 (*#########################################################################*)
 (* Conversion of IMPERATIVE characteristic formulae to Coq *)
@@ -344,7 +353,26 @@ let rec coq_of_imp_cf cf =
                     /\  forall i, v1 <= i /\ i <= v2 -> F1 (I i) (# I (i+1)) 
                     /\  I (b+1) ==> Q tt *)
       
-  | Cf_while (cf1,cf2) -> unsupported "while-expression not yet supported" (* todo *)
+  | Cf_while (cf1,cf2) -> 
+      let x = Coq_var "X" in
+      let y = Coq_var "Y" in
+      let inv = Coq_var "I" in
+      let p1 = Coq_app (Coq_var "LibWf.wf", Coq_var "R") in
+      let p2 = coq_exist "X" (Coq_var "A") (heap_impl h (Coq_app (inv, x))) in
+      let c1 = coq_apps (coq_of_cf cf1) [Coq_app (inv, x); Coq_var "Q'"] in
+      let c2heap = heap_exists "Y" (Coq_var "A") (heap_star (Coq_app (inv, y)) (heap_pred (coq_apps (Coq_var "R") [y;x]))) in
+      let c2 = coq_apps (coq_of_cf cf2) [Coq_app (Coq_var "Q'", coq_bool_true); post_unit c2heap] in   
+      let c3 = heap_impl_unit (Coq_app (Coq_var "Q'", coq_bool_false)) q in
+      let p3 = Coq_forall (("X", Coq_var "A"), coq_exist "Q'" (Coq_impl (coq_bool, hprop)) (coq_conjs [c1;c2;c3])) in
+      let fr = coq_exist "R" (coq_impls [Coq_var "A"; Coq_var "A"] Coq_prop) (coq_conjs [p1;p2;p3]) in
+      funhq "tag_for" (coq_exist "A" Coq_type (coq_exist "I" (Coq_impl (Coq_var "A", hprop)) fr)) 
+      (* (!While: (fun H Q => exists A, exists I, exists R, 
+               wf R
+            /\ (exists x, H ==> I x)
+            /\ (forall x, exists Q', 
+                   F1 (I x) Q'
+                /\ (F2 (Q' true) (# Hexists y, (I y) \* [R y x]))
+                /\ (Q' false ==> Q tt)))) *)
 
   | Cf_letpure _ -> unsupported "letpure-expression in imperative mode"
 

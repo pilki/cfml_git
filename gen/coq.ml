@@ -184,6 +184,12 @@ let coq_false =
 let coq_true =  
   Coq_var "True"
 
+let coq_bool_false =  
+  Coq_var "false"
+  
+let coq_bool_true =  
+  Coq_var "true"
+
 let coq_tt =
   Coq_var "tt"
 
@@ -193,6 +199,8 @@ let coq_unit =
 let coq_int =
   Coq_var "int" 
 
+let coq_bool =
+  Coq_var "bool"
 
 
 

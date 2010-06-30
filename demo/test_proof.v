@@ -29,6 +29,16 @@ Notation "'For' i '=' a 'To' b 'Do' Q1 'Done'" :=
      H ==> I a /\ (forall i, a <= i /\ i <= (b)%Z -> Q1 (I i) (# I(i+1))) /\ (I ((b)%Z+1) ==> Q tt))))
   (at level 69, i ident) : charac.
 
+Notation "'While' Q1 'Do' Q2 'Done'" :=
+  (!While (fun H Q => exists A, exists I, exists R,
+       wf R 
+     /\ (exists x, H ==> I x)
+     /\ (forall x, exists Q', 
+            Q1 (I x) Q'
+         /\ Q2 (Q' true) (# Hexists y, (I y) \* [R y x])
+         /\ (Q' false ==> Q tt))))
+  (at level 69) : charac.
+
 Notation "Q1 ;; Q2" :=
   (!Seq fun H Q => exists H', Q1 H (#H') /\ Q2 H' Q)
   (at level 68, right associativity) : charac.
@@ -96,6 +106,28 @@ Tactic Notation "xret" :=
   xret_pre ltac:(fun _ => xret_core; xclean).
 
 
+Ltac xfor_bounds_intro tt :=
+  intro; let i := get_last_hyp tt in
+  let Hli := fresh "Hl" i in
+  let Hui := fresh "Hu" i in
+  intros [Hli Hui].
+
+Ltac xfor_core I := (* todo: add xframe *)
+  let Hi := fresh "Hfor" in
+  apply local_erase; split;
+  [ intros Hfor 
+  |  intros Hfor; exists (I:int->hprop); splits (3%nat); 
+     [ (* todo : hsimpl *)
+     | xfor_bounds_intro tt
+     | (* todo: hsimpl *) ] 
+  ].
+
+
+
+(********************************************************)
+(* while loops *)
+
+
 (********************************************************)
 (* for loops *)
 
@@ -107,17 +139,31 @@ Proof.
   xapp. intros _. hsimpl.
 Qed.
 
-Lemma sum_spec : Specs sum (n:int) >> [] (\= 0).
+Hint Extern 1 (RegisterSpec decr) => Provide decr_spec.
+
+Lemma sum_spec : Spec sum (n:int) |R>> n > 0 -> R [] (\= 0).
 Proof.
   xcf. intros.
   xapp. xextract.
   xseq (x ~> RefOn 0).
-  skip.  
+  xfor_core (fun i => (x ~> RefOn (n+1-i))). math.
+    math_rewrite (n+1-1 = n). hsimpl.
+    xapp. intros _. hsimpl. math_rewrite (n + 1 - i - 1 = n + 1 - (i + 1)). auto.
+    math_rewrite (n+1-(n+1) = 0). auto.
   xapp. xextract. intros.
   xgc_all. xret.
   (*  hsimpl. *) skip_cuts (r = 0). 
   auto. 
 Qed.
+
+
+  (* details of xfor:
+  apply local_erase. split; intros M. math.
+  exists ((fun i => (x ~> RefOn (n+1-i))) : int -> hprop). splits (3%nat).  (*todo splits*)
+    math_rewrite (n+1-1 = n). hsimpl.
+    intros i Hi. xapp. intros _. hsimpl. math_rewrite (n + 1 - i - 1 = n + 1 - (i + 1)). auto.
+    math_rewrite (n+1-(n+1) = 0). auto.
+  *)
 
 
 
