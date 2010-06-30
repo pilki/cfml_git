@@ -7,7 +7,7 @@ let decr x =
 let sum n =
   let x = ref n in
   for i = 1 to n do decr x done;
-  !x
+  let r = !x in r (* todo simplify *)
 
 (*
 let f x = 

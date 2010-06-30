@@ -24,6 +24,78 @@ Proof. introv H K. (*surprenant: destruct K.*)
 Qed.
 
 
+Notation "'For' i '=' a 'To' b 'Do' Q1 'Done'" :=
+  (!For (fun H Q => (a > (b)%Z -> H ==> (Q tt)) /\ (a <= (b)%Z -> exists I,
+     H ==> I a /\ (forall i, a <= i /\ i <= (b)%Z -> Q1 (I i) (# I(i+1))) /\ (I ((b)%Z+1) ==> Q tt))))
+  (at level 69, i ident) : charac.
+
+Notation "Q1 ;; Q2" :=
+  (!Seq fun H Q => exists H', Q1 H (#H') /\ Q2 H' Q)
+  (at level 68, right associativity) : charac.
+
+Tactic Notation "xseq" constr(H) :=
+  xlet_def (fun _ => exists H) (fun _ => idtac) (fun _ => try xextract).
+Tactic Notation "xseq" :=
+  xlet_def (fun _ => esplit) (fun _ => idtac) (fun _ => idtac).
+
+Notation "'Ret' v" :=
+  (!R (fun H Q => H ==> Q v))
+  (at level 69) : charac.
+
+
+(** Full garbage collection on postcondition from [local] 
+
+Lemma local_gc_post_all : forall B Q (F:~~B) H HG (P:B->Prop),
+  is_local F -> 
+  Q ===> \[P] \*+ HG ->
+  F H Q ->
+  F H (\[P]).
+Proof. intros. apply* local_gc_post. Qed.
+
+Tactic Notation "xgc_post_all" := 
+  eapply local_gc_pre with (H' := H);
+    [ try xlocal
+    | hsimpl
+    | ].
+
+*)
+
+
+Lemma local_gc_pre_all : forall B Q (F:~~B) H,
+  is_local F -> 
+  F [] Q ->
+  F H Q.
+Proof. intros. apply* (@local_gc_pre H). hsimpl. Qed.
+
+Tactic Notation "xgc_all" := 
+  eapply local_gc_pre_all; [ try xlocal | ].
+
+Lemma xret_gc_lemma : forall HG B (v:B) H (Q:B->hprop),
+  H ==> Q v \* HG -> 
+  local (fun H' Q' => H' ==> Q' v) H Q.
+Proof.  
+  introv W. eapply (@local_gc_pre HG).
+  auto. rewrite star_comm. apply W.
+  apply~ local_erase.
+Qed.
+
+Lemma xret_lemma : forall B (v:B) H (Q:B->hprop),
+  H ==> Q v -> 
+  local (fun H' Q' => H' ==> Q' v) H Q.
+Proof.  
+  introv W. apply~ local_erase.
+Qed.
+
+Ltac xret_gc :=
+  eapply xret_gc_lemma.
+
+Ltac xret_core :=
+  apply xret_lemma.
+
+Tactic Notation "xret" := 
+  xret_pre ltac:(fun _ => xret_core; xclean).
+
+
 (********************************************************)
 (* for loops *)
 
@@ -35,13 +107,17 @@ Proof.
   xapp. intros _. hsimpl.
 Qed.
 
-let decr x =  
-  let n = !x in x := n-1
-
-let sum n =
-  let x = ref n in
-  for i = 1 to n do decr x done;
-  !x
+Lemma sum_spec : Specs sum (n:int) >> [] (\= 0).
+Proof.
+  xcf. intros.
+  xapp. xextract.
+  xseq (x ~> RefOn 0).
+  skip.  
+  xapp. xextract. intros.
+  xgc_all. xret.
+  (*  hsimpl. *) skip_cuts (r = 0). 
+  auto. 
+Qed.
 
 
 
