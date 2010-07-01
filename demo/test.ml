@@ -11,7 +11,7 @@ let sum n =
   (*let r = !x in r  todo simplify *)
 
 let decr_while x = 
-  while !x >= 0 do decr x done
+  while !x > 0 do decr x done
 
 
 (* ---------------------------------------------------------*)

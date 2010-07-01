@@ -484,6 +484,10 @@ Tactic Notation "xret" "*" :=
 (*--------------------------------------------------------*)
 (* ** [xgc] *)
 
+Ltac xgc_core :=
+  eapply local_gc_post; 
+  [ xlocal | | ].
+
 Ltac xgc_remove_core H :=
   eapply local_gc_pre with (HG := H);
     [ try xlocal
@@ -501,6 +505,13 @@ Tactic Notation "xgc" constr(H) :=
 
 Tactic Notation "xgc" "-" constr(H) := 
   xgc_keep_core H.
+
+Tactic Notation "xgc" := 
+  xgc_core.
+
+Tactic Notation "xgc_all" := 
+  eapply local_gc_pre_all; [ try xlocal | ].
+
 
 
 (*--------------------------------------------------------*)
@@ -1057,7 +1068,7 @@ Ltac xfor_core I :=
   let Hi := fresh "Hfor" in
   eapply (@xfor_frame I); 
   [ xlocal
-  | intros Hfor; try math
+  | intros Hfor; try solve [ false; math ]
   | intros Hfor; splits (3%nat); 
      [ hsimpl 
      | xfor_bounds_intro tt
@@ -1083,8 +1094,12 @@ Ltac xwhile_core I R X :=
   [ xlocal
   | xlocal
   | try prove_wf
-  | match X with __ => idtac | _ => exists X; hsimpl end 
+  | exists X; hsimpl 
   | idtac ].
+
+Ltac xwhile_base I R X := 
+  first [ xwhile_core I R X
+        | xwhile_core (measure I) R X ].
 
 (* deprecated
   apply local_erase; esplit; exists I; 
@@ -1093,17 +1108,9 @@ Ltac xwhile_core I R X :=
 *)
 
 Tactic Notation "xwhile" constr(I) constr(R) constr(X) := 
-  xwhile_core I R X.
+  xwhile_base I R X.
 Tactic Notation "xwhile" constr(I) constr(R) := 
   xwhile I R __.
-
-
-
-(*--------------------------------------------------------*)
-(* ** [xgc] *)
-
-Tactic Notation "xgc_all" := 
-  eapply local_gc_pre_all; [ try xlocal | ].
 
 
 (*--------------------------------------------------------*)

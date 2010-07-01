@@ -1424,7 +1424,50 @@ Qed.
 Fixpoint depth a (q:queue a) : nat :=
   match q with
   | Empty => 0%nat
-  | Struct lenfm f m lenr r => (1 + depth m)%nat
+
+  
+
+Ltac xapp_compact KR args :=
+  let args := ltac_args args in
+  match args with (boxer ?mode)::?vs => 
+  let args := constr:((boxer mode)::(boxer KR)::vs) in
+  constr:(args)
+  end.
+
+Ltac xapp_inst args solver :=
+  let R := fresh "R" in let LR := fresh "L" R in 
+  let KR := fresh "K" R in let IR := fresh "I" R in
+  intros R LR KR;
+  let H := xapp_compact KR args in
+  forwards IR: H; solver tt; try sapply IR. 
+
+
+
+  eapply local_wframe.
+     [ try xlocal
+     | eapply K; [ apply H | idtac ] 
+     | hsimpl 
+     | xok ].
+  xapp_inst (>>>) ltac:(fun _ => eauto).
+  
+  eapply local_wframe; 
+     [ xlocal
+     | eapply K; [ apply H | idtac ] 
+     | hsimpl 
+     | xok ].
+  xapp_inst (>>>) ltac:(fun _ => eauto).
+  intros R LR KR.
+   forwards IR: (>>> KR); eauto; try sapply IR. hsimpl.
+
+
+
+
+
+
+xapp_manual.
+
+Qed.
+ lenfm f m lenr r => (1 + depth m)%nat
   end.
 *)
 
@@ -1456,3 +1499,23 @@ Proof.
   simpls. auto.
   apply local_erase. split. reflexivity. hnfs~. hsimpl. auto.
 Qed.
+
+
+   
+
+
+
+
+  (* détails de xapp
+  xapp_manual. applys KR. hsimpl.
+
+  xfind ml_ref; let H := fresh in intro H.
+  lets K: spec_elim_1_1.
+  xapp_manual as.
+  xapp_inst (>>>) ltac:(fun _ => eauto).
+  hsimpl.
+  *)
+
+
+
+

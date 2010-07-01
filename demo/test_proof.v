@@ -35,55 +35,110 @@ Hint Extern 1 (RegisterSpec decr) => Provide decr_spec.
 (********************************************************)
 (* while loops *)
 
+
+Ltac xwhile_base I R X ::= 
+  first [ xwhile_core I R X
+        | xwhile_core I (measure R) X ].
+
+Ltac xwhile_core I R X ::= 
+  eapply (@xwhile_frame _ I R);
+  [ xlocal
+  | xlocal
+  | try prove_wf
+  | exists X; instantiate; hsimpl 
+  | idtac ].
+
+
+Ltac xwhile_core I R X := 
+  eapply (@xwhile_frame _ I R);
+  [ xlocal
+  | xlocal
+  | try prove_wf
+  | exists X; hsimpl 
+  | idtac ].
+
+Ltac xwhile_base I R X :=  (* todo: inline *)
+  first [ xwhile_core I R X
+        | xwhile_core (measure I) R X ].
+
+(* deprecated
+  apply local_erase; esplit; exists I; 
+  first [exists R | exists (measure R)];
+  splits (3%nat); [ try prove_wf | | ].
+*)
+
+Ltac xwhile_manual_core I R := 
+  first [ eapply (@xwhile_frame _ I R)
+        | eapply (@xwhile_frame _ I (measure R))];
+  [ xlocal
+  | xlocal
+  | idtac
+  | idtac
+  | idtac ].
+
+Tactic Notation "xwhile_manual" constr(I) constr(R) := 
+  xwhile_manual_core I R.
+
+Ltac hsimpls := repeat progress (hsimpl).
+(* todo: modifier hsimpl pour nommer que le dernier élément par défaut *)
+
+(* todo: use continuations *)
+Tactic Notation "xextract" := 
+  xextract_core; xclean.
+Tactic Notation "xextract" "as" simple_intropattern(I1) := 
+  xextract; intros I1; xclean.
+Tactic Notation "xextract" "as" simple_intropattern(I1) simple_intropattern(I2) := 
+  xextract; intros I1 I2; xclean. 
+Tactic Notation "xextract" "as" simple_intropattern(I1) simple_intropattern(I2) 
+ simple_intropattern(I3) := 
+  xextract; intros I1 I2 I3; xclean.
+Tactic Notation "xextract" "as" simple_intropattern(I1) simple_intropattern(I2) 
+ simple_intropattern(I3) simple_intropattern(I4) := 
+  xextract; intros I1 I2 I3 I4; xclean.
+
+
+Ltac xextract_core ::=
+  simpl; hclean; instantiate.
+
 Lemma decr_while_spec : Spec decr_while x |R>> 
   forall n, n >= 0 -> R (x ~> RefOn n) (# x ~> RefOn 0).
 Proof.
   xcf. intros.
-  xwhile_core (fun i:int => x ~> RefOn i) (fun i:int => abs i).
-  esplit. hsimpl.
-  intros i. exists (\[ bool_of (i>=0)] \*+ (x ~> RefOn i)). (* todo: optimize read_only *)
+  xwhile (fun i:int => x ~> RefOn i \* [i >= 0]) (fun i:int => abs i). hsimpl~.
+  (* todo: xwhile_cond with readonly *)
+  intros i. exists (\[ bool_of (i>0)] \*+ (x ~> RefOn i \* [i >= 0])). (* todo: optimize read_only *)
   splits (3%nat).
-  xlet. xapp. xextract. intro_subst. xret. hsimpl. skip.
-  xapp. intros _. (* todo: automate intros _ on #_==>#_ *)
-   skip.
-    (* todo: hexists (i-1). *)
-  skip.
+  xapp. intro_subst. intros P. xret. hsimpl~. skip.
+  xextract as M1 M2. xapp. hsimpl. skip.
+  math.
+  hsimpl. skip. (* todo *)
 Qed.
 
+(* todo: hsimpl_right *) 
 
 
 (********************************************************)
 (* for loops *)
 
+Ltac xgc_core :=
+  eapply local_gc_post; 
+  [ xlocal | | ].
 
 Lemma sum_spec : Spec sum (n:int) |R>> n > 0 -> R [] (\= 0).
 Proof.
   xcf. intros.
-  xapp. xextract.
-  xseq (x ~> RefOn 0).
-  xfor_core (fun i => (x ~> RefOn (n+1-i))). math.
-    math_rewrite (n+1-1 = n). hsimpl.
+  xapp.
+  xseq. (* xseq (x ~> RefOn 0). *)
+  xfor (fun i => (x ~> RefOn (n+1-i))). 
+    math_rewrite (n+1-1 = n). hsimpl. (* todo: hsimpl generates equalities!! *)
     xapp. intros _. hsimpl. math_rewrite (n + 1 - i - 1 = n + 1 - (i + 1)). auto.
-    math_rewrite (n+1-(n+1) = 0). auto.
-  eapply local_gc_post. xlocal.
-  xapp. intros r. hsimpl.
+  math_rewrite (n+1-(n+1) = 0).
+  xgc_core. xapp. hsimpl.
 Qed.
-
-
-  (* details of xfor:
-  apply local_erase. split; intros M. math.
-  exists ((fun i => (x ~> RefOn (n+1-i))) : int -> hprop). splits (3%nat).  (*todo splits*)
-    math_rewrite (n+1-1 = n). hsimpl.
-    intros i Hi. xapp. intros _. hsimpl. math_rewrite (n + 1 - i - 1 = n + 1 - (i + 1)). auto.
-    math_rewrite (n+1-(n+1) = 0). auto.
-  *)
-
 
 
 (********************************************************)
 (* imperative *)
-
-
 
 Lemma imp1_spec : Specs imp1 () >> [] (\=7).
 Proof.
@@ -96,23 +151,17 @@ Proof.
   xextract.
   intros Py.
   xseq.
-  xapp.
-  xextract.
+  xapp. hsimpl. 
   xlet.
   xapp.
   xextract. 
   intros Pz.
   xgc - [].
   xret.
-  apply heap_extract_prop. intros Pr.
-  apply hsimpl_prop_1. math.
+  hsimpl. math.
 Qed.
    
 Opaque heap_is_star.
-
-Tactic Notation "xgc_post" :=
-  eapply local_gc_post; [ xlocal | | ].
-
 
 Lemma imp2_spec : Specs imp2 () >> [] (\=5).
 Proof.
@@ -140,75 +189,14 @@ Proof.
   intros Pv.
   xseq.
   xapp.
-  xextract.
-  xgc_post.
-  xapp.
-  intros m.
   hsimpl.
+  xgc.
+  xapp.
+  hsimpl.
+  instantiate (1:=x ~> RefOn (v + 1) \* y ~> RefOn (u + 1)). hsimpl. skip. (*todo*)
   skip. (*htactics*)
 Admitted.
-    
-
-
-
-
-  (* détails de xapp
-  xapp_manual. applys KR. hsimpl.
-
-  xfind ml_ref; let H := fresh in intro H.
-  lets K: spec_elim_1_1.
-  xapp_manual as.
-  xapp_inst (>>>) ltac:(fun _ => eauto).
-  hsimpl.
-  *)
-
-
-
-  
-
-Ltac xapp_compact KR args :=
-  let args := ltac_args args in
-  match args with (boxer ?mode)::?vs => 
-  let args := constr:((boxer mode)::(boxer KR)::vs) in
-  constr:(args)
-  end.
-
-Ltac xapp_inst args solver :=
-  let R := fresh "R" in let LR := fresh "L" R in 
-  let KR := fresh "K" R in let IR := fresh "I" R in
-  intros R LR KR;
-  let H := xapp_compact KR args in
-  forwards IR: H; solver tt; try sapply IR. 
-
-
-
-  eapply local_wframe.
-     [ try xlocal
-     | eapply K; [ apply H | idtac ] 
-     | hsimpl 
-     | xok ].
-  xapp_inst (>>>) ltac:(fun _ => eauto).
-  
-  eapply local_wframe; 
-     [ xlocal
-     | eapply K; [ apply H | idtac ] 
-     | hsimpl 
-     | xok ].
-  xapp_inst (>>>) ltac:(fun _ => eauto).
-  intros R LR KR.
-   forwards IR: (>>> KR); eauto; try sapply IR. hsimpl.
-
-
-
-
-
-
-xapp_manual.
-
-Qed.
-
-
-
+ 
 (*
 Print imp1_cf.
 Print imp2_cf.
