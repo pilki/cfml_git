@@ -335,9 +335,107 @@ Definition read B (R:~~B) :=
 (********************************************************************)
 (* ** Simplification and unification tactics for star *)
 
+Hint Rewrite <- star_assoc : hsimpl_assoc.
+Hint Rewrite star_neutral_l star_neutral_r : hsimpl_neutral.
+
+
+Lemma hextract_start : forall H H',
+  [] \* (H \* []) ==> H' -> H ==> H'.
+Proof. intros. rew_heap in *. auto. Qed.
+
+Lemma hextract_keep : forall H1 H2 H3 H',
+  (H1 \* H2) \* H3 ==> H' -> H1 \* (H2 \* H3) ==> H'.
+Proof. intros. rew_heap in *. auto. Qed.
+
+Lemma hextract_prop : forall H1 H2 H' (P:Prop),
+  (P -> H1 \* H2 ==> H') -> H1 \* ([P] \* H2) ==> H'.
+Proof.
+  introv W. intros h Hh.
+  destruct Hh as (h1&h2'&?&?&?&(h2&h3&?&?&(?&M)&?)).
+  apply~ W. exists h1 h3. subst h h2 h2'.
+  skip_rewrite (heap_union heap_empty h3 = h3) in H. (* todo*) 
+  skip_rewrite (heap_union heap_empty h3 = h3). (* todo*) 
+  splits~.
+Qed.
+
+Lemma hextract_exists : forall A H1 H2 H' (J:A->hprop),
+  (forall x, H1 \* J x \* H2 ==> H') -> H1 \* (heap_is_pack J \* H2) ==> H'.
+Proof.
+  skip. (* todo *)
+Qed.
+
+Ltac hextract_setup tt :=
+  lets: ltac_mark;
+  apply hextract_start;
+  autorewrite with hsimpl_assoc.
+
+Ltac hextract_cleanup tt :=
+  autorewrite with hsimpl_assoc;
+  autorewrite with hsimpl_neutral;
+  gen_until_mark.
+
+Ltac hextract_relinearize tt :=
+  match goal with |- ?H \* (_ \* _) ==> _ =>
+    let T := fresh "TEMP" in 
+    sets T: H; 
+    autorewrite with hsimpl_assoc; 
+    subst T
+  end.
+
+Ltac hextract_step tt :=
+  match goal with |- ?HA \* (?H \* ?HR) ==> ?H' =>
+  first [ apply hextract_prop; intros
+        | apply hextract_exists; intros; hextract_relinearize tt
+        | apply hextract_keep ]
+  end.
+
+Ltac hextract_main tt :=
+  hextract_setup tt;
+  (repeat (hextract_step tt));
+  hextract_cleanup tt.
+
+Ltac hextract_core :=
+  hextract_main tt.
+
+Ltac hextract_if_needed tt :=
+  match goal with |- ?H ==> _ => match H with
+  | context [ heap_is_pack _ ] => hextract_core
+  | context [ [ _ ] ] => hextract_core
+  end end.
+
+Tactic Notation "hextract" := hextract_core; intros.
+Tactic Notation "hextract" "as" := hextract_core.
+
+Lemma hextract_demo_1 : forall n J H2 H3 H4 H',
+  H4 \* (Hexists y, [y = 2]) \* (Hexists x, [n = x + x] \* J x \* H2) \* H3 ==> H'.
+Proof.
+  intros. dup 3.
+  (* details *)
+  hextract_setup tt.
+  hextract_step tt.
+  hextract_step tt.
+  hextract_step tt.
+  hextract_step tt.
+  hextract_step tt.
+  hextract_step tt.
+  hextract_step tt.
+  hextract_step tt.
+  try hextract_step tt.
+  hextract_cleanup tt.
+  intros.
+  skip.
+  (* short *)
+  hextract. skip.
+  (* if needed *)
+  hextract_if_needed tt. intros.
+  try hextract_if_needed tt. skip.
+Qed.
+
+
+
 
 Inductive Hsimpl_hint : list Boxer -> Type :=
-  | hsimpl_hint : forall (L:list Boxer), Hsimpl_hint L.
+  | hint : forall (L:list Boxer), Hsimpl_hint L.
 
 Ltac hsimpl_hint_put L := 
   lets: (hsimpl_hint L).
@@ -359,8 +457,6 @@ Qed.
 
 
 
-Hint Rewrite <- star_assoc : hsimpl_assoc.
-Hint Rewrite star_neutral_l star_neutral_r : hsimpl_neutral.
 
 Lemma hsimpl_start : forall H1 H2,
   H1 \* [] ==> [] \* (H2 \* []) -> H1 ==> H2.
@@ -527,10 +623,15 @@ Ltac hsimpl_main tt :=
 Tactic Notation "hsimpl" := hsimpl_main tt.
 Tactic Notation "hsimpl" "~" := hsimpl; auto_tilde.
 Tactic Notation "hsimpl" "*" := hsimpl; auto_star.
-Tactic Notation "hsimpl" constr(L) := 
-  hsimpl_hint_put L; hsimpl.
-
-
+Tactic Notation "hsimpl" constr(L) :=
+  match type of L with 
+  | list Boxer => hsimpl_hint_put L
+  | _ => hsimpl_hint_put (boxer L :: nil)
+  end; hsimpl.
+Tactic Notation "hsimpl" constr(X1) constr(X2) :=
+  hsimpl (>>> X1 X2).
+Tactic Notation "hsimpl" constr(X1) constr(X2) constr(X3) :=
+  hsimpl (>>> X1 X2 X3).
 
 Lemma hsimpl_demo : forall H1 H2 H3 H4 H5,
   H1 \* H2 \* H3 \* H4 ==> H4 \* H3 \* H5 \* H2.
@@ -611,6 +712,15 @@ Proof.
   eauto.
 Qed.
 
+Lemma hsimpl_demo_5 : forall n J H,
+  n = 2 ->
+  J n \* H ==> H \* Hexists y, [y <> 3] \* J y.
+Proof.
+  intros. dup 3.
+  hsimpl. math.
+  hsimpl n. math.
+  hsimpl 2. subst~. math.
+Qed.
 
 
 (* todo: move *)
