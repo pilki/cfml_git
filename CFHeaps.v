@@ -435,7 +435,7 @@ Qed.
 
 
 Inductive Hsimpl_hint : list Boxer -> Type :=
-  | hint : forall (L:list Boxer), Hsimpl_hint L.
+  | hsimpl_hint : forall (L:list Boxer), Hsimpl_hint L.
 
 Ltac hsimpl_hint_put L := 
   lets: (hsimpl_hint L).

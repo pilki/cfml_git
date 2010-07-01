@@ -26,7 +26,7 @@ module type WeakSig = sig
    val same : 'a ref -> 'b ref -> bool
    val cast : 'a ref -> 'b ref 
 
-   val null : unit -> 'a ref
+   val null : 'a ref
    val is_null : 'a ref -> bool
 end
 
@@ -60,9 +60,8 @@ module Weak : WeakSig = struct
    let same p1 p2 = ((magic p1) == p2) 
    let cast p = magic p
 
-   let nullref = ref ()
-   let null () = magic nullref
-   let is_null p = same (magic nullref) p
+   let null = magic (ref ())
+   let is_null p = same (magic null) p
 end
 
 
