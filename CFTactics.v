@@ -342,8 +342,11 @@ Tactic Notation "xcurried" := xcurried_core.
 (*--------------------------------------------------------*)
 (* ** [xextract], [xok] *)
 
+Ltac xextract_core :=
+  simpl; hclean. (* ou unfold starpost *)
+
 Tactic Notation "xextract" := 
-  hclean.
+  xextract_core.
 
 Tactic Notation "xok" := 
   first [ apply rel_le_refl | apply pred_le_refl ].
@@ -373,8 +376,9 @@ Tactic Notation "xlet" "as" ident(x) :=
   xlet_def (fun _ => esplit) (fun _ => intros x) (fun _ => idtac).
 Tactic Notation "xlet" :=
   xlet_def (fun _ => esplit) (fun _ => intro) (fun _ => idtac).
-Tactic Notation "xseq" constr(Q) :=
-  xlet_def (fun _ => exists Q) (fun _ => idtac) (fun _ => try xextract).
+
+Tactic Notation "xseq" constr(H) :=
+  xlet_def (fun _ => exists H) (fun _ => idtac) (fun _ => try xextract).
 Tactic Notation "xseq" :=
   xlet_def (fun _ => esplit) (fun _ => idtac) (fun _ => idtac).
 
@@ -383,13 +387,13 @@ Tactic Notation "xlet" "~" "as" ident(x) := xlet as x; auto~.
 Tactic Notation "xseq" "~" := xseq; auto~. (*todo: xauto ! *)
 Tactic Notation "xlet" "~" constr(Q) := xlet Q; auto~.
 Tactic Notation "xlet" "~" constr(Q) "as" ident(x) := xlet Q as x; auto~.
-Tactic Notation "xseq" "~" constr(Q) := xseq Q; auto~.
+Tactic Notation "xseq" "~" constr(H) := xseq H; auto~.
 Tactic Notation "xlet" "*" := xlet; auto*.
 Tactic Notation "xlet" "*" "as" ident(x) := xlet as x; auto*.
 Tactic Notation "xseq" "*" := xseq; auto*. (*todo: xauto ! *)
 Tactic Notation "xlet" "*" constr(Q) := xlet Q; auto*.
 Tactic Notation "xlet" "*" constr(Q) "as" ident(x) := xlet Q as x; auto*.
-Tactic Notation "xseq" "*" constr(Q) := xseq Q; auto*.
+Tactic Notation "xseq" "*" constr(H) := xseq H; auto*.
 
 
 (*--------------------------------------------------------*)
@@ -449,15 +453,16 @@ Tactic Notation "xdone" :=
 (*--------------------------------------------------------*)
 (* ** [xret] *)
 
-(** [xret] simplifies a proof obligation of the form 
-    [Ret v P], which is in fact equivalent to [P v]. 
-    [xret_noclean] can be used to skip beautification phase. *)
+(** [xret]. *)
+
+Ltac xret_gc :=
+  eapply xret_gc_lemma.
 
 Ltac xret_core :=
-  xuntag tag_ret;  (* not really necessary *)
   apply xret_lemma.
 
-Ltac xret_pre cont := cont tt.
+Ltac xret_pre cont := 
+  cont tt.
 
 (* deprecated
 Ltac xret_pre cont := 
@@ -643,7 +648,7 @@ Ltac xapp_core spec cont :=
 Ltac xapp_pre cont := 
   match ltac_get_tag tt with
   | tag_apply => xuntag tag_apply; cont tt
-  | tag_let_trm => xlet; [ xuntag tag_apply; cont tt | instantiate ]
+  | tag_let_trm => xlet; [ xuntag tag_apply; cont tt | instantiate; xextract ]
   end.  
 
 Ltac xapp_then spec cont :=
@@ -1035,6 +1040,71 @@ Tactic Notation "xfun_induction_nointro" constr(S) constr(I) :=
     intro; unfolds_to_spec tt; xinduction I; xbody_nointro).
 
 *)
+
+
+
+
+(*--------------------------------------------------------*)
+(* ** [xfor] and [xwhile] *)
+
+Ltac xfor_bounds_intro tt :=
+  intro; let i := get_last_hyp tt in
+  let Hli := fresh "Hl" i in
+  let Hui := fresh "Hu" i in
+  intros [Hli Hui].
+
+Ltac xfor_core I := 
+  let Hi := fresh "Hfor" in
+  eapply (@xfor_frame I); 
+  [ xlocal
+  | intros Hfor; try math
+  | intros Hfor; splits (3%nat); 
+     [ hsimpl 
+     | xfor_bounds_intro tt
+     | hsimpl ] 
+  ].
+
+Ltac xfor_le_core I :=
+  eapply (@xfor_frame_le I);
+  [ try math
+  | hsimpl
+  | xfor_bounds_intro tt
+  | hsimpl ].
+
+Tactic Notation "xfor" constr(I) := 
+  xfor_core I.
+
+Tactic Notation "xfor_le" constr(I) := 
+  xfor_le_core I.
+
+
+Ltac xwhile_core I R X := 
+  eapply (@xwhile_frame _ I R);
+  [ xlocal
+  | xlocal
+  | try prove_wf
+  | match X with __ => idtac | _ => exists X; hsimpl end 
+  | idtac ].
+
+(* deprecated
+  apply local_erase; esplit; exists I; 
+  first [exists R | exists (measure R)];
+  splits (3%nat); [ try prove_wf | | ].
+*)
+
+Tactic Notation "xwhile" constr(I) constr(R) constr(X) := 
+  xwhile_core I R X.
+Tactic Notation "xwhile" constr(I) constr(R) := 
+  xwhile I R __.
+
+
+
+(*--------------------------------------------------------*)
+(* ** [xgc] *)
+
+Tactic Notation "xgc_all" := 
+  eapply local_gc_pre_all; [ try xlocal | ].
+
 
 (*--------------------------------------------------------*)
 (* ** [xintros] *)

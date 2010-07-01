@@ -26,7 +26,7 @@ Definition f (y:map nat nat) :=
 
 (*
 Proof.
-  intros. extens. intros H Q. iff M.
+  intro. extens. intros H Q. iff M.
   apply~ local_erase.
   introv Hh. destruct (M _ Hh) as (H1&H2&Q1&H'&R&N&?).
   lets (h1&h2&?&?&?&?): R. clear R.
@@ -1427,3 +1427,32 @@ Fixpoint depth a (q:queue a) : nat :=
   | Struct lenfm f m lenr r => (1 + depth m)%nat
   end.
 *)
+
+
+(** Full garbage collection on postcondition from [local] 
+
+Lemma local_gc_post_all : forall B Q (F:~~B) H HG (P:B->Prop),
+  is_local F -> 
+  Q ===> \[P] \*+ HG ->
+  F H Q ->
+  F H (\[P]).
+Proof. intros. apply* local_gc_post. Qed.
+
+Tactic Notation "xgc_post_all" := 
+  eapply local_gc_pre with (H' := H);
+    [ try xlocal
+    | hsimpl
+    | ].
+
+*)
+
+
+
+Lemma xret_lemma : forall B (v:B) H (Q:B->hprop),
+  (\= v \*+ H) ===> Q -> 
+  local (fun H Q => H heap_empty /\ Q v heap_empty) H Q.
+Proof.  
+  introv W. applys local_wframe B [] H (\= v). (* todo: instantiate *)
+  simpls. auto.
+  apply local_erase. split. reflexivity. hnfs~. hsimpl. auto.
+Qed.

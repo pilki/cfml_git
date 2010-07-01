@@ -6,17 +6,8 @@ Require Import test_ml.
 
 Opaque heap_is_empty hdata heap_is_single heap_is_empty_st RefOn.
 
-Tactic Notation "xextract" := 
-  simpl; hclean. (* ou unfold starpost *)
 
-Tactic Notation "xret" := 
-  let r := fresh "r" in
-  xret_pre ltac:(fun _ => xret_core; xclean; intros r).
-Tactic Notation "xret" "as" := 
-  xret_pre ltac:(fun _ => xret_core; xclean).
-Tactic Notation "xret" "as" ident(r) := 
-  xret_pre ltac:(fun _ => xret_core; xclean; intros r).
-
+(* bin *)
 Lemma hsimpl_prop_1 : forall (P1:Prop),
   P1 -> [] ==> [P1].
 Proof. introv H K. (*surprenant: destruct K.*)
@@ -24,115 +15,16 @@ Proof. introv H K. (*surprenant: destruct K.*)
 Qed.
 
 
-Notation "'For' i '=' a 'To' b 'Do' Q1 'Done'" :=
-  (!For (fun H Q => (a > (b)%Z -> H ==> (Q tt)) /\ (a <= (b)%Z -> exists I,
-     H ==> I a /\ (forall i, a <= i /\ i <= (b)%Z -> Q1 (I i) (# I(i+1))) /\ (I ((b)%Z+1) ==> Q tt))))
-  (at level 69, i ident) : charac.
-
-Notation "'While' Q1 'Do' Q2 'Done'" :=
-  (!While (fun H Q => exists A, exists I, exists R,
-       wf R 
-     /\ (exists x, H ==> I x)
-     /\ (forall x, exists Q', 
-            Q1 (I x) Q'
-         /\ Q2 (Q' true) (# Hexists y, (I y) \* [R y x])
-         /\ (Q' false ==> Q tt))))
-  (at level 69) : charac.
-
-Notation "Q1 ;; Q2" :=
-  (!Seq fun H Q => exists H', Q1 H (#H') /\ Q2 H' Q)
-  (at level 68, right associativity) : charac.
-
-Tactic Notation "xseq" constr(H) :=
-  xlet_def (fun _ => exists H) (fun _ => idtac) (fun _ => try xextract).
-Tactic Notation "xseq" :=
-  xlet_def (fun _ => esplit) (fun _ => idtac) (fun _ => idtac).
-
-Notation "'Ret' v" :=
-  (!R (fun H Q => H ==> Q v))
-  (at level 69) : charac.
-
-
-(** Full garbage collection on postcondition from [local] 
-
-Lemma local_gc_post_all : forall B Q (F:~~B) H HG (P:B->Prop),
-  is_local F -> 
-  Q ===> \[P] \*+ HG ->
-  F H Q ->
-  F H (\[P]).
-Proof. intros. apply* local_gc_post. Qed.
-
-Tactic Notation "xgc_post_all" := 
-  eapply local_gc_pre with (H' := H);
-    [ try xlocal
-    | hsimpl
-    | ].
-
-*)
-
-
-Lemma local_gc_pre_all : forall B Q (F:~~B) H,
-  is_local F -> 
-  F [] Q ->
-  F H Q.
-Proof. intros. apply* (@local_gc_pre H). hsimpl. Qed.
-
-Tactic Notation "xgc_all" := 
-  eapply local_gc_pre_all; [ try xlocal | ].
-
-Lemma xret_gc_lemma : forall HG B (v:B) H (Q:B->hprop),
-  H ==> Q v \* HG -> 
-  local (fun H' Q' => H' ==> Q' v) H Q.
-Proof.  
-  introv W. eapply (@local_gc_pre HG).
-  auto. rewrite star_comm. apply W.
-  apply~ local_erase.
-Qed.
-
-Lemma xret_lemma : forall B (v:B) H (Q:B->hprop),
-  H ==> Q v -> 
-  local (fun H' Q' => H' ==> Q' v) H Q.
-Proof.  
-  introv W. apply~ local_erase.
-Qed.
-
-Ltac xret_gc :=
-  eapply xret_gc_lemma.
-
-Ltac xret_core :=
-  apply xret_lemma.
-
-Tactic Notation "xret" := 
-  xret_pre ltac:(fun _ => xret_core; xclean).
-
-
-Ltac xfor_bounds_intro tt :=
-  intro; let i := get_last_hyp tt in
-  let Hli := fresh "Hl" i in
-  let Hui := fresh "Hu" i in
-  intros [Hli Hui].
-
-Ltac xfor_core I := (* todo: add xframe *)
-  let Hi := fresh "Hfor" in
-  apply local_erase; split;
-  [ intros Hfor 
-  |  intros Hfor; exists (I:int->hprop); splits (3%nat); 
-     [ (* todo : hsimpl *)
-     | xfor_bounds_intro tt
-     | (* todo: hsimpl *) ] 
-  ].
-
-
 
 (********************************************************)
 (* references *)
 
 Lemma decr_spec : Spec decr x |R>> 
-  forall n, R (x ~> RefOn n) (# x ~> RefOn (n-1)).
+  forall m, R (x ~> RefOn m) (# x ~> RefOn (m-1)).
 Proof.
   xcf. intros.
-  xlet. xapp. xextract. intro_subst.
-  xapp. intros _. hsimpl.
+  xapp. intro_subst.
+  xapp. hsimpl. 
 Qed.
 
 
@@ -147,10 +39,7 @@ Lemma decr_while_spec : Spec decr_while x |R>>
   forall n, n >= 0 -> R (x ~> RefOn n) (# x ~> RefOn 0).
 Proof.
   xcf. intros.
-  apply local_erase.
-  exists int. exists (fun i:int => x ~> RefOn i).
-   exists (measure (fun i:int => abs i)). splits (3%nat).
-  apply measure_wf.
+  xwhile_core (fun i:int => x ~> RefOn i) (fun i:int => abs i).
   esplit. hsimpl.
   intros i. exists (\[ bool_of (i>=0)] \*+ (x ~> RefOn i)). (* todo: optimize read_only *)
   splits (3%nat).
@@ -160,6 +49,7 @@ Proof.
     (* todo: hexists (i-1). *)
   skip.
 Qed.
+
 
 
 (********************************************************)

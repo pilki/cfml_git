@@ -85,7 +85,6 @@ OKAO=\
 	okasaki/BinaryRandomAccessList_proof.v \
 	okasaki/AltBinaryRandomAccessList_proof.v 
 
-
 OKA=$(OKAS) $(OKAQ) $(OKAH) $(OKAO)
 
 NEW=\
@@ -98,6 +97,9 @@ IMP=\
 	CFTactics.v \
 	CFPrim.v 
 
+IMPER=\
+	imper/Dijkstra_ml.v \
+	imper/Dijkstra_proof.v 
 
 # 	
 #	okasaki/BinaryRandomAccessList_ml.v \
@@ -148,6 +150,7 @@ full: $(ALL:.v=.vo)
 tools: $(TOOLS:.v=.vo) 
 demo: $(DEMO:.v=.vo)
 imp: $(IMP:.v=.vo)
+imper: $(IMPER:.v=.vo)
 
 oka: $(OKA:.v=.vo) $(OKACOD:.v=.vo)
 okac: $(OKACOD:.v=.vo)
@@ -286,6 +289,7 @@ clean:
 	@rm -f *.d *.vo *.glob *.cmo *.cmi *_ml.v || echo clean_local
 	@rm -f demo/*.d demo/*_ml.v demo/*.vo demo/*.glob demo/*.cmo demo/*.cmi || echo clean_demo
 	@rm -f okasaki/*.d okasaki/*_ml.v okasaki/*.vo okasaki/*.glob okasaki/*.cmo okasaki/*.cmi || echo clean_okasaki
+	@rm -f imper/*.d imper/*_ml.v imper/*.vo imper/*.glob imper/*.cmo imper/*.cmi || echo clean_imper
 	@rm -f .camldep || echo ok
 	@echo "CLEANED UP"
 

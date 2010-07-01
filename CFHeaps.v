@@ -189,7 +189,12 @@ Notation "[ L ]" := (heap_is_empty_st L)
 Notation "\[ P ]" := (fun v => heap_is_empty_st (P v)) 
   (at level 0, P at level 99) : heap_scope.
 
+(*bin
 Notation "\= V" := (\[ = V])
+  (at level 40) : heap_scope.
+*)
+
+Notation "\= V" := (fun X => [X = V])
   (at level 40) : heap_scope.
 
 Notation "H1 '\*' H2" := (heap_is_star H1 H2)
@@ -199,10 +204,10 @@ Notation "l '~~>' v" := (heap_is_single l v)
   (at level 35, no associativity) : heap_scope.
 
 Notation "'Hexists' x , H" := (heap_is_pack (fun x => H))
-  (at level 35, x ident, H at level 200) : heap_scope.
+  (at level 39, x ident, H at level 50) : heap_scope.
 
 Notation "'Hexists' x : T , H" := (heap_is_pack (fun x:T => H))
-  (at level 35, x ident, H at level 200) : heap_scope.
+  (at level 39, x ident, H at level 50) : heap_scope.
 
 Notation "Q \*+ H" :=
   (fun x => heap_is_star (Q x) H)
@@ -330,6 +335,30 @@ Definition read B (R:~~B) :=
 (********************************************************************)
 (* ** Simplification and unification tactics for star *)
 
+
+Inductive Hsimpl_hint : list Boxer -> Type :=
+  | hsimpl_hint : forall (L:list Boxer), Hsimpl_hint L.
+
+Ltac hsimpl_hint_put L := 
+  lets: (hsimpl_hint L).
+
+Ltac hsimpl_hint_next cont :=
+  match goal with H: Hsimpl_hint ((boxer ?x)::?L) |- _ =>
+    clear H; hsimpl_hint_put L; cont x end.
+
+Ltac hsimpl_hint_remove :=
+  match goal with H: Hsimpl_hint _ |- _ => clear H end.
+
+Lemma demo_hsimpl : exists n, n = 3.
+Proof.
+  hsimpl_hint_put (>>> 3 true).
+  hsimpl_hint_next ltac:(fun x => exists x).
+  hsimpl_hint_remove.
+  auto.
+Qed.
+
+
+
 Hint Rewrite <- star_assoc : hsimpl_assoc.
 Hint Rewrite star_neutral_l star_neutral_r : hsimpl_neutral.
 
@@ -348,6 +377,12 @@ Proof.
   exists h1 h2. splits~. exists heap_empty h2. splits~.
   skip. skip. (* heap *)
   splits~.
+Qed.
+
+Lemma hsimpl_extract_exists : forall A (x:A) H1 H2 H3 (J:A->hprop),
+  H1 ==> H2 \* J x \* H3 -> H1 ==> H2 \* (heap_is_pack J \* H3).
+Proof.
+  skip. (* todo *)
 Qed.
 
 Lemma hsimpl_cancel_1 : forall H HA HR HT,
@@ -417,6 +452,15 @@ Ltac hsimpl_setup tt :=
   protect_evars tt; 
   autorewrite with hsimpl_assoc.
 
+Ltac hsimpl_try_same tt :=
+  first 
+  [ apply hsimpl_cancel_1
+  | apply hsimpl_cancel_2
+  | apply hsimpl_cancel_3
+  | apply hsimpl_cancel_4
+  | apply hsimpl_cancel_5
+  | apply hsimpl_cancel_6 ].
+
 Ltac hsimpl_find_same H HL :=
   match HL with
   | H \* _ => apply hsimpl_cancel_1
@@ -438,19 +482,44 @@ Ltac hsimpl_find_data H HL :=
   | _ \* _ \* _ \* _ \* _ \* hdata _ l \* _ => apply hsimpl_cancel_6
   end end.
 
+Ltac hsimpl_extract_exists_with_hints tt :=
+  match goal with |- ?HL ==> ?HA \* (heap_is_pack ?J \* ?HR) =>
+    hsimpl_hint_next ltac:(fun x =>
+      match x with
+      | __ => eapply hsimpl_extract_exists
+      | _ => apply (@hsimpl_extract_exists _ x)
+      end)
+  end.
+
+Ltac hsimpl_extract_exists_step tt :=
+  first [ hsimpl_extract_exists_with_hints tt
+        | eapply hsimpl_extract_exists ];
+   autorewrite with hsimpl_assoc.
+
 Ltac hsimpl_step tt :=
   match goal with |- ?HL ==> ?HA \* (?H \* ?HR) =>
-    first [ hsimpl_find_same H HL
+    first [ (* hsimpl_find_same H HL
           | hsimpl_find_data H HL
+          | *)  hsimpl_try_same tt (* todo: violent ?*)
+          | apply hsimpl_extract_prop
+          | hsimpl_extract_exists_step tt
           | apply hsimpl_keep ]
   end.
 
 Ltac hsimpl_cleanup tt :=
   autorewrite with hsimpl_neutral;
   unprotect_evars tt;
-  try apply pred_le_refl.
+  try apply pred_le_refl;
+  try hsimpl_hint_remove.
+
+Ltac hsimpl_for_post tt :=
+  match goal with 
+  | |- @rel_le unit _ _ _ => let t := fresh "_tt" in intros t; destruct t
+  | |- @rel_le _ _ _ _ => let r := fresh "r" in intros r
+  end.
 
 Ltac hsimpl_main tt :=
+  try hsimpl_for_post tt;
   hsimpl_setup tt;
   (repeat (hsimpl_step tt));
   hsimpl_cleanup tt.
@@ -458,6 +527,10 @@ Ltac hsimpl_main tt :=
 Tactic Notation "hsimpl" := hsimpl_main tt.
 Tactic Notation "hsimpl" "~" := hsimpl; auto_tilde.
 Tactic Notation "hsimpl" "*" := hsimpl; auto_star.
+Tactic Notation "hsimpl" constr(L) := 
+  hsimpl_hint_put L; hsimpl.
+
+
 
 Lemma hsimpl_demo : forall H1 H2 H3 H4 H5,
   H1 \* H2 \* H3 \* H4 ==> H4 \* H3 \* H5 \* H2.
@@ -514,6 +587,31 @@ Proof.
   auto.
 Admitted.
 
+Lemma hsimpl_demo_4 : forall n m J H2 H3 H4,
+  n = m + m ->
+  H2 \* J m \* H3 \* H4 ==> H4 \* (Hexists y, [y = 2]) \* (Hexists x, [n = x + x] \* J x \* H2) \* H3.
+Proof.
+  intros. dup.
+  (* details *)
+  hsimpl_setup tt.
+  hsimpl_step tt.
+  hsimpl_step tt.
+  hsimpl_step tt.
+  hsimpl_step tt.
+  hsimpl_step tt.
+  hsimpl_step tt.
+  hsimpl_step tt.
+  hsimpl_step tt.
+  hsimpl_cleanup tt.
+  auto.
+  eauto.
+  (* short *)
+  hsimpl.
+  auto.
+  eauto.
+Qed.
+
+
 
 (* todo: move *)
 
@@ -527,6 +625,29 @@ Lemma heap_weaken_star : forall H1' H1 H2 H3,
 Proof.
   introv W M (h1&h2&N). intuit N. apply M. exists~ h1 h2.
 Qed.
+
+
+(*------------------------------------------------------------------*)
+(* ** Tactic [hchange] *)
+
+Lemma hchange_lemma : forall H1 H1' H H' H2,
+  (H1 ==> H1') -> (H ==> H1 \* H2) -> (H1' \* H2 ==> H') -> (H ==> H').
+Proof.
+  intros. applys* (@pred_le_trans heap) (H1 \* H2). 
+  applys* (@pred_le_trans heap) (H1' \* H2). hsimpl~. 
+Qed.
+
+Ltac hchange_core H :=
+  first [ apply (@hchange_lemma H)
+        | applys hchange_lemma H ]; 
+  hsimpl.
+
+Tactic Notation "hchange" constr(H) :=
+  hchange_core H.
+Tactic Notation "hchange" "~" constr(H) :=
+  hchange_core H; auto_tilde.
+Tactic Notation "hchange" "*" constr(H) :=
+  hchange_core H; auto_star.
 
 
 (********************************************************************)
@@ -594,6 +715,8 @@ Qed.
 Lemma local_is_local : forall B (F:~~B),
   is_local (local F).
 Proof. intros. unfolds. rewrite~ local_local. Qed.
+
+Hint Resolve local_is_local.
 
 (** Weaken and frame and gc property [local] *)
 

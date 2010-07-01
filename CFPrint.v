@@ -480,7 +480,7 @@ Tactic Notation "xuntags" := unfold tag in *.
 (* ** Notation for characteristic formulae *)
 
 Notation "'Ret' v" :=
-  (!R (fun H Q => H heap_empty /\ Q v heap_empty))
+  (!R (fun H Q => H ==> Q v))
   (at level 69) : charac.
 
 Notation "'Fail'" :=
@@ -694,12 +694,20 @@ Notation "'Alias' x ':=' v 'in' Q" :=
   (!S (fun H Q => forall x, x = v -> Q H Q))
   (at level 69, x ident) : charac.
 
-
 Notation "'For' i '=' a 'To' b 'Do' Q1 'Done'" :=
-  (!For (fun H Q => (a > b -> H ==> (Q tt)) /\ (a <= b -> exists I,
-     H ==> I a /\ (forall i, a <= i /\ i <= b -> Q1 (I i) (# I(i+1))) /\ (I (b+1) ==> Q tt))
+  (!For (fun H Q => (a > (b)%Z -> H ==> (Q tt)) /\ (a <= (b)%Z -> exists I,
+     H ==> I a /\ (forall i, a <= i /\ i <= (b)%Z -> Q1 (I i) (# I(i+1))) /\ (I ((b)%Z+1) ==> Q tt))))
   (at level 69, i ident) : charac.
 
+Notation "'While' Q1 'Do' Q2 'Done'" :=
+  (!While (fun H Q => exists A, exists I, exists R,
+       wf R 
+     /\ (exists x, H ==> I x)
+     /\ (forall x, exists Q', 
+            Q1 (I x) Q'
+         /\ Q2 (Q' true) (# Hexists y, (I y) \* [R y x])
+         /\ (Q' false ==> Q tt))))
+  (at level 69) : charac.
 
 Open Scope charac.
 
@@ -734,7 +742,7 @@ Notation "'LetFunc' f1 ':=' Q1 'and' f2 ':=' Q2 'and' f3 ':=' Q3 'in' F" :=
   (at level 69, f1 ident, f2 ident, f3 ident) : charac.
 
 Notation "Q1 ;; Q2" :=
-  (!Seq fun H Q => exists Q', Q1 H Q' /\ Q2 (Q' tt) Q)
+  (!Seq fun H Q => exists H', Q1 H (#H') /\ Q2 H' Q)
   (at level 68, right associativity) : charac.
 
 Notation "'TopLet' x ':=' Q" :=

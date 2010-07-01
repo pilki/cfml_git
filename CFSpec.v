@@ -879,19 +879,6 @@ Qed.
 (********************************************************************)
 (* ** Lemmas for other tactics *)
 
-Hint Resolve local_is_local.
-
-Notation "\= V" := (fun X => [X = V])
-  (at level 40) : heap_scope.
-
-Lemma xret_lemma : forall B (v:B) H (Q:B->hprop),
-  (\= v \*+ H) ===> Q -> 
-  local (fun H Q => H heap_empty /\ Q v heap_empty) H Q.
-Proof.  
-  introv W. applys local_wframe B [] H (\= v). (* todo: instantiate *)
-  simpls. auto.
-  apply local_erase. split. reflexivity. hnfs~. hsimpl. auto.
-Qed.
 
 Lemma xframe_lemma : forall H1 H2 B Q1 (F:~~B) H Q,
   is_local F -> 
@@ -901,28 +888,6 @@ Lemma xframe_lemma : forall H1 H2 B Q1 (F:~~B) H Q,
   F H Q.
 Proof. intros. apply* local_wframe. Qed.
 
-
-(*move*)
-
-Lemma hchange_lemma : forall H1 H1' H H' H2,
-  (H1 ==> H1') -> (H ==> H1 \* H2) -> (H1' \* H2 ==> H') -> (H ==> H').
-Proof.
-  intros. applys* (@pred_le_trans heap) (H1 \* H2). 
-  applys* (@pred_le_trans heap) (H1' \* H2). hsimpl~. 
-Qed.
-
-Ltac hchange_core H :=
-  first [ apply (@hchange_lemma H)
-        | applys hchange_lemma H ]; 
-  hsimpl.
-
-Tactic Notation "hchange" constr(H) :=
-  hchange_core H.
-Tactic Notation "hchange" "~" constr(H) :=
-  hchange_core H; auto_tilde.
-Tactic Notation "hchange" "*" constr(H) :=
-  hchange_core H; auto_star.
-
 Lemma xchange_lemma : forall H1 H1' H2 B H Q (F:~~B),
   is_local F -> (H1 ==> H1') -> (H ==> H1 \* H2) -> F (H1' \* H2) Q -> F H Q.
 Proof.
@@ -930,8 +895,88 @@ Proof.
   hsimpl. hchange~ W2. rew_heap~. 
 Qed.
 
+Lemma local_gc_pre_all : forall B Q (F:~~B) H,
+  is_local F -> 
+  F [] Q ->
+  F H Q.
+Proof. intros. apply* (@local_gc_pre H). hsimpl. Qed.
 
+Lemma xret_gc_lemma : forall HG B (v:B) H (Q:B->hprop),
+  H ==> Q v \* HG -> 
+  local (fun H' Q' => H' ==> Q' v) H Q.
+Proof.  
+  introv W. eapply (@local_gc_pre HG).
+  auto. rewrite star_comm. apply W.
+  apply~ local_erase.
+Qed.
 
+Lemma xret_lemma : forall B (v:B) H (Q:B->hprop),
+  H ==> Q v -> 
+  local (fun H' Q' => H' ==> Q' v) H Q.
+Proof.  
+  introv W. apply~ local_erase.
+Qed.
+
+(* todo: move *)
+Lemma local_frame : forall H' B H Q (F:~~B),
+  is_local F -> 
+  F H Q -> 
+  F (H \* H') (Q \*+ H').
+Proof. intros. apply* local_wframe. Qed.
+
+Lemma xfor_frame : forall I H' a b H Q (F:~~unit),
+  is_local F ->
+  (a > (b)%Z -> H ==> (Q tt)) ->
+  ((a <= (b)%Z) -> 
+      (H ==> I a \* H') 
+   /\ (forall i, a <= i /\ i <= (b)%Z -> F (I i) (# I(i+1))) 
+   /\ (I ((b)%Z+1) \* H' ==> Q tt)) ->
+  local (fun H Q => (a > (b)%Z -> H ==> (Q tt)) /\ (a <= (b)%Z -> exists I,
+     H ==> I a /\ (forall i, a <= i /\ i <= (b)%Z -> F (I i) (# I(i+1))) /\ (I ((b)%Z+1) ==> Q tt))) H Q.
+Proof.
+  introv L M1 M2. apply local_erase. split. auto.
+  introv M3. intuit (M2 M3). exists (I \*+ H'). splits*.
+  intros i Hi. specializes H1 Hi. apply* local_wframe.
+Qed.
+
+Lemma xfor_frame_le : forall I H' a b H Q (F:~~unit),
+  (a <= (b)%Z) -> 
+  (H ==> I a \* H') ->
+  (forall i, a <= i /\ i <= (b)%Z -> F (I i) (# I(i+1))) ->
+  (I ((b)%Z+1) \* H' ==> Q tt) ->
+  local (fun H Q => (a > (b)%Z -> H ==> (Q tt)) /\ (a <= (b)%Z -> exists I,
+     H ==> I a /\ (forall i, a <= i /\ i <= (b)%Z -> F (I i) (# I(i+1))) /\ (I ((b)%Z+1) ==> Q tt))) H Q.
+Proof.
+  introv M1 M2 M3 M4. apply~ (>>> local_wframe unit __ H' (fun _:unit => I (b+1))).
+  apply local_erase. split. intros. false. math.
+  intros. exists* I. intros t. destruct t. auto.
+Qed.
+
+Lemma xwhile_frame : forall A I (R:binary A) H' H Q (F1:~~bool) (F2:~~unit),
+  is_local F1 -> 
+  is_local F2 -> 
+  wf R ->
+  (exists x, H ==> I x \* H') ->
+  (forall x, exists Q', 
+            F1 (I x) Q'
+         /\ F2 (Q' true) (# Hexists y, (I y) \* [R y x])
+         /\ (Q' false \* H' ==> Q tt )) ->
+  local (fun H Q => exists A, exists I, exists R:binary A,
+       wf R 
+     /\ (exists x, H ==> I x)
+     /\ (forall x, exists Q', 
+            F1 (I x) Q'
+         /\ F2 (Q' true) (# Hexists y, (I y) \* [R y x])
+         /\ (Q' false ==> Q tt))) H Q.
+Proof.
+  introv L1 L2 M1 M2 M3. apply local_erase.
+  exists A (I \*+ H') R. splits*.
+  intros x. destruct (M3 x) as (Q'&H1&H2&H3).
+  exists (Q' \*+ H'). splits.
+  apply* local_wframe.
+  apply* local_wframe. skip. (*todo: hsimpl_back *)
+  auto.
+Qed.
 
 
 
