@@ -111,7 +111,7 @@ Proof.
   xapp. intro_subst. intros P. xret. hsimpl~. skip.
   xextract as M1 M2. xapp. hsimpl. skip.
   math.
-  hsimpl. skip. (* todo *)
+  hextract. xclean. math_rewrite (i = 0). (*todo: equality generates*) hsimpl.
 Qed.
 
 (* todo: hsimpl_right *) 
@@ -191,11 +191,8 @@ Proof.
   xapp.
   hsimpl.
   xgc.
-  xapp.
-  hsimpl.
-  instantiate (1:=x ~> RefOn (v + 1) \* y ~> RefOn (u + 1)). hsimpl. skip. (*todo*)
-  skip. (*htactics*)
-Admitted.
+  xapp. hextract. hsimpl. math.
+Qed.
  
 (*
 Print imp1_cf.

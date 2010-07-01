@@ -335,6 +335,33 @@ Definition read B (R:~~B) :=
 (********************************************************************)
 (* ** Simplification and unification tactics for star *)
 
+Ltac protect_evars_in H :=
+   match H with context [ ?X ] => 
+     let go tt := 
+       match X with
+       | _ \* _ => fail 1
+       | _ ~> _ => fail 1
+       | X => fail 1 
+       | _ => let K := fresh "TEMP" in sets_eq K: (X : ltac_tag_subst hprop)
+       end in
+     match type of X with 
+     | hprop => go tt
+     | heap -> Prop => go tt
+     end
+   end.
+
+Ltac protect_evars tt :=
+  do 5 try match goal with |- ?H1 ==> ?H2 =>
+     first [ protect_evars_in H1 | protect_evars_in H2 ]; instantiate
+  end.
+
+Ltac unprotect_evars tt :=
+  repeat match goal with H : ltac_tag_subst _ |- _ => 
+    subst H end;
+  unfold ltac_tag_subst.
+
+
+
 Hint Rewrite <- star_assoc : hsimpl_assoc.
 Hint Rewrite star_neutral_l star_neutral_r : hsimpl_neutral.
 
@@ -367,11 +394,13 @@ Qed.
 Ltac hextract_setup tt :=
   lets: ltac_mark;
   apply hextract_start;
+  protect_evars tt; 
   autorewrite with hsimpl_assoc.
 
 Ltac hextract_cleanup tt :=
   autorewrite with hsimpl_assoc;
   autorewrite with hsimpl_neutral;
+  unprotect_evars tt; 
   gen_until_mark.
 
 Ltac hextract_relinearize tt :=
@@ -389,7 +418,14 @@ Ltac hextract_step tt :=
         | apply hextract_keep ]
   end.
 
+Ltac post_impl_intro tt :=
+  match goal with 
+  | |- @rel_le unit _ _ _ => let t := fresh "_tt" in intros t; destruct t
+  | |- @rel_le _ _ _ _ => let r := fresh "r" in intros r
+  end.
+
 Ltac hextract_main tt :=
+  try post_impl_intro tt;
   hextract_setup tt;
   (repeat (hextract_step tt));
   hextract_cleanup tt.
@@ -431,7 +467,24 @@ Proof.
   try hextract_if_needed tt. skip.
 Qed.
 
-
+Lemma hextract_demo_2 : forall H1 H' (G:Prop),
+  (forall H2, H1 \* (Hexists y, [y = 2]) \* H2 ==> H' -> G) ->
+  G.
+Proof.
+  introv W. eapply W. dup.
+  (* details *)
+  hextract_setup tt.
+  hextract_step tt.
+  hextract_step tt.
+  hextract_step tt.
+  hextract_step tt.
+  try hextract_step tt.
+  hextract_cleanup tt.
+  intros y Hy.
+  skip.
+  (* short *)
+  hextract. skip.
+Admitted.
 
 
 Inductive Hsimpl_hint : list Boxer -> Type :=
@@ -509,30 +562,6 @@ Lemma hsimpl_cancel_6 : forall H HA HR H1 H2 H3 H4 H5 HT,
 Admitted.
 
 
-Ltac protect_evars_in H :=
-   match H with context [ ?X ] => 
-     let go tt := 
-       match X with
-       | _ \* _ => fail 1
-       | _ ~> _ => fail 1
-       | X => fail 1 
-       | _ => let K := fresh "TEMP" in sets_eq K: (X : ltac_tag_subst hprop)
-       end in
-     match type of X with 
-     | hprop => go tt
-     | heap -> Prop => go tt
-     end
-   end.
-
-Ltac protect_evars tt :=
-  do 5 try match goal with |- ?H1 ==> ?H2 =>
-     first [ protect_evars_in H1 | protect_evars_in H2 ]; instantiate
-  end.
-
-Ltac unprotect_evars tt :=
-  repeat match goal with H : ltac_tag_subst _ |- _ => 
-    subst H end;
-  unfold ltac_tag_subst.
 
 
 (*
@@ -608,14 +637,8 @@ Ltac hsimpl_cleanup tt :=
   try apply pred_le_refl;
   try hsimpl_hint_remove.
 
-Ltac hsimpl_for_post tt :=
-  match goal with 
-  | |- @rel_le unit _ _ _ => let t := fresh "_tt" in intros t; destruct t
-  | |- @rel_le _ _ _ _ => let r := fresh "r" in intros r
-  end.
-
 Ltac hsimpl_main tt :=
-  try hsimpl_for_post tt;
+  try post_impl_intro tt;
   hsimpl_setup tt;
   (repeat (hsimpl_step tt));
   hsimpl_cleanup tt.
