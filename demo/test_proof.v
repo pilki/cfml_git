@@ -84,14 +84,27 @@ Tactic Notation "xif" ident(H) :=
 Tactic Notation "xif" :=
   let H := fresh "C" in xif H.
 
-Ltac xok_core := 
+
+Ltac idcont tt := idtac.
+
+Ltac xok_core cont := 
   solve [ apply rel_le_refl
         | apply pred_le_refl
-        | hextract; hsimpl ].
+        | hextract; hsimpl; cont tt ].
 
 Tactic Notation "xok" := 
-  xok_core.
+  xok_core ltac:(idcont).
+Tactic Notation "xok" "~" := 
+  xok_core ltac:(fun _ => auto~).
+Tactic Notation "xok" "*" := 
+  xok_core ltac:(fun _ => auto*).
 
+Ltac xauto_common cont ::=
+  check_not_a_tag tt;  
+  try solve [ cont tt 
+            | solve [ apply refl_equal ]
+            | substs; if_eq; solve [ cont tt | apply refl_equal ]  
+            | xok_core ltac:(fun _ => solve [ cont tt | substs; cont tt ] ) ].
 
 Lemma decr_pos_spec : Spec decr_pos x |R>> 
   forall m, m > 0 -> R (x ~> RefOn m) (# x ~> RefOn (m-1)).
@@ -113,7 +126,6 @@ Lemma local_wframe' : forall B H1 H2 Q1 (F:~~B) H Q,
   F H Q.
 Proof. intros. apply* local_wframe. Qed.
 
-
 Ltac xapp_final HR :=
   eapply local_wframe; 
      [ xlocal
@@ -126,7 +138,7 @@ Ltac xapp_inst args solver ::=
   let KR := fresh "K" R in let IR := fresh "I" R in
   intros R LR KR; hnf in KR; (* lazy beta in *)
   let H := xapp_compact KR args in
-  forwards_then H ltac:(xapp_final);    
+  forwards_then H ltac:(fun HR => xapp_final HR);    
   solver tt.
 
 Ltac xapp_spec_core H cont ::=
@@ -140,7 +152,6 @@ Ltac xapp_manual_intros tt ::=
   let R := fresh "R" in let LR := fresh "L" R in 
   let KR := fresh "K" R in intros R LR KR; lazy beta in KR.
 
-Ltac idcont tt := idtac.
 
 Tactic Notation "xapp_manual_no_intros" := 
   xapp_then ___ ltac:(idcont).
@@ -179,13 +190,27 @@ Ltac hsimpl_find_data H HL ::=
   | _ \* _ \* _ \* hdata _ l \* _ => apply hsimpl_cancel_eq_4
   | _ \* _ \* _ \* _ \* hdata _ l \* _ => apply hsimpl_cancel_eq_5
   | _ \* _ \* _ \* _ \* _ \* hdata _ l \* _ => apply hsimpl_cancel_eq_6
-  end end; [ fequal | ].
+  end end; [ fequal; fequal | ].
+
+Ltac hsimpl_step tt ::=
+  match goal with |- ?HL ==> ?HA \* (?H \* ?HR) =>
+    first  (* hsimpl_find_same H HL |*)
+          [ hsimpl_try_same tt 
+          | hsimpl_find_data H HL  
+          | apply hsimpl_extract_prop
+          | hsimpl_extract_exists_step tt
+          | apply hsimpl_keep ]
+  end.
+
+Tactic Notation "xsimpl" := hsimpl.
+Tactic Notation "xsimpl" "~" := xsimpl; xauto~.
+Tactic Notation "xsimpl" "*" := xsimpl; xauto*.
 
 
 Lemma decr_pos_test_spec : Spec decr_pos_test x |R>> 
   forall m, m > 1 -> R (x ~> RefOn m) (# x ~> RefOn (m-1)).
 Proof.
-  xcf. intros. dup 5.
+  xcf. intros. dup 6.
   (* details of xapp *)
   eapply spec_elim_1_1. apply decr_pos_spec.
   intros R LR KR. lazy beta in KR.
@@ -199,14 +224,13 @@ Proof.
   (* xapp manual with arguments *)
   skip: (m = 3).
   xapp_manual. let K := xapp_compact KR (>>> 3) in
-  forwards HR: K; [ | xapp_final HR ]. math.
-    subst m. xok. subst m. xok.
+  forwards HR: K; [ | xapp_final HR ]. math. math. xsimpl*. 
   (* xapp with arguments *)
-  skip: (m = 3).
-  xapp 3. math. xok. xok.
+  skip: (m = 3). xapp 3. math. math. hsimpl. math.
+  (* xapp with arguments and automation *)
+     (* --Ltac auto_star ::= eauto with maths. *)
+  skip: (m = 3). xapp* 3. math.
 Qed.
-
-
 
 
 (********************************************************)
