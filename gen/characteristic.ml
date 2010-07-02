@@ -202,8 +202,12 @@ let pattern_aliases p =
 (* Lifting of values *)
 
 
-let string_of_label l =
-   unsupported "record"
+let string_of_label typ lbl =
+  let prefix = match typ.desc with  
+    | Tconstr (p, _, _) -> lift_path_name p 
+    | _ -> failwith "string_of_label: type of a record should be a Tconstr"
+    in
+  prefix ^ "_" ^ lbl.lbl_name
 
 let simplify_apply_args oargs =
   List.map (function (Some e, Required) -> e | _ -> unsupported "optional arguments") oargs 
@@ -247,9 +251,11 @@ let rec lift_val env e =
       coq_apps (coq_of_constructor c) (List.map aux es)
    | Texp_record (l, opt_init_expr) ->  
        if opt_init_expr <> None then unsupported "record-with expression"; (* todo *)
-       Coq_record (List.map (fun (n,v) -> (string_of_label n, aux v)) l)
+       let typ = e.exp_type in
+       Coq_record (List.map (fun (n,v) -> (string_of_label typ n, aux v)) l)
    | Texp_field (e, lbl) -> 
-       Coq_app (Coq_var (string_of_label lbl), aux e)
+       let typ = e.exp_type in
+       Coq_app (Coq_var (string_of_label typ lbl), aux e)
    | Texp_apply (funct, oargs) when is_inlined_primitive funct oargs ->
       let f = get_inlined_primitive funct oargs in
       let args = simplify_apply_args oargs in
@@ -491,6 +497,8 @@ and cfg_func env fvs pat bod =
     match dec.type_kind with Type_variant _ -> true | _ -> false 
  let is_type_abbrev (name,dec) =
     match dec.type_kind with Type_abstract -> true | _ -> false 
+ let is_type_record (name,dec) =
+    match dec.type_kind with Type_record _ -> true | _ -> false 
 
 let typ_of ty = lift_typ_exp ty
 
@@ -618,6 +626,14 @@ and cfg_type_abbrev (name,dec) =
                    Coqtop_hint_unfold ([x],"typeclass_instances") ] in
    coqs 
 
+let cfg_type_record (name,dec) =
+XXX
+(*
+Type_record of
+      (string * mutable_flag * type_expr) list * record_representation
+*)
+
+
 and cfg_algebraic decls =
    (* todo: pb si des variables polymorphes correspondent à des trucs tous remplacés par Val;
       il faudrait en fait modifier l'arité des constructeurs, y compris lorsqu'on les applique *)
@@ -659,6 +675,8 @@ and cfg_algebraic decls =
 and cfg_type_decls decls =
     if List.length decls = 1 && is_type_abbrev (List.hd decls)  
        then cfg_type_abbrev (List.hd decls)
+   if List.length decls = 1 && is_type_record (List.hd decls)  
+       then cfg_type_record (List.hd decls)
     else if (List.for_all is_algebraic decls)  
        then cfg_algebraic decls
     else

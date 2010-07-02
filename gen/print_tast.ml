@@ -126,24 +126,23 @@ let rec string_of_expression par e =
             show_par par (sprintf "%s (%s)" c (show_list aux "," es))
    | Texp_variant (l,eo) -> unsupported "variants"
    | Texp_record (l,Some eo) -> unsupported "record-with"
-   | Texp_record (l,None) -> unsupported "record"
-      (* 
-      let l',bi = List.split (List.map (fun (i,e) -> let e',b = aux e in ((i,e'),b)) l) in
-      Texp_record (l', None), bi
-      *)
-   | Texp_field (e,i) -> unsupported "record"
-       (* let e',b = aux e in
-       Texp_field (e', i), b *)
-   | Texp_setfield (e,i,e2) -> unsupported "record"
-       (* let e',b = aux e in
-       let e2',b2 = aux e2 in
-       Texp_setfield (e', i, e2'), b2 @ b  *)
+   | Texp_record (l,None) ->        
+       let print_item (li,ei) = 
+          Format.sprintf "%s = %s" (li.lbl_name) (aux ei) in
+       let s = Format.sprintf "@[{%s}@]" (show_list print_item " " l) in
+       show_par par s
+   | Texp_field (e,i) -> 
+       let s = Format.sprintf "@[%s.%s@]" (aux e) (i.lbl_name) in
+       show_par par s
+   | Texp_setfield (e,i,e2) -> 
+       let s = Format.sprintf "@[%s.%s <- %s@]" (aux e) (i.lbl_name) (aux e2) in
+       show_par par s
    | Texp_array l -> unsupported "array expression" (* Texp_array (List.map aux l)*)
    | Texp_ifthenelse (e1, e2, None) ->
        let s = Format.sprintf "@[if %s@ then %s@]" (aux e1) (aux e2) in
        show_par par s
    | Texp_ifthenelse (e1, e2, Some e3) ->
-       let s = Format.sprintf "@[if %s@ then %s@ %s@]" (aux e1) (aux e2) (aux e3) in
+       let s = Format.sprintf "@[if %s@ then %s@ else %s@]" (aux e1) (aux e2) (aux e3) in
        show_par par s
    | Texp_when (e1,e2) ->  (*todo:better printing so that compiles *)
        Format.sprintf "<< when %s >> %s" (aux e1) (aux e2) 
@@ -166,7 +165,7 @@ let rec string_of_expression par e =
    | Texp_assertfalse -> 
        show_par par "assert false"
    | Texp_lazy e -> 
-       let s = Format.sprintf "@[lazy %s]" (aux e) in
+       let s = Format.sprintf "@[lazy %s@]" (aux e) in
        show_par par s
    | Texp_object _ -> unsupported "objects"
    
@@ -195,7 +194,7 @@ and string_of_structure_item si =
           let se = string_of_expression false e in
           Format.sprintf "%s =@ @[%s@]" sp se in
        let sl = show_list show_pe " and " l in
-       Format.sprintf "@[let%s %s]" (string_of_recflag r) sl 
+       Format.sprintf "@[let%s %s@]" (string_of_recflag r) sl 
       (* Format.sprintf "@[let%s %s =@ @[<2>%s@]@]" *)
    | Tstr_primitive (id,v) -> sprintf "val %s : _" (string_of_ident id)
    | Tstr_type l -> sprintf "type _ = _"

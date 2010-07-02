@@ -117,24 +117,23 @@ let rec string_of_expression par e =
        show_par par s
    | Pexp_variant (l,eo) -> unsupported "variants"
    | Pexp_record (l,Some eo) -> unsupported "record-with"
-   | Pexp_record (l,None) -> unsupported "record"
-      (* 
-      let l',bi = List.split (List.map (fun (i,e) -> let e',b = aux e in ((i,e'),b)) l) in
-      Pexp_record (l', None), bi
-      *)
-   | Pexp_field (e,i) -> unsupported "record"
-       (* let e',b = aux e in
-       Pexp_field (e', i), b *)
-   | Pexp_setfield (e,i,e2) -> unsupported "record"
-       (* let e',b = aux e in
-       let e2',b2 = aux e2 in
-       Pexp_setfield (e', i, e2'), b2 @ b  *)
+   | Pexp_record (l,None) -> 
+       let print_item (li,ei) = 
+          Format.sprintf "%s = %s" (string_of_lident li) (aux ei) in
+       let s = Format.sprintf "@[{%s}@]" (show_list print_item " " l) in
+       show_par par s
+   | Pexp_field (e,i) -> 
+       let s = Format.sprintf "@[%s.%s@]" (aux e) (string_of_lident i) in
+       show_par par s
+   | Pexp_setfield (e,i,e2) -> 
+       let s = Format.sprintf "@[%s.%s <- %s@]" (aux e) (string_of_lident i) (aux e2) in
+       show_par par s
    | Pexp_array l -> unsupported "array expression" (* Pexp_array (List.map aux l)*)
    | Pexp_ifthenelse (e1, e2, None) -> 
        let s = Format.sprintf "@[if %s@ then %s@]" (aux e1) (aux e2) in
        show_par par s
    | Pexp_ifthenelse (e1, e2, Some e3) ->
-       let s = Format.sprintf "@[if %s@ then %s@ %s@]" (aux e1) (aux e2) (aux e3) in
+       let s = Format.sprintf "@[if %s@ then %s@ else %s@]" (aux e1) (aux e2) (aux e3) in
        show_par par s
    | Pexp_sequence (e1,e2) -> 
        let s = Format.sprintf "@[%s@ ; %s@]" (aux e1) (aux e2) in
@@ -146,7 +145,7 @@ let rec string_of_expression par e =
        let s = Format.sprintf "@[for %s = %s to %s do@ %s@ done@]" s (aux e1) (aux e2) (aux e3) in
        show_par par s
    | Pexp_constraint (e,to1,to2) -> 
-       let s = Format.sprintf "@[(%s@ : _)]" (aux e) in
+       let s = Format.sprintf "@[(%s@ : _)@]" (aux e) in
        show_par par s
    | Pexp_when (e1,e2) ->  (*todo:better printing so that compiles *)
        Format.sprintf "<< when %s >> %s" (aux e1) (aux e2) 
@@ -159,7 +158,7 @@ let rec string_of_expression par e =
    | Pexp_assertfalse -> 
        show_par par "assert false"
    | Pexp_lazy e -> 
-       let s = Format.sprintf "@[lazy %s]" (aux e) in
+       let s = Format.sprintf "@[lazy %s@]" (aux e) in
        show_par par s
    | Pexp_poly (_,_) -> unsupported "poly expression"
    | Pexp_object _ -> unsupported "objects"
@@ -188,7 +187,7 @@ and string_of_structure_item si =
           let se = string_of_expression false e in
           Format.sprintf "%s =@ @[%s@]" sp se in
        let sl = show_list show_pe " and " l in
-       Format.sprintf "@[let%s %s]" (string_of_recflag r) sl 
+       Format.sprintf "@[let%s %s@]" (string_of_recflag r) sl 
    | Pstr_primitive (s,v) -> sprintf "val %s : _" s 
    | Pstr_type l -> sprintf "type _ = _"
    | Pstr_exception (s,e) -> sprintf "exception %s = _" s

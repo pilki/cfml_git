@@ -127,7 +127,8 @@ type label_description =
     lbl_pos: int;                       (* Position in block *)
     lbl_all: label_description array;   (* All the labels in this type *)
     lbl_repres: record_representation;  (* Representation for this record *)
-    lbl_private: private_flag }         (* Read-only field? *)
+    lbl_private: private_flag;          (* Read-only field? *)
+    lbl_name: label; (*arthur*) }
 
 and record_representation =
     Record_regular                      (* All fields are boxed / tagged *)

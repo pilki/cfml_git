@@ -69,7 +69,7 @@ let normalize_pattern p =
      | Ppat_tuple l -> Ppat_tuple (List.map aux l)
      | Ppat_construct (li, po, b) -> Ppat_construct (li, option_map aux po, b)
      | Ppat_variant (_,_) -> unsupported "variant patterns"
-     | Ppat_record _ -> unsupported "record patterns"
+     | Ppat_record l -> Ppat_record (List.map (fun (li,pi) -> (li, aux pi)) l)
      | Ppat_array pats -> unsupported "array patterns"
      | Ppat_or (p1,p2) -> unsupported "or patterns are only supported at pattern root"
      | Ppat_constraint (p,t) -> Ppat_constraint (aux p,t) 
@@ -92,7 +92,7 @@ let rec pattern_variables p =
    | Ppat_tuple l -> list_concat_map aux l
    | Ppat_construct (li, po, b) -> option_app [] aux po
    | Ppat_variant (_,_) -> unsupported "variant patterns"
-   | Ppat_record _ -> unsupported "record patterns"
+   | Ppat_record l -> list_concat_map (fun (li,pi) -> aux pi) l
    | Ppat_array pats -> unsupported "array patterns"
    | Ppat_or (p1,p2) -> unsupported "or patterns are only supported at pattern root"
    | Ppat_constraint (p,t) -> aux p
@@ -303,7 +303,7 @@ let normalize_expression named e =
          return (Pexp_array l'), List.flatten bi
       | Pexp_ifthenelse (e1, e2, None) ->
           let e1', b = aux false e1 in
-          return (Pexp_ifthenelse (e1', protect named e2, Some (return (Pexp_ident (Lident "()"))))), b
+          return (Pexp_ifthenelse (e1', protect named e2, Some (return (Pexp_construct (Lident "()", None, false))))), b
       | Pexp_ifthenelse (e1, e2, Some e3) -> 
           let e1', b = aux false e1 in
           return (Pexp_ifthenelse (e1', protect named e2, Some (protect named e3))), b
