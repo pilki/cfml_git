@@ -103,8 +103,9 @@ Ltac xauto_common cont ::=
   check_not_a_tag tt;  
   try solve [ cont tt 
             | solve [ apply refl_equal ]
-            | substs; if_eq; solve [ cont tt | apply refl_equal ]  
-            | xok_core ltac:(fun _ => solve [ cont tt | substs; cont tt ] ) ].
+            | xok_core ltac:(fun _ => solve [ cont tt | substs; cont tt ] ) 
+            | substs; if_eq; solve [ cont tt | apply refl_equal ]  ].
+
 
 Lemma decr_pos_spec : Spec decr_pos x |R>> 
   forall m, m > 0 -> R (x ~> RefOn m) (# x ~> RefOn (m-1)).
@@ -202,7 +203,7 @@ Ltac hsimpl_step tt ::=
           | apply hsimpl_keep ]
   end.
 
-Tactic Notation "xsimpl" := hsimpl.
+Tactic Notation "xsimpl" := try hextract; hsimpl.
 Tactic Notation "xsimpl" "~" := xsimpl; xauto~.
 Tactic Notation "xsimpl" "*" := xsimpl; xauto*.
 
@@ -234,9 +235,112 @@ Qed.
 
 
 (********************************************************)
+(* imperative *)
+
+Ltac check_goal_himpl tt :=
+  match goal with 
+  | |- @rel_le unit _ _ _ => let t := fresh "_tt" in intros t; destruct t
+  | |- @rel_le _ _ _ _ => let r := fresh "r" in intros r
+  | |- pred_le _ _ => idtac
+  end.
+
+Ltac hsimpl_main tt ::=
+  check_goal_himpl tt;
+  hsimpl_setup tt;
+  (repeat (hsimpl_step tt));
+  hsimpl_cleanup tt.
+
+Ltac hextract_main tt ::=
+  check_goal_himpl tt;
+  hextract_setup tt;
+  (repeat (hextract_step tt));
+  hextract_cleanup tt.
+
+Lemma imp1_spec : Specs imp1 () >> [] (\=7).
+Proof.
+  xcf.
+  xlet.
+  xapp.
+  xextract.
+  xlet.
+  xapp.
+  xextract.
+  intros Py.
+  xseq.
+  xapp. (*details of xapp: xapp_manual. forwards HR: KR. xapp_final HR. *)
+  xlet.
+  xapp.
+  xextract as Pz.
+  xgc_all. (* xgc - []. *)
+  xret. hsimpl. math. (* or just [xret*] *)
+Qed.
+   
+Opaque heap_is_star.
+
+Lemma local_gc_post' : forall H' B (F:~~B) H Q,
+  is_local F -> 
+  F H (Q \*+ H') ->
+  F H Q.
+Proof. intros. apply* local_gc_post. Qed.
+
+Ltac xgc_if_post_meta tt :=
+  match post_is_meta tt with
+  | false => xgc
+  | true => idtac
+  end.
+
+
+Ltac xapp_pre cont ::=  (*todo:move xgc*)
+  match ltac_get_tag tt with
+  | tag_apply => 
+    match post_is_meta tt with
+    | false => xgc; [ xuntag tag_apply; cont tt | ]
+    | true => xuntag tag_apply; cont tt
+    end
+  | tag_let_trm => xlet; [ xuntag tag_apply; cont tt | instantiate; xextract ]
+  | tag_seq => xseq; [ xuntag tag_apply; cont tt | instantiate; xextract ]
+  end.
+
+Lemma imp2_spec : Specs imp2 () >> [] (\=5).
+Proof.
+  xcf.
+  xlet.
+  xapp.
+  xextract.
+  xlet as u.
+  xapp.
+  xextract.
+  intros Pu.
+  xlet.
+  xapp.
+  xextract.
+  xlet as v.
+  xapp.
+  xextract as Pv.
+  dup.
+  (* details *)
+  xseq.
+  xapp.
+  xgc.
+  xapp.
+  xsimpl.  
+  math.
+  (* short *)
+  xapp.
+  xapp. 
+  xsimpl. 
+  math.
+Qed.
+ 
+(*
+Print imp1_cf.
+Print imp2_cf.
+*)
+
+
+
+(********************************************************)
 (* while loops *)
-
-
 
 Ltac hsimpls := repeat progress (hsimpl).
 (* todo: modifier hsimpl pour nommer que le dernier élément par défaut *)
@@ -274,67 +378,6 @@ Proof.
   xgc_core. xapp. hsimpl.
 Qed.
 
-
-(********************************************************)
-(* imperative *)
-
-Lemma imp1_spec : Specs imp1 () >> [] (\=7).
-Proof.
-  xcf.
-  xlet.
-  xapp.
-  xextract.
-  xlet.
-  xapp.
-  xextract.
-  intros Py.
-  xseq.
-  xapp. hsimpl. 
-  xlet.
-  xapp.
-  xextract. 
-  intros Pz.
-  xgc - [].
-  xret.
-  hsimpl. math.
-Qed.
-   
-Opaque heap_is_star.
-
-Lemma imp2_spec : Specs imp2 () >> [] (\=5).
-Proof.
-  xcf.
-  xlet.
-  xapp.
-  xextract.
-  xlet as u.
-  xapp.
-  xextract.
-  intros Pu.
-  xlet.
-  xapp.
-  xextract.
-  xlet as v.
-  (* details de xapp *)
-  eapply local_wframe.
-    xlocal.
-    eapply spec_elim_1_1. apply ml_get_spec.
-    intros R LR KR. simpl in KR. sapply KR.
-    hsimpl.
-    xok.
-  simpl.
-  xextract as Pv.
-  xseq.
-  xapp.
-  hsimpl.
-  xgc.
-  xapp. hextract. hsimpl. math.
-Qed.
- 
-(*
-Print imp1_cf.
-Print imp2_cf.
-*)
 
 
 
