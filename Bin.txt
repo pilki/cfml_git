@@ -1519,3 +1519,11 @@ Qed.
 
 
 
+
+(* bin *)
+Lemma hsimpl_prop_1 : forall (P1:Prop),
+  P1 -> [] ==> [P1].
+Proof. introv H K. (*surprenant: destruct K.*)
+  skip. (* todo *)
+Qed.
+

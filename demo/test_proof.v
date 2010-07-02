@@ -7,14 +7,6 @@ Require Import test_ml.
 Opaque heap_is_empty hdata heap_is_single heap_is_empty_st RefOn.
 
 
-(* bin *)
-Lemma hsimpl_prop_1 : forall (P1:Prop),
-  P1 -> [] ==> [P1].
-Proof. introv H K. (*surprenant: destruct K.*)
-  skip. (* todo *)
-Qed.
-
-
 
 (********************************************************)
 (* references *)
@@ -33,72 +25,198 @@ Hint Extern 1 (RegisterSpec decr) => Provide decr_spec.
 
 
 (********************************************************)
+(* advanced applications *)
+
+(** [get_tail E] is a tactic that decomposes an application
+    term [E], ie, when applied to a term of the form [X1 ... XN] 
+    it returns a pair made of [X1 .. X(N-1)] and [XN]. *)
+
+Ltac get_tail E :=
+  match E with
+  | ?X1 ?X2 ?X3 ?X4 ?X5 ?X6 ?X7 ?X => constr:((X1 X2 X3 X4 X5 X6,X))
+  | ?X1 ?X2 ?X3 ?X4 ?X5 ?X6 ?X => constr:((X1 X2 X3 X4 X5,X))
+  | ?X1 ?X2 ?X3 ?X4 ?X5 ?X => constr:((X1 X2 X3 X4,X))  
+  | ?X1 ?X2 ?X3 ?X4 ?X => constr:((X1 X2 X3,X))
+  | ?X1 ?X2 ?X3 ?X => constr:((X1 X2,X)) 
+  | ?X1 ?X2 ?X => constr:((X1,X))
+  | ?X1 ?X => constr:((X1,X))
+  end.
+
+Ltac post_is_meta tt :=
+  match goal with |- ?E => 
+  match get_tail E with (_,?Q) =>
+  match Q with
+  | Q => constr:(false) 
+  | _ => constr:(true)
+  end end end.
+
+Ltac xif_post H :=
+   calc_partial_eq tt;
+   try fold_bool; fold_prop;
+   try fix_bool_of_known tt;
+   try solve [ discriminate | false; congruence ];
+   first [ subst_hyp H; try fold_bool; try rewriteb H 
+         | rewriteb H
+         | idtac ];
+   try fix_bool_of_known tt. 
+
+Ltac xif_core_nometa H cont :=
+  apply local_erase; split; intros H; cont tt.
+
+Ltac xif_core_meta H cont :=
+  xif_core_nometa H cont.
+
+Ltac xif_base H cont :=
+  match post_is_meta tt with
+  | false => xif_core_nometa H cont
+  | true => xif_core_meta H cont
+  end. 
+
+Ltac xif_base_with_post H :=
+  xif_base H ltac:(fun _ => xif_post H).
+
+Tactic Notation "xif_manual" ident(H) :=
+  xif_base H ltac:(fun _ => idtac).
+Tactic Notation "xif_manual" :=
+  let H := fresh "C" in xif_manual H.
+Tactic Notation "xif" ident(H) :=
+  xif_base_with_post H.
+Tactic Notation "xif" :=
+  let H := fresh "C" in xif H.
+
+Ltac xok_core := 
+  solve [ apply rel_le_refl
+        | apply pred_le_refl
+        | hextract; hsimpl ].
+
+Tactic Notation "xok" := 
+  xok_core.
+
+
+Lemma decr_pos_spec : Spec decr_pos x |R>> 
+  forall m, m > 0 -> R (x ~> RefOn m) (# x ~> RefOn (m-1)).
+Proof.
+  xcf. intros.
+  xapp. intro_subst.
+  xif. 
+  xapp. 
+  xok. 
+Qed.
+
+Hint Extern 1 (RegisterSpec decr_pos) => Provide decr_pos_spec.
+
+Lemma local_wframe' : forall B H1 H2 Q1 (F:~~B) H Q,
+  is_local F -> 
+  H ==> H1 \* H2 -> 
+  F H1 Q1 -> 
+  Q1 \*+ H2 ===> Q ->
+  F H Q.
+Proof. intros. apply* local_wframe. Qed.
+
+
+Ltac xapp_final HR :=
+  eapply local_wframe; 
+     [ xlocal
+     | apply HR
+     | hsimpl
+     | try xok ].
+
+Ltac xapp_inst args solver ::=
+  let R := fresh "R" in let LR := fresh "L" R in 
+  let KR := fresh "K" R in let IR := fresh "I" R in
+  intros R LR KR; hnf in KR; (* lazy beta in *)
+  let H := xapp_compact KR args in
+  forwards_then H ltac:(xapp_final);    
+  solver tt.
+
+Ltac xapp_spec_core H cont ::=
+   let arity_goal := spec_goal_arity tt in
+   let arity_hyp := spec_term_arity H in
+   match constr:(arity_goal, arity_hyp) with (?n,?n) => idtac | _ => fail 1 end;
+   let lemma := get_spec_elim_x_y arity_hyp arity_goal in
+   eapply lemma; [ apply H | cont tt ]. 
+
+Ltac xapp_manual_intros tt ::=
+  let R := fresh "R" in let LR := fresh "L" R in 
+  let KR := fresh "K" R in intros R LR KR; lazy beta in KR.
+
+Ltac idcont tt := idtac.
+
+Tactic Notation "xapp_manual_no_intros" := 
+  xapp_then ___ ltac:(idcont).
+
+
+Lemma hsimpl_cancel_eq_1 : forall H H' HA HR HT,
+  H = H' -> HT ==> HA \* HR -> H \* HT ==> HA \* (H' \* HR).
+Proof. intros. subst. apply~ hsimpl_cancel_1. Qed.
+
+Lemma hsimpl_cancel_eq_2 : forall H H' HA HR H1 HT,
+  H = H' -> H1 \* HT ==> HA \* HR -> H1 \* H \* HT ==> HA \* (H' \* HR).
+Proof. intros. subst. apply~ hsimpl_cancel_2. Qed.
+
+Lemma hsimpl_cancel_eq_3 : forall H H' HA HR H1 H2 HT,
+  H = H' -> H1 \* H2 \* HT ==> HA \* HR -> H1 \* H2 \* H \* HT ==> HA \* (H' \* HR).
+Proof. intros. subst. apply~ hsimpl_cancel_3. Qed.
+
+Lemma hsimpl_cancel_eq_4 : forall H H' HA HR H1 H2 H3 HT,
+  H = H' -> H1 \* H2 \* H3 \* HT ==> HA \* HR -> H1 \* H2 \* H3 \* H \* HT ==> HA \* (H' \* HR).
+Proof. intros. subst. apply~ hsimpl_cancel_4. Qed.
+
+Lemma hsimpl_cancel_eq_5 : forall H H' HA HR H1 H2 H3 H4 HT,
+  H = H' -> H1 \* H2 \* H3 \* H4 \* HT ==> HA \* HR -> H1 \* H2 \* H3 \* H4 \* H \* HT ==> HA \* (H' \* HR).
+Proof. intros. subst. apply~ hsimpl_cancel_5. Qed.
+
+Lemma hsimpl_cancel_eq_6 : forall H H' HA HR H1 H2 H3 H4 H5 HT,
+  H = H' -> H1 \* H2 \* H3 \* H4 \* H5 \* HT ==> HA \* HR -> H1 \* H2 \* H3 \* H4 \* H5 \* H \* HT ==> HA \* (H' \* HR).
+Proof. intros. subst. apply~ hsimpl_cancel_6. Qed.
+
+Ltac hsimpl_find_data H HL ::=
+  match H with hdata _ ?l =>
+  match HL with
+  | hdata _ l \* _ => apply hsimpl_cancel_eq_1
+  | _ \* hdata _ l \* _ => apply hsimpl_cancel_eq_2
+  | _ \* _ \* hdata _ l \* _ => apply hsimpl_cancel_eq_3
+  | _ \* _ \* _ \* hdata _ l \* _ => apply hsimpl_cancel_eq_4
+  | _ \* _ \* _ \* _ \* hdata _ l \* _ => apply hsimpl_cancel_eq_5
+  | _ \* _ \* _ \* _ \* _ \* hdata _ l \* _ => apply hsimpl_cancel_eq_6
+  end end; [ fequal | ].
+
+
+Lemma decr_pos_test_spec : Spec decr_pos_test x |R>> 
+  forall m, m > 1 -> R (x ~> RefOn m) (# x ~> RefOn (m-1)).
+Proof.
+  xcf. intros. dup 5.
+  (* details of xapp *)
+  eapply spec_elim_1_1. apply decr_pos_spec.
+  intros R LR KR. lazy beta in KR.
+  forwards_then KR ltac:(fun CR => 
+    eapply local_wframe; [ xlocal | apply CR | hsimpl |  ]).
+    math. xok.
+  (* xapp manual *)
+  xapp_manual. forwards HR: KR; [ | xapp_final HR ]. skip.
+  (* xapp without arguments *)
+  xapp. skip.
+  (* xapp manual with arguments *)
+  skip: (m = 3).
+  xapp_manual. let K := xapp_compact KR (>>> 3) in
+  forwards HR: K; [ | xapp_final HR ]. math.
+    subst m. xok. subst m. xok.
+  (* xapp with arguments *)
+  skip: (m = 3).
+  xapp 3. math. xok. xok.
+Qed.
+
+
+
+
+(********************************************************)
 (* while loops *)
 
 
-Ltac xwhile_base I R X ::= 
-  first [ xwhile_core I R X
-        | xwhile_core I (measure R) X ].
-
-Ltac xwhile_core I R X ::= 
-  eapply (@xwhile_frame _ I R);
-  [ xlocal
-  | xlocal
-  | try prove_wf
-  | exists X; instantiate; hsimpl 
-  | idtac ].
-
-
-Ltac xwhile_core I R X := 
-  eapply (@xwhile_frame _ I R);
-  [ xlocal
-  | xlocal
-  | try prove_wf
-  | exists X; hsimpl 
-  | idtac ].
-
-Ltac xwhile_base I R X :=  (* todo: inline *)
-  first [ xwhile_core I R X
-        | xwhile_core (measure I) R X ].
-
-(* deprecated
-  apply local_erase; esplit; exists I; 
-  first [exists R | exists (measure R)];
-  splits (3%nat); [ try prove_wf | | ].
-*)
-
-Ltac xwhile_manual_core I R := 
-  first [ eapply (@xwhile_frame _ I R)
-        | eapply (@xwhile_frame _ I (measure R))];
-  [ xlocal
-  | xlocal
-  | idtac
-  | idtac
-  | idtac ].
-
-Tactic Notation "xwhile_manual" constr(I) constr(R) := 
-  xwhile_manual_core I R.
 
 Ltac hsimpls := repeat progress (hsimpl).
 (* todo: modifier hsimpl pour nommer que le dernier élément par défaut *)
 
-(* todo: use continuations *)
-Tactic Notation "xextract" := 
-  xextract_core; xclean.
-Tactic Notation "xextract" "as" simple_intropattern(I1) := 
-  xextract; intros I1; xclean.
-Tactic Notation "xextract" "as" simple_intropattern(I1) simple_intropattern(I2) := 
-  xextract; intros I1 I2; xclean. 
-Tactic Notation "xextract" "as" simple_intropattern(I1) simple_intropattern(I2) 
- simple_intropattern(I3) := 
-  xextract; intros I1 I2 I3; xclean.
-Tactic Notation "xextract" "as" simple_intropattern(I1) simple_intropattern(I2) 
- simple_intropattern(I3) simple_intropattern(I4) := 
-  xextract; intros I1 I2 I3 I4; xclean.
-
-
-Ltac xextract_core ::=
-  simpl; hclean; instantiate.
 
 Lemma decr_while_spec : Spec decr_while x |R>> 
   forall n, n >= 0 -> R (x ~> RefOn n) (# x ~> RefOn 0).
@@ -119,10 +237,6 @@ Qed.
 
 (********************************************************)
 (* for loops *)
-
-Ltac xgc_core :=
-  eapply local_gc_post; 
-  [ xlocal | | ].
 
 Lemma sum_spec : Spec sum (n:int) |R>> n > 0 -> R [] (\= 0).
 Proof.
@@ -184,9 +298,8 @@ Proof.
     intros R LR KR. simpl in KR. sapply KR.
     hsimpl.
     xok.
-    simpl.
-  xextract. 
-  intros Pv.
+  simpl.
+  xextract as Pv.
   xseq.
   xapp.
   hsimpl.
@@ -198,6 +311,8 @@ Qed.
 Print imp1_cf.
 Print imp2_cf.
 *)
+
+
 
 
 

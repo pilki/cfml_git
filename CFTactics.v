@@ -343,10 +343,22 @@ Tactic Notation "xcurried" := xcurried_core.
 (* ** [xextract], [xok] *)
 
 Ltac xextract_core :=
-  simpl; hclean. (* ou unfold starpost *)
+  simpl; hclean; instantiate.
 
+(* todo: use continuations *)
 Tactic Notation "xextract" := 
-  xextract_core.
+  xextract_core; xclean.
+Tactic Notation "xextract" "as" simple_intropattern(I1) := 
+  xextract; intros I1; xclean.
+Tactic Notation "xextract" "as" simple_intropattern(I1) simple_intropattern(I2) := 
+  xextract; intros I1 I2; xclean. 
+Tactic Notation "xextract" "as" simple_intropattern(I1) simple_intropattern(I2) 
+ simple_intropattern(I3) := 
+  xextract; intros I1 I2 I3; xclean.
+Tactic Notation "xextract" "as" simple_intropattern(I1) simple_intropattern(I2) 
+ simple_intropattern(I3) simple_intropattern(I4) := 
+  xextract; intros I1 I2 I3 I4; xclean.
+
 
 Tactic Notation "xok" := 
   first [ apply rel_le_refl | apply pred_le_refl ].
@@ -632,7 +644,7 @@ Ltac xapp_compact KR args :=
 Ltac xapp_inst args solver :=
   let R := fresh "R" in let LR := fresh "L" R in 
   let KR := fresh "K" R in let IR := fresh "I" R in
-  intros R LR KR;
+  intros R LR KR; hnf in KR;
   let H := xapp_compact KR args in
   forwards IR: H; solver tt; try sapply IR. 
 
@@ -721,7 +733,7 @@ Tactic Notation "xapp_spec" "*" constr(H) constr(E) :=
 
 Ltac xapp_manual_intros tt :=
   let R := fresh "R" in let LR := fresh "L" R in 
-  let KR := fresh "K" R in intros R LR KR; cbv in KR.
+  let KR := fresh "K" R in intros R LR KR; lazy beta in KR.
 
 Tactic Notation "xapp_manual" := 
   xapp_then ___ ltac:(xapp_manual_intros).
@@ -1056,7 +1068,7 @@ Tactic Notation "xfun_induction_nointro" constr(S) constr(I) :=
 
 
 (*--------------------------------------------------------*)
-(* ** [xfor] and [xwhile] *)
+(* ** [xfor] *)
 
 Ltac xfor_bounds_intro tt :=
   intro; let i := get_last_hyp tt in
@@ -1089,28 +1101,33 @@ Tactic Notation "xfor_le" constr(I) :=
   xfor_le_core I.
 
 
+(*--------------------------------------------------------*)
+(* ** [xwhile] *)
+
 Ltac xwhile_core I R X := 
-  eapply (@xwhile_frame _ I R);
+  first [ eapply (@xwhile_frame _ I R)
+        | eapply (@xwhile_frame _ I (measure R))];
   [ xlocal
   | xlocal
   | try prove_wf
-  | exists X; hsimpl 
+  | exists X; instantiate; hsimpl 
   | idtac ].
 
-Ltac xwhile_base I R X := 
-  first [ xwhile_core I R X
-        | xwhile_core (measure I) R X ].
-
-(* deprecated
-  apply local_erase; esplit; exists I; 
-  first [exists R | exists (measure R)];
-  splits (3%nat); [ try prove_wf | | ].
-*)
+Ltac xwhile_manual_core I R := 
+  first [ eapply (@xwhile_frame _ I R)
+        | eapply (@xwhile_frame _ I (measure R))];
+  [ xlocal
+  | xlocal
+  | idtac
+  | idtac
+  | idtac ].
 
 Tactic Notation "xwhile" constr(I) constr(R) constr(X) := 
-  xwhile_base I R X.
+  xwhile_core I R X.
 Tactic Notation "xwhile" constr(I) constr(R) := 
   xwhile I R __.
+Tactic Notation "xwhile_manual" constr(I) constr(R) := 
+  xwhile_manual_core I R.
 
 
 (*--------------------------------------------------------*)
