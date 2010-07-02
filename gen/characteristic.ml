@@ -201,13 +201,13 @@ let pattern_aliases p =
 (*#########################################################################*)
 (* Lifting of values *)
 
+let prefix_for_label typ = 
+  match typ.desc with  
+  | Tconstr (p, _, _) -> lift_path_name p 
+  | _ -> failwith "string_of_label: type of a record should be a Tconstr" 
 
 let string_of_label typ lbl =
-  let prefix = match typ.desc with  
-    | Tconstr (p, _, _) -> lift_path_name p 
-    | _ -> failwith "string_of_label: type of a record should be a Tconstr"
-    in
-  prefix ^ "_" ^ lbl.lbl_name
+  (prefix_for_label typ) ^ "_" ^ lbl.lbl_name
 
 let simplify_apply_args oargs =
   List.map (function (Some e, Required) -> e | _ -> unsupported "optional arguments") oargs 
@@ -252,6 +252,7 @@ let rec lift_val env e =
    | Texp_record (l, opt_init_expr) ->  
        if opt_init_expr <> None then unsupported "record-with expression"; (* todo *)
        let typ = e.exp_type in
+       (* let constr = (record_constructor (prefix_for_label typ)) *)
        Coq_record (List.map (fun (n,v) -> (string_of_label typ n, aux v)) l)
    | Texp_field (e, lbl) -> 
        let typ = e.exp_type in
@@ -626,23 +627,23 @@ and cfg_type_abbrev (name,dec) =
                    Coqtop_hint_unfold ([x],"typeclass_instances") ] in
    coqs 
 
-let cfg_type_record (name,dec) =
+and cfg_type_record (name,dec) =
    let x = Ident.name name in
    let field lbl = 
       x ^ "_" ^ lbl in
    let branches = match dec.type_kind with Type_record (l,_) -> l | _ -> assert false in
    let params = List.map name_of_type dec.type_params in
-   let ret_typ = coq_apps (Coq_var x) (coq_vars params) in
-   let top = { coqind_name = x;
-    coqind_targs : coq_types params;
-    coqind_ret : Coq_type;
-    coqind_branches : List.map (fun (lbl, mut, typ) -> (field lbl, typ_of typ)) branches } in
+   let top = { 
+      coqind_name = x;
+      coqind_targs = coq_types params;
+      coqind_ret = Coq_type;
+      coqind_branches = List.map (fun (lbl, mut, typ) -> (field lbl, typ_of typ)) branches } in
    let implicit_decl =
       match params with
       | [] -> []
-      | _ -> List.map (fun (cname,_) -> Coqtop_implicit (field lbl, List.map (fun p -> p, Coqi_maximal) params)) branches 
+      | _ -> List.map (fun (lbl,_,_) -> Coqtop_implicit (field lbl, List.map (fun p -> p, Coqi_maximal) params)) branches 
       in
-   [ Coqtop_ind top ] 
+   [ Coqtop_record top ] 
    @ (implicit_decl)
    @ [ Coqtop_hint_constructors ([x], "typeclass_instances") ]
 
@@ -688,7 +689,7 @@ and cfg_algebraic decls =
 and cfg_type_decls decls =
     if List.length decls = 1 && is_type_abbrev (List.hd decls)  
        then cfg_type_abbrev (List.hd decls)
-   if List.length decls = 1 && is_type_record (List.hd decls)  
+    else if List.length decls = 1 && is_type_record (List.hd decls)  
        then cfg_type_record (List.hd decls)
     else if (List.for_all is_algebraic decls)  
        then cfg_algebraic decls

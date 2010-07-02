@@ -203,6 +203,8 @@ let coq_bool =
   Coq_var "bool"
 
 
+let record_constructor name =
+  name ^ "_of"
 
 (*#########################################################################*)
 (* Representation of labels (notation of the form "'x" := `1`0`1`0) *)
@@ -271,7 +273,7 @@ let rec string_of_coqtop ct =
       (string_of_typed_vars r.coqind_targs)
       (aux r.coqind_ret)
       (r.coqind_name ^ "_of")
-      (show_list string_of_typed_var ";\n" r.coqind_branches)
+      (show_list (string_of_typed_var ~par:false) ";\n" r.coqind_branches)
   | Coqtop_ind rs ->
       let show_ind r =
          sprintf "%s %s : %s := %s" 

@@ -1,7 +1,12 @@
 
 
 
-
+type ('a,'b) myrecord = {
+  recone : 'a;
+  rectwo : 'b }
+ 
+let x : (int,int) myrecord = 
+  { recone = 2; rectwo = 3 }
 
 let maxlen = 1000
 
@@ -14,7 +19,7 @@ type sarray = {
    mutable idx : int array;
    mutable back : int array;
    }
-
+(*
 let create size =
   { n = 0; 
     values = rand_array();
@@ -34,7 +39,7 @@ let set i v s =
       s.back.(i) <- i;
       s.n <- s.n + 1
    end
-(*
+
 *)
 
 (* todo: support assert 

@@ -6,6 +6,15 @@ Require Import test_ml.
 
 Opaque heap_is_empty hdata heap_is_single heap_is_empty_st RefOn.
 
+Record
+myrecord (A : Type) (B : Type) : Type := myrecord_of
+{ 
+ myrecord_myrecord_one : A;
+myrecord_myrecord_two
+: B }.
+
+Definition test := @myrecord_of _ _ 2 3.
+{ myrecord_myrecord_one := 2; myrecord_myrecord_two := 2 }.
 
 
 (********************************************************)

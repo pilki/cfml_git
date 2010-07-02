@@ -228,8 +228,12 @@ Hint Extern 1 (RegisterSpec ml_array_set) => Provide ml_array_set_spec.
 
 *)
 
+Parameter ml_array_init : val.
 
 
+Parameter ml_rand_int : val.
+Parameter ml_min_int : int.
+Parameter ml_max_int : int.
 
 
 

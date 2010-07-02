@@ -63,9 +63,13 @@ let all_primitives_table = (*todo:complete*)
     "Pervasives.ref", "ml_ref";    
     "Pervasives.!", "ml_get";
     "Pervasives.:=", "ml_set";
+    "Pervasives.max_int", "ml_max_int";
+    "Pervasives.min_int", "ml_min_int";
     "Array.make", "ml_array_make";    
     "Array.get", "ml_array_get";
     "Array.set", "ml_array_set";
+    "Array.init", "ml_array_init";
+    "Random.int", "ml_rand_int"; 
     "List.hd", "ml_list_hd";
     "List.tl", "ml_list_tl";
     "List.rev", "ml_rev";
