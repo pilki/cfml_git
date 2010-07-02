@@ -25,7 +25,7 @@ and coq =
   | Coq_prop
   | Coq_type
   | Coq_tuple of coqs
-  | Coq_record of (var * coq) list
+  | Coq_record of (var * coq) list (* not used *)
   | Coq_tag of string * string option * coq
 
 
@@ -270,7 +270,7 @@ let rec string_of_coqtop ct =
       r.coqind_name
       (string_of_typed_vars r.coqind_targs)
       (aux r.coqind_ret)
-      ("make_" ^ r.coqind_name)
+      (r.coqind_name ^ "_of")
       (show_list string_of_typed_var ";\n" r.coqind_branches)
   | Coqtop_ind rs ->
       let show_ind r =

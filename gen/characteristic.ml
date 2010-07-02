@@ -627,11 +627,24 @@ and cfg_type_abbrev (name,dec) =
    coqs 
 
 let cfg_type_record (name,dec) =
-XXX
-(*
-Type_record of
-      (string * mutable_flag * type_expr) list * record_representation
-*)
+   let x = Ident.name name in
+   let field lbl = 
+      x ^ "_" ^ lbl in
+   let branches = match dec.type_kind with Type_record (l,_) -> l | _ -> assert false in
+   let params = List.map name_of_type dec.type_params in
+   let ret_typ = coq_apps (Coq_var x) (coq_vars params) in
+   let top = { coqind_name = x;
+    coqind_targs : coq_types params;
+    coqind_ret : Coq_type;
+    coqind_branches : List.map (fun (lbl, mut, typ) -> (field lbl, typ_of typ)) branches } in
+   let implicit_decl =
+      match params with
+      | [] -> []
+      | _ -> List.map (fun (cname,_) -> Coqtop_implicit (field lbl, List.map (fun p -> p, Coqi_maximal) params)) branches 
+      in
+   [ Coqtop_ind top ] 
+   @ (implicit_decl)
+   @ [ Coqtop_hint_constructors ([x], "typeclass_instances") ]
 
 
 and cfg_algebraic decls =
