@@ -292,12 +292,14 @@ let normalize_expression named e =
          let l',bi = List.split (List.map (fun (i,(e,b)) -> ((i,e),b)) (assoc_list_map (aux false) l)) in
          return (Pexp_record (l', None)), List.flatten bi
       | Pexp_field (e,i) -> 
+          let assign = assign_fct next_var in      
           let e',b = aux false e in
-          return (Pexp_field (e', i)), b
+          assign (return (Pexp_field (e', i))) b
       | Pexp_setfield (e,i,e2) -> 
+          let assign = assign_fct next_var in      
           let e',b = aux false e in
           let e2',b2 = aux false e2 in
-          return (Pexp_setfield (e', i, e2')), b2 @ b 
+          assign (return (Pexp_setfield (e', i, e2'))) (b2 @ b)
       | Pexp_array l -> 
          let l',bi = List.split (List.map (aux false) l) in
          return (Pexp_array l'), List.flatten bi

@@ -1,12 +1,41 @@
 
+let arrays () =
+   let t1 = Array.make 10 1 in
+   let t1_1 = t1.(1) in
+   let t2 = Array.init 10 (fun i -> i) in
+   let t2_1 = t2.(1) in
+   3
 
+(*let t3 = Array.map (fun i -> i+1) t1*)
+
+
+
+(* ---------------------------------------------------------*)
+(* type abbreviations 
+
+type 'a erase = 'a -> 'a
+
+*)
+
+
+(* ---------------------------------------------------------*)
+(* records 
 
 type ('a,'b) myrecord = {
-  recone : 'a;
-  rectwo : 'b }
+  mutable recone : 'a;
+  mutable rectwo : 'b -> 'b }
  
-let x : (int,int) myrecord = 
-  { recone = 2; rectwo = 3 }
+let x () : (int,int) myrecord = 
+  { rectwo = 3; recone = (fun _ -> 2) }
+
+let f a =
+  a.recone <- a.rectwo 1
+*)
+
+
+(* ---------------------------------------------------------*)
+(*
+
 
 let maxlen = 1000
 
@@ -19,7 +48,7 @@ type sarray = {
    mutable idx : int array;
    mutable back : int array;
    }
-(*
+
 let create size =
   { n = 0; 
     values = rand_array();

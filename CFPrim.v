@@ -180,16 +180,55 @@ Proof.
 Qed.
 
 
-(** Arrays 
-
-Definition ArrayOn A (v:array A) (l:loc) :=
-  l ~~> v.
+(** Arrays *)
 
 Parameter ml_array_make : val.
-
 Parameter ml_array_get : val.
-
 Parameter ml_array_set : val.
+Parameter ml_array_init : val.
+
+(*
+Definition ArrayOn A (v:array A) (l:loc) : hprop.
+Admitted. (* := l ~~> v.*)
+*)
+
+Axiom array_make : forall A (n:int) (v:A), array A.
+
+Class Dup a A (T:htype A a) : Prop := { 
+  dup : forall X x, T X x ==> [] }.
+
+Parameter Array : forall a A (T:htype A a) (M:array A) (l:loc), hprop.
+
+Parameter ml_array_make_spec : forall a A,
+  Spec ml_array_make (n:int) (v:a) |R>> 
+    forall (V:A) (T:htype A a) (t:array A), Dup T ->
+    R (T V v) (fun l => l ~> Array T (array_make n V)).
+
+Require Import LibBag.
+
+Definition Read B (R:~~B) := 
+  fun H Q => R H (Q \*+ H).
+
+Parameter ml_array_get_spec : forall a A `{Inhab A},
+  Spec ml_array_get (l:loc) (i:int) |R>> 
+    forall (T:htype A a) (t:array A), Dup T -> index t i ->
+    Read (R:~~a) (l ~> Array T t) (T (read t i)).
+
+Parameter ml_array_set_spec : forall a,
+  Spec ml_array_set (l:loc) (i:int) (v:a) |R>> 
+    forall (V:A) (T:htype A a) (t:array A), dup T -> index t i -> 
+    R (l ~> Array T t \* T V v) (l ~> Array T (t[i:=v]).
+
+
+Hint Extern 1 (RegisterSpec ml_array_make) => Provide ml_array_make_spec.
+Hint Extern 1 (RegisterSpec ml_array_get) => Provide ml_array_get_spec.
+Hint Extern 1 (RegisterSpec ml_array_set) => Provide ml_array_set_spec.
+
+
+
+
+
+
 
 Parameter ml_array_make_spec : forall a,
   Spec ml_array_make (n:int) (v:a) |R>> 
@@ -202,33 +241,7 @@ Parameter ml_array_get_spec : forall a A,
 Parameter ml_array_set_spec : forall a,
   Spec ml_array_set (l:loc) (i:int) (v:a) |R>> 
     index t i -> R (l ~> ArrayOn t) (# l ~> ArrayOn t'[i:=v]).
-*)
 
-(*
-Parameter ml_array_make_spec : forall a,
-  Specs ml_array_make (n:int) (v:a) |R>> 
-    forall (V:A) (T:htype A a) (t:array A),
-    R (T V v) (_~> Array T (Array.make n V)).
-
-Parameter ml_array_get_spec : forall a A,
-  Spec ml_array_get (l:loc) (i:int) |R>> 
-    forall (T:htype A a) (t:array A), dup T -> index t i -> 
-    read R (l ~> Array T t) (T t[i]).
-
-Parameter ml_array_set_spec : forall a,
-  Spec ml_array_set (l:loc) (i:int) (v:a) |R>> 
-    forall (V:A) (T:htype A a) (t:array A), dup T -> index t i -> 
-    R (l ~> Array T t \* T V v) (l ~> Array T (t[i:=v]).
- *)
-
-(*
-Hint Extern 1 (RegisterSpec ml_array_make) => Provide ml_array_make_spec.
-Hint Extern 1 (RegisterSpec ml_array_get) => Provide ml_array_get_spec.
-Hint Extern 1 (RegisterSpec ml_array_set) => Provide ml_array_set_spec.
-
-*)
-
-Parameter ml_array_init : val.
 
 
 Parameter ml_rand_int : val.

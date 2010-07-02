@@ -206,8 +206,11 @@ let prefix_for_label typ =
   | Tconstr (p, _, _) -> lift_path_name p 
   | _ -> failwith "string_of_label: type of a record should be a Tconstr" 
 
+let string_of_label_with prefix lbl =
+  prefix ^ "_" ^ lbl.lbl_name
+
 let string_of_label typ lbl =
-  (prefix_for_label typ) ^ "_" ^ lbl.lbl_name
+  string_of_label_with (prefix_for_label typ) lbl
 
 let simplify_apply_args oargs =
   List.map (function (Some e, Required) -> e | _ -> unsupported "optional arguments") oargs 
@@ -251,12 +254,21 @@ let rec lift_val env e =
       coq_apps (coq_of_constructor c) (List.map aux es)
    | Texp_record (l, opt_init_expr) ->  
        if opt_init_expr <> None then unsupported "record-with expression"; (* todo *)
-       let typ = e.exp_type in
-       (* let constr = (record_constructor (prefix_for_label typ)) *)
-       Coq_record (List.map (fun (n,v) -> (string_of_label typ n, aux v)) l)
-   | Texp_field (e, lbl) -> 
+       if List.length l < 1 then failwith "record should have at least one field";
+       let labels = (fst (List.hd l)).lbl_all in
+       let args = Array.make (Array.length labels) (Coq_var "dummy") in
+       let register_arg lbl v =
+          Array.iteri (fun i lbli -> if lbl.lbl_name = lbli.lbl_name then args.(i) <- v) labels in
+       List.iter (fun (lbl,v) -> register_arg lbl (aux v)) l;
+       let constr = record_constructor (prefix_for_label (e.exp_type)) in
+       coq_apps (Coq_var constr) (Array.to_list args)
+       (*bin: Coq_record(List.map (fun (n,v) -> (string_of_label typ n, aux v)) l)*)
+   
+   (* not a value in imperative ! 
+   | Texp_field (e, lbl) ->
        let typ = e.exp_type in
        Coq_app (Coq_var (string_of_label typ lbl), aux e)
+   *)
    | Texp_apply (funct, oargs) when is_inlined_primitive funct oargs ->
       let f = get_inlined_primitive funct oargs in
       let args = simplify_apply_args oargs in
@@ -334,7 +346,7 @@ let rec cfg_exp env e =
    | Texp_tuple el -> ret e
    | Texp_construct(cstr, args) -> ret e
    | Texp_record (lbl_expr_list, opt_init_expr) -> ret e
-   | Texp_field (arg, lbl) -> ret e
+   (*| Texp_field (arg, lbl) -> ret e*)
    | Texp_apply (funct, oargs) when is_inlined_primitive funct oargs -> ret e
 
    | Texp_function (pat_expr_list, partial) -> not_normal ()
@@ -458,9 +470,14 @@ let rec cfg_exp env e =
 
    | Texp_array expr_list -> unsupported "array expressions" (* todo *)
 
+   | Texp_field (e, lbl) -> unsupported "field expression"
+       (*let typ = e.exp_type in
+       Coq_app (Coq_var (string_of_label typ lbl), aux e)*)
+
+   | Texp_setfield(arg, lbl, newval) -> unsupported "set-field expression"
+
    | Texp_try(body, pat_expr_list) -> unsupported "try expression"
    | Texp_variant(l, arg) ->  unsupported "variant expression"
-   | Texp_setfield(arg, lbl, newval) -> unsupported "set-field expression"
    | Texp_ifthenelse(cond, ifso, None) -> unsupported "if-then-without-else expressions should have been normalized"
    | Texp_when(cond, body) -> unsupported "when expressions outside of pattern matching"
    | Texp_send(expr, met) -> unsupported "send expressions"

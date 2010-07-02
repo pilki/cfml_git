@@ -14,6 +14,7 @@ myrecord_myrecord_two
 : B }.
 
 Definition test := @myrecord_of _ _ 2 3.
+Print test.
 { myrecord_myrecord_one := 2; myrecord_myrecord_two := 2 }.
 
 
