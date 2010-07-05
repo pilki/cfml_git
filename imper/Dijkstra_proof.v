@@ -151,8 +151,53 @@ Qed.
 Hint Extern 1 (RegisterSpec weight_lt) => Provide weight_lt_spec.
 
 
-(** specification of heaps *)
+(** specification of dijkstra *)
 
+Definition min `{Le A} (x y : A) :=
+  If x <= y then x else y.
+
+Definition Min (E:set weight) :=
+  fold (monoid_ min Infinite) id E.
+
+Parameter graph : forall (I J : Type), Type.
+Parameter nodes : forall I J (g:graph I J), set I.
+Parameter edges : forall I J (g:graph I J), map J (I * I).
+Definition edge (I:Type) {II:Inhab I} J (g:graph I J) e : I*I := 
+  (edges g) \(e).
+Definition has_edge I J (g:graph I J) (x y:I) := 
+  exists e, binds (edges g) e (x,y).
+
+Parameter edges_end : forall I J (g:graph I J) x y, 
+  has_edge g x y -> x \in nodes g /\ y \in nodes g.
+
+
+Record wgraph (I J W : Type) := wgraph_of {
+  wgraph_graph :> graph I J;
+  wgraph_weight : map J W;
+  wgraph_correct : dom wgraph_weight = dom (edges wgraph_graph) }.
+
+Definition weight I J `{Inhab W} (g:wgraph I J W) e : W := 
+  (wgraph_weight g)\(e).
+
+Definition has_wedge I J `{Inhab W} (g:wgraph I J W) (x y:I) w :=
+  exists e, binds (edges g) e (x,y) /\ weight g e = w.
+
+Definition positively_weighted I J (g:wgraph I J int) :=
+  forall e, weight g e >= 0.
+
+
+Inductive path_in (I J:Type) (g:graph I J) : I -> I -> list J -> Prop :=
+  | path_in_nil : forall x p, 
+     x \in nodes g -> 
+     path_in g x x p
+  | path_in_cons : forall x y z e p,  
+     binds (edges g) e (x,y) ->
+     path_in g y z p ->
+     path_in g x z (e::p).
+
+
+      
+      
 
 
 
