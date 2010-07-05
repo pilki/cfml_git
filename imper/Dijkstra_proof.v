@@ -211,10 +211,26 @@ Definition shortest_path I J (g:wgraph I J int) (x y : I) :=
 Definition GraphByAdjacency J (g:wgraph int J int) l :=
   Hexists T:array int, l ~> Array Base T \* [ True ]. (* todo *)
 
-Lemma shortest_path_spec : Spec shortest_path g source dest |R>>
+
+Set Printing Width 250.
+
+Lemma shortest_path_spec : Spec calc_shortest_path g source dest |R>>
   forall J (G:wgraph int J int), 
   positively_weighted G -> source \in nodes G -> dest \in nodes G ->
   keep R (g ~> GraphByAdjacency G) (\= shortest_path G source dest).
+Proof.
+  xcf. introv Pos INs INd. 
+  unfold GraphByAdjacency. unfold hdata at 1. xextract. intros T _.
+  xapp. intros Hnb.
+  xapp. intros Dist HDist.
+  xapp. intros Treated HTreated.
+Import HS.
+  Hint Extern 1 (RegisterSpec create) => Provide create_spec.
+  xlet. xapp_show_spec. eapply spec_elim_1_1. apply H. 
+  xapp_manual.
+
+Check calc_shortest_path_cf.
+Qed.
 
 
 

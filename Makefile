@@ -1,5 +1,5 @@
 #COQBIN=/home/charguer/coq/trunk/bin/
-INCLUDES=-I . -I ./demo -I ./okasaki -I ./lib
+INCLUDES=-I . -I ./demo -I ./okasaki -I ./lib -I ./imper
 # -I ocamllib 
 COQC=$(COQBIN)coqc -dont-load-proofs $(INCLUDES)
 COQDEP=$(COQBIN)coqdep $(INCLUDES)
