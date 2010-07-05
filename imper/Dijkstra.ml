@@ -11,7 +11,6 @@ sig
   val create : unit -> heap
   val is_empty : heap -> bool
   val push : Element.t -> heap -> unit
-  val top : heap -> Element.t 
   val pop : heap -> Element.t 
 end
 
@@ -34,7 +33,6 @@ sig
   val create : unit -> heap
   val is_empty : heap -> bool
   val push : Item.t -> heap -> unit
-  val top : heap -> Item.t 
   val pop : heap -> Item.t 
 end
 
@@ -50,13 +48,6 @@ struct
         | Finite x, Finite y -> x < y
         | Finite x, Infinite -> true
         | Infinite, _ -> false
-
-   let weight_le d1 d2 =
-      match d1,d2 with
-        | Finite x, Finite y -> x <= y
-        | Finite x, Infinite -> true
-        | Infinite, Finite _ -> false
-        | Infinite, Infinite -> true
 
    type edge = (int * int)
    type graph = (edge list) array
@@ -84,4 +75,14 @@ struct
       done;
       dist.(dest)
 end
+
+
+   (*
+   let weight_le d1 d2 =
+      match d1,d2 with
+        | Finite x, Finite y -> x <= y
+        | Finite x, Infinite -> true
+        | Infinite, Finite _ -> false
+        | Infinite, Infinite -> true
+  *)
 

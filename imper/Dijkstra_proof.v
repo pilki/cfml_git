@@ -19,41 +19,6 @@ Hint Unfold removed_min.
 
 
 
-Notation "'TopLetFuncTEMP' ':=' H" :=
-  (tag tag_top_fun None H)
-  (at level 69, H at level 200).
-
-(*------------------------------------------------------------------*)
-
-Module DijkstraSpec (MLHeapItems:MLHeapSig).  (* (OS:OrderedSigSpec with Module O:=O) *)
-
-(** instantiations *)
-
-Module Import Dijkstra := MLDijkstra MLHeapItems.
-
-Instance weight_le_inst : Le weight :=
-  fun x y => match x,y with
-  | Finite x, Finite y => x <= y
-  | Finite x, Infinite => True
-  | Infinite, Finite _ => False
-  | Infinite, Infinite => True
-  end.
-
-Instance weight_order_inst : Le_total_order (A:=weight).
-Proof.
-  Transparent le.
-  constructor. constructor. constructor.
-  intros x. destruct x; simpl. apply le_refl. auto.
-  intros x y z. destruct x; destruct y; destruct z; simpl;
-   intros; auto; tryfalse. apply* le_trans.
-  intros x y. destruct x; destruct y; simpl; intros; tryfalse; fequal.
-   apply* le_antisym. auto.
-  intros x y. destruct x; destruct y; simpl; auto. 
-   apply* le_total.
-Qed.
-
-
-
 Ltac xisspec_core ::=
   solve [ intros_all; unfolds rel_le, pred_le, pure; auto; auto* ].
 
@@ -76,74 +41,119 @@ Ltac xret_core ::=
 
 
 
+Class NLe_As_SLt `{Le A} : Prop :=
+  { nle_as_slt : forall x y : A, (~ x <= y) = (y < x) }.
+
+Global Instance nle_as_slt_from : forall `{Le A},
+  Le_total_order (A:=A) -> NLe_As_SLt (A:=A). 
+Admitted.
+
+
+
+Notation "'TopLetFuncTEMP' ':=' H" :=
+  (tag tag_top_fun None H)
+  (at level 69, H at level 200).
+
+(*------------------------------------------------------------------*)
+
+Notation "'keep' R H Q" :=
+  (R H (Q \*+ H)) (at level 25, R at level 0, H at level 0, Q at level 0).
+
+Notation "'Hexists' x1 x2 , H" := (Hexists x1, Hexists x2, H)
+  (at level 39, x1 ident, x2 ident, H at level 50) : heap_scope.
+Notation "'Hexists' x1 x2 x3 , H" := (Hexists x1, Hexists x2, Hexists x3, H)
+  (at level 39, x1 ident, x2 ident, x3 ident, H at level 50) : heap_scope.
+Notation "'Hexists' x1 x2 x3 , H" := (Hexists x1, Hexists x2, Hexists x3, Hexists x4, H)
+  (at level 39, x1 ident, x2 ident, x3 ident, x4 ident, H at level 50) : heap_scope.
+
+
+Definition item := MLItem.t.
+
+Instance item_le_inst : Le item :=
+  fun x y => match x,y with (_,a), (_,b) => a <= b end.
+
+Instance item_total_preorder_inst : Le_total_preorder (A:=item).
+Proof.
+  Transparent le.
+  constructor. constructor. 
+  intros x y z. destruct x; destruct y; destruct z; simpl;
+   intros; auto; tryfalse. apply* le_trans.
+  intros x y. destruct x; destruct y; simpl; auto. 
+   apply* le_total.
+Qed.
+
+
+Module Type HeapItemsSigSpec.
+
+Declare Module H : MLHeapItems.
+Import H.
+
+Parameter Heap : multiset MLItem.t -> loc -> hprop.
+
+Parameter create_spec : Spec create () |R>>
+  R [] (~> Heap \{}).
+
+Parameter is_empty_spec : Spec is_empty h |R>> 
+  forall E, keep R (h ~> Heap E) (\= bool_of (E = \{})).
+
+Parameter push_spec : Spec push x h |R>>
+  forall E X, R (h ~> Heap E \* Base x X) (# h ~> Heap (E \u X)).
+
+Parameter pop_spec : Spec pop h |R>>
+  forall E, E <> \{} -> R (h ~> Heap E) (fun x:item =>
+    Hexists X E', Base x X \* h ~> Heap E' \* [removed_min E E']).
+
+End HeapItemsSigSpec.
+
+
+
+(*------------------------------------------------------------------*)
+
+
+Module DijkstraSpec (H:MLHeapSig) (HS:HeapItemsSigSpec with Module H:=H).
+
+(** instantiations *)
+
+Module Import Dijkstra := MLDijkstra H.
+Import H.
+
+(** verification of weights *)
+
+Instance weight_le_inst : Le weight :=
+  fun x y => match x,y with
+  | Finite x, Finite y => x <= y
+  | Finite x, Infinite => True
+  | Infinite, Finite _ => False
+  | Infinite, Infinite => True
+  end.
+
+Instance weight_total_order_inst : Le_total_order (A:=weight).
+Proof.
+  Transparent le.
+  constructor. constructor. constructor.
+  intros x. destruct x; simpl. apply le_refl. auto.
+  intros x y z. destruct x; destruct y; destruct z; simpl;
+   intros; auto; tryfalse. eapply le_trans; eauto.
+  intros x y. destruct x; destruct y; simpl; intros; tryfalse; fequal.
+   apply* le_antisym. auto.
+  intros x y. destruct x; destruct y; simpl; auto. 
+   apply* le_total.
+Qed.
 
 Lemma weight_lt_spec : Pure weight_lt (x:weight) (y:weight) >> 
   (bool_of (x < y)).
 Proof.
-  xcf. intros. lets: (@nle_to_slt _ _ _ d1 d2). intros. xmatch; xret.
-  
-  xsimpl. unfold bool_of.
+  xcf. intros. intros. xmatch; xret; xcleanpat; 
+   repeat rewrite <- nle_as_slt; simpl.
+  auto*. auto*. destruct* d2.
 Qed.
 
-
-   let weight_lt d1 d2 =
-      match d1,d2 with
-        | Finite x, Finite y -> x < y
-        | Finite x, Infinite -> true
-        | Infinite, _ -> false
-  let le : t -> t -> bool =
-     fun (_,x1) (_,x2) -> (x1 <= x2)
+Hint Extern 1 (RegisterSpec weight_lt) => Provide weight_lt_spec.
 
 
-Module Type OrderedSigSpec.
-
-Declare Module O : MLOrdered.
-Import O.
-Parameter T : Type.
-Global Instance rep_t : Rep t T.
-
-Global Instance le_inst : Le T.
-Global Instance le_order : Le_total_order.
-
-Parameter eq_spec : RepTotal eq (X;t) (Y;t) >> bool_of (X = Y).
-Parameter lt_spec : RepTotal lt (X;t) (Y;t) >> bool_of (LibOrder.lt X Y).
+(** specification of heaps *)
 
 
-Hint Extern 1 (RegisterSpec eq) => Provide eq_spec.
-Hint Extern 1 (RegisterSpec lt) => Provide lt_spec.
-Hint Extern 1 (RegisterSpec leq) => Provide leq_spec.
-
-End OrderedSigSpec.
-
-
-(* Signature for heaps *)
-
-Module Type HeapSigSpec.
-
-Declare Module H : MLHeap.
-Declare Module OS : OrderedSigSpec with Module O := H.MLElement.
-Import H MLElement OS. 
-
-Global Instance heap_rep : Rep heap (multiset T).
-
-Parameter empty_spec : rep empty \{}.
-
-Parameter is_empty_spec : RepTotal is_empty (E;heap) >> 
-  bool_of (E = \{}).
-
-Parameter insert_spec : RepTotal insert (X;t) (E;heap) >>
-  \{X} \u E ;- heap.
-
-Parameter merge_spec : RepTotal merge (E1;heap) (E2;heap) >>
-  E1 \u E2 ;- heap.
-
-Parameter find_min_spec : RepSpec find_min (E;heap) |R>>
-  E <> \{} -> R (min_of E ;; t).
-
-Parameter delete_min_spec : RepSpec delete_min (E;heap) |R>>
-  E <> \{} -> R (removed_min E ;; heap).
-
-End HeapSigSpec.
 
 
 
