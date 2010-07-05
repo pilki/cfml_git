@@ -195,13 +195,26 @@ Inductive path_in (I J:Type) (g:graph I J) : I -> I -> list J -> Prop :=
      path_in g y z p ->
      path_in g x z (e::p).
 
+Definition path_length (I J:Type) (g:wgraph I J int) (p:list J) : int :=
+  LibList.fold_left (fun e a => weight g e + a) 0 p.
 
+Require Import LibSet.
+
+Notation "\{ x | P }" := (@set_st _ (fun x => P))
+  (at level 0, x ident, P at level 200).
+
+Definition shortest_path I J (g:wgraph I J int) (x y : I) := 
+  Min \{ d | exists p, path_in g x y p /\ d = Finite (path_length g p) }.
       
-      
 
 
+Definition GraphByAdjacency J (g:wgraph int J int) l :=
+  Hexists T:array int, l ~> Array Base T \* [ True ]. (* todo *)
 
-
+Lemma shortest_path_spec : Spec shortest_path g source dest |R>>
+  forall J (G:wgraph int J int), 
+  positively_weighted G -> source \in nodes G -> dest \in nodes G ->
+  keep R (g ~> GraphByAdjacency G) (\= shortest_path G source dest).
 
 
 

@@ -52,7 +52,7 @@ struct
    type edge = (int * int)
    type graph = (edge list) array
    
-   let shortest_path (g:graph) source dest = 
+   let calc_shortest_path (g:graph) source dest = 
       let nb_nodes = Array.length g in
       let dist = Array.make nb_nodes Infinite in
       let treated = Array.make nb_nodes false in
