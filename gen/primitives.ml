@@ -31,6 +31,7 @@ let inlined_primitives_table =
    "Pervasives.<=", (2, "(fun _y _z => istrue (_y <= _z))");
    "Pervasives.>", (2, "(fun _y _z => istrue (_y > _z))");
    "Pervasives.>=", (2, "(fun _y _z => istrue (_y >= _z))");
+   "Pervasives.not", (1, "LibBool.neg");
    "Pervasives.fst", (1, "(@fst _ _)");
    "Pervasives.snd", (1, "(@snd _ _)");
    "Pervasives.@", (2, "LibList.append");
@@ -55,6 +56,7 @@ let all_primitives_table = (*todo:complete*)
     "Pervasives.<", "ml_lt";
     "Pervasives.>", "ml_gt";
     "Pervasives.>=", "ml_geq";
+   (* todo: not et fst et snd manquent *)
     "Pervasives.&&", "ml_and";
     "Pervasives.||", "ml_or";
     "Pervasives.@", "ml_append";
@@ -69,9 +71,11 @@ let all_primitives_table = (*todo:complete*)
     "Array.get", "ml_array_get";
     "Array.set", "ml_array_set";
     "Array.init", "ml_array_init";
+    "Array.length", "ml_array_length";
     "Random.int", "ml_rand_int"; 
     "List.hd", "ml_list_hd";
     "List.tl", "ml_list_tl";
+    "List.iter", "ml_list_iter";
     "List.rev", "ml_rev";
     "List.append", "ml_append";
     "Stream.append", "ml_append";

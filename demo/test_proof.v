@@ -6,109 +6,24 @@ Require Import test_ml.
 
 Opaque heap_is_empty hdata heap_is_single heap_is_empty_st RefOn.
 
-Implicit Arguments Base [[A]].
-
-Notation "m \( x )" := (LibBag.read m x)
-  (at level 29, format "m \( x )") : container_scope.
-Notation "m \( x := v )" := (update m x v)
-  (at level 29, format "m \( x := v )") : container_scope.
 
 
 
-Parameter ml_array_make_spec : forall A,
-  Spec ml_array_make (n:int) (v:A) |R>> 
-     R [] (fun l => Hexists t, l ~> Array Base t \* [t = array_make n v]).
-
-Parameter ml_array_get_spec : forall `{Inhabited A},
-  Spec ml_array_get (l:loc) (i:int) |R>> 
-    forall (t:array A), index t i ->
-    Read (R:~~A) (l ~> Array Base t) (\= t\(i)).
-
-Parameter ml_array_set_spec : forall A,
-  Spec ml_array_set (l:loc) (i:int) (v:A) |R>> 
-    forall (t:array A), index t i -> 
-    R (l ~> Array Base t) (# Hexists t', l ~> Array Base t' \* [t' = t\(i:=v)]).
-
-
-Hint Extern 1 (RegisterSpec ml_array_make) => Provide ml_array_make_spec.
-Hint Extern 1 (RegisterSpec ml_array_get) => Provide ml_array_get_spec.
-Hint Extern 1 (RegisterSpec ml_array_set) => Provide ml_array_set_spec.
 
 (********************************************************)
 (* arrays *)
-
-Ltac xapp_show_spec := 
-  xuntag; let f := spec_goal_fun tt in
-  xfind f; let H := fresh in intro H.
-
-
-Lemma hclean_exists : forall B (F:~~B) H1 H2 A (J:A->hprop) Q,
-  is_local F -> 
-  (forall x, F (H1 \* (J x) \* H2) Q) ->
-   F (H1 \* (heap_is_pack J \* H2)) Q.
-Proof. 
-  intros. rewrite star_comm_assoc. apply~ local_intro_exists.
-  intros. rewrite~ star_comm_assoc.
-Qed. 
-
-Ltac hclean_relinearize tt :=
-  let go Hpre := match Hpre with ?H \* (_ \* _) =>
-    let T := fresh "TEMP" in 
-    sets T: H; 
-    autorewrite with hsimpl_assoc; 
-    subst T
-    end in
-  hclean_onH ltac:(go).
- 
-Ltac hclean_step tt ::=
-  let go H :=
-    match H with ?HA \* ?HX \* ?HR => match HX with
-    | [?P] => apply hclean_prop; [ xlocal | intro ]
-    | heap_is_pack ?J => apply hclean_exists; [ xlocal | intro; hclean_relinearize tt ]
-    | _ => apply hclean_step
-    end end in
-  hclean_onH ltac:(go).
-
-Ltac xapp_spec_core H cont ::=
-   let arity_goal := spec_goal_arity tt in
-   let arity_hyp := spec_term_arity H in
-   match constr:(arity_goal, arity_hyp) with (?n,?n) => idtac | _ => fail 1 end;
-   let lemma := get_spec_elim_x_y arity_hyp arity_goal in
-   eapply lemma; [ sapply H | cont tt ]. 
-
-Instance inhabited_Z : Inhabited Z.
-Admitted.
-
-
-Open Scope container_scope.
-
-Ltac xfun_core s cont ::=
-  apply local_erase;
-  intro; let f := get_last_hyp tt in
-  let Sf := fresh "S" f in
-  exists s; split; [ cont tt | intros Sf ].
-
-Lemma post_le_unit : forall H H' : hprop,
-  H ==> H' -> (#H) ===> (#H').
-Proof. intros_all~. Qed.
-
-
 
 Lemma arrays_spec : Spec arrays () |R>> R [] (\=3).
 Proof.
   xcf.
   xlet. xapp. xextract as t Ht.
   xlet. xapp. skip. xextract as e.
-  xseq. xapp. skip. simpl. apply rel_le_refl. . xextract as e'.
+  xseq. xapp. skip. xextract as t' Ht'.
   xfun (fun f => Spec f (i:int) |R>> R [] (\=i)). xret*.
-  xlet.
-    
-
-
-post_le_unit
-
-
-Qed.
+  xlet. skip. 
+  skip.
+Admitted.
+   
 
 
 (********************************************************)

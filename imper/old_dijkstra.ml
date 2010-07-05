@@ -1,7 +1,9 @@
 module type Ordered =
 sig 
    type t
-   val le : t -> t -> bool
+   val eq : t -> t -> bool
+   val lt : t -> t -> bool
+   val leq : t -> t -> bool
 end 
 
 module type HeapSig =
@@ -15,49 +17,24 @@ sig
   val pop : heap -> Element.t 
 end
 
-(* todo: gérer un context pour savoir si on est dans un module ou pas *)
+type weight = Finite of int | Infinite
 
-
-
-
-
-module Item = (* : Ordered with type t = (int*int) *)
+module Dist : Ordered with type t = weight =
 struct
-  type t = int*int
-  let le : t -> t -> bool =
-     fun (_,x1) (_,x2) -> (x1 <= x2)
+  type t = weight
+  let eq d1 d2 = match d1,d2 with
+     | Finite x, Finite y -> x = y
+     | Infinite, Infinite -> true
+     | _ -> false
+  let lt d1 d2 = match d1,d2 with
+     | Finite x, Finite y -> x < y
+     | Finite x, Infinite -> true
+     | Infinite, _ -> false
+  let leq d1 d2 = eq d1 d2 || lt d1 d2
 end
 
-module type HeapItems = (* HeapSig with module Element = Item *)
-sig
-  type heap
-  val create : unit -> heap
-  val is_empty : heap -> bool
-  val push : Item.t -> heap -> unit
-  val top : heap -> Item.t 
-  val pop : heap -> Item.t 
-end
-
-
-
-module Dijkstra (Heap:HeapItems) = 
+module Dijkstra (Heap:HeapSig with module Element = Dist) = 
 struct
-
-   type weight = Finite of int | Infinite
-
-   let weight_lt d1 d2 =
-      match d1,d2 with
-        | Finite x, Finite y -> x < y
-        | Finite x, Infinite -> true
-        | Infinite, _ -> false
-
-   let weight_le d1 d2 =
-      match d1,d2 with
-        | Finite x, Finite y -> x <= y
-        | Finite x, Infinite -> true
-        | Infinite, Finite _ -> false
-        | Infinite, Infinite -> true
-
    type edge = (int * int)
    type graph = (edge list) array
    
@@ -68,15 +45,15 @@ struct
       let next = Heap.create() in
       Heap.push (source,0) next;
       let finished = ref false in
-      while not !finished do
+      while not finished do
          let (node,node_dist) = Heap.pop next in
          if not treated.(node) then begin
             treated.(node) <- true;
             List.iter (fun (edge_dest,edge_dist) ->
                let new_dist = node_dist + edge_dist in
-               if weight_lt (Finite new_dist) dist.(edge_dest)
+               if Dist.lt (Finite new_dist) dist.(edge_dest)
                   then (dist.(edge_dest) <- Finite new_dist;
-                        Heap.push (edge_dest,new_dist) next)
+                        Heap.push next (edge_dest,new_dist))
                ) (g.(node));
          end;
          if Heap.is_empty next || treated.(dest) 

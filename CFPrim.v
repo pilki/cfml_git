@@ -15,6 +15,10 @@ Ltac inhab :=
     | apply arbitrary 
     | apply @arbitrary; eauto 10 with typeclass_instances ].
 
+Instance inhabited_Z : Inhabited Z.
+Admitted.
+
+
 
 (************************************************************)
 (** Representation for base types *)
@@ -179,6 +183,9 @@ Proof.
   hsimpl. apply heap_extract_prop. intro_subst. auto.
 Qed.
 
+(** List *)
+
+Parameter ml_list_iter : val.
 
 (** Arrays *)
 
@@ -186,6 +193,8 @@ Parameter ml_array_make : val.
 Parameter ml_array_get : val.
 Parameter ml_array_set : val.
 Parameter ml_array_init : val.
+Parameter ml_array_length : val.
+
 
 (*
 Definition ArrayOn A (v:array A) (l:loc) : hprop.
@@ -199,22 +208,27 @@ Class Dup a A (T:htype A a) : Prop := {
 
 Parameter Array : forall a A (T:htype A a) (M:array A) (l:loc), hprop.
 
-Parameter ml_array_make_spec : forall a A,
-  Spec ml_array_make (n:int) (v:a) |R>> 
-    forall (V:A) (T:htype A a) (t:array A), Dup T ->
-    R (T V v) (fun l => l ~> Array T (array_make n V)).
+
 
 Require Import LibBag.
 
 Definition Read B (R:~~B) := 
   fun H Q => R H (Q \*+ H).
 
-Notation "m `[ x ]" := (read m x)
-  (at level 29) : container_scope.
-Notation "m `[ x := v ]" := (update m x v)
-  (at level 29) : container_scope.
+
+Notation "m \( x )" := (LibBag.read m x)
+  (at level 29, format "m \( x )") : container_scope.
+Notation "m \( x := v )" := (update m x v)
+  (at level 29, format "m \( x := v )") : container_scope.
 
 Open Scope container_scope.
+
+(* BIN
+Parameter ml_array_make_spec : forall a A,
+  Spec ml_array_make (n:int) (v:a) |R>> 
+    forall (V:A) (T:htype A a) (t:array A), Dup T ->
+    R (T V v) (fun l => l ~> Array T (array_make n V)).
+
 Parameter ml_array_get_spec : forall a A `{Inhab A},
   Spec ml_array_get (l:loc) (i:int) |R>> 
     forall (T:htype A a) (t:array A), Dup T -> index t i ->
@@ -224,16 +238,41 @@ Parameter ml_array_set_spec : forall a A `{Inhab A},
   Spec ml_array_set (l:loc) (i:int) (v:a) |R>> 
     forall (V:A) (T:htype A a) (t:array A), Dup T -> index t i -> 
     R (l ~> Array T t \* T V v) (# l ~> Array T (t`[i:=V])).
+*)
+
+
+Definition Base A (X:A) (x:A) := 
+  [ x = X ].
+
+Implicit Arguments Base [[A]].
+
+Parameter ml_array_make_spec : forall A,
+  Spec ml_array_make (n:int) (v:A) |R>> 
+     R [] (fun l => Hexists t, l ~> Array Base t \* [t = array_make n v]).
+
+Parameter ml_array_get_spec : forall `{Inhabited A},
+  Spec ml_array_get (l:loc) (i:int) |R>> 
+    forall (t:array A), index t i ->
+    Read (R:~~A) (l ~> Array Base t) (\= t\(i)).
+
+Parameter ml_array_set_spec : forall A,
+  Spec ml_array_set (l:loc) (i:int) (v:A) |R>> 
+    forall (t:array A), index t i -> 
+    R (l ~> Array Base t) (# Hexists t', l ~> Array Base t' \* [t' = t\(i:=v)]).
+
+
+Parameter ml_array_length_spec : forall A,
+  Spec ml_array_length (l:loc) |R>> forall (t:array A),
+    Read R (l ~> Array Base t) (\= LibArray.length t).
+
 
 
 Hint Extern 1 (RegisterSpec ml_array_make) => Provide ml_array_make_spec.
 Hint Extern 1 (RegisterSpec ml_array_get) => Provide ml_array_get_spec.
 Hint Extern 1 (RegisterSpec ml_array_set) => Provide ml_array_set_spec.
+Hint Extern 1 (RegisterSpec ml_array_length) => Provide ml_array_length_spec.
 
 
-
-Definition Base A (X:A) (x:A) := 
-  [ x = X ].
 
 (*
 

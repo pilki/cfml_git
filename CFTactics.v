@@ -220,7 +220,7 @@ Tactic Notation "xclean" :=
 (* ** [xok] *)
 
 Ltac xok_core cont := 
-  solve [ apply rel_le_refl
+  solve [ cbv beta; apply rel_le_refl
         | apply pred_le_refl
         | hextract; hsimpl; cont tt ].
 
@@ -695,6 +695,10 @@ Tactic Notation "ximpl" "*" :=
 (*--------------------------------------------------------*)
 (* ** [xapp] *)
 
+Ltac xapp_show_spec := 
+  xuntag; let f := spec_goal_fun tt in
+  xfind f; let H := fresh in intro H.
+
 (* todo: when arities differ *)
 
 Ltac xapp_compact KR args :=
@@ -724,7 +728,7 @@ Ltac xapp_spec_core H cont :=
    let arity_hyp := spec_term_arity H in
    match constr:(arity_goal, arity_hyp) with (?n,?n) => idtac | _ => fail 1 end;
    let lemma := get_spec_elim_x_y arity_hyp arity_goal in
-   eapply lemma; [ apply H | cont tt ]. 
+   eapply lemma; [ sapply H | cont tt ]. 
 
 Ltac xapp_manual_intros tt :=
   let R := fresh "R" in let LR := fresh "L" R in 
@@ -1065,6 +1069,7 @@ Tactic Notation "xbody_nointro" ident(Bf) :=
     name explicitly the body assumption. *)
 
 Ltac xfun_core s cont :=
+  apply local_erase;
   intro; let f := get_last_hyp tt in
   let Sf := fresh "S" f in
   exists s; split; [ cont tt | intros Sf ].

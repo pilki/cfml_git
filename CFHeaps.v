@@ -1029,13 +1029,12 @@ Qed.
 
 Lemma hclean_exists : forall B (F:~~B) H1 H2 A (J:A->hprop) Q,
   is_local F -> 
-  (forall x, F ((H1 \* (J x)) \* H2) Q) ->
+  (forall x, F (H1 \* (J x) \* H2) Q) ->
    F (H1 \* (heap_is_pack J \* H2)) Q.
 Proof. 
   intros. rewrite star_comm_assoc. apply~ local_intro_exists.
-  intros. rewrite star_comm_assoc. rewrite~ star_assoc. 
+  intros. rewrite~ star_comm_assoc.
 Qed. 
-
 
 (*
 Ltac hclean_on contH contQ :=
@@ -1077,11 +1076,20 @@ Ltac hclean_setup tt :=
   apply hclean_start; [ xlocal | ];
   autorewrite with hsimpl_assoc.
 
+Ltac hclean_relinearize tt :=
+  let go Hpre := match Hpre with ?H \* (_ \* _) =>
+    let T := fresh "TEMP" in 
+    sets T: H; 
+    autorewrite with hsimpl_assoc; 
+    subst T
+    end in
+  hclean_onH ltac:(go).
+ 
 Ltac hclean_step tt :=
   let go H :=
     match H with ?HA \* ?HX \* ?HR => match HX with
     | [?P] => apply hclean_prop; [ xlocal | intro ]
-    | heap_is_pack ?J => apply hclean_exists; [ xlocal | intro ]
+    | heap_is_pack ?J => apply hclean_exists; [ xlocal | intro; hclean_relinearize tt ]
     | _ => apply hclean_step
     end end in
   hclean_onH ltac:(go).

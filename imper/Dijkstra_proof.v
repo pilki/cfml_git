@@ -1,4 +1,35 @@
+Set Implicit Arguments.
+Require Import LibCore.
+Require Import CFPrim.
+Require Import Dijkstra_ml.
 
+
+
+Notation "'TopLetFuncTEMP' ':=' H" :=
+  (tag tag_top_fun None H)
+  (at level 69, H at level 200).
+
+(*------------------------------------------------------------------*)
+
+Module DijkstraSpec (MLHeapItems:MLHeapSig).  (* (OS:OrderedSigSpec with Module O:=O) *)
+
+(** instantiations *)
+
+Module Import Dijkstra := MLDijkstra MLHeapItems.
+
+
+
+
+
+
+
+
+
+
+
+
+
+(* 
 (*------------------------------------------------------------------*)
 (* naturals extended with infinity *)
 
@@ -1445,3 +1476,5 @@ End Dijkstra.
 
 
 
+
+*)
