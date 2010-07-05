@@ -77,6 +77,8 @@ let rec lift_btyp t =
       val_type
    | Btyp_constr (id,[t]) when Path.name id = "ref" || Path.name id = "Pervasives.ref" -> 
       loc_type
+   | Btyp_constr (id,[t]) when Path.name id = "array" || Path.name id = "Pervasives.array" -> 
+      loc_type
    | Btyp_constr (id,[t]) when Path.same id Predef.path_lazy_t || Path.name id = "Lazy.t" -> 
       aux t  (* todo: les Lazy provenant des patterns ne sont pas identique à Predef.path_lazy_t *)
    | Btyp_constr (id,[t]) when Path.name id = "Stream.stream" || Path.name id = "stream" -> 

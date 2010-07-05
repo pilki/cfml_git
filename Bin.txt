@@ -1527,3 +1527,19 @@ Proof. introv H K. (*surprenant: destruct K.*)
   skip. (* todo *)
 Qed.
 
+
+
+
+Lemma local_wframe' : forall B H1 H2 Q1 (F:~~B) H Q,
+  is_local F -> 
+  H ==> H1 \* H2 -> 
+  F H1 Q1 -> 
+  Q1 \*+ H2 ===> Q ->
+  F H Q.
+Proof. intros. apply* local_wframe. Qed.
+
+Lemma local_gc_post' : forall H' B (F:~~B) H Q,
+  is_local F -> 
+  F H (Q \*+ H') ->
+  F H Q.
+Proof. intros. apply* local_gc_post. Qed.

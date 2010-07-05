@@ -335,6 +335,14 @@ Definition read B (R:~~B) :=
 (********************************************************************)
 (* ** Simplification and unification tactics for star *)
 
+Ltac check_goal_himpl tt :=
+  match goal with 
+  | |- @rel_le unit _ _ _ => let t := fresh "_tt" in intros t; destruct t
+  | |- @rel_le _ _ _ _ => let r := fresh "r" in intros r
+  | |- pred_le _ _ => idtac
+  end.
+
+
 Ltac protect_evars_in H :=
    match H with context [ ?X ] => 
      let go tt := 
@@ -425,7 +433,7 @@ Ltac post_impl_intro tt :=
   end.
 
 Ltac hextract_main tt :=
-  try post_impl_intro tt;
+  check_goal_himpl tt;
   hextract_setup tt;
   (repeat (hextract_step tt));
   hextract_cleanup tt.
@@ -563,6 +571,30 @@ Admitted.
 
 
 
+Lemma hsimpl_cancel_eq_1 : forall H H' HA HR HT,
+  H = H' -> HT ==> HA \* HR -> H \* HT ==> HA \* (H' \* HR).
+Proof. intros. subst. apply~ hsimpl_cancel_1. Qed.
+
+Lemma hsimpl_cancel_eq_2 : forall H H' HA HR H1 HT,
+  H = H' -> H1 \* HT ==> HA \* HR -> H1 \* H \* HT ==> HA \* (H' \* HR).
+Proof. intros. subst. apply~ hsimpl_cancel_2. Qed.
+
+Lemma hsimpl_cancel_eq_3 : forall H H' HA HR H1 H2 HT,
+  H = H' -> H1 \* H2 \* HT ==> HA \* HR -> H1 \* H2 \* H \* HT ==> HA \* (H' \* HR).
+Proof. intros. subst. apply~ hsimpl_cancel_3. Qed.
+
+Lemma hsimpl_cancel_eq_4 : forall H H' HA HR H1 H2 H3 HT,
+  H = H' -> H1 \* H2 \* H3 \* HT ==> HA \* HR -> H1 \* H2 \* H3 \* H \* HT ==> HA \* (H' \* HR).
+Proof. intros. subst. apply~ hsimpl_cancel_4. Qed.
+
+Lemma hsimpl_cancel_eq_5 : forall H H' HA HR H1 H2 H3 H4 HT,
+  H = H' -> H1 \* H2 \* H3 \* H4 \* HT ==> HA \* HR -> H1 \* H2 \* H3 \* H4 \* H \* HT ==> HA \* (H' \* HR).
+Proof. intros. subst. apply~ hsimpl_cancel_5. Qed.
+
+Lemma hsimpl_cancel_eq_6 : forall H H' HA HR H1 H2 H3 H4 H5 HT,
+  H = H' -> H1 \* H2 \* H3 \* H4 \* H5 \* HT ==> HA \* HR -> H1 \* H2 \* H3 \* H4 \* H5 \* H \* HT ==> HA \* (H' \* HR).
+Proof. intros. subst. apply~ hsimpl_cancel_6. Qed.
+
 
 (*
 Ltac hsimpl_assoc_rhs tt :=
@@ -596,6 +628,7 @@ Ltac hsimpl_find_same H HL :=
   | _ \* _ \* _ \* _ \* _ \* H \* _ => apply hsimpl_cancel_6
   end.
 
+(*--deprecated
 Ltac hsimpl_find_data H HL :=
   match H with hdata _ ?l =>
   match HL with
@@ -606,6 +639,18 @@ Ltac hsimpl_find_data H HL :=
   | _ \* _ \* _ \* _ \* hdata _ l \* _ => apply hsimpl_cancel_5
   | _ \* _ \* _ \* _ \* _ \* hdata _ l \* _ => apply hsimpl_cancel_6
   end end.
+*)
+
+Ltac hsimpl_find_data H HL :=
+  match H with hdata _ ?l =>
+  match HL with
+  | hdata _ l \* _ => apply hsimpl_cancel_eq_1
+  | _ \* hdata _ l \* _ => apply hsimpl_cancel_eq_2
+  | _ \* _ \* hdata _ l \* _ => apply hsimpl_cancel_eq_3
+  | _ \* _ \* _ \* hdata _ l \* _ => apply hsimpl_cancel_eq_4
+  | _ \* _ \* _ \* _ \* hdata _ l \* _ => apply hsimpl_cancel_eq_5
+  | _ \* _ \* _ \* _ \* _ \* hdata _ l \* _ => apply hsimpl_cancel_eq_6
+  end end; [ fequal; fequal | ].
 
 Ltac hsimpl_extract_exists_with_hints tt :=
   match goal with |- ?HL ==> ?HA \* (heap_is_pack ?J \* ?HR) =>
@@ -623,9 +668,9 @@ Ltac hsimpl_extract_exists_step tt :=
 
 Ltac hsimpl_step tt :=
   match goal with |- ?HL ==> ?HA \* (?H \* ?HR) =>
-    first [ (* hsimpl_find_same H HL
-          | hsimpl_find_data H HL
-          | *)  hsimpl_try_same tt (* todo: violent ?*)
+    first  (* hsimpl_find_same H HL |*)
+          [ hsimpl_try_same tt 
+          | hsimpl_find_data H HL  
           | apply hsimpl_extract_prop
           | hsimpl_extract_exists_step tt
           | apply hsimpl_keep ]
@@ -638,7 +683,7 @@ Ltac hsimpl_cleanup tt :=
   try hsimpl_hint_remove.
 
 Ltac hsimpl_main tt :=
-  try post_impl_intro tt;
+  check_goal_himpl tt;
   hsimpl_setup tt;
   (repeat (hsimpl_step tt));
   hsimpl_cleanup tt.

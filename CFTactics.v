@@ -1,6 +1,25 @@
 Set Implicit Arguments.
 Require Export LibInt CFSpec CFPrint.
 
+(* todo move *)
+
+Ltac idcont tt := idtac.
+
+(** [get_tail E] is a tactic that decomposes an application
+    term [E], ie, when applied to a term of the form [X1 ... XN] 
+    it returns a pair made of [X1 .. X(N-1)] and [XN]. *)
+
+Ltac get_tail E :=
+  match E with
+  | ?X1 ?X2 ?X3 ?X4 ?X5 ?X6 ?X7 ?X => constr:((X1 X2 X3 X4 X5 X6,X))
+  | ?X1 ?X2 ?X3 ?X4 ?X5 ?X6 ?X => constr:((X1 X2 X3 X4 X5,X))
+  | ?X1 ?X2 ?X3 ?X4 ?X5 ?X => constr:((X1 X2 X3 X4,X))  
+  | ?X1 ?X2 ?X3 ?X4 ?X => constr:((X1 X2 X3,X))
+  | ?X1 ?X2 ?X3 ?X => constr:((X1 X2,X)) 
+  | ?X1 ?X2 ?X => constr:((X1,X))
+  | ?X1 ?X => constr:((X1,X))
+  end.
+
 
 (********************************************************************)
 (* ** Tactics *)
@@ -174,6 +193,16 @@ Ltac get_app_intro_x_y x y :=
   end.
 *)
 
+(*--------------------------------------------------------*)
+(* ** tools for post-conditions *)
+
+Ltac post_is_meta tt :=
+  match goal with |- ?E => 
+  match get_tail E with (_,?Q) =>
+  match Q with
+  | Q => constr:(false) 
+  | _ => constr:(true)
+  end end end.
 
 (*--------------------------------------------------------*)
 (* ** [xclean] *)
@@ -186,6 +215,21 @@ Tactic Notation "xclean" :=
   repeat calc_partial_eq tt; 
   repeat fix_bool_of_known tt;
   fold_bool; fold_prop.  
+
+(*--------------------------------------------------------*)
+(* ** [xok] *)
+
+Ltac xok_core cont := 
+  solve [ apply rel_le_refl
+        | apply pred_le_refl
+        | hextract; hsimpl; cont tt ].
+
+Tactic Notation "xok" := 
+  xok_core ltac:(idcont).
+Tactic Notation "xok" "~" := 
+  xok_core ltac:(fun _ => auto~).
+Tactic Notation "xok" "*" := 
+  xok_core ltac:(fun _ => auto*).
 
 
 (*--------------------------------------------------------*)
@@ -203,11 +247,21 @@ Ltac check_not_a_tag tt :=
   | |- _ => idtac
   end.
 
+
+Ltac xauto_common cont :=
+  check_not_a_tag tt;  
+  try solve [ cont tt 
+            | solve [ apply refl_equal ]
+            | xok_core ltac:(fun _ => solve [ cont tt | substs; cont tt ] ) 
+            | substs; if_eq; solve [ cont tt | apply refl_equal ]  ].
+
+(* --old
 Ltac xauto_common cont :=
   check_not_a_tag tt;  
   try solve [ cont tt 
             | solve [ apply refl_equal ]
             | substs; if_eq; solve [ cont tt | apply refl_equal ] ].
+*)
 
 Ltac xauto_tilde_default cont := xauto_common cont.
 Ltac xauto_star_default cont := xauto_common cont.
@@ -340,7 +394,7 @@ Ltac xcurried_core :=
 Tactic Notation "xcurried" := xcurried_core.
 
 (*--------------------------------------------------------*)
-(* ** [xextract], [xok] *)
+(* ** [xextract], [xsimpl] *)
 
 Ltac xextract_core :=
   simpl; hclean; instantiate.
@@ -359,9 +413,10 @@ Tactic Notation "xextract" "as" simple_intropattern(I1) simple_intropattern(I2)
  simple_intropattern(I3) simple_intropattern(I4) := 
   xextract; intros I1 I2 I3 I4; xclean.
 
+Tactic Notation "xsimpl" := try hextract; try hsimpl.
+Tactic Notation "xsimpl" "~" := xsimpl; xauto~.
+Tactic Notation "xsimpl" "*" := xsimpl; xauto*.
 
-Tactic Notation "xok" := 
-  first [ apply rel_le_refl | apply pred_le_refl ].
 
 
 (*--------------------------------------------------------*)
@@ -495,6 +550,14 @@ Tactic Notation "xret" "*" :=
 
 (*--------------------------------------------------------*)
 (* ** [xgc] *)
+
+(* bin
+Ltac xgc_if_post_meta tt :=
+  match post_is_meta tt with
+  | false => xgc
+  | true => idtac
+  end.
+*)
 
 Ltac xgc_core :=
   eapply local_gc_post; 
@@ -641,23 +704,32 @@ Ltac xapp_compact KR args :=
   constr:(args)
   end.
 
+Ltac xapp_final HR :=
+  eapply local_wframe; 
+     [ xlocal
+     | apply HR
+     | hsimpl
+     | try xok ].
+
 Ltac xapp_inst args solver :=
   let R := fresh "R" in let LR := fresh "L" R in 
   let KR := fresh "K" R in let IR := fresh "I" R in
-  intros R LR KR; hnf in KR;
+  intros R LR KR; hnf in KR; (* lazy beta in *)
   let H := xapp_compact KR args in
-  forwards IR: H; solver tt; try sapply IR. 
+  forwards_then H ltac:(fun HR => xapp_final HR);    
+  solver tt.
 
 Ltac xapp_spec_core H cont :=
    let arity_goal := spec_goal_arity tt in
    let arity_hyp := spec_term_arity H in
    match constr:(arity_goal, arity_hyp) with (?n,?n) => idtac | _ => fail 1 end;
    let lemma := get_spec_elim_x_y arity_hyp arity_goal in
-   eapply local_wframe; 
-     [ xlocal
-     | eapply lemma; [ apply H | cont tt ] 
-     | hsimpl 
-     | xok ].
+   eapply lemma; [ apply H | cont tt ]. 
+
+Ltac xapp_manual_intros tt :=
+  let R := fresh "R" in let LR := fresh "L" R in 
+  let KR := fresh "K" R in intros R LR KR; lazy beta in KR.
+
    
 Ltac xapp_core spec cont :=
   match spec with
@@ -668,11 +740,16 @@ Ltac xapp_core spec cont :=
   | ?H => xapp_spec_core H cont
   end.
 
-Ltac xapp_pre cont := 
+Ltac xapp_pre cont :=  (*todo:move xgc*)
   match ltac_get_tag tt with
-  | tag_apply => xuntag tag_apply; cont tt
+  | tag_apply => 
+    match post_is_meta tt with
+    | false => xgc; [ xuntag tag_apply; cont tt | ]
+    | true => xuntag tag_apply; cont tt
+    end
   | tag_let_trm => xlet; [ xuntag tag_apply; cont tt | instantiate; xextract ]
-  end.  
+  | tag_seq => xseq; [ xuntag tag_apply; cont tt | instantiate; xextract ]
+  end.
 
 Ltac xapp_then spec cont :=
   xapp_pre ltac:(fun _ => xapp_core spec cont).
@@ -731,10 +808,6 @@ Tactic Notation "xapp_spec" "*" constr(H) :=
 Tactic Notation "xapp_spec" "*" constr(H) constr(E) := 
   xapp_with H E ltac:(fun _ => xauto*).
 
-Ltac xapp_manual_intros tt :=
-  let R := fresh "R" in let LR := fresh "L" R in 
-  let KR := fresh "K" R in intros R LR KR; lazy beta in KR.
-
 Tactic Notation "xapp_manual" := 
   xapp_then ___ ltac:(xapp_manual_intros).
 Tactic Notation "xapp_spec_manual" constr(H) := 
@@ -743,7 +816,6 @@ Tactic Notation "xapp_manual" "as" :=
   xapp_then ___ ltac:(fun _ => idtac).
 Tactic Notation "xapp_spec_manual" constr(H) "as" := 
   xapp_then H ltac:(fun _ => idtac).
-
 
 (* todo: when hypothesis in an app instance *)
 
@@ -1335,6 +1407,42 @@ Ltac xpats_core :=
 (************************************************************)
 (* ** [xif] -- todo : cleanup *)
 
+Ltac xif_post H :=
+   calc_partial_eq tt;
+   try fold_bool; fold_prop;
+   try fix_bool_of_known tt;
+   try solve [ discriminate | false; congruence ];
+   first [ subst_hyp H; try fold_bool; try rewriteb H 
+         | rewriteb H
+         | idtac ];
+   try fix_bool_of_known tt. 
+
+Ltac xif_core_nometa H cont :=
+  apply local_erase; split; intros H; cont tt.
+
+Ltac xif_core_meta H cont :=
+  xif_core_nometa H cont.
+
+Ltac xif_base H cont :=
+  match post_is_meta tt with
+  | false => xif_core_nometa H cont
+  | true => xif_core_meta H cont
+  end. 
+
+Ltac xif_base_with_post H :=
+  xif_base H ltac:(fun _ => xif_post H).
+
+Tactic Notation "xif_manual" ident(H) :=
+  xif_base H ltac:(fun _ => idtac).
+Tactic Notation "xif_manual" :=
+  let H := fresh "C" in xif_manual H.
+Tactic Notation "xif" ident(H) :=
+  xif_base_with_post H.
+Tactic Notation "xif" :=
+  let H := fresh "C" in xif H.
+
+
+(*---deprecated
 Ltac post_is_meta tt :=
   match goal with
   | |- ?F ?P => match P with P => constr:(false) end 
@@ -1394,7 +1502,7 @@ Tactic Notation "xif" ident(H) :=
 
 Tactic Notation "xif" :=
   let H := fresh "C" in xif H.
-
+*)
 
 (************************************************************)
 (* ** [xalias] *)

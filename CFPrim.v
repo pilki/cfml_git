@@ -209,15 +209,21 @@ Require Import LibBag.
 Definition Read B (R:~~B) := 
   fun H Q => R H (Q \*+ H).
 
+Notation "m `[ x ]" := (read m x)
+  (at level 29) : container_scope.
+Notation "m `[ x := v ]" := (update m x v)
+  (at level 29) : container_scope.
+
+Open Scope container_scope.
 Parameter ml_array_get_spec : forall a A `{Inhab A},
   Spec ml_array_get (l:loc) (i:int) |R>> 
     forall (T:htype A a) (t:array A), Dup T -> index t i ->
-    Read (R:~~a) (l ~> Array T t) (T (read t i)).
+    Read (R:~~a) (l ~> Array T t) (T (t`[i])).
 
-Parameter ml_array_set_spec : forall a,
+Parameter ml_array_set_spec : forall a A `{Inhab A},
   Spec ml_array_set (l:loc) (i:int) (v:a) |R>> 
-    forall (V:A) (T:htype A a) (t:array A), dup T -> index t i -> 
-    R (l ~> Array T t \* T V v) (l ~> Array T (t[i:=v]).
+    forall (V:A) (T:htype A a) (t:array A), Dup T -> index t i -> 
+    R (l ~> Array T t \* T V v) (# l ~> Array T (t`[i:=V])).
 
 
 Hint Extern 1 (RegisterSpec ml_array_make) => Provide ml_array_make_spec.
@@ -226,9 +232,10 @@ Hint Extern 1 (RegisterSpec ml_array_set) => Provide ml_array_set_spec.
 
 
 
+Definition Base A (X:A) (x:A) := 
+  [ x = X ].
 
-
-
+(*
 
 Parameter ml_array_make_spec : forall a,
   Spec ml_array_make (n:int) (v:a) |R>> 
@@ -242,6 +249,7 @@ Parameter ml_array_set_spec : forall a,
   Spec ml_array_set (l:loc) (i:int) (v:a) |R>> 
     index t i -> R (l ~> ArrayOn t) (# l ~> ArrayOn t'[i:=v]).
 
+*)
 
 
 Parameter ml_rand_int : val.
