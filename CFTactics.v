@@ -502,7 +502,7 @@ Tactic Notation "xval_st" constr(P) :=
     [xfail_noclean] is also available. *)
 
 Tactic Notation "xfail_noclean" :=
-  xuntag tag_fail.
+  xuntag tag_fail; apply local_erase.
 Tactic Notation "xfail" := 
   xfail_noclean; xclean.
 Tactic Notation "xfail" "~" :=  
@@ -514,7 +514,7 @@ Tactic Notation "xfail" "*" :=
     which is in fact equivalent to [True]. *)
 
 Tactic Notation "xdone" :=
-  xuntag tag_done; split.
+  xuntag tag_done; apply local_erase; split.
 
 
 (*--------------------------------------------------------*)
@@ -1337,6 +1337,8 @@ Tactic Notation "xcleanpat" :=
 
 (**--todo clean up *)
 
+(* --deprecated
+
 Tactic Notation "xif_core" ident(H) tactic(cont) :=
   xuntag tag_if; split; intros H; fold_bool; [ | cont tt ].
 
@@ -1395,6 +1397,8 @@ Tactic Notation "xcases_real" :=
   try fold_bool; fold_prop.
 
 Tactic Notation "xcase" := xcases_real.
+*)
+
 
 (* xcases avec nommage *) 
     
@@ -1423,7 +1427,7 @@ Ltac xif_post H :=
    try fix_bool_of_known tt. 
 
 Ltac xif_core_nometa H cont :=
-  apply local_erase; split; intros H; cont tt.
+  xuntag tag_if; apply local_erase; split; intros H; cont tt.
 
 Ltac xif_core_meta H cont :=
   xif_core_nometa H cont.
@@ -1509,6 +1513,57 @@ Tactic Notation "xif" :=
   let H := fresh "C" in xif H.
 *)
 
+
+
+
+(*--useless?--*)
+
+Ltac xpat_base H cont :=
+  apply local_erase;
+  match goal with 
+  | |- ?P /\ ?Q => split; [ introv H | introv H; xtag_negpat H; cont tt ]
+  | |- forall _, _ => introv H
+  end.
+
+Ltac xpat_base_anonymous cont :=
+  let H := fresh "C" in xpat_base H cont.
+
+Tactic Notation "xcase_one" "as" ident(H) :=
+  xpat_base H ltac:(idcont).
+  
+Tactic Notation "xcase_one" :=
+  xpat_base_anonymous ltac:(idcont).
+
+Ltac xcases_core :=
+  xpat_base_anonymous ltac:(fun _ => try xcases_core);
+  try fold_bool; fold_prop.
+
+Ltac xcases_subst_core :=
+  xcases_core; try invert_first_hyp.
+
+Tactic Notation "xcases" :=
+  xcases_core.
+Tactic Notation "xcases_subst" := 
+  xcases_subst_core. 
+
+Ltac xcase_post :=
+  try solve [ discriminate | false; congruence ];
+  try match ltac_get_tag tt with tag_done => xdone end; 
+  try invert_first_hyp; 
+  try fold_bool; fold_prop.
+
+Tactic Notation "xcase_one_real" := 
+   xcase_one; xcase_post.
+
+Tactic Notation "xcases_real" := 
+  xcases; xcase_post.
+
+Tactic Notation "xcase" := 
+  xcases_real.
+
+
+
+
 (************************************************************)
 (* ** [xalias] *)
 
@@ -1540,7 +1595,7 @@ Tactic Notation "xalias_subst" :=
 (* **  *)
 
 Ltac xpat_core_new H cont1 cont2 :=
-  xuntag tag_case; split; 
+  xuntag tag_case; apply local_erase; split; 
     [ introv H; cont1 H 
     | introv H; xtag_negpat H; cont2 H ].
 

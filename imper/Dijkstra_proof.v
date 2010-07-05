@@ -1,7 +1,21 @@
 Set Implicit Arguments.
 Require Import LibCore.
-Require Import CFPrim.
+Require Import CFPrim CFTactics.
 Require Import Dijkstra_ml.
+
+
+
+(** Definition of the minimum of a multiset *)
+
+Definition min_of `{Le A} (E:multiset A) (X:A) := 
+  X \in E /\ forall_ Y \in E, X <= Y.
+
+(** Definition of the removal of the minimum from a multiset *)
+
+Definition removed_min  `{Le A} (E E':multiset A) :=
+  exists X, min_of E X /\ E = \{X} \u E'.
+
+Hint Unfold removed_min.
 
 
 
@@ -17,6 +31,119 @@ Module DijkstraSpec (MLHeapItems:MLHeapSig).  (* (OS:OrderedSigSpec with Module 
 
 Module Import Dijkstra := MLDijkstra MLHeapItems.
 
+Instance weight_le_inst : Le weight :=
+  fun x y => match x,y with
+  | Finite x, Finite y => x <= y
+  | Finite x, Infinite => True
+  | Infinite, Finite _ => False
+  | Infinite, Infinite => True
+  end.
+
+Instance weight_order_inst : Le_total_order (A:=weight).
+Proof.
+  Transparent le.
+  constructor. constructor. constructor.
+  intros x. destruct x; simpl. apply le_refl. auto.
+  intros x y z. destruct x; destruct y; destruct z; simpl;
+   intros; auto; tryfalse. apply* le_trans.
+  intros x y. destruct x; destruct y; simpl; intros; tryfalse; fequal.
+   apply* le_antisym. auto.
+  intros x y. destruct x; destruct y; simpl; auto. 
+   apply* le_total.
+Qed.
+
+
+
+Ltac xisspec_core ::=
+  solve [ intros_all; unfolds rel_le, pred_le, pure; auto; auto* ].
+
+Ltac xcf_post tt ::=
+  cbv beta;
+  repeat match goal with 
+  | |- unit -> _ => intros _
+  end;
+  try match goal with 
+  | |- pure _ _ => unfold pure at 1 
+  | |- forall _, pure _ _ => unfold pure at 1 
+  | |- forall _ _, pure _ _ => unfold pure at 1 
+  | |- forall _ _ _, pure _ _ => unfold pure at 1 
+  | |- forall _ _ _ _, pure _ _ => unfold pure at 1 
+  end.
+
+Ltac xret_core ::=
+  apply xret_lemma; 
+  try hextract; try hsimpl.
+
+
+
+
+Lemma weight_lt_spec : Pure weight_lt (x:weight) (y:weight) >> 
+  (bool_of (x < y)).
+Proof.
+  xcf. intros. lets: (@nle_to_slt _ _ _ d1 d2). intros. xmatch; xret.
+  
+  xsimpl. unfold bool_of.
+Qed.
+
+
+   let weight_lt d1 d2 =
+      match d1,d2 with
+        | Finite x, Finite y -> x < y
+        | Finite x, Infinite -> true
+        | Infinite, _ -> false
+  let le : t -> t -> bool =
+     fun (_,x1) (_,x2) -> (x1 <= x2)
+
+
+Module Type OrderedSigSpec.
+
+Declare Module O : MLOrdered.
+Import O.
+Parameter T : Type.
+Global Instance rep_t : Rep t T.
+
+Global Instance le_inst : Le T.
+Global Instance le_order : Le_total_order.
+
+Parameter eq_spec : RepTotal eq (X;t) (Y;t) >> bool_of (X = Y).
+Parameter lt_spec : RepTotal lt (X;t) (Y;t) >> bool_of (LibOrder.lt X Y).
+
+
+Hint Extern 1 (RegisterSpec eq) => Provide eq_spec.
+Hint Extern 1 (RegisterSpec lt) => Provide lt_spec.
+Hint Extern 1 (RegisterSpec leq) => Provide leq_spec.
+
+End OrderedSigSpec.
+
+
+(* Signature for heaps *)
+
+Module Type HeapSigSpec.
+
+Declare Module H : MLHeap.
+Declare Module OS : OrderedSigSpec with Module O := H.MLElement.
+Import H MLElement OS. 
+
+Global Instance heap_rep : Rep heap (multiset T).
+
+Parameter empty_spec : rep empty \{}.
+
+Parameter is_empty_spec : RepTotal is_empty (E;heap) >> 
+  bool_of (E = \{}).
+
+Parameter insert_spec : RepTotal insert (X;t) (E;heap) >>
+  \{X} \u E ;- heap.
+
+Parameter merge_spec : RepTotal merge (E1;heap) (E2;heap) >>
+  E1 \u E2 ;- heap.
+
+Parameter find_min_spec : RepSpec find_min (E;heap) |R>>
+  E <> \{} -> R (min_of E ;; t).
+
+Parameter delete_min_spec : RepSpec delete_min (E;heap) |R>>
+  E <> \{} -> R (removed_min E ;; heap).
+
+End HeapSigSpec.
 
 
 
