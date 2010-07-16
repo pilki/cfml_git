@@ -1,3 +1,24 @@
+
+(*
+Notation "'exists' ( x1 : T1 ) ',' P" :=
+  (exists x1:T1, P)
+  (at level 200, x1 ident, 
+   right associativity) : type_scope. 
+Notation "'exists' ( x1 : T1 ) ( x2 : T2 ) ',' P" :=
+  (exists x1:T1, exists x2:T2, P)
+  (at level 200, x1 ident, x2 ident, 
+   right associativity) : type_scope.  
+Notation "'exists' ( x1 : T1 ) ( x2 : T2 ) ( x3 : T3 ) ',' P" :=
+  (exists x1:T1, exists x2:T2, exists x3:T3, P)
+  (at level 200, x1 ident, x2 ident, x3 ident, 
+   right associativity) : type_scope. 
+Notation "'exists' ( x1 : T1 ) ( x2 : T2 ) ( x3 : T3 ) ( x4 : T4 ) ',' P" :=
+  (exists x1:T1, exists x2:T2, exists x3:T3, exists x4:T4, P)
+  (at level 200, x1 ident, x2 ident, x3 ident, x4 ident, 
+   right associativity) : type_scope. 
+*)
+
+
 Record dynamic := dyn { 
   dyn_type : Type; 
   dyn_value : dyn_type }.
