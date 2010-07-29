@@ -215,7 +215,7 @@ Notation "Q \*+ H" :=
   (at level 40) : heap_scope.
 
 Notation "# H" := (fun _:unit => H)
-  (at level 0, H at level 99) : heap_scope.
+  (at level 39, H at level 99) : heap_scope.
 
 
 (*------------------------------------------------------------------*)

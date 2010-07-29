@@ -6,7 +6,8 @@ let facto_for n =
   let r = ref 1 in
   for i = 1 to n do
      r := !r * i
-  done
+  done;
+  !r
 
 let facto_while n =
   let m = ref 0 in
@@ -14,5 +15,6 @@ let facto_while n =
   while !m <= n do
      r := !r * !m;
      m := !m - 1;
-  done
+  done;
+  !r
 
