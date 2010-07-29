@@ -365,8 +365,9 @@ let rec coq_of_imp_cf cf =
       let c2heap = heap_exists "Y" (Coq_var "A") (heap_star (Coq_app (inv, y)) (heap_pred (coq_apps (Coq_var "R") [y;x]))) in
       let c2 = coq_apps (coq_of_cf cf2) [Coq_app (q', coq_bool_true); post_unit c2heap] in   
       let c3 = heap_impl_unit (Coq_app (q', coq_bool_false)) (Coq_var "Q2") in
-      let lo = coq_exist "Q'" (Coq_impl (coq_bool, hprop)) (coq_conjs [c1;c2;c3]) in
-      let p3 = Coq_forall (("X", Coq_var "A"), coq_apps (coq_funs [("H2",hprop); ("Q2",wild_to_hprop)] lo) [Coq_app (inv, x); q]) in
+      let bo = coq_exist "Q'" (Coq_impl (coq_bool, hprop)) (coq_conjs [c1;c2;c3]) in
+      let lo = coq_funs [("H2",hprop); ("Q2",wild_to_hprop)] bo in
+      let p3 = Coq_forall (("X", Coq_var "A"), coq_apps (Coq_var "local") [lo; Coq_app (inv, x); q]) in
       let fr = coq_exist "R" (coq_impls [Coq_var "A"; Coq_var "A"] Coq_prop) (coq_conjs [p1;p2;p3]) in
       funhq "tag_while" (coq_exist "A" Coq_type (coq_exist "I" (Coq_impl (Coq_var "A", hprop)) fr)) 
       (* (!While: (fun H Q => exists A, exists I, exists R, 
@@ -375,7 +376,7 @@ let rec coq_of_imp_cf cf =
             /\ (forall x, local (fun H2 Q2 => exists Q', 
                    F1 H2 Q'
                 /\ (F2 (Q' true) (# Hexists y, (I y) \* [R y x]))
-                /\ (Q' false ==> Q2 tt))) (I x)) *)
+                /\ (Q' false ==> Q2 tt))) (I x) Q) *)
 
   | Cf_letpure _ -> unsupported "letpure-expression in imperative mode"
 

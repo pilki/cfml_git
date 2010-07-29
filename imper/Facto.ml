@@ -10,11 +10,11 @@ let facto_for n =
   !r
 
 let facto_while n =
-  let m = ref 0 in
+  let m = ref 1 in
   let r = ref 1 in
   while !m <= n do
      r := !r * !m;
-     m := !m - 1;
+     m := !m + 1;
   done;
   !r
 

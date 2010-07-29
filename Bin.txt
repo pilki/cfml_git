@@ -1581,3 +1581,32 @@ Qed.
 Lemma post_le_unit : forall H H' : hprop,
   H ==> H' -> (#H) ===> (#H').
 Proof. intros_all~. Qed.
+
+
+Lemma xfor_frame__ : forall I H' a b H Q (Fof:int->~~unit),
+  (forall i, is_local (Fof i)) ->
+  (a > (b)%Z -> H ==> (Q tt)) ->
+  ((a <= (b)%Z) -> 
+      (H ==> I a \* H') 
+   /\ (forall i, a <= i /\ i <= (b)%Z -> (Fof i) (I i) (# I(i+1))) 
+   /\ (I ((b)%Z+1) \* H' ==> Q tt)) ->
+  local (fun H Q => (a > (b)%Z -> H ==> (Q tt)) /\ (a <= (b)%Z -> exists I,
+     H ==> I a /\ (forall i, a <= i /\ i <= (b)%Z -> (Fof i) (I i) (# I(i+1))) /\ (I ((b)%Z+1) ==> Q tt))) H Q.
+Proof.
+  introv L M1 M2. apply local_erase. split. auto.
+  introv M3. intuit (M2 M3). exists (I \*+ H'). splits*.
+  intros i Hi. specializes H1 Hi. apply* local_wframe.
+Qed.
+
+Lemma xfor_frame_le__ : forall I H' a b H Q (Fof:int->~~unit),
+  (a <= (b)%Z) -> 
+  (H ==> I a \* H') ->
+  (forall i, a <= i /\ i <= (b)%Z -> (Fof i) (I i) (# I(i+1))) ->
+  (I ((b)%Z+1) \* H' ==> Q tt) ->
+  local (fun H Q => (a > (b)%Z -> H ==> (Q tt)) /\ (a <= (b)%Z -> exists I,
+     H ==> I a /\ (forall i, a <= i /\ i <= (b)%Z -> (Fof i) (I i) (# I(i+1))) /\ (I ((b)%Z+1) ==> Q tt))) H Q.
+Proof.
+  introv M1 M2 M3 M4. apply~ (>>> local_wframe unit __ H' (fun _:unit => I (b+1))).
+  apply local_erase. split. intros. false. math.
+  intros. exists* I. intros t. destruct t. auto.
+Qed.
