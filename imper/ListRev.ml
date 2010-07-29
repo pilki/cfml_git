@@ -1,4 +1,4 @@
-open Mylib
+open MyLib
 
 type 'a mlist = ('a * 'a mlist) nref 
 
