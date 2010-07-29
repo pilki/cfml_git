@@ -1672,7 +1672,7 @@ Tactic Notation "xmatch_simple_subst_alias" :=
 (************************************************************)
 (* ** [xgo] *)
 
-(*
+(**)
 
 Inductive Xhint_cmd :=
   | Xstop : Xhint_cmd
@@ -1710,17 +1710,22 @@ Ltac xgo_default solver cont :=
   | tag_ret => xret; cont tt
   | tag_fail => xfail; cont tt
   | tag_done => xdone; cont tt
-  | tag_apply => xapp_with solver; cont tt
-  | tag_let => xlet_with cont cont
-  | tag_letfun => fail
+  | tag_apply => xapp_then __ cont
+  | tag_let_val => xval; cont tt
+  | tag_let_trm => xlet; cont tt
+  | tag_let_fun => fail
   | tag_body => fail
   | tag_letrec => fail
   | tag_case => xcases_real; cont tt 
+  | tag_casewhen => fail 
   | tag_if => xif; cont tt
   | tag_alias => xalias; cont tt
-  | tag_toplet => fail
   | tag_match ?n => xmatch; cont tt
-  | tag_topfun => fail
+  | tag_top_val => fail
+  | tag_top_trm => fail
+  | tag_top_fun => fail
+  | tag_for => fail
+  | tag_while => fail
   end.
 
 Ltac xtactic tag := idtac.
@@ -1732,12 +1737,12 @@ Ltac run_hint h cont :=
   | XstopNoclear => idtac
   | XstopAfter => 
       match tag with
-      | tag_let => xlet_with cont ltac:(fun _ => idtac)
+      | tag_let_trm => fail (* todo: xlet_with cont ltac:(fun _ => idtac)*)
       | _ => xgo_default ltac:(fun _ => idtac) ltac:(fun _ => idtac) 
       end 
   | XstopInside => 
       match tag with
-      | tag_let => xlet_with ltac:(fun _ => idtac) cont 
+      | tag_let_trm => fail (*todo: xlet_with ltac:(fun _ => idtac) cont *)
       end
   | Xtactic => clears_hint tt; xtactic tag
   | XtacticNostop => xtactic tag; cont tt
@@ -1745,24 +1750,26 @@ Ltac run_hint h cont :=
   | XsubstAlias => xmatch_subst_alias; cont tt
   | Xargs ?E => 
       match tag with
-      | tag_let => xlet_with ltac:(fun _ => xapp E) ltac:(cont)
+      | tag_let_trm => fail (* todo!!*)
       | tag_apply => xapp E (*todo: not needed?*)
       end
   | XspecArgs (>>> ?S) ?E => 
       match tag with
-      | tag_let => xlet_with ltac:(fun _ => xapp_spec S E) ltac:(cont)
+      | tag_let_trm =>  fail (* todo!!*)
       | tag_apply => xapp_spec S E (*todo: not needed?*)
       end 
   | Xlet ?S =>
      match tag with
-     | tag_let => xlet S; cont tt
-     | tag_letfun => xfun_noxbody S
+     | tag_let_trm => xlet S; cont tt
+     | tag_let_fun => xfun_noxbody S
      end
-  | Xlets ?S =>
+(*
+   | Xlets ?S =>
      match tag with
-     | tag_let => xlets S; cont tt
-     | tag_letfun => xfun S
+     | tag_let_trm => xlets S; cont tt
+     | tag_let_fun => xfun S
      end
+*)
   | Xsimple => xmatch_simple; cont tt 
       (* todo : generalize
         | tag_case => xcases_real
@@ -1832,4 +1839,3 @@ Tactic Notation "xgo" "~" constr(a1) constr(h1) "," constr(a2) constr(h2) ","
   add_hint a1 h1; add_hint a2 h2; add_hint a3 h3; add_hint a4 h4; xgo~.
 
 
-*)

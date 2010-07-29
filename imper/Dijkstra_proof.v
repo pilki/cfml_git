@@ -54,8 +54,6 @@ Notation "'TopLetFuncTEMP' ':=' H" :=
   (tag tag_top_fun None H)
   (at level 69, H at level 200).
 
-(*------------------------------------------------------------------*)
-
 Notation "'keep' R H Q" :=
   (R H (Q \*+ H)) (at level 25, R at level 0, H at level 0, Q at level 0).
 
@@ -65,6 +63,10 @@ Notation "'Hexists' x1 x2 x3 , H" := (Hexists x1, Hexists x2, Hexists x3, H)
   (at level 39, x1 ident, x2 ident, x3 ident, H at level 50) : heap_scope.
 Notation "'Hexists' x1 x2 x3 , H" := (Hexists x1, Hexists x2, Hexists x3, Hexists x4, H)
   (at level 39, x1 ident, x2 ident, x3 ident, x4 ident, H at level 50) : heap_scope.
+
+
+(*------------------------------------------------------------------*)
+
 
 
 Definition item := MLItem.t.
