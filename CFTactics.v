@@ -1157,6 +1157,12 @@ Tactic Notation "xfun_induction_nointro" constr(S) constr(I) :=
 (*--------------------------------------------------------*)
 (* ** [xfor] *)
 
+Ltac xfor_frame_side tt := 
+  let H' := fresh in let PH' := fresh in
+  let i := fresh in let Pi := fresh in
+  intros H' PH' i Pi; eapply local_frame; 
+   [try xlocal | apply PH'; apply Pi ].
+
 Ltac xfor_bounds_intro tt :=
   intro; let i := get_last_hyp tt in
   let Hli := fresh "Hl" i in
@@ -1166,7 +1172,7 @@ Ltac xfor_bounds_intro tt :=
 Ltac xfor_core I := 
   let Hi := fresh "Hfor" in
   eapply (@xfor_frame I); 
-  [ xlocal
+  [ try solve [ xfor_frame_side tt ]
   | intros Hfor; try solve [ false; math ]
   | intros Hfor; splits (3%nat); 
      [ hsimpl 
@@ -1191,6 +1197,18 @@ Tactic Notation "xfor_le" constr(I) :=
 (*--------------------------------------------------------*)
 (* ** [xwhile] *)
 
+
+Lemma esplit_boolof : forall (b:bool) (H:hprop) (P:(bool->hprop)->Prop),
+  P (\= b \*+ H) -> ex P.
+Proof. intros. exists (\= b \*+ H). applys_eq H0 1. extens~. Qed.
+
+Ltac xwhile_body_manual :=
+  let x := fresh "X" in intros x; xextract;
+  pose ltac_mark; intros; apply local_erase; gen_until_mark.
+
+Ltac xwhile_body_handle :=
+  intros; eapply esplit_boolof; splits.
+
 Ltac xwhile_core I R X := 
   first [ eapply (@xwhile_frame _ I R)
         | eapply (@xwhile_frame _ I (measure R))];
@@ -1198,7 +1216,8 @@ Ltac xwhile_core I R X :=
   | xlocal
   | try prove_wf
   | exists X; instantiate; hsimpl 
-  | idtac ].
+  | try xwhile_body_manual (* ; try xwhile_body_handle*)
+  | hsimpl ].
 
 Ltac xwhile_manual_core I R := 
   first [ eapply (@xwhile_frame _ I R)
@@ -1207,7 +1226,9 @@ Ltac xwhile_manual_core I R :=
   | xlocal
   | idtac
   | idtac
+  | try xwhile_body_manual
   | idtac ].
+
 
 Tactic Notation "xwhile" constr(I) constr(R) constr(X) := 
   xwhile_core I R X.

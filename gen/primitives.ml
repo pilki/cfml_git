@@ -80,7 +80,8 @@ let all_primitives_table = (*todo:complete*)
     "List.append", "ml_append";
     "Stream.append", "ml_append";
     "Stream.take", "ml_take";  
-    "Stream.drop", "ml_drop";  ]
+    "Stream.drop", "ml_drop"; 
+    "Mylib.is_null", "ml_is_null" ]
 
 let builtin_constructors_table = (* todo: indiquer pervasives *)
   [ "[]", "Coq.Lists.List.nil";

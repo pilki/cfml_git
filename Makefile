@@ -7,7 +7,7 @@ COQDOC=$(COQBIN)coqdoc
 OCAMLC=ocamlc $(INCLUDES)
 OCAMLDEP=ocamldep $(INCLUDES)
 MYOCAMLDEP=gen/myocamldep.byte 
-GENERATOR=gen/main.byte 
+GENERATOR=gen/main.byte -rectypes 
 
 TOOLS=\
 	Shared.v \
@@ -88,8 +88,9 @@ OKAO=\
 OKA=$(OKAS) $(OKAQ) $(OKAH) $(OKAO)
 
 NEW=\
-	imper/Facto_ml.v \
-	imper/Facto_proof.v 
+	imper/Mylib_ml.v \
+	imper/ListRev_ml.v \
+	imper/ListRev_proof.v 
 
 IMP=\
 	CFHeaps.v \
@@ -101,6 +102,8 @@ IMP=\
 IMPER=\
 	imper/Counter_ml.v \
 	imper/Counter_proof.v \
+	imper/Facto_ml.v \
+	imper/Facto_proof.v \
 	imper/Dijkstra_ml.v \
 	imper/Dijkstra_proof.v 
 

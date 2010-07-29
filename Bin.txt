@@ -1610,3 +1610,11 @@ Proof.
   apply local_erase. split. intros. false. math.
   intros. exists* I. intros t. destruct t. auto.
 Qed.
+
+
+
+(*
+Lemma temp2 : forall (H:hprop),
+  H ==> (fun _ => H) tt.
+Proof. auto. Qed.
+*)

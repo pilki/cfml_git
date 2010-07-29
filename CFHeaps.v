@@ -805,6 +805,14 @@ Proof.
 Qed.
 
 
+(* todo *)
+Lemma hsimpl_to_qunit : forall (H:hprop) (Q:unit->hprop),
+  Q = (fun _ => H) ->
+  H ==> Q tt.
+Proof. intros. subst. auto. Qed.
+Hint Resolve hsimpl_to_qunit.
+
+
 (*------------------------------------------------------------------*)
 (* ** Tactic [hchange] *)
 
