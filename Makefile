@@ -88,7 +88,8 @@ OKAO=\
 OKA=$(OKAS) $(OKAQ) $(OKAH) $(OKAO)
 
 NEW=\
-	okasaki/Okasaki_ml.v
+	imper/Facto_ml.v \
+	imper/Facto_proof.v 
 
 IMP=\
 	CFHeaps.v \
@@ -99,11 +100,12 @@ IMP=\
 
 IMPER=\
 	imper/Counter_ml.v \
-	imper/Counter_proof.v 
+	imper/Counter_proof.v \
+	imper/Dijkstra_ml.v \
+	imper/Dijkstra_proof.v 
 
 
-#	imper/Dijkstra_ml.v \
-#	imper/Dijkstra_proof.v 
+#	okasaki/Okasaki_ml.v
 
 # 	
 #	okasaki/BinaryRandomAccessList_ml.v \

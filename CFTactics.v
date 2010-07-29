@@ -313,11 +313,14 @@ Tactic Notation "xlocal" :=
     and uses the characteristic formula known for [f]
     in order to get started proving the goal. *)
 
-Ltac xcf_post tt :=
-  cbv beta;
+
+Ltac remove_head_unit tt :=
   repeat match goal with 
   | |- unit -> _ => intros _
   end.
+
+Ltac xcf_post tt :=
+  cbv beta; remove_head_unit tt.
 
 Ltac solve_type :=
   match goal with |- Type => exact unit end.
@@ -364,12 +367,19 @@ Tactic Notation "xcf_app" := xcf_app_core.
 
 (*--------------------------------------------------------*)
 (* ** [xfind] *)
+(*todo*)
+
+Ltac xfind_db f :=
+  ltac_database_get database_spec f.
+
+Ltac xfind_ctx f :=
+  let H := get_spec_hyp f in generalize H.
 
 (** [xfind f] displays the specification registered with [f],
     (by inserting it as new hypothesis at head of the goal). *)
 
 Tactic Notation "xfind" constr(f) :=  
-  ltac_database_get database_spec f.
+  first [ xfind_ctx f | xfind_db f ].
 
 (** [xfind] without argument calls [xfind f] for the function
     [f] that appear in the current goal *)
@@ -1039,7 +1049,7 @@ Ltac xbody_pre tt :=
   let H := get_last_hyp tt in generalizes H.
 
 Ltac xbody_base_intro tt :=
-  xbody_core ltac:(fun _ => introv).
+  xbody_core ltac:(fun _ => remove_head_unit tt; introv).
 
 Ltac xbody_base_nointro tt :=
   xbody_core ltac:(fun _ => idtac).
@@ -1710,7 +1720,8 @@ Ltac xgo_default solver cont :=
   | tag_ret => xret; cont tt
   | tag_fail => xfail; cont tt
   | tag_done => xdone; cont tt
-  | tag_apply => xapp_then __ cont
+  | tag_apply => xapp
+  | tag_seq => xseq; cont tt
   | tag_let_val => xval; cont tt
   | tag_let_trm => xlet; cont tt
   | tag_let_fun => fail

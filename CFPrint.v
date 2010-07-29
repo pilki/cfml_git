@@ -703,10 +703,10 @@ Notation "'While' Q1 'Do' Q2 'Done'" :=
   (!While (fun H Q => exists A, exists I, exists R,
        wf R 
      /\ (exists x, H ==> I x)
-     /\ (forall x, exists Q', 
-            Q1 (I x) Q'
+     /\ (forall x, local (fun H2 Q2 => exists Q', 
+            Q1 H2 Q'
          /\ Q2 (Q' true) (# Hexists y, (I y) \* [R y x])
-         /\ (Q' false ==> Q tt))))
+         /\ (Q' false ==> Q2 tt)) (I x) Q)))
   (at level 69) : charac.
 
 Open Scope charac.
