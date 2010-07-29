@@ -2,7 +2,7 @@ open MyLib
 
 type 'a mlist = ('a * 'a mlist) nref 
 
-let length (l:'a mlist) =
+let mlength (l:'a mlist) =
    let p = ref l in
    let n = ref 0 in
    while not (is_null !p) do

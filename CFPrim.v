@@ -295,9 +295,9 @@ Parameter ml_rand_int : val.
 Parameter ml_min_int : int.
 Parameter ml_max_int : int.
 
+Parameter ml_incr : val.
+Parameter ml_decr : val.
 
-
-Parameter null : loc.
-Parameter ml_is_null : val.
-
+Parameter ml_fst : val.
+Parameter ml_snd : val.
 

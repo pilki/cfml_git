@@ -7,7 +7,7 @@ COQDOC=$(COQBIN)coqdoc
 OCAMLC=ocamlc $(INCLUDES)
 OCAMLDEP=ocamldep $(INCLUDES)
 MYOCAMLDEP=gen/myocamldep.byte 
-GENERATOR=gen/main.byte -rectypes 
+GENERATOR=gen/main.byte
 
 TOOLS=\
 	Shared.v \
@@ -87,8 +87,13 @@ OKAO=\
 
 OKA=$(OKAS) $(OKAQ) $(OKAH) $(OKAO)
 
+#	imper/MyLib.cmi \
+
+imper/MyLib_ml.vo/:imper/MyLib_ml.v
+	$(COQC) imper/MyLib_ml.v
+
 NEW=\
-	imper/Mylib_ml.v \
+	imper/MyLib_ml.v \
 	imper/ListRev_ml.v \
 	imper/ListRev_proof.v 
 
@@ -226,12 +231,15 @@ $(MYOCAMLDEP):
 
 %_ml.v: %.ml %.cmi $(GENERATOR) 
 	@echo "GENERATING $@"
-	@$(GENERATOR) $(INCLUDES) $<
+	@$(GENERATOR) -rectypes $(INCLUDES) $<
 # -debug
+
+imper/MyLib.cmi: imper/MyLib.mli
+	$(GENERATOR) -rectypes -onlycmi imper/MyLib.mli
 
 %.cmi: %.ml 
 	@echo "MAKING CMI: $@"
-	@$(GENERATOR) -onlycmi $(INCLUDES) $<
+	@$(GENERATOR) -rectypes -onlycmi $(INCLUDES) $<
 
 %_ml.vo: %_ml.v %_ml.d CFPrim.vo #FuncPrim.vo  LibCore.vo 
 	@echo "COQC $<"
@@ -278,8 +286,8 @@ include $(ALL:.v=.d)
 endif
 
 ifneq ($(findstring $(MAKECMDGOALS),new),)
-include $(ALL:.v=.d) $(NEW:.v=.d)
-#include 
+include $(ALL:.v=.d)  $(NEW:.v=.d)
+#include
 #include $(TOOLS:.v=.d)
 endif
 

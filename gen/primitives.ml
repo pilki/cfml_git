@@ -65,6 +65,10 @@ let all_primitives_table = (*todo:complete*)
     "Pervasives.ref", "ml_ref";    
     "Pervasives.!", "ml_get";
     "Pervasives.:=", "ml_set";
+    "Pervasives.incr", "ml_incr";   
+    "Pervasives.decr", "ml_decr";   
+    "Pervasives.fst", "ml_fst";   
+    "Pervasives.snd", "ml_snd";   
     "Pervasives.max_int", "ml_max_int";
     "Pervasives.min_int", "ml_min_int";
     "Array.make", "ml_array_make";    
@@ -81,7 +85,7 @@ let all_primitives_table = (*todo:complete*)
     "Stream.append", "ml_append";
     "Stream.take", "ml_take";  
     "Stream.drop", "ml_drop"; 
-    "Mylib.is_null", "ml_is_null" ]
+    "MyLib.is_null", "ml_is_null" ]
 
 let builtin_constructors_table = (* todo: indiquer pervasives *)
   [ "[]", "Coq.Lists.List.nil";

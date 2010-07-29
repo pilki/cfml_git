@@ -50,6 +50,9 @@ let _ =
    let debugdir = dirname ^ "/output/" in
 
    (*---------------------------------------------------*)
+if sourcefile = "imper/MyLib.ml" then exit 0;
+
+   (*---------------------------------------------------*)
    trace "2) reading and typing source file";
    let (opt,inputfile) = process_implementation_file ppf sourcefile in
    let parsetree1 : Parsetree.structure =
