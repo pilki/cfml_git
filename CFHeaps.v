@@ -799,12 +799,11 @@ Tactic Notation "hsimpl" constr(X1) constr(X2) constr(X3) :=
   hsimpl (>>> X1 X2 X3).
 
 Tactic Notation "hsimpl" "~" constr(L) :=
-  hsimpl L; xauto~.
+  hsimpl L; auto~.
 Tactic Notation "hsimpl" "~" constr(X1) constr(X2) :=
-  hsimpl X1 X2; xauto~.
+  hsimpl X1 X2; auto~.
 Tactic Notation "hsimpl" "~" constr(X1) constr(X2) constr(X3) :=
-  hsimpl X1 X2 X3; xauto~.
-
+  hsimpl X1 X2 X3; auto~.
 
 
 Lemma hsimpl_demo : forall H1 H2 H3 H4 H5,

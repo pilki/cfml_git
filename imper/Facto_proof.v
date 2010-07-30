@@ -1,6 +1,7 @@
 Set Implicit Arguments.
 Require Import LibCore CFPrim Facto_ml.
 
+Opaque Ref.
 
 (********************************************************************)
 (* ** Factorial function *)
@@ -33,11 +34,11 @@ Lemma facto_for_spec : Spec facto_for n |R>>
   n >= 0 -> R [] (\= fact n).
 Proof.
   xcf. intros. xapp. xseq. 
-  xfor (fun i => r ~> RefOn (fact (i-1))).
-  math_rewrite (n = 0). simpl. rewrite~ fact_zero.
-  simpl. rewrite~ fact_zero.
-  xapp. intro_subst. xapp. xsimpl. 
-   math_rewrite (i+1-1=i). rewrite~ (@fact_succ i). rewrite~ Zmult_comm.
+  xfor_general (fun i => r ~> Ref Id (fact (i-1))).
+    hsimpl. math_rewrite (n = 0). simpl. rewrite~ fact_zero.
+    simpl. rewrite~ fact_zero.
+    xapp. intro_subst. xapp. hsimpl. rewrite~ Zmult_comm.
+     rewrite~ <- (@fact_succ i). fequal~.
   xapp. xsimpl. subst. fequal~.
 Qed.
 
@@ -48,20 +49,25 @@ Lemma facto_while_spec : Spec facto_while n |R>>
   n >= 0 -> R [] (\= fact n).
 Proof.
   xcf. intros. xapp. xapp. xseq.
-  xwhile (fun i => m ~> RefOn (i+1) \* r ~> RefOn (fact i) \* [0<=i<=n]) (upto n) 0.
-  rewrite~ fact_zero.
-  math.
-  intros. exists (\= (X+1 '<= n) \*+ m ~> RefOn (X+1) \*+ r ~> RefOn (fact X)). splits.
-  xapp. intro_subst. xret. hsimpl~.
-    xapp. intro_subst. intros. xclean.
-    xapp. intro_subst. 
-    xapp.
-    xapp. intro_subst.
-    xapp. hsimpl. rewrite (@fact_succ (X+1)). math_rewrite (X+1-1=X). rewrite~ Zmult_comm.
-      math.
-      unfolds. math.
-      math.    
-  hextract. xclean. math_rewrite (X = n). auto.
+  xwhile (fun i => m ~> Ref Id (i+1) \* r ~> Ref Id (fact i) \* [0<=i<=n]) (upto n) 0.
+    rewrite~ fact_zero. 
+    auto~.
+    intros i [L U]. xcond.
+      xapp. intro_subst. xret. hsimpl~. xclean.
+      intros. xclean.
+       xapp. intro_subst.
+       xapp. intro_subst. 
+       xapp.
+       xapp. intro_subst.
+       xapp. hsimpl. rewrite~ Zmult_comm. rewrite (@fact_succ (i+1)). fequals_rec; auto~.    
+      auto~.
+      auto~.
+      auto~.    
+  hextract. xclean. math_rewrite (i = n). auto.
   xapp. xsimpl~.
 Qed.
+ 
+(* todo: make shorter! *)
+
+
 

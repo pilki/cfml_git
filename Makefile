@@ -106,8 +106,8 @@ IMP=\
 
 IMPER=\
 	imper/Counter_ml.v \
-	imper/Counter_proof.v \
 	imper/Facto_ml.v \
+	imper/Counter_proof.v \
 	imper/Facto_proof.v \
 	imper/Dijkstra_ml.v \
 	imper/Dijkstra_proof.v 

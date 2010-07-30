@@ -276,6 +276,16 @@ Tactic Notation "xauto" "~" := xauto_tilde.
 Tactic Notation "xauto" "*" := xauto_star.
 Tactic Notation "xauto" := xauto~.
 
+
+
+Tactic Notation "hsimpl" "~" constr(L) :=
+  hsimpl L; xauto~.
+Tactic Notation "hsimpl" "~" constr(X1) constr(X2) :=
+  hsimpl X1 X2; xauto~.
+Tactic Notation "hsimpl" "~" constr(X1) constr(X2) constr(X3) :=
+  hsimpl X1 X2 X3; xauto~.
+
+
 (*--------------------------------------------------------*)
 (* ** [xisspec] *)
 
