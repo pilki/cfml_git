@@ -87,7 +87,7 @@ Definition Id {A:Type} (X:A) (x:A) :=
 
 (** References *)
 
-Record ref A := { content : A }. (* todo? *)
+   (*--todo: Record ref A := { content : A }. *)
 
 Definition Ref a A (T:htype A a) (V:A) (l:loc) :=
   Hexists v, l ~~> v \* v ~> T V.
@@ -100,9 +100,27 @@ Lemma unfocus_ref : forall (l:loc) a (v:a) A (T:htype A a) V,
   l ~> Ref Id v \* v ~> T V ==> l ~> Ref T V.
 Proof. intros. unfold Ref. hdata_simpl. xsimpl~. Qed.
 
+Opaque Ref.
+
 
 (************************************************************)
 (** Axiomatic specification of the primitive functions *)
+
+(* todo: move *)
+Notation "x ''=' y :> A" := (istrue (@eq A x y))
+  (at level 70, y at next level) : comp_scope.
+Notation "x ''<>' y :> A" := (istrue (~ (@eq A x y)))
+  (at level 69, y at next level) : comp_scope.
+
+(** Pointers *)
+
+Parameter ml_phy_eq : val.
+Parameter ml_phy_eq_spec : Pure ml_phy_eq x y >> = (x '= y :> loc).
+Hint Extern 1 (RegisterSpec ml_phy_eq) => Provide ml_phy_eq_spec.
+
+Parameter ml_phy_neq : val.
+Parameter ml_phy_neq_spec : Pure ml_phy_neq x y >> = (x '<> y :> loc).
+Hint Extern 1 (RegisterSpec ml_phy_neq) => Provide ml_phy_neq_spec.
 
 (** Arithmetic *)
 

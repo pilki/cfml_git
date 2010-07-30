@@ -17,5 +17,13 @@ let _ =
   Printf.printf "%d\n" (length x)
 *)
 
+let rev (l:'a mlist) =
+  let r = ref (null:'a mlist) in
+  while l != null do
+    let (x,f) = !l in
+    r := ref (x, !r);
+  done;
+  !r
+
 
 

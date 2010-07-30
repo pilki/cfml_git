@@ -46,6 +46,8 @@ let inlined_primitives_table =
 let all_primitives_table = (*todo:complete*)
   [ "Pervasives.=", "ml_eqb";
     "Pervasives.<>", "ml_neq";
+    "Pervasives.==", "ml_phy_eq";
+    "Pervasives.!=", "ml_phy_neq";
     "Pervasives.+", "ml_plus";
     "Pervasives.-", "ml_minus";
     "Pervasives.~-", "ml_opp";

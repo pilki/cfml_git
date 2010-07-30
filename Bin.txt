@@ -1775,3 +1775,25 @@ Tactic Notation "xfor" constr(I) :=
 Tactic Notation "xfor_le" constr(I) := 
   xfor_le_core I.
 
+
+
+
+Notation "'Hexists' x1 x2 , H" := (Hexists x1, Hexists x2, H)
+  (at level 39, x1 ident, x2 ident, H at level 50) : heap_scope.
+Notation "'Hexists' x1 x2 x3 , H" := (Hexists x1, Hexists x2, Hexists x3, H)
+  (at level 39, x1 ident, x2 ident, x3 ident, H at level 50) : heap_scope.
+Notation "'Hexists' x1 x2 x3 , H" := (Hexists x1, Hexists x2, Hexists x3, Hexists x4, H)
+  (at level 39, x1 ident, x2 ident, x3 ident, x4 ident, H at level 50) : heap_scope.
+
+Notation "'keep' R H Q" :=
+  (R H (Q \*+ H)) (at level 25, R at level 0, H at level 0, Q at level 0).
+
+
+
+(*
+Fixpoint List A a (T:A->a->hprop) (L:list A) (l:loc) : hprop :=
+  match L with
+  | nil => [True]
+  | X::L' => Hexists x l', T X x \* l ~> RefOn (x,l') \* List T L' l'
+  end.
+*)

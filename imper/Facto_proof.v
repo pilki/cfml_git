@@ -1,7 +1,6 @@
 Set Implicit Arguments.
 Require Import LibCore CFPrim Facto_ml.
 
-Opaque Ref.
 
 (********************************************************************)
 (* ** Factorial function *)
