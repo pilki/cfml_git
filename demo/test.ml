@@ -1,3 +1,18 @@
+(* ---------------------------------------------------------*)
+(* loops *)
+
+let sum n =
+  let x = ref n in
+  for i = 1 to n do decr x done;
+  !x
+  (*let r = !x in r  todo simplify *)
+
+let decr_while x = 
+  while !x > 0 do decr x done
+
+
+(* ---------------------------------------------------------*)
+(* arrays
 
 let arrays () =
    let t1 = Array.make 10 1 in
@@ -10,7 +25,7 @@ let arrays () =
 
 (*let t3 = Array.map (fun i -> i+1) t1*)
 
-
+*)
 
 (* ---------------------------------------------------------*)
 (* type abbreviations 
@@ -99,20 +114,6 @@ let decr_pos x =
 let decr_pos_test x =
   decr_pos x
 
-*)
-
-
-(* ---------------------------------------------------------*)
-(* loops 
-
-let sum n =
-  let x = ref n in
-  for i = 1 to n do decr x done;
-  !x
-  (*let r = !x in r  todo simplify *)
-
-let decr_while x = 
-  while !x > 0 do decr x done
 
 *)
 (* ---------------------------------------------------------*)

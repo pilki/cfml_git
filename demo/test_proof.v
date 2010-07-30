@@ -4,14 +4,99 @@ Require Import LibCore.
 Require Import CFPrim.
 Require Import test_ml.
 
-Opaque heap_is_empty hdata heap_is_single heap_is_empty_st RefOn.
+Opaque heap_is_empty hdata heap_is_single heap_is_empty_st Ref.
 
+Ltac xfor_base I cont1 cont2 := 
+  apply local_erase; split; 
+    [ cont1 tt 
+    | cont2 tt; esplit; exists I; splits 3%nat; 
+       [ hsimpl 
+       | xfor_bounds_intro tt
+       | instantiate; hsimpl ]
+    ].
+
+Ltac xfor_core_gen I H :=
+  xfor_base I ltac:(fun _ => intros H)
+              ltac:(fun _ => intros H).
+
+Lemma xfor_contradict_lemma : forall (a b : int),
+  (a > b) -> (a <= b) -> False.
+Proof. math. Qed.
+
+Ltac xfor_contradict tt :=
+  let H := fresh "TEMP" in
+  intros H; false;
+  apply (xfor_contradict_lemma H); clear H.
+
+Ltac xfor_core_le I := 
+  xfor_base I ltac:(fun _ => xfor_contradict tt; try math)
+              ltac:(fun _ => intros _).
+
+Ltac xfor_pre cont :=
+  match ltac_get_tag tt with
+  | tag_seq => xseq; [ cont tt | ]
+  | tag_for => cont tt
+  end.
+
+Ltac xfor_base_gen I H :=
+  xfor_pre ltac:(fun _ => xfor_core_gen I H).
+
+Ltac xfor_base_le I :=
+  xfor_pre ltac:(fun _ => xfor_core_le I).
+
+Tactic Notation "xfor" constr(I) := 
+  xfor_base_le I.
+Tactic Notation "xfor_general" constr(I) "as" ident(H) := 
+  xfor_base_gen I H.
+Tactic Notation "xfor_general" constr(I) := 
+  let H := fresh "Hfor" in xfor_general I as H.
+
+
+(********************************************************)
+(* for loops *)
+
+Lemma sum_spec : Spec sum (n:int) |R>> n > 0 -> R [] (\= 0).
+Proof.
+  xcf. intros.
+  xapp.
+  xfor (fun i => (x ~> Ref Id (n+1-i))). math.
+    xapp. hsimpl. math.
+  xapp. xsimpl. math.
+Qed.
+
+
+(********************************************************)
+(* while loops *)
+
+Ltac hsimpls := repeat progress (hsimpl).
+(* todo: modifier hsimpl pour nommer que le dernier élément par défaut *)
+
+
+Lemma decr_while_spec : Spec decr_while x |R>> 
+  forall n, n >= 0 -> R (x ~> Ref Id n) (# x ~> Ref Id 0).
+Proof.
+  xcf. intros.
+
+
+
+
+  xwhile (fun i:int => x ~> RefOn i \* [i >= 0]) (fun i:int => abs i). hsimpl~.
+  (* todo: xwhile_cond with readonly *)
+  intros i. exists (\[ bool_of (i>0)] \*+ (x ~> RefOn i \* [i >= 0])). (* todo: optimize read_only *)
+  splits (3%nat).
+  xapp. intro_subst. intros P. xret. hsimpl~. skip.
+  xextract as M1 M2. xapp. hsimpl. skip.
+  math.
+  hextract. xclean. math_rewrite (i = 0). (*todo: equality generates*) hsimpl.
+Qed.
+
+(* todo: hsimpl_right *) 
 
 
 
 
 (********************************************************)
-(* arrays *)
+(* arrays
 
 Lemma arrays_spec : Spec arrays () |R>> R [] (\=3).
 Proof.
@@ -23,7 +108,8 @@ Proof.
   xlet. skip. 
   skip.
 Admitted.
-   
+
+ *)
 
 
 (********************************************************)
@@ -160,45 +246,6 @@ Print imp2_cf.
 *)
 
 
-
-(********************************************************)
-(* while loops *)
-
-Ltac hsimpls := repeat progress (hsimpl).
-(* todo: modifier hsimpl pour nommer que le dernier élément par défaut *)
-
-
-Lemma decr_while_spec : Spec decr_while x |R>> 
-  forall n, n >= 0 -> R (x ~> RefOn n) (# x ~> RefOn 0).
-Proof.
-  xcf. intros.
-  xwhile (fun i:int => x ~> RefOn i \* [i >= 0]) (fun i:int => abs i). hsimpl~.
-  (* todo: xwhile_cond with readonly *)
-  intros i. exists (\[ bool_of (i>0)] \*+ (x ~> RefOn i \* [i >= 0])). (* todo: optimize read_only *)
-  splits (3%nat).
-  xapp. intro_subst. intros P. xret. hsimpl~. skip.
-  xextract as M1 M2. xapp. hsimpl. skip.
-  math.
-  hextract. xclean. math_rewrite (i = 0). (*todo: equality generates*) hsimpl.
-Qed.
-
-(* todo: hsimpl_right *) 
-
-
-(********************************************************)
-(* for loops *)
-
-Lemma sum_spec : Spec sum (n:int) |R>> n > 0 -> R [] (\= 0).
-Proof.
-  xcf. intros.
-  xapp.
-  xseq. (* xseq (x ~> RefOn 0). *)
-  xfor (fun i => (x ~> RefOn (n+1-i))). 
-    math_rewrite (n+1-1 = n). hsimpl. (* todo: hsimpl generates equalities!! *)
-    xapp. intros _. hsimpl. math_rewrite (n + 1 - i - 1 = n + 1 - (i + 1)). auto.
-  math_rewrite (n+1-(n+1) = 0).
-  xgc_core. xapp. hsimpl.
-Qed.
 
 
 
