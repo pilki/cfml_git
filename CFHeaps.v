@@ -380,6 +380,7 @@ Ltac check_goal_himpl tt :=
   | |- pred_le _ _ => idtac
   end.
 
+(* deprecated 
 
 Ltac protect_evars_in H :=
    match H with context [ ?X ] => 
@@ -418,6 +419,36 @@ Ltac protect_evars_in H ::=
      | heap -> Prop => go tt
      end
   end.
+
+*)
+
+Ltac protect_evars_in H :=
+   match H with context [ ?X ] =>
+     let go tt := 
+       match X with
+       | _ \* _ => fail 1
+       | X => fail 1 
+       | ?x ~> ?R => 
+           match x with
+           | x => idtac             
+           | _ => fail 20 "Uninstantiated argument at left of ~>"
+           end;
+           let TR := type of R in
+           let K := fresh "TEMP" in 
+           sets_eq K: (R : ltac_tag_subst TR)
+       | [ ?R ] => 
+           let TR := type of R in
+           let K := fresh "TEMP" in 
+           sets_eq K: (R : ltac_tag_subst TR)
+       | _ => let K := fresh "TEMP" in
+              sets_eq K: (X : ltac_tag_subst hprop)
+       end in
+     match type of X with 
+     | hprop => go tt
+     | heap -> Prop => go tt
+     end
+  end.
+
 
 Ltac protect_evars_debug :=
   match goal with |- _ ==> ?H => protect_evars_in H end.
@@ -766,6 +797,15 @@ Tactic Notation "hsimpl" constr(X1) constr(X2) :=
   hsimpl (>>> X1 X2).
 Tactic Notation "hsimpl" constr(X1) constr(X2) constr(X3) :=
   hsimpl (>>> X1 X2 X3).
+
+Tactic Notation "hsimpl" "~" constr(L) :=
+  hsimpl L; xauto~.
+Tactic Notation "hsimpl" "~" constr(X1) constr(X2) :=
+  hsimpl X1 X2; xauto~.
+Tactic Notation "hsimpl" "~" constr(X1) constr(X2) constr(X3) :=
+  hsimpl X1 X2 X3; xauto~.
+
+
 
 Lemma hsimpl_demo : forall H1 H2 H3 H4 H5,
   H1 \* H2 \* H3 \* H4 ==> H4 \* H3 \* H5 \* H2.

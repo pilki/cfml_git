@@ -145,7 +145,8 @@ DEMO=\
 #	okasaki/queue_batch_proof.v 
 
 TEST=\
-	demo/test_ml.v 
+	demo/test_ml.v \
+	demo/test_proof.v 
 
 ALL=$(IMP) $(TEST) 
 OLD=$(TOOLS) $(DEMO) $(OKA) $(OKACOD)

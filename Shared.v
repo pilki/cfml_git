@@ -204,6 +204,7 @@ Proof. intros_all. subst~. destruct b; simpls; false. Qed.
 Hint Rewrite isTrue_istrue istrue_isTrue : rew_istrue.
 Ltac rew_istrue := autorewrite with rew_istrue.
 
+
 Ltac fix_bool_of_known tt := 
   match goal with 
   | H: bool_of ?P true |- _ => 
@@ -219,7 +220,9 @@ Ltac fix_bool_of_known tt :=
   | |- bool_of ?P false => 
      apply bool_of_false_in_forw
   | |- bool_of ?P ?b =>
-     apply bool_of_prove; rew_istrue
+     first [ apply refl_equal 
+           | apply bool_of_prove; 
+             try (check_noevar_goal; rew_istrue) ]
   end.
 
 

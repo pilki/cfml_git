@@ -211,10 +211,13 @@ Ltac post_is_meta tt :=
     context in order to beautify hypotheses that have been 
     inferred. *)
 
-Tactic Notation "xclean" :=
-  repeat calc_partial_eq tt; 
+Ltac xclean_core :=
+  calc_partial_eq tt; 
   repeat fix_bool_of_known tt;
-  fold_bool; fold_prop.  
+  fold_bool; fold_prop. 
+
+Tactic Notation "xclean" :=
+  xclean_core.
 
 (*--------------------------------------------------------*)
 (* ** [xok] *)
@@ -1157,85 +1160,106 @@ Tactic Notation "xfun_induction_nointro" constr(S) constr(I) :=
 (*--------------------------------------------------------*)
 (* ** [xfor] *)
 
-Ltac xfor_frame_side tt := 
-  let H' := fresh in let PH' := fresh in
-  let i := fresh in let Pi := fresh in
-  intros H' PH' i Pi; eapply local_frame; 
-   [try xlocal | apply PH'; apply Pi ].
-
 Ltac xfor_bounds_intro tt :=
   intro; let i := get_last_hyp tt in
   let Hli := fresh "Hl" i in
   let Hui := fresh "Hu" i in
   intros [Hli Hui].
 
-Ltac xfor_core I := 
-  let Hi := fresh "Hfor" in
-  eapply (@xfor_frame I); 
-  [ try solve [ xfor_frame_side tt ]
-  | intros Hfor; try solve [ false; math ]
-  | intros Hfor; splits (3%nat); 
-     [ hsimpl 
-     | xfor_bounds_intro tt
-     | hsimpl ] 
-  ].
+Ltac xfor_base I cont1 cont2 := 
+  apply local_erase; split; 
+    [ cont1 tt 
+    | cont2 tt; esplit; exists I; splits 3%nat; 
+       [ hsimpl 
+       | xfor_bounds_intro tt
+       | instantiate; hsimpl ]
+    ].
 
-Ltac xfor_le_core I :=
-  eapply (@xfor_frame_le I);
-  [ try math
-  | hsimpl
-  | xfor_bounds_intro tt
-  | hsimpl ].
+Ltac xfor_core_gen I H :=
+  xfor_base I ltac:(fun _ => intros H)
+              ltac:(fun _ => intros H).
+
+Lemma xfor_contradict_lemma : forall (a b : int),
+  (a > b) -> (a <= b) -> False.
+Proof. math. Qed.
+
+Ltac xfor_contradict tt :=
+  let H := fresh "TEMP" in
+  intros H; false;
+  apply (xfor_contradict_lemma H); clear H.
+
+Ltac xfor_core_le I := 
+  xfor_base I ltac:(fun _ => xfor_contradict tt; try math)
+              ltac:(fun _ => intros _).
+
+Ltac xfor_pre cont :=
+  match ltac_get_tag tt with
+  | tag_seq => xseq; [ cont tt | ]
+  | tag_for => cont tt
+  end.
+
+Ltac xfor_base_gen I H :=
+  xfor_pre ltac:(fun _ => xfor_core_gen I H).
+
+Ltac xfor_base_le I :=
+  xfor_pre ltac:(fun _ => xfor_core_le I).
 
 Tactic Notation "xfor" constr(I) := 
-  xfor_core I.
+  xfor_base_le I.
+Tactic Notation "xfor_general" constr(I) "as" ident(H) := 
+  xfor_base_gen I H.
+Tactic Notation "xfor_general" constr(I) := 
+  let H := fresh "Hfor" in xfor_general I as H.
 
-Tactic Notation "xfor_le" constr(I) := 
-  xfor_le_core I.
 
 
 (*--------------------------------------------------------*)
 (* ** [xwhile] *)
 
 
-Lemma esplit_boolof : forall (b:bool) (H:hprop) (P:(bool->hprop)->Prop),
-  P (\= b \*+ H) -> ex P.
-Proof. intros. exists (\= b \*+ H). applys_eq H0 1. extens~. Qed.
+Ltac xwhile_core I R X0 :=
+  apply local_erase; esplit; esplit; exists I; 
+  first [ exists R | exists (measure R) ]; splits 3%nat;
+    [ prove_wf
+    | instantiate; match X0 with __ => esplit | _ => exists X0 end; hsimpl
+    | instantiate; intro; let X := get_last_hyp tt in xextract; revert X ].
 
-Ltac xwhile_body_manual :=
-  let x := fresh "X" in intros x; xextract;
-  pose ltac_mark; intros; apply local_erase; gen_until_mark.
+Ltac xwhile_core_debug I R X0 :=
+  apply local_erase; esplit; esplit; exists I; 
+  first [ exists R | exists (measure R) ]; splits 3%nat.
 
-Ltac xwhile_body_handle :=
-  intros; eapply esplit_boolof; splits.
+Ltac xwhile_pre cont :=
+  match ltac_get_tag tt with
+  | tag_seq => xseq; [ cont tt | ]
+  | tag_while => cont tt
+  end.
 
-Ltac xwhile_core I R X := 
-  first [ eapply (@xwhile_frame _ I R)
-        | eapply (@xwhile_frame _ I (measure R))];
-  [ xlocal
-  | xlocal
-  | try prove_wf
-  | exists X; instantiate; hsimpl 
-  | try xwhile_body_manual (* ; try xwhile_body_handle*)
-  | hsimpl ].
+Ltac xwhile_base I R X0 :=
+  xwhile_pre ltac:(fun _ => xwhile_core I R X0).
 
-Ltac xwhile_manual_core I R := 
-  first [ eapply (@xwhile_frame _ I R)
-        | eapply (@xwhile_frame _ I (measure R))];
-  [ xlocal
-  | xlocal
-  | idtac
-  | idtac
-  | try xwhile_body_manual
-  | idtac ].
-
-
-Tactic Notation "xwhile" constr(I) constr(R) constr(X) := 
-  xwhile_core I R X.
+Tactic Notation "xwhile" constr(I) constr(R) constr(X0) := 
+  xwhile_base I R X0.
 Tactic Notation "xwhile" constr(I) constr(R) := 
-  xwhile I R __.
-Tactic Notation "xwhile_manual" constr(I) constr(R) := 
-  xwhile_manual_core I R.
+  xwhile_base I R __.
+
+Ltac xcond_core P :=
+   match goal with |- local _ ?H _ => 
+     match P with 
+     | __ => let R := fresh in evar (R:Prop); 
+             apply local_erase; 
+             exists (\[ bool_of R ] \*+ H);
+             subst R
+     | _ => apply local_erase; exists (\[ bool_of P ] \*+ H)
+   end end; splits 3%nat.
+
+Ltac xcond_base P :=
+  xcond_core P; [ | try xextract | try xextract ].
+
+
+Tactic Notation "xcond" constr(P) :=
+  xcond_base P.
+Tactic Notation "xcond" :=
+  xcond_base __.
 
 
 (*--------------------------------------------------------*)
