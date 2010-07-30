@@ -19,8 +19,7 @@ Notation "'exists' ( x1 : T1 ) ( x2 : T2 ) ( x3 : T3 ) ( x4 : T4 ) ',' P" :=
 *)
 
 
-Record dynamic := dyn { 
-  dyn_type : Type; 
+Record dynamic := dyn {_type : Type; 
   dyn_value : dyn_type }.
 
 Inductive heap_c : Type :=
@@ -1618,3 +1617,86 @@ Lemma temp2 : forall (H:hprop),
   H ==> (fun _ => H) tt.
 Proof. auto. Qed.
 *)
+
+
+
+Parameter ml_ref_spec : forall a,
+  Specs ml_ref (v:a) >> [] (~> RefOn v).
+
+Parameter ml_get_spec : forall a,
+  Spec ml_get (l:loc) |R>> 
+    forall v:a, read R (l ~> RefOn v) (\=v).
+
+Parameter ml_set_spec : forall a,
+  Spec ml_set (l:loc) (v:a) |R>> 
+    forall v':a, R (l ~> RefOn v') (# l ~> RefOn v).
+ 
+   
+ (*| _ =>  
+          match TX with 
+          | TX => fail 1
+          | _ => let K := fresh "TEMP" in sets_eq K: (X : ltac_tag_subst hprop)
+          end*)
+
+
+Ltac protect_evars_in H ::=
+   match H with context [ ?X ] =>
+     let go tt := 
+       match X with
+       | _ \* _ => fail 1
+       | X => fail 1 
+       | ?x ~> ?R => 
+           match x with x =>
+           (*
+          let doit m :=
+             let Tm := type of m in
+             let K := fresh "TEMP" in sets_eq K: (m : ltac_tag_subst Tm);
+             change K with (ltac_tagged K) in
+          match x with 
+          | x => match R with R  doit R
+          | ltac_tagged _ => doit R
+          | _ => doit x
+          end*)
+
+       | _ ~>  => fail 1
+       | ?R ~> _ => let TR := type of R in
+           let K := fresh "TEMP" in sets_eq K: (R : ltac_tag_subst TR);
+           change K with (ltac_tagged K)
+       | _ ~> ?R => let TR := type of R in
+           let K := fresh "TEMP" in sets_eq K: (R : ltac_tag_subst TR);
+           change K with (ltac_tagged K)
+       | _ => let K := fresh "TEMP" in sets_eq K: (X : ltac_tag_subst hprop)
+       end in
+     match type of X with 
+     | hprop => go tt
+     | heap -> Prop => go tt
+     end
+  end.
+
+Ltac protect_evars tt ::=
+  do 5 try match goal with |- ?H1 ==> ?H2 =>
+     first [ protect_evars_in H1 | protect_evars_in H2 ]; instantiate
+  end; unfold ltac_tagged. 
+
+Ltac protect_evars_in H ::=
+   match H with context [ ?X ] =>
+     let go tt := 
+       match X with
+       | _ \* _ => fail 1
+       | X => fail 1 
+       | ?x ~> ?R => 
+           match x with
+           | x => idtac             
+           | _ => fail 20 "Uninstantiated argument at left of ~>"
+           end;
+           let TR := type of R in
+           let K := fresh "TEMP" in 
+           sets_eq K: (R : ltac_tag_subst TR)
+       | _ => let K := fresh "TEMP" in
+              sets_eq K: (X : ltac_tag_subst hprop)
+       end in
+     match type of X with 
+     | hprop => go tt
+     | heap -> Prop => go tt
+     end
+  end.

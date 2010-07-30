@@ -21,7 +21,7 @@ Admitted.
 
 
 (************************************************************)
-(** Representation for base types *)
+(** Pure Representation for base types *)
 
 Hint Extern 1 (@rep _ _ _ _ _) => simpl.
 
@@ -74,6 +74,33 @@ Hint Extern 1 (@rep (prod _ _) _ _ _ _) => simpl.
 Hint Extern 1 (@rep (option _) _ _ _ _) => simpl.
 
 
+
+(************************************************************)
+(** Imperative representation for base types *)
+
+Definition htype A a := A -> a -> hprop.
+
+(** For pure values *)
+
+Definition Id {A:Type} (X:A) (x:A) := 
+  [ X = x ].
+
+(** References *)
+
+Record ref A := { content : A }. (* todo? *)
+
+Definition Ref a A (T:htype A a) (V:A) (l:loc) :=
+  Hexists v, l ~~> v \* v ~> T V.
+
+Lemma focus_ref : forall (l:loc) a A (T:htype A a) V,
+  l ~> Ref T V ==> Hexists v, l ~~> v \* v ~> T V.
+Proof. auto. Qed.
+
+Lemma unfocus_ref : forall (l:loc) a (v:a) A (T:htype A a) V,
+  l ~> Ref Id v \* v ~> T V ==> l ~> Ref T V.
+Proof. intros. unfold Ref. hdata_simpl. xsimpl~. Qed.
+
+
 (************************************************************)
 (** Axiomatic specification of the primitive functions *)
 
@@ -115,36 +142,24 @@ Parameter ml_or : val.
 Parameter ml_or_spec : Pure ml_or x y >> = (x || y).
 Hint Extern 1 (RegisterSpec ml_and) => Provide ml_or_spec.
 
+(** References *)
 
-Record ref A := { content : A }.
-
-Definition RefOn A (v:A) (l:loc) :=
-  l ~~> v.
-
-(*todo:move*)
-Definition htype A a := A -> a -> hprop.
-
-Definition Ref a A (T:htype A a) (V:A) (l:loc) := 
-  Hexists v, (l ~> RefOn v) \* (T V v).
-  
 Parameter ml_ref : val.
-
 Parameter ml_get : val.
-
 Parameter ml_set : val.
 
 Parameter ml_ref_spec : forall a,
-  Specs ml_ref (v:a) >> [] (~> RefOn v).
+  Spec ml_ref (v:a) |R>> 
+    R [] (~> Ref Id v).
 
 Parameter ml_get_spec : forall a,
   Spec ml_get (l:loc) |R>> 
-    forall v:a, read R (l ~> RefOn v) (\=v).
+    forall (v:a), keep R (l ~> Ref Id v) (\=v).
 
 Parameter ml_set_spec : forall a,
   Spec ml_set (l:loc) (v:a) |R>> 
-    forall v':a, R (l ~> RefOn v') (# l ~> RefOn v).
+    forall (v':a), R (l ~> Ref Id v') (# l ~> Ref Id v).
  
-
 Hint Extern 1 (RegisterSpec ml_ref) => Provide ml_ref_spec.
 Hint Extern 1 (RegisterSpec ml_get) => Provide ml_get_spec.
 Hint Extern 1 (RegisterSpec ml_set) => Provide ml_set_spec.
@@ -152,20 +167,24 @@ Hint Extern 1 (RegisterSpec ml_set) => Provide ml_set_spec.
 
 (** Derived specifications for references *)
 
+
+
+Ltac protect_evars_debug :=
+  match goal with |- _ ==> ?H => protect_evars_in H end.
+
 Lemma ml_ref_spec_linear : forall A a,
   Spec ml_ref (v:a) |R>> forall (V:A) (T:htype A a),
-    R (T V v) (~> Ref T V).
+    R (v ~> T V) (~> Ref T V).
 Proof.
   intros. applys spec_weaken_1 ml_ref_spec.
   intros_all. unfolds rel_le, pred_le. auto*. (* xisspec *)
   introv L M. intros.
   applys local_wframe. auto. eauto.
-  hsimpl. unfold Ref. intros l.
-  (*unfold starpost. todo: as notation *) 
-  simpl. unfold hdata.
-  apply~ (heap_weaken_pack x1).
+  hsimpl. intros l.
+  hchange~ (@unfocus_ref l _ x1).
 Qed.
 
+(*
 Lemma ml_get_spec_linear : forall A a,
   Spec ml_get (l:loc) |R>> 
     forall (V:A) (T:htype A a), 
@@ -182,6 +201,7 @@ Proof.
   (* todo: tactic hsimpl_left should do it *)
   hsimpl. apply heap_extract_prop. intro_subst. auto.
 Qed.
+*)
 
 (** List *)
 

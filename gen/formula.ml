@@ -340,19 +340,19 @@ let rec coq_of_imp_cf cf =
   | Cf_for (i,v1,v2,cf) -> 
       let inv = Coq_var "I" in
       let c1 = Coq_impl (coq_gt v1 v2, heap_impl_unit h q) in
-      let p1 = heap_impl h (Coq_app (inv, v1)) in
+      let p1 = heap_impl h (heap_star (Coq_app (inv, v1)) (Coq_var "H'")) in
       let i_var = Coq_var i in
       let i_hyp = coq_conj (coq_le v1 i_var) (coq_le i_var v2) in
       let body = Coq_app (Coq_fun ((i,Coq_wild), coq_of_cf cf), i_var) in
       let step = coq_apps body [ Coq_app (inv, i_var); post_unit (Coq_app (inv, coq_plus i_var (Coq_var "1"))) ] in
       let p2 = Coq_forall ((i,coq_int), Coq_impl (i_hyp, step)) in
-      let p3 = heap_impl (Coq_app (inv, coq_plus v2 (Coq_var "1"))) (Coq_app (q, coq_tt)) in
-      let c2 = Coq_impl (coq_le v1 v2, coq_exist "I" (Coq_impl (coq_int, hprop)) (coq_conjs [p1;p2;p3])) in
+      let p3 = heap_impl (heap_star (Coq_app (inv, coq_plus v2 (Coq_var "1"))) (Coq_var "H'")) (Coq_app (q, coq_tt)) in
+      let c2 = Coq_impl (coq_le v1 v2, coq_exist "H'" hprop (coq_exist "I" (Coq_impl (coq_int, hprop)) (coq_conjs [p1;p2;p3]))) in
       funhq "tag_for" (coq_conj c1 c2)
       (* (!For: (fun H Q => (v1 > v2 -> H ==> Q tt) /\ (v1 <= v2 ->
-              exists I, H ==> I v1 
+              exists H', exists I, H ==> I v1 \* H' 
                     /\  forall i, v1 <= i /\ i <= v2 -> F1 (I i) (# I (i+1)) 
-                    /\  I (b+1) ==> Q tt *)
+                    /\  I (b+1) \* H' ==> Q tt *)
       
   | Cf_while (cf1,cf2) -> 
       let x = Coq_var "X" in
@@ -360,23 +360,23 @@ let rec coq_of_imp_cf cf =
       let inv = Coq_var "I" in
       let q' = Coq_var "Q'" in
       let p1 = Coq_app (Coq_var "LibWf.wf", Coq_var "R") in
-      let p2 = coq_exist "X" (Coq_var "A") (heap_impl h (Coq_app (inv, x))) in
+      let p2 = coq_exist "X" (Coq_var "A") (heap_impl h (heap_star (Coq_app (inv, x)) (Coq_var "H'"))) in
       let c1 = coq_apps (coq_of_cf cf1) [ Coq_var "H2"; q'] in
       let c2heap = heap_exists "Y" (Coq_var "A") (heap_star (Coq_app (inv, y)) (heap_pred (coq_apps (Coq_var "R") [y;x]))) in
       let c2 = coq_apps (coq_of_cf cf2) [Coq_app (q', coq_bool_true); post_unit c2heap] in   
-      let c3 = heap_impl_unit (Coq_app (q', coq_bool_false)) (Coq_var "Q2") in
+      let c3 = heap_impl (heap_star (Coq_app (q', coq_bool_false)) (Coq_var "H'")) (Coq_app (Coq_var "Q2", coq_tt)) in
       let bo = coq_exist "Q'" (Coq_impl (coq_bool, hprop)) (coq_conjs [c1;c2;c3]) in
       let lo = coq_funs [("H2",hprop); ("Q2",wild_to_hprop)] bo in
       let p3 = Coq_forall (("X", Coq_var "A"), coq_apps (Coq_var "local") [lo; Coq_app (inv, x); q]) in
       let fr = coq_exist "R" (coq_impls [Coq_var "A"; Coq_var "A"] Coq_prop) (coq_conjs [p1;p2;p3]) in
-      funhq "tag_while" (coq_exist "A" Coq_type (coq_exist "I" (Coq_impl (Coq_var "A", hprop)) fr)) 
-      (* (!While: (fun H Q => exists A, exists I, exists R, 
+      funhq "tag_while" (coq_exist "H'" hprop (coq_exist "A" Coq_type (coq_exist "I" (Coq_impl (Coq_var "A", hprop)) fr)))
+      (* (!While: (fun H Q => exists H', exists A, exists I, exists R, 
                wf R
-            /\ (exists x, H ==> I x)
+            /\ (exists x, H ==> I x \* H')
             /\ (forall x, local (fun H2 Q2 => exists Q', 
                    F1 H2 Q'
                 /\ (F2 (Q' true) (# Hexists y, (I y) \* [R y x]))
-                /\ (Q' false ==> Q2 tt))) (I x) Q) *)
+                /\ (Q' false \* H' ==> Q2 tt))) (I x) Q)) *)
 
   | Cf_letpure _ -> unsupported "letpure-expression in imperative mode"
 

@@ -695,18 +695,20 @@ Notation "'Alias' x ':=' v 'in' Q" :=
   (at level 69, x ident) : charac.
 
 Notation "'For' i '=' a 'To' b 'Do' Q1 'Done'" :=
-  (!For (fun H Q => (a > (b)%Z -> H ==> (Q tt)) /\ (a <= (b)%Z -> exists I,
-     H ==> I a /\ (forall i, a <= i /\ i <= (b)%Z -> Q1 (I i) (# I(i+1))) /\ (I ((b)%Z+1) ==> Q tt))))
+  (!For (fun H Q => (a > (b)%Z -> H ==> (Q tt)) /\ (a <= (b)%Z -> exists H', exists I,
+       (H ==> I a \* H') 
+    /\ (forall i, a <= i /\ i <= (b)%Z -> Q1 (I i) (# I(i+1))) 
+    /\ (I ((b)%Z+1) \* H' ==> Q tt))))
   (at level 69, i ident) : charac.
 
 Notation "'While' Q1 'Do' Q2 'Done'" :=
-  (!While (fun H Q => exists A, exists I, exists R,
+  (!While (fun H Q => exists H', exists A, exists I, exists R,
        wf R 
-     /\ (exists x, H ==> I x)
+     /\ (exists x, H ==> I x \* H')
      /\ (forall x, local (fun Hl Ql => exists Q', 
             Q1 Hl Q'
          /\ Q2 (Q' true) (# Hexists y, (I y) \* [R y x])
-         /\ (Q' false ==> Ql tt)) (I x) Q)))
+         /\ (Q' false \* H' ==> Ql tt)) (I x) Q)))
   (at level 69) : charac.
 
 Open Scope charac.
@@ -767,7 +769,7 @@ Notation "'TopLet' [ A1 A2 A3 ]  x ':=' Q" :=
 
 Notation "'TopLetFunc' ':=' H" :=
   (!TF H)
-  (at level 69, Q at level 200).
+  (at level 69, H at level 200).
 
 Notation "'Func' f ':=' Q" := (* todo:needed?*)
   (!F (fun P => forall f, Q -> P f))

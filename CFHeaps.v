@@ -203,11 +203,32 @@ Notation "H1 '\*' H2" := (heap_is_star H1 H2)
 Notation "l '~~>' v" := (heap_is_single l v)
   (at level 35, no associativity) : heap_scope.
 
-Notation "'Hexists' x , H" := (heap_is_pack (fun x => H))
-  (at level 39, x ident, H at level 50) : heap_scope.
+Notation "'Hexists' x1 , H" := (heap_is_pack (fun x1 => H))
+  (at level 39, x1 ident, H at level 50) : heap_scope.
+Notation "'Hexists' x1 x2 , H" := (Hexists x1, Hexists x2, H)
+  (at level 39, x1 ident, x2 ident, H at level 50) : heap_scope.
+Notation "'Hexists' x1 x2 x3 , H" := (Hexists x1, Hexists x2, Hexists x3, H)
+  (at level 39, x1 ident, x2 ident, x3 ident, H at level 50) : heap_scope.
+Notation "'Hexists' x1 x2 x3 , H" := (Hexists x1, Hexists x2, Hexists x3, Hexists x4, H)
+  (at level 39, x1 ident, x2 ident, x3 ident, x4 ident, H at level 50) : heap_scope.
 
-Notation "'Hexists' x : T , H" := (heap_is_pack (fun x:T => H))
-  (at level 39, x ident, H at level 50) : heap_scope.
+Notation "'Hexists' x1 : T1 , H" := (heap_is_pack (fun x1:T1 => H))
+  (at level 39, x1 ident, H at level 50, only parsing) : heap_scope.
+Notation "'Hexists' ( x1 : T1 ) , H" := (Hexists x1:T1,H)
+  (at level 39, x1 ident, H at level 50, only parsing) : heap_scope.
+Notation "'Hexists' ( x1 : T1 ) ( x2 : T2 ) , H" := 
+  (Hexists x1:T1, Hexists x2:T2, H)
+  (at level 39, x1 ident, x2 ident, H at level 50) : heap_scope.
+Notation "'Hexists' ( x1 : T1 ) ( x2 : T2 ) ( x3 : T3 ) , H" := 
+  (Hexists x1:T1, Hexists x2:T2, Hexists x3:T3, H)
+  (at level 39, x1 ident, x2 ident, x3 ident, H at level 50) : heap_scope.
+Notation "'Hexists' ( x1 : T1 ) ( x2 : T2 ) ( x3 : T3 ) ( x4 : T4 ) , H" := 
+  (Hexists x1:T1, Hexists x2:T2, Hexists x3:T3, Hexists x4:T4, H)
+  (at level 39, x1 ident, x2 ident, x3 ident, x4 ident, H at level 50) : heap_scope.
+Notation "'Hexists' ( x1 : T1 ) ( x2 : T2 ) ( x3 : T3 ) ( x4 : T4 ) ( x5 : T5 ) , H" := 
+  (Hexists x1:T1, Hexists x2:T2, Hexists x3:T3, Hexists x4:T4, Hexists x5:T5, H)
+  (at level 39, x1 ident, x2 ident, x3 ident, x4 ident, x5 ident, H at level 50) : heap_scope.
+
 
 Notation "Q \*+ H" :=
   (fun x => heap_is_star (Q x) H)
@@ -299,20 +320,14 @@ Notation "'~~' B" := (hprop->(B->hprop)->Prop)
 
 (** Label for data structures *)
 
-Definition hdata (S:loc->hprop) (l:loc) : hprop :=
-  S l.
+Definition hdata (A:Type) (S:A->hprop) (x:A) : hprop :=
+  S x.
 
 Notation "'~>' S" := (hdata S)
   (at level 32, no associativity) : heap_scope.
 
-Notation "l '~>' S" := (hdata S l)
+Notation "x '~>' S" := (hdata S x)
   (at level 33, no associativity) : heap_scope.
-
-(** Specification of pure functions: 
-    [pure F P] is equivalent to [F [] \[P]] *)
-
-Definition pure B (R:~~B) := 
-  fun P => R [] \[P].
 
 (** Representation predicate for pure data types *)
 
@@ -325,11 +340,34 @@ Class Rep a A :=
 Definition Pure `{Rep a A} (X:A) (x:a) := 
   [ rep x X ].
 
+
 (** Specification of pure functions: 
     [pure F P] is equivalent to [F [] \[P]] *)
 
-Definition read B (R:~~B) := 
+Definition pure B (R:~~B) := 
+  fun P => R [] \[P].
+
+(** Specification of functions that keep their input: 
+    [keep F H Q] is equivalent to [F H (Q \*+ H)] *)
+
+Notation "'keep' R H Q" :=
+  (R H (Q \*+ H)) (at level 25, R at level 0, H at level 0, Q at level 0).
+
+(* Tactics need to be updated if a definition is used 
+Definition keep B (R:~~B) := 
   fun H Q => R H (Q \*+ H).
+*)
+
+
+(********************************************************************)
+(* ** Simplification for hdata *)
+
+Lemma hdata_fun : forall a (S:a->hprop) x,
+  (x ~> (fun y => S y)) = (S x).
+Proof. auto. Qed.
+
+Ltac hdata_simpl :=
+  repeat rewrite hdata_fun.
 
 
 (********************************************************************)
@@ -357,6 +395,29 @@ Ltac protect_evars_in H :=
      | heap -> Prop => go tt
      end
    end.
+
+Ltac protect_evars_in H ::=
+   match H with context [ ?X ] =>
+     let go tt := 
+       match X with
+       | _ \* _ => fail 1
+       | X => fail 1 
+       | ?x ~> ?R => 
+           match x with
+           | x => idtac             
+           | _ => fail 20 "Uninstantiated argument at left of ~>"
+           end;
+           let TR := type of R in
+           let K := fresh "TEMP" in 
+           sets_eq K: (R : ltac_tag_subst TR)
+       | _ => let K := fresh "TEMP" in
+              sets_eq K: (X : ltac_tag_subst hprop)
+       end in
+     match type of X with 
+     | hprop => go tt
+     | heap -> Prop => go tt
+     end
+  end.
 
 Ltac protect_evars tt :=
   do 5 try match goal with |- ?H1 ==> ?H2 =>
@@ -670,7 +731,9 @@ Ltac hsimpl_step tt :=
   match goal with |- ?HL ==> ?HA \* (?H \* ?HR) =>
     first  (* hsimpl_find_same H HL |*)
           [ hsimpl_try_same tt 
-          | hsimpl_find_data H HL  
+          | hsimpl_find_data H HL;
+            [ first [ eassumption | symmetry; eassumption | idtac ]
+            | ]
           | apply hsimpl_extract_prop
           | hsimpl_extract_exists_step tt
           | apply hsimpl_keep ]
@@ -718,7 +781,7 @@ Proof.
 Qed.
 
 
-Lemma hsimpl_demo_2 : forall l1 l2 S1 S2 H1 H2 H3 H',
+Lemma hsimpl_demo_2 : forall (l1 l2:loc) S1 S2 H1 H2 H3 H',
   (forall X S1' HG, X ==> H1 \* l1 ~> S1' \* H2 \* HG -> X ==> H') ->
   H1 \* l1 ~> S1 \* l2 ~> S2 \* H3 ==> H'.
 Proof.
@@ -737,7 +800,7 @@ Proof.
   hsimpl. skip.
 Admitted.
 
-Lemma hsimpl_demo_3 : forall l1 l2 S1 S2 H1 H2 H',
+Lemma hsimpl_demo_3 : forall (l1 l2:loc) S1 S2 H1 H2 H',
   (forall X S1' HG, X ==> H1 \* l1 ~> S1' \* HG -> HG = HG -> X ==> H') ->
   H1 \* l1 ~> S1 \* l2 ~> S2 \* H2 ==> H'.
 Proof.
