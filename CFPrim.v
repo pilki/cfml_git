@@ -142,11 +142,32 @@ Parameter ml_or : val.
 Parameter ml_or_spec : Pure ml_or x y >> = (x || y).
 Hint Extern 1 (RegisterSpec ml_and) => Provide ml_or_spec.
 
+Parameter ml_min_int : int.
+Parameter ml_max_int : int.
+Parameter ml_rand_int : val.
+
+(** Pairs *)
+
+Parameter ml_fst : val.
+Parameter ml_fst_spec : forall a1 a2,
+  Spec ml_fst (p:a1*a2) |R>> 
+    pure R (= fst p).
+Hint Extern 1 (RegisterSpec ml_fst) => Provide ml_fst_spec.
+
+Parameter ml_snd : val.
+Parameter ml_snd_spec : forall a1 a2,
+  Spec ml_snd (p:a1*a2) |R>> 
+    pure R (= snd p).
+Hint Extern 1 (RegisterSpec ml_snd) => Provide ml_snd_spec.
+
+
 (** References *)
 
 Parameter ml_ref : val.
 Parameter ml_get : val.
 Parameter ml_set : val.
+Parameter ml_incr : val.
+Parameter ml_decr : val.
 
 Parameter ml_ref_spec : forall a,
   Spec ml_ref (v:a) |R>> 
@@ -159,18 +180,23 @@ Parameter ml_get_spec : forall a,
 Parameter ml_set_spec : forall a,
   Spec ml_set (l:loc) (v:a) |R>> 
     forall (v':a), R (l ~> Ref Id v') (# l ~> Ref Id v).
+
+Parameter ml_incr_spec : 
+  Spec ml_incr (l:loc) |R>> 
+    forall n, R (l ~> Ref Id n) (# l ~> Ref Id (n+1)).
  
+Parameter ml_decr_spec : 
+  Spec ml_decr (l:loc) |R>> 
+    forall n, R (l ~> Ref Id n) (# l ~> Ref Id (n-1)).
+
 Hint Extern 1 (RegisterSpec ml_ref) => Provide ml_ref_spec.
 Hint Extern 1 (RegisterSpec ml_get) => Provide ml_get_spec.
 Hint Extern 1 (RegisterSpec ml_set) => Provide ml_set_spec.
+Hint Extern 1 (RegisterSpec ml_incr) => Provide ml_incr_spec.
+Hint Extern 1 (RegisterSpec ml_decr) => Provide ml_decr_spec.
 
 
 (** Derived specifications for references *)
-
-
-
-Ltac protect_evars_debug :=
-  match goal with |- _ ==> ?H => protect_evars_in H end.
 
 Lemma ml_ref_spec_linear : forall A a,
   Spec ml_ref (v:a) |R>> forall (V:A) (T:htype A a),
@@ -228,13 +254,10 @@ Class Dup a A (T:htype A a) : Prop := {
 
 Parameter Array : forall a A (T:htype A a) (M:array A) (l:loc), hprop.
 
-
-
 Require Import LibBag.
 
 Definition Read B (R:~~B) := 
   fun H Q => R H (Q \*+ H).
-
 
 Notation "m \( x )" := (LibBag.read m x)
   (at level 29, format "m \( x )") : container_scope.
@@ -311,13 +334,4 @@ Parameter ml_array_set_spec : forall a,
 *)
 
 
-Parameter ml_rand_int : val.
-Parameter ml_min_int : int.
-Parameter ml_max_int : int.
-
-Parameter ml_incr : val.
-Parameter ml_decr : val.
-
-Parameter ml_fst : val.
-Parameter ml_snd : val.
 

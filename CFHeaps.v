@@ -419,6 +419,9 @@ Ltac protect_evars_in H ::=
      end
   end.
 
+Ltac protect_evars_debug :=
+  match goal with |- _ ==> ?H => protect_evars_in H end.
+
 Ltac protect_evars tt :=
   do 5 try match goal with |- ?H1 ==> ?H2 =>
      first [ protect_evars_in H1 | protect_evars_in H2 ]; instantiate
