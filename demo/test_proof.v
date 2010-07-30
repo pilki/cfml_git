@@ -68,30 +68,192 @@ Qed.
 (********************************************************)
 (* while loops *)
 
+
+Ltac protect_evars_in H ::=
+   match H with context [ ?X ] =>
+     let go tt := 
+       match X with
+       | _ \* _ => fail 1
+       | X => fail 1 
+       | ?x ~> ?R => 
+           match x with
+           | x => idtac             
+           | _ => fail 20 "Uninstantiated argument at left of ~>"
+           end;
+           let TR := type of R in
+           let K := fresh "TEMP" in 
+           sets_eq K: (R : ltac_tag_subst TR)
+       | [ ?R ] => 
+           let TR := type of R in
+           let K := fresh "TEMP" in 
+           sets_eq K: (R : ltac_tag_subst TR)
+       | _ => let K := fresh "TEMP" in
+              sets_eq K: (X : ltac_tag_subst hprop)
+       end in
+     match type of X with 
+     | hprop => go tt
+     | heap -> Prop => go tt
+     end
+  end.
+
+
 Ltac hsimpls := repeat progress (hsimpl).
 (* todo: modifier hsimpl pour nommer que le dernier élément par défaut *)
+
+Ltac fix_bool_of_known tt ::= 
+  match goal with 
+  | H: bool_of ?P true |- _ => 
+     applys_to H bool_of_true_in
+  | H: bool_of ?P false |- _ => 
+     applys_to H bool_of_false_in
+  | H: bool_of ?P ?b, Hb: isTrue ?b |- _ => 
+     applys_to H (@bool_of_true_back b P Hb); clear Hb
+  | H: bool_of ?P ?b, Hb: isTrue (! ?b) |- _ => 
+     applys_to H (@bool_of_false_back b P Hb); clear Hb 
+  | |- bool_of ?P true => 
+     apply bool_of_true_in_forw
+  | |- bool_of ?P false => 
+     apply bool_of_false_in_forw
+  | |- bool_of ?P ?b =>
+     first [ apply refl_equal 
+           | apply bool_of_prove; 
+             try (check_noevar_goal; rew_istrue) ]
+  end.
+
+Tactic Notation "xclean" :=
+  calc_partial_eq tt; 
+  repeat fix_bool_of_known tt;
+  fold_bool; fold_prop. 
+
+Lemma not_isTrue_istrue_forw : forall P,
+  ~ isTrue (istrue P) -> ~ P.
+Proof. intros P. apply contrapose_not. rewrite~ isTrue_istrue. Qed.
+
+Lemma not_isTrue_not_istrue_forw : forall P,
+  ~ isTrue (! istrue P) -> P.
+Proof.
+  intros P. rewrite <- (@not_not P). apply contrapose_not.
+  rewrite~ isTrue_neg_istrue. 
+Qed. (* todo: missing lemma from lib logic about ~A->B *)
+
+Lemma not_isTrue_istrue_back : forall P,
+  ~ P -> ~ isTrue (istrue P).
+Proof. intros P. apply contrapose_not. rewrite~ isTrue_istrue. Qed.
+
+Lemma not_isTrue_not_istrue_back : forall P:Prop,
+  P -> ~ isTrue (! istrue P).
+Proof. 
+  intros P. rewrite <- (@not_not P). apply contrapose_not.
+  rewrite~ isTrue_neg_istrue. 
+Qed.
+
+
+Ltac fold_prop ::= 
+  repeat match goal with 
+  | H: isTrue (istrue ?P) |- _ => applys_to H isTrue_istrue_forw
+  | H: isTrue (! istrue ?P) |- _ => applys_to H isTrue_not_istrue_forw
+  | H: ~ isTrue (istrue ?P) |- _ => applys_to H not_isTrue_istrue_forw
+  | H: ~ isTrue (! istrue ?P) |- _ => applys_to H not_isTrue_not_istrue_forw
+  | H: (?P = True) |- _ => applys_to H prop_eq_True_forw
+  | H: (?P = False) |- _ => applys_to H prop_eq_False_forw
+  | H: (True = ?P) |- _ => symmetry in H; applys_to H prop_eq_True_forw
+  | H: (False = ?P) |- _ => symmetry in H; applys_to H prop_eq_False_forw
+  | H: ~ (~ ?P) |- _ => applys_to H not_not_elim 
+  | |- isTrue (istrue ?P) => apply isTrue_istrue_back
+  | |- isTrue (! istrue ?P) => apply isTrue_not_istrue_back
+  | |- ~ isTrue (istrue ?P) => apply not_isTrue_istrue_back
+  | |- ~ isTrue (! istrue ?P) => apply not_isTrue_not_istrue_back
+  | |- (?P = True) => apply prop_eq_True_back
+  | |- (?P = False) => apply prop_eq_False_back
+  | |- (True = ?P) => symmetry; apply prop_eq_True_back
+  | |- (False = ?P) => symmetry; apply prop_eq_False_back
+  | |- ~ (~ ?P) => apply not_not_intro
+  end.
+
+
+
+(**
+
+
+Ltac xwhile_body_handle :=
+  intros; eapply esplit_boolof; splits.
+
+*)
+
+Ltac xwhile_core I R X0 :=
+  apply local_erase; esplit; esplit; exists I; 
+  first [ exists R | exists (measure R) ]; splits 3%nat;
+    [ prove_wf
+    | instantiate; match X0 with __ => esplit | _ => exists X0 end; hsimpl
+    | instantiate; intro; let X := get_last_hyp tt in xextract; revert X ].
+
+Ltac xwhile_core_debug I R X0 :=
+  apply local_erase; esplit; esplit; exists I; 
+  first [ exists R | exists (measure R) ]; splits 3%nat.
+
+Ltac xwhile_pre cont :=
+  match ltac_get_tag tt with
+  | tag_seq => xseq; [ cont tt | ]
+  | tag_while => cont tt
+  end.
+
+Ltac xwhile_base I R X0 :=
+  xwhile_pre ltac:(fun _ => xwhile_core I R X0).
+
+Tactic Notation "xwhile" constr(I) constr(R) constr(X0) := 
+  xwhile_base I R X0.
+Tactic Notation "xwhile" constr(I) constr(R) := 
+  xwhile_base I R __.
+
+Ltac xcond_core P :=
+   match goal with |- local _ ?H _ => 
+     match P with 
+     | __ => let R := fresh in evar (R:Prop); 
+             apply local_erase; 
+             exists (\[ bool_of R ] \*+ H);
+             subst R
+     | _ => apply local_erase; exists (\[ bool_of P ] \*+ H)
+   end end; splits 3%nat.
+
+Ltac xcond_base P :=
+  xcond_core P; [ | try xextract | try xextract ].
+
+
+Tactic Notation "xcond" constr(P) :=
+  xcond_base P.
+Tactic Notation "xcond" :=
+  xcond_base __.
+
 
 
 Lemma decr_while_spec : Spec decr_while x |R>> 
   forall n, n >= 0 -> R (x ~> Ref Id n) (# x ~> Ref Id 0).
 Proof.
   xcf. intros.
-
-
-
-
-  xwhile (fun i:int => x ~> RefOn i \* [i >= 0]) (fun i:int => abs i). hsimpl~.
-  (* todo: xwhile_cond with readonly *)
-  intros i. exists (\[ bool_of (i>0)] \*+ (x ~> RefOn i \* [i >= 0])). (* todo: optimize read_only *)
-  splits (3%nat).
-  xapp. intro_subst. intros P. xret. hsimpl~. skip.
-  xextract as M1 M2. xapp. hsimpl. skip.
-  math.
-  hextract. xclean. math_rewrite (i = 0). (*todo: equality generates*) hsimpl.
+  xwhile (fun i:int => x ~> Ref Id i \* [i >= 0]) (downto 0).
+   auto. intros i Li. xcond.
+     xapp. intro_subst. xret. hsimpl~. xclean.
+     intros. xclean. xapp. hsimpl; auto with maths.
+     xsimpl. xclean. math.
 Qed.
 
-(* todo: hsimpl_right *) 
-
+(* details:
+  xcf. intros.
+  apply local_erase. esplit. esplit.
+    exists (fun i:int => x ~> Ref Id i \* [i >= 0]). 
+    exists (downto 0).
+    splits 3%nat.
+    prove_wf.
+    esplit. hsimpl. auto. (* ou bien exists X *)
+    intros i. 
+      match goal with |- local _ ?H _ => 
+        let P := fresh in evar (P:Prop); apply local_erase; exists (\[ bool_of P ] \*+ H); subst P 
+        (* ou exists (\[ bool_of P ] \*+ H) *) 
+      end. splits 3%nat.
+      xextract. intros. xapp. intro_subst. xret. hsimpl. auto. xclean.
+      xextract. intros. xapp. xclean. hsimpl; auto with maths.
+  hextract. xclean. hsimpl. math. 
+*)
 
 
 
