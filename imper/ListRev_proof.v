@@ -1,6 +1,50 @@
 Set Implicit Arguments.
 Require Import LibCore CFPrim ListRev_ml MyLib_ml.
 
+
+Tactic Notation "hextract" "as" simple_intropattern(I1) := 
+  hextract as; intros I1.
+Tactic Notation "hextract" "as" simple_intropattern(I1) simple_intropattern(I2) := 
+  hextract as; intros I1 I2.
+Tactic Notation "hextract" "as" simple_intropattern(I1) simple_intropattern(I2)
+ simple_intropattern(I3) := 
+  hextract as; intros I1 I2 I3.
+Tactic Notation "hextract" "as" simple_intropattern(I1) simple_intropattern(I2)
+ simple_intropattern(I3) simple_intropattern(I4) := 
+  hextract as; intros I1 I2 I3 I4. 
+
+
+Ltac hchange_debug H :=
+  let K := fresh "TEMP" in
+  forwards K: H; eapply hchange_lemma; 
+    [ apply K
+    | clear K
+    | clear K ].
+
+Ltac hchange_core H ::=
+  let K := fresh "TEMP" in
+  forwards K: H; eapply hchange_lemma; 
+    [ apply K
+    | clear K; instantiate; try hsimpl
+    | clear K; instantiate ].
+
+Ltac xchange_lemma_core L ::=
+  let K := fresh "TEMP" in
+  forwards K: L; eapply xchange_lemma; 
+    [ clear K; try apply local_is_local
+    | apply K
+    | clear K; instantiate; hsimpl
+    | clear K ].
+
+
+Opaque Ref.
+Transparent Ref. 
+Lemma focus_ref : forall (l:loc) a A (T:htype A a) V,
+  l ~> Ref T V ==> Hexists v, l ~> Ref Id v \* v ~> T V.
+Proof. intros. unfold Ref, hdata. unfold Id. hextract.
+hsimpl x x. auto. Qed.
+Opaque Ref. 
+
 (* todo: move and generalize to phy_eq *)
 
 Parameter ml_is_null_spec : 
@@ -27,64 +71,80 @@ Opaque Pair.
 
 Fixpoint List A a (T:A->a->hprop) (L:list A) (l:loc) : hprop :=
   match L with
-  | nil => [True]
+  | nil => [l = null]
   | X::L' => l ~> Ref (Pair T (List T)) (X,L')
   end.
+
+Lemma focus_nil : forall A a (T:A->a->hprop),
+  [] ==> null ~> List T nil.
+Proof. intros. simpl. hdata_simpl. hsimpl~. Qed.
+
+Lemma unfocus_nil : forall (l:loc) A a (T:A->a->hprop),
+  l ~> List T nil ==> [l = null].
+Proof. intros. simpl. hdata_simpl. hsimpl~. Qed.
+
+Lemma focus_cons : forall (l:loc) a A (X:A) (L':list A) (T:A->a->hprop),
+  (l ~> List T (X::L')) ==>
+  Hexists x l', (x ~> T X) \* (l' ~> List T L') \* (l ~> Ref Id (x,l')).
+Proof.
+  intros. simpl. hdata_simpl. hchange (@focus_ref l). hextract as [x l']. 
+  hchange (@focus_pair _ _ (x,l')). hsimpl.
+Qed.
+
+Lemma unfocus_cons : forall (l:loc) (l':loc) a (x:a) A (X:A) (L':list A) (T:A->a->hprop),
+  (x ~> T X) \* (l' ~> List T L') \* (l ~> Ref Id (x,l')) ==> 
+  (l ~> List T (X::L')).
+Proof.
+  intros. simpl. hdata_simpl. hchange (@unfocus_pair _ x _ l').
+  hchange (@unfocus_ref l _ (x,l')). hsimpl.
+Qed.
+
 
 (*****************)
 
 Require Import LibList.
 Implicit Arguments list_sub [[A]].
-Opaque Ref.
 
-Ltac hchange_debug H :=
-  let K := fresh "TEMP" in
-  forwards K: H; eapply hchange_lemma; 
-    [ apply K
-    | clear K
-    | clear K ].
 
-Ltac hchange_core H ::=
-  let K := fresh "TEMP" in
-  forwards K: H; eapply hchange_lemma; 
-    [ apply K
-    | clear K; try hsimpl
-    | clear K; try hsimpl].
+Definition Void {a A} (v:a) (V:A) := [].
+
+Opaque heap_is_empty.
+Opaque List.
+Definition pred_le' := pred_le.
+Lemma pred_le_change : pred_le = pred_le'.
+Proof. auto. Qed.
+Opaque pred_le'.
+
 
 Ltac xchange_lemma_core L ::=
   let K := fresh "TEMP" in
-  forwards K: L; eapply xchange_lemma; 
-    [ clear K; try apply local_is_local
-    | apply K
-    | clear K; hsimpl
-    | clear K ].
+  let K' := fresh "TEMP" in
+  lets K: L; 
+  rewrite pred_le_change in K;
+  forwards K': K;
+  rewrite <- pred_le_change in K;
+  clear K;
+  eapply xchange_lemma; 
+    [ clear K'; try apply local_is_local
+    | apply K'
+    | clear K'; instantiate; try hsimpl
+    | clear K' ].
 
-Transparent Ref. 
-Lemma focus_ref : forall (l:loc) a A (T:htype A a) V,
-  l ~> Ref T V ==> Hexists v, l ~> Ref Id v \* v ~> T V.
-Proof. intros. unfold Ref, hdata. unfold Id. hextract.
-hsimpl x x. auto. Qed.
-Opaque Ref. 
 
-Definition Void {a A} (v:a) (V:A) := [].
+
 
 Lemma rev_spec : forall a,
   Spec ListRev_ml.rev (l:mlist a) |R>> forall A (T:A->a->hprop) (L:list A),
      R (l ~> List T L) (~> List T (LibList.rev L)).
 Proof.
   xcf. intros.
-  xapp.
-  xchange (r ~> Ref Id null ==> r ~> Ref (List T) nil). 
-     hchange (>>> unfocus_ref r null (@Void a loc)). unfold hdata, Void. hsimpl.
-     forwards K: (@focus_ref l). eapply hchange_lemma.
-.
-  
-  eapply hchange_lemma. eapply H. clear H.²
-    hchange.
+  xapp. xchange (focus_nil T). xchange (@unfocus_ref r _ null).
   xseq.
   xwhile_core_debug (fun L1 => l ~> List T L1 \* Hexists L2, r ~> Ref (List T) L2 \* [L = rev L2 ++ L1]) (@list_sub A) L.
-   prove_wf.
-   exists L. hsimpl. hsimpl. 
+    prove_wf.
+    exists L. hsimpl. rew_list~.
+    
+   
 
 
 
