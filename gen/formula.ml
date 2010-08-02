@@ -380,6 +380,8 @@ let rec coq_of_imp_cf cf =
 
   | Cf_letpure _ -> unsupported "letpure-expression in imperative mode"
 
+ (* todo: scope of type variables should be different: prefix them! *)
+
 
 (*#########################################################################*)
 (* Characteristic formulae for top level declarations *)

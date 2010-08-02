@@ -74,7 +74,7 @@ let mark_loops = mark_loops
 let name_of_type ty = 
    let ty = proxy ty in
    let x = name_of_type ty in
-   String.uppercase x
+   "_" ^ (String.uppercase x)
 
 let reset_names = reset_names 
 

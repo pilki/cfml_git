@@ -54,6 +54,7 @@ let lift_full_path_name p =
 (*#########################################################################*)
 (* Lifting of types *)
 
+
 let loc_type =
   Coq_var "CFHeaps.loc"
 
@@ -76,7 +77,8 @@ let rec lift_btyp t =
    | Btyp_arrow (t1,t2) -> 
       val_type
    | Btyp_constr (id,[t]) when Path.name id = "ref" || Path.name id = "Pervasives.ref"  
-      || Path.name id = "nref" || Path.name id = "MyLib.nref" -> 
+      || Path.name id = "nref" || Path.name id = "MyLib.nref" 
+      || Path.name id = "mlist" ->
       loc_type
    | Btyp_constr (id,[t]) when Path.name id = "array" || Path.name id = "Pervasives.array" -> 
       loc_type
