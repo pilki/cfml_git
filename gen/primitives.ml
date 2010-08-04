@@ -87,6 +87,7 @@ let all_primitives_table = (*todo:complete*)
     "Stream.append", "ml_append";
     "Stream.take", "ml_take";  
     "Stream.drop", "ml_drop"; 
+    "MyLib.null", "null";
     "MyLib.is_null", "ml_is_null" ]
 
 let builtin_constructors_table = (* todo: indiquer pervasives *)
