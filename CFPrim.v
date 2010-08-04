@@ -1,6 +1,12 @@
 Set Implicit Arguments.
 Require Export LibInt LibArray CFSpec CFPrint CFTactics.
 
+
+(* todo: move *)
+Implicit Arguments list_sub [[A]].
+
+
+
 Hint Resolve (0%nat) : typeclass_instances.
 Hint Resolve (0%Z) : typeclass_instances.
 Hint Resolve @nil : typeclass_instances.
@@ -74,9 +80,15 @@ Hint Extern 1 (@rep (prod _ _) _ _ _ _) => simpl.
 Hint Extern 1 (@rep (option _) _ _ _ _) => simpl.
 
 
+(* todo: move *)
+Definition nref := loc.
+Parameter null : loc.
+Parameter ml_is_null : val.
+
 
 (************************************************************)
 (** Imperative representation for base types *)
+
 
 Definition htype A a := A -> a -> hprop.
 
@@ -85,6 +97,10 @@ Definition htype A a := A -> a -> hprop.
 Definition Id {A:Type} (X:A) (x:A) := 
   [ X = x ].
 
+(** Void *)
+
+Definition Void {a A} (v:a) (V:A) := [].
+
 (** References *)
 
    (*--todo: Record ref A := { content : A }. *)
@@ -92,25 +108,112 @@ Definition Id {A:Type} (X:A) (x:A) :=
 Definition Ref a A (T:htype A a) (V:A) (l:loc) :=
   Hexists v, l ~~> v \* v ~> T V.
 
-Lemma focus_ref : forall (l:loc) a A (T:htype A a) V,
+Lemma focus_ref_core : forall (l:loc) a A (T:htype A a) V,
   l ~> Ref T V ==> Hexists v, l ~~> v \* v ~> T V.
 Proof. auto. Qed.
+
+Lemma focus_ref : forall (l:loc) a A (T:htype A a) V,
+  l ~> Ref T V ==> Hexists v, l ~> Ref Id v \* v ~> T V.
+Proof. intros. unfold Ref, hdata. unfold Id. hextract.
+hsimpl x x. auto. Qed.
 
 Lemma unfocus_ref : forall (l:loc) a (v:a) A (T:htype A a) V,
   l ~> Ref Id v \* v ~> T V ==> l ~> Ref T V.
 Proof. intros. unfold Ref. hdata_simpl. xsimpl~. Qed.
 
+Axiom focus_ref_null : forall a A (T:htype A a) V,
+  null ~> Ref T V ==> [False]. (* todo *)
+
 Opaque Ref.
+
+
+(** Pairs *)
+
+Definition Pair A1 A2 a1 a2 (T1:A1->a1->hprop) (T2:A2->a2->hprop) P p :=
+  let '(X1,X2) := P in let '(x1,x2) := p in x1 ~> T1 X1 \* x2 ~> T2 X2.
+
+Lemma focus_pair : forall a1 a2 (p:a1*a2) A1 A2 (T1:htype A1 a1) (T2:htype A2 a2) V1 V2,
+  p ~> Pair T1 T2 (V1,V2) ==> let '(x1,x2) := p in x1 ~> T1 V1 \* x2 ~> T2 V2.
+Proof. auto. Qed.
+
+Lemma unfocus_pair : forall a1 (x1:a1) a2 (x2:a2) A1 A2 (T1:htype A1 a1) (T2:htype A2 a2) V1 V2,
+  x1 ~> T1 V1 \* x2 ~> T2 V2 ==> (x1,x2) ~> Pair T1 T2 (V1,V2).
+Proof. intros. unfold Pair. hdata_simpl. auto. Qed.
+
+Opaque Pair.
+
+
+(** Lists *)
+
+Fixpoint List A a (T:A->a->hprop) (L:list A) (l:loc) : hprop :=
+  match L with
+  | nil => [l = null]
+  | X::L' => l ~> Ref (Pair T (List T)) (X,L')
+  end.
+
+Lemma focus_nil : forall A a (T:A->a->hprop),
+  [] ==> null ~> List T nil.
+Proof. intros. simpl. hdata_simpl. hsimpl~. Qed.
+
+Lemma unfocus_nil : forall (l:loc) A a (T:A->a->hprop),
+  l ~> List T nil ==> [l = null].
+Proof. intros. simpl. hdata_simpl. hsimpl~. Qed.
+
+Lemma unfocus_nil' : forall A (L:list A) a (T:A->a->hprop),
+  null ~> List T L ==> [L = nil].
+Proof.
+  intros. destruct L.
+  simpl. unfold hdata. xsimpl~. 
+  unfold hdata, List. hchange (focus_ref_null). hextract. false.
+Qed.
+
+Lemma focus_cons : forall (l:loc) a A (X:A) (L':list A) (T:A->a->hprop),
+  (l ~> List T (X::L')) ==>
+  Hexists x l', (x ~> T X) \* (l' ~> List T L') \* (l ~> Ref Id (x,l')).
+Proof.
+  intros. simpl. hdata_simpl. hchange (@focus_ref l). hextract as [x l']. 
+  hchange (@focus_pair _ _ (x,l')). hsimpl.
+Qed.
+
+Lemma focus_cons' : forall (l:loc) a A (L:list A) (T:A->a->hprop),
+  [l <> null] \* (l ~> List T L) ==> 
+  Hexists x l', Hexists X L', 
+    [L = X::L'] \*  (l ~> Ref Id (x,l')) \* (x ~> T X) \* (l' ~> List T L').
+Proof.
+  intros. destruct L.
+  lets: (@unfocus_nil l _ _ T).   Show Existentials. hextract. false~.
+  hchange (@focus_cons l). hextract as x l' E. hsimpl~.  
+Qed.
+
+Lemma unfocus_cons : forall (l:loc) a (x:a) (l':loc) A (X:A) (L':list A) (T:A->a->hprop),
+  (l ~> Ref Id (x,l')) \* (x ~> T X) \* (l' ~> List T L') ==> 
+  (l ~> List T (X::L')).
+Proof.
+  intros. simpl. hdata_simpl. hchange (@unfocus_pair _ x _ l').
+  hchange (@unfocus_ref l _ (x,l')). hsimpl.
+Qed.
+
+Opaque List.
 
 
 (************************************************************)
 (** Axiomatic specification of the primitive functions *)
 
+
 (* todo: move *)
 Notation "x ''=' y :> A" := (istrue (@eq A x y))
-  (at level 70, y at next level) : comp_scope.
+  (at level 70, y at next level, only parsing) : comp_scope.
 Notation "x ''<>' y :> A" := (istrue (~ (@eq A x y)))
-  (at level 69, y at next level) : comp_scope.
+  (at level 69, y at next level, only parsing) : comp_scope.
+
+
+(* todo?
+Parameter ml_is_null_spec : 
+  Spec ml_is_null l |R>> R [] (\[ bool_of (l = null)]).
+
+Hint Extern 1 (RegisterSpec ml_is_null) => Provide ml_is_null_spec.
+ *)
+
 
 (** Pointers *)
 
@@ -225,7 +328,7 @@ Proof.
   introv L M. intros.
   applys local_wframe. auto. eauto.
   hsimpl. intros l.
-  hchange~ (@unfocus_ref l _ x1).
+  hchange~ (@unfocus_ref l _ x1). hsimpl.
 Qed.
 
 (*

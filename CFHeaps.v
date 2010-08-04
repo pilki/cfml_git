@@ -542,8 +542,21 @@ Ltac hextract_if_needed tt :=
   | context [ [ _ ] ] => hextract_core
   end end.
 
-Tactic Notation "hextract" := hextract_core; intros.
-Tactic Notation "hextract" "as" := hextract_core.
+Tactic Notation "hextract" := 
+  hextract_core; intros.
+Tactic Notation "hextract" "as" := 
+  hextract_core.
+Tactic Notation "hextract" "as" simple_intropattern(I1) := 
+  hextract as; intros I1.
+Tactic Notation "hextract" "as" simple_intropattern(I1) simple_intropattern(I2) := 
+  hextract as; intros I1 I2.
+Tactic Notation "hextract" "as" simple_intropattern(I1) simple_intropattern(I2)
+ simple_intropattern(I3) := 
+  hextract as; intros I1 I2 I3.
+Tactic Notation "hextract" "as" simple_intropattern(I1) simple_intropattern(I2)
+ simple_intropattern(I3) simple_intropattern(I4) := 
+  hextract as; intros I1 I2 I3 I4. 
+
 
 Lemma hextract_demo_1 : forall n J H2 H3 H4 H',
   H4 \* (Hexists y, [y = 2]) \* (Hexists x, [n = x + x] \* J x \* H2) \* H3 ==> H'.
@@ -928,10 +941,19 @@ Proof.
   applys* (@pred_le_trans heap) (H1' \* H2). hsimpl~. 
 Qed.
 
+Ltac hchange_debug H :=
+  let K := fresh "TEMP" in
+  forwards_nounfold K: H; eapply hchange_lemma; 
+    [ apply K
+    | clear K
+    | clear K ].
+
 Ltac hchange_core H :=
-  first [ apply (@hchange_lemma H)
-        | applys hchange_lemma H ]; 
-  hsimpl.
+  let K := fresh "TEMP" in
+  forwards_nounfold K: H; eapply hchange_lemma; 
+    [ apply K
+    | clear K; instantiate; try hsimpl
+    | clear K; instantiate ].
 
 Tactic Notation "hchange" constr(H) :=
   hchange_core H.

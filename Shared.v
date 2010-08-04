@@ -1,4 +1,12 @@
 Set Implicit Arguments.
+(* todo: move *)
+Require Import LibTactics. Import List.
+Tactic Notation "forwards_nounfold" simple_intropattern(I) ":" constr(Ei) :=
+  let args := ltac_args Ei in
+  let args := (eval simpl in (args ++ ((boxer ___)::nil))) in
+  build_app args ltac:(fun R => lets_base I R).
+
+
 Require Import LibCore.
 
 (* todo: move*)

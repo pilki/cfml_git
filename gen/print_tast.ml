@@ -105,7 +105,11 @@ let rec string_of_expression par e =
    | Texp_apply (e, l) -> (* todo: afficher les infixes correctement *)
       let l = List.map (fun (eo,opt) -> match eo with None -> unsupported "optional apply arguments" | Some ei -> ei) l in
       let se = aux ~par:true e in
-      let sl = show_list (aux ~par:true) " " l in
+      let show_arg ei =
+         let s_ei = aux ~par:false ei in
+         let t_ei = string_of_type_exp ei.exp_type in
+         sprintf "(%s : %s)" s_ei t_ei in
+      let sl = show_list show_arg " " l in
       let s = sprintf "%s %s" se sl in
       show_par par s
    | Texp_match (e, l, pa) -> 

@@ -1765,7 +1765,6 @@ Ltac xfor_core I :=
 Ltac xfor_le_core I :=
   eapply (@xfor_frame_le I);
   [ try math
-  | hsimpl
   | xfor_bounds_intro tt
   | hsimpl ].
 
@@ -1797,3 +1796,42 @@ Fixpoint List A a (T:A->a->hprop) (L:list A) (l:loc) : hprop :=
   | X::L' => Hexists x l', T X x \* l ~> RefOn (x,l') \* List T L' l'
   end.
 *)
+
+(* 
+Ltac hchange_core H :=
+  first [ apply (@hchange_lemma H)
+        | applys hchange_lemma H ]; 
+  hsimpl.
+
+
+
+Ltac xchange_lemma_core L :=
+  eapply xchange_lemma; 
+    [ try apply local_is_local
+    | applys L
+    | hsimpl
+    | ].
+
+
+(*
+Definition pred_le' := pred_le.
+Lemma pred_le_change : pred_le = pred_le'.
+Proof. auto. Qed.
+Opaque pred_le'.
+
+Ltac xchange_lemma_core L ::=
+  let K := fresh "TEMP" in
+  let K' := fresh "TEMP" in
+  lets K: L; 
+  rewrite pred_le_change in K;
+  forwards K': K;
+  rewrite <- pred_le_change in K;
+  clear K;
+  eapply xchange_lemma; 
+    [ clear K'; try apply local_is_local
+    | apply K'
+    | clear K'; instantiate; try hsimpl
+    | clear K' ].
+*)
+
+

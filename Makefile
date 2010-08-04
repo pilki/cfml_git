@@ -94,8 +94,8 @@ imper/MyLib_ml.vo/:imper/MyLib_ml.v
 
 NEW=\
 	imper/MyLib_ml.v \
-	imper/ListRev_ml.v \
-	imper/ListRev_proof.v 
+	imper/TreeCopy_ml.v \
+	imper/TreeCopy_proof.v \
 
 IMP=\
 	CFHeaps.v \
@@ -107,8 +107,10 @@ IMP=\
 IMPER=\
 	imper/Counter_ml.v \
 	imper/Facto_ml.v \
+	imper/ListRev_ml.v \
 	imper/Counter_proof.v \
 	imper/Facto_proof.v \
+	imper/ListRev_proof.v \
 	imper/Dijkstra_ml.v \
 	imper/Dijkstra_proof.v 
 

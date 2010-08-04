@@ -892,7 +892,7 @@ Lemma xchange_lemma : forall H1 H1' H2 B H Q (F:~~B),
   is_local F -> (H1 ==> H1') -> (H ==> H1 \* H2) -> F (H1' \* H2) Q -> F H Q.
 Proof.
   introv W1 L W2 M. applys local_wframe __ []; eauto.
-  hsimpl. hchange~ W2. rew_heap~. 
+  hsimpl. hchange~ W2. hsimpl~. rew_heap~. 
 Qed.
 
 Lemma local_gc_pre_all : forall B Q (F:~~B) H,
