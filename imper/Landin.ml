@@ -1,0 +1,8 @@
+open MyLib
+
+let fix bigf =
+   let r = sref () in
+   let g x = (!r) x in
+   let f x = bigf g x in
+   sset r f;
+   f

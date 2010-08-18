@@ -40,7 +40,9 @@ let inlined_primitives_table =
    "Stream.++", (2, "LibList.append"); 
    "Stream.reverse", (1, "LibList.rev");
    "Lazy.force", (1, ""); (* @LibLogic.id _*)
-   "Okasaki.!$", (1, "") ]
+   "Okasaki.!$", (1, "");
+   "MyLib.cast", (1, "")
+   ]
    (* todo: add asr, etc.. *)
 
 let all_primitives_table = (*todo:complete*)
@@ -88,7 +90,10 @@ let all_primitives_table = (*todo:complete*)
     "Stream.take", "ml_take";  
     "Stream.drop", "ml_drop"; 
     "MyLib.null", "null";
-    "MyLib.is_null", "ml_is_null" ]
+    "MyLib.is_null", "ml_is_null";
+    "MyLib.sref", "ml_ref";    
+    "MyLib.sget", "ml_get";
+    "MyLib.sset", "ml_set"; ]
 
 let builtin_constructors_table = (* todo: indiquer pervasives *)
   [ "[]", "Coq.Lists.List.nil";
