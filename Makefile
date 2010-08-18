@@ -94,6 +94,8 @@ imper/MyLib_ml.vo/:imper/MyLib_ml.v
 
 NEW=\
 	imper/MyLib_ml.v \
+	imper/Loops_ml.v \
+	imper/Loops_proof.v \
 	imper/ListRev_ml.v \
 	imper/ListRev_proof.v \
 	imper/TreeCopy_ml.v \
@@ -242,7 +244,8 @@ $(MYOCAMLDEP):
 # -debug
 
 imper/MyLib.cmi: imper/MyLib.mli
-	$(GENERATOR) -rectypes -onlycmi imper/MyLib.mli
+	$(OCAMLC) imper/MyLib.mli
+#TODO	$(GENERATOR) -rectypes -onlycmi imper/MyLib.mli
 
 %.cmi: %.ml 
 	@echo "MAKING CMI: $@"

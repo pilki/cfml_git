@@ -21,7 +21,7 @@ Proof. rewrite~ fact_succ. math_rewrite (1-1=0). rewrite~ fact_zero. Qed.
 Lemma facto_rec_spec : Spec facto_rec n |R>>
   n >= 0 -> R [] (\= fact n).
 Proof.
-  (* todo: xinduction (). *) skip_goal.
+  apply (spec_induction_1_noheap (lt:=downto 0)). prove_wf.
   xcf. intros. xif. xret. hsimpl. rewrite~ fact_zero.
   xapp~. intro_subst. xret. hsimpl. rewrite~ <- fact_succ.
 Qed.

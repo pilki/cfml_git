@@ -962,25 +962,28 @@ Tactic Notation "xweaks" :=
 
 
 (*--------------------------------------------------------*)
-(* ** [xinduction] --TODO
+(* ** [xinduction] *)
 
-(** [xinduction E] applies to a goal of the form [Spec_n f K] 
+(** [xinduction E] applies to a goal of the form 
+    [Spec_n f (fun x1 .. xN R => forall x0, L x0 x1 xN R)] 
     and replaces it with a weaker goal, which describes the same
     specification but including an induction hypothesis. 
     The argument [E] describes the termination arguments. 
     If [f] has type [A1 -> .. -> AN -> B], then [E] should be one of
-    - a measure of type [A1*..*AN -> nat] 
-    - a binary relation of type [A1*..*AN -> A1*..*AN -> Prop] 
+    - a measure of type [A0*A1*..*AN -> nat] 
+    - a binary relation of type [A0*A1*..*AN -> A1*..*AN -> Prop] 
     - a proof that a well-foundedness for such a relation.
     
     Measures and binary relations can also be provided in
-    a curried fashion, at type [A1 -> .. -> AN -> nat] and
-    [A1 -> A1 -> A2 -> A2 -> .. -> AN -> AN -> Prop], respectively.
+    a curried fashion, at type [A0 -> A1 -> .. -> AN -> nat] and
+    [A0 -> A0 -> A1 -> A1 -> A2 -> A2 -> .. -> AN -> AN -> Prop], respectively.
     
     The combinators [unprojNK] are useful for building new binary
     relations. For example, if [R] has type [A->A->Prop], then
     [unproj21 B R] has type [A*B -> A*B -> Prop] and compares pairs
     with respect to their first component only, using [R]. *)
+
+(* todo: reimplement using  goal_arity and options *)
 
 Ltac xinduction_base_lt lt :=
   first   
@@ -991,7 +994,7 @@ Ltac xinduction_base_lt lt :=
     | apply (spec_induction_2 (lt:=uncurryp2 lt))
     | apply (spec_induction_3 (lt:=uncurryp3 lt))
     | apply (spec_induction_4 (lt:=uncurryp4 lt)) ];
-  [ try prove_wf | unfolds_wf ].
+  [ try prove_wf | try xisspec | unfolds_wf ].
 
 Ltac xinduction_base_wf wf :=
   first   
@@ -999,7 +1002,7 @@ Ltac xinduction_base_wf wf :=
     | apply (spec_induction_2 wf)
     | apply (spec_induction_3 wf) 
     | apply (spec_induction_4 wf) ];
-   unfolds_wf.
+   [ try xisspec | unfolds_wf ].
 
 Ltac xinduction_base_measure m :=
   first   
@@ -1010,14 +1013,14 @@ Ltac xinduction_base_measure m :=
     | apply (spec_induction_2 (measure_wf (uncurry2 m)))
     | apply (spec_induction_3 (measure_wf (uncurry3 m)))
     | apply (spec_induction_4 (measure_wf (uncurry4 m))) ];
-  unfolds_wf; unfold measure.
+    [ try xisspec | unfolds_wf; unfold measure ].
 
 Tactic Notation "xinduction" constr(arg) :=
   first [ xinduction_base_lt arg
         | xinduction_base_wf arg
         | xinduction_base_measure arg ].
 
-(** Lemmas to set up induction for two mutually-recursive functions. *)
+(** Lemmas to set up induction for two mutually-recursive functions. 
 
 Lemma mutual_update_2 : forall (P' Q' P Q : Prop),
   (P' -> P) -> (Q' -> Q) -> (P' /\ Q') -> (P /\ Q).
