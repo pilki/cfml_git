@@ -25,9 +25,9 @@ Instance inhabited_Z : Inhabited Z.
 Admitted.
 
 
-
-(************************************************************)
+(********************************************************************)
 (** Pure Representation for base types *)
+
 
 Hint Extern 1 (@rep _ _ _ _ _) => simpl.
 
@@ -86,9 +86,11 @@ Parameter null : loc.
 Parameter ml_is_null : val.
 
 
-(************************************************************)
-(** Imperative representation for base types *)
+(********************************************************************)
+(** Imperative Representation for base types *)
 
+(*------------------------------------------------------------------*)
+(* ** Basics *)
 
 Definition htype A a := A -> a -> hprop.
 
@@ -101,9 +103,8 @@ Definition Id {A:Type} (X:A) (x:A) :=
 
 Definition Void {a A} (v:a) (V:A) := [].
 
-(** References *)
-
-   (*--todo: Record ref A := { content : A }. *)
+(*------------------------------------------------------------------*)
+(* ** References *)
 
 Definition Ref a A (T:htype A a) (V:A) (l:loc) :=
   Hexists v, l ~~> v \* v ~> T V.
@@ -126,29 +127,133 @@ Axiom focus_ref_null : forall a A (T:htype A a) V,
 
 Opaque Ref.
 
+   (*--todo: Record ref A := { content : A }. *)
 
-(** Pairs *)
+(*------------------------------------------------------------------*)
+(* ** Tuple 2 *)
 
-Definition Pair A1 A2 a1 a2 (T1:A1->a1->hprop) (T2:A2->a2->hprop) P p :=
+Definition Tup2 A1 A2 a1 a2 (T1:A1->a1->hprop) (T2:A2->a2->hprop) P p :=
   let '(X1,X2) := P in let '(x1,x2) := p in x1 ~> T1 X1 \* x2 ~> T2 X2.
 
-Lemma focus_pair : forall a1 a2 (p:a1*a2) A1 A2 (T1:htype A1 a1) (T2:htype A2 a2) V1 V2,
-  p ~> Pair T1 T2 (V1,V2) ==> let '(x1,x2) := p in x1 ~> T1 V1 \* x2 ~> T2 V2.
+Lemma focus_tup2 : forall a1 a2 (p:a1*a2) A1 A2 (T1:htype A1 a1) (T2:htype A2 a2) V1 V2,
+  p ~> Tup2 T1 T2 (V1,V2) ==> let '(x1,x2) := p in x1 ~> T1 V1 \* x2 ~> T2 V2.
 Proof. auto. Qed.
 
-Lemma unfocus_pair : forall a1 (x1:a1) a2 (x2:a2) A1 A2 (T1:htype A1 a1) (T2:htype A2 a2) V1 V2,
-  x1 ~> T1 V1 \* x2 ~> T2 V2 ==> (x1,x2) ~> Pair T1 T2 (V1,V2).
-Proof. intros. unfold Pair. hdata_simpl. auto. Qed.
+Lemma unfocus_tup2 : forall a1 (x1:a1) a2 (x2:a2) A1 A2 (T1:htype A1 a1) (T2:htype A2 a2) V1 V2,
+  x1 ~> T1 V1 \* x2 ~> T2 V2 ==> (x1,x2) ~> Tup2 T1 T2 (V1,V2).
+Proof. intros. unfold Tup2. hdata_simpl. auto. Qed.
 
-Opaque Pair.
+Opaque Tup2.
 
+(*------------------------------------------------------------------*)
+(* ** Tuple 3 *)
 
-(** Lists *)
+Definition Tup3 A1 A2 A3 a1 a2 a3 (T1:A1->a1->hprop) (T2:A2->a2->hprop) (T3:A3->a3->hprop) P p :=
+  let '(X1,X2,X3) := P in let '(x1,x2,x3) := p in x1 ~> T1 X1 \* x2 ~> T2 X2 \* x3 ~> T3 X3.
+
+Lemma focus_tup3 : forall a1 a2 a3 (p:a1*a2*a3) A1 A2 A3 (T1:htype A1 a1) (T2:htype A2 a2) (T3:A3->a3->hprop) V1 V2 V3,
+  p ~> Tup3 T1 T2 T3 (V1,V2,V3) ==> let '(x1,x2,x3) := p in x1 ~> T1 V1 \* x2 ~> T2 V2 \* x3 ~> T3 V3.
+Proof. auto. Qed.
+
+Lemma unfocus_tup3 : forall a1 (x1:a1) a2 (x2:a2) a3 (x3:a3) A1 A2 A3 (T1:htype A1 a1) (T2:htype A2 a2) (T3:A3->a3->hprop) V1 V2 V3,
+  x1 ~> T1 V1 \* x2 ~> T2 V2 \* x3 ~> T3 V3 ==> (x1,x2,x3) ~> Tup3 T1 T2 T3 (V1,V2,V3).
+Proof. intros. unfold Tup3. hdata_simpl. auto. Qed.
+
+Opaque Tup3.
+
+(*------------------------------------------------------------------*)
+(* ** Ref-Tuple 3  -- todo ?
+
+Definition RefTup3 A1 A2 A3 a1 a2 a3 (T1:A1->a1->hprop) (T2:A2->a2->hprop) (T3:A3->a3->hprop) P l :=
+  l ~> Ref (Tup3 T1 T2 T3) P.
+
+Lemma focus_reftup3 : forall (l:loc) a1 a2 a3 A1 A2 A3 (T1:htype A1 a1) (T2:htype A2 a2) (T3:A3->a3->hprop) V1 V2 V3,
+  l ~> RefTup3 T1 T2 T3 (V1,V2,V3) ==> Hexists (x1:a1) (x2:a2) (x3:a3),
+  l ~> Ref Id (x1,x2,x3) \* x1 ~> T1 V1 \* x2 ~> T2 V2 \* x3 ~> T3 V3.
+Proof.
+  intros. unfold RefTup3. hdata_simpl. hchange (@focus_ref l). hextract as. 
+  intros p [[x1 x2] x3] H. hchange (focus_tup3 p). destruct p as [[y1 y2] y3].
+  inversions H. hsimpl~. 
+Qed.
+
+Lemma unfocus_reftup3 : forall (l:loc) a1 (x1:a1) a2 (x2:a2) a3 (x3:a3) A1 A2 A3 (T1:htype A1 a1) (T2:htype A2 a2) (T3:A3->a3->hprop) V1 V2 V3,
+  l ~> Ref Id (x1,x2,x3) \* x1 ~> T1 V1 \* x2 ~> T2 V2 \* x3 ~> T3 V3 ==>
+  l ~> RefTup3 T1 T2 T3 (V1,V2,V3).
+Proof.
+  intros. unfold RefTup3. hdata_simpl. hchange (unfocus_tup3 x1 x2 x3). 
+  hchange (@unfocus_ref l _ (x1,x2,x3)). hsimpl.
+Qed.
+
+Opaque RefTup3.
+*)
+
+(*------------------------------------------------------------------*)
+(* ** Record 2 *)
+
+Definition Ref2 A1 A2 a1 a2 (T1:A1->a1->hprop) (T2:A2->a2->hprop) (V1:A1) (V2:A2) l :=
+  l ~> Ref (Tup2 T1 T2) (V1,V2).
+
+Lemma focus_ref2 : forall (l:loc) a1 a2 A1 A2 (T1:htype A1 a1) (T2:htype A2 a2) V1 V2,
+  l ~> Ref2 T1 T2 V1 V2 ==> Hexists (x1:a1) (x2:a2),
+  l ~> Ref Id (x1,x2) \* x1 ~> T1 V1 \* x2 ~> T2 V2 .
+Proof.
+  intros. unfold Ref2. hdata_simpl. hchange (@focus_ref l).
+  hextract as [x1 x2]. hchange (focus_tup2 (x1,x2)). hsimpl.
+Qed.
+
+Lemma unfocus_ref2 : forall (l:loc) a1 (x1:a1) a2 (x2:a2) A1 A2 (T1:htype A1 a1) (T2:htype A2 a2) V1 V2,
+  l ~> Ref Id (x1,x2) \* x1 ~> T1 V1 \* x2 ~> T2 V2 ==>
+  l ~> Ref2 T1 T2 V1 V2.
+Proof.
+  intros. unfold Ref2. hdata_simpl. hchange (unfocus_tup2 x1 x2). 
+  hchange (@unfocus_ref l _ (x1,x2)). hsimpl.
+Qed.
+
+Lemma focus_ref2_null : forall a1 a2 A1 A2 (T1:htype A1 a1) (T2:htype A2 a2) V1 V2,
+  null ~> Ref2 T1 T2 V1 V2 ==> [False]. 
+Proof.
+  intros. unfold hdata, Ref2. hchange focus_ref_null. hsimpl. 
+Qed.
+
+Opaque Ref2.
+
+(*------------------------------------------------------------------*)
+(* ** Record 3 *)
+
+Definition Ref3 A1 A2 A3 a1 a2 a3 (T1:A1->a1->hprop) (T2:A2->a2->hprop) (T3:A3->a3->hprop) (V1:A1) (V2:A2) (V3:A3) l :=
+  l ~> Ref (Tup3 T1 T2 T3) (V1,V2,V3).
+
+Lemma focus_ref3 : forall (l:loc) a1 a2 a3 A1 A2 A3 (T1:htype A1 a1) (T2:htype A2 a2) (T3:A3->a3->hprop) V1 V2 V3,
+  l ~> Ref3 T1 T2 T3 V1 V2 V3 ==> Hexists (x1:a1) (x2:a2) (x3:a3),
+  l ~> Ref Id (x1,x2,x3) \* x1 ~> T1 V1 \* x2 ~> T2 V2 \* x3 ~> T3 V3.
+Proof.
+  intros. unfold Ref3. hdata_simpl. hchange (@focus_ref l).
+  hextract as [[x1 x2] x3]. hchange (focus_tup3 (x1,x2,x3)). hsimpl.
+Qed.
+
+Lemma unfocus_ref3 : forall (l:loc) a1 (x1:a1) a2 (x2:a2) a3 (x3:a3) A1 A2 A3 (T1:htype A1 a1) (T2:htype A2 a2) (T3:A3->a3->hprop) V1 V2 V3,
+  l ~> Ref Id (x1,x2,x3) \* x1 ~> T1 V1 \* x2 ~> T2 V2 \* x3 ~> T3 V3 ==>
+  l ~> Ref3 T1 T2 T3 V1 V2 V3.
+Proof.
+  intros. unfold Ref3. hdata_simpl. hchange (unfocus_tup3 x1 x2 x3). 
+  hchange (@unfocus_ref l _ (x1,x2,x3)). hsimpl.
+Qed.
+
+Lemma focus_ref3_null : forall a1 a2 a3 A1 A2 A3 (T1:htype A1 a1) (T2:htype A2 a2) (T3:htype A3 a3) V1 V2 V3,
+  null ~> Ref3 T1 T2 T3 V1 V2 V3 ==> [False]. 
+Proof.
+  intros. unfold hdata, Ref3. hchange focus_ref_null. hsimpl. 
+Qed.
+
+Opaque Ref3.
+
+(*------------------------------------------------------------------*)
+(* ** Lists *)
 
 Fixpoint List A a (T:A->a->hprop) (L:list A) (l:loc) : hprop :=
   match L with
   | nil => [l = null]
-  | X::L' => l ~> Ref (Pair T (List T)) (X,L')
+  | X::L' => l ~> Ref2 T (List T) X L'
   end.
 
 Lemma focus_nil : forall A a (T:A->a->hprop),
@@ -164,15 +269,14 @@ Lemma unfocus_nil' : forall A (L:list A) a (T:A->a->hprop),
 Proof.
   intros. destruct L.
   simpl. unfold hdata. xsimpl~. 
-  unfold hdata, List. hchange (focus_ref_null). hextract. false.
+  unfold hdata, List. hchange focus_ref2_null. hextract. false.
 Qed.
 
 Lemma focus_cons : forall (l:loc) a A (X:A) (L':list A) (T:A->a->hprop),
   (l ~> List T (X::L')) ==>
   Hexists x l', (x ~> T X) \* (l' ~> List T L') \* (l ~> Ref Id (x,l')).
 Proof.
-  intros. simpl. hdata_simpl. hchange (@focus_ref l). hextract as [x l']. 
-  hchange (@focus_pair _ _ (x,l')). hsimpl.
+  intros. simpl. hdata_simpl. hchange (@focus_ref2 l). xsimpl.
 Qed.
 
 Lemma focus_cons' : forall (l:loc) a A (L:list A) (T:A->a->hprop),
@@ -180,8 +284,8 @@ Lemma focus_cons' : forall (l:loc) a A (L:list A) (T:A->a->hprop),
   Hexists x l', Hexists X L', 
     [L = X::L'] \*  (l ~> Ref Id (x,l')) \* (x ~> T X) \* (l' ~> List T L').
 Proof.
-  intros. destruct L.
-  lets: (@unfocus_nil l _ _ T).   Show Existentials. hextract. false~.
+  intros. destruct L. lets: (@unfocus_nil l _ _ T). (* Show Existentials. *)
+  hextract. false~.
   hchange (@focus_cons l). hextract as x l' E. hsimpl~.  
 Qed.
 
@@ -189,8 +293,7 @@ Lemma unfocus_cons : forall (l:loc) a (x:a) (l':loc) A (X:A) (L':list A) (T:A->a
   (l ~> Ref Id (x,l')) \* (x ~> T X) \* (l' ~> List T L') ==> 
   (l ~> List T (X::L')).
 Proof.
-  intros. simpl. hdata_simpl. hchange (@unfocus_pair _ x _ l').
-  hchange (@unfocus_ref l _ (x,l')). hsimpl.
+  intros. simpl. hdata_simpl. hchange (@unfocus_ref2 l _ x _ l'). hsimpl.
 Qed.
 
 Opaque List.

@@ -1,6 +1,7 @@
 Set Implicit Arguments.
-Require Import LibCore CFPrim ListRev_ml.
+Require Import LibCore CFPrim ListRev_ml LibList.
 
+Opaque List Ref.
 
 (*****************)
 
@@ -35,7 +36,7 @@ Proof.
      hextract as F. xclean. subst fl.
      hchange (unfocus_nil'). hextract. subst L1. rew_list in E. 
       rewrite <- (@rev_rev _ L2). rewrite <- E. hsimpl.
-  xchange (@focus_ref r). xlocal. (* why? *)
+  xchange (@focus_ref r). xlocal. (* todo: why? *)
   xextract as x. xapp. intros z. hextract. subst. hsimpl.
 Qed.
 

@@ -846,6 +846,10 @@ Tactic Notation "xapp_manual" "as" :=
 Tactic Notation "xapp_spec_manual" constr(H) "as" := 
   xapp_then H ltac:(fun _ => idtac).
 
+Tactic Notation "xapp" "as" simple_intropattern(x) :=
+  xlet as x; [ xapp | instantiate; xextract ].
+
+
 (* todo: when hypothesis in an app instance *)
 
 (*
@@ -1067,7 +1071,7 @@ Ltac xbody_base_intro tt :=
   xbody_core ltac:(fun _ => remove_head_unit tt; introv).
 
 Ltac xbody_base_nointro tt :=
-  xbody_core ltac:(fun _ => idtac).
+  xbody_core ltac:(fun _ => remove_head_unit tt).
 
 Tactic Notation "xbody" :=
   xbody_pre tt; xbody_base_intro tt.
@@ -1106,6 +1110,8 @@ Ltac xfun_namebody tt :=
 
 Tactic Notation "xfun" constr(s) :=
   xfun_core s ltac:(fun _ => first [ xbody_base_intro tt | xfun_namebody tt ] ).
+Tactic Notation "xfun_nointro" constr(s) :=
+  xfun_core s ltac:(fun _ => first [ xbody_base_nointro tt | xfun_namebody tt ] ).
 Tactic Notation "xfun" constr(s) "as" ident(B) :=
   xfun_core s ltac:(fun _ => intros B).
     (* --todo: rename to xfun_noxbody *)
