@@ -754,33 +754,6 @@ End SpecWeaken.
 (********************************************************************)
 (* ** Induction lemmas for spec *)
 
-Lemma spec_induction_1_noheap : 
-  forall A1 B,
-  forall (lt:binary A1) (Wf: wf lt) f (K:A1->~~B->Prop),
-  spec_1 (fun x R => 
-    spec_1 (fun x' R' => lt x' x -> K x' R') f ->
-    K x R) f ->
-  spec_1 K f.
-Proof.
-  introv W H.
-  cuts Hyp: (forall x, is_spec_0 (K x) /\ K x (app_1 f x)).
-    apply spec_intro_1. 
-      intros x. apply (proj1 (Hyp x)).
-      apply* spec_curried_1.
-      intros x. destruct~ (Hyp x). 
-  intros x. pattern x. induction_wf IH: W x.
-  lets C: (spec_curried_1 H). 
-  lets I: (proj1 H x).
-  lets S: (spec_elim_1 H x). clear H. 
-  asserts M: (spec_1 (fun x' R' => lt x' x -> K x' R') f). split.
-    intros x'. introv HK HP Lt. applys~ (proj1 (IH _ Lt)).
-    intros x' Lt. apply (proj2 (IH _ Lt)).
-  split.
-    introv HK HP. applys~ (I R R').
-    apply~ S.
-Qed.
-
-
 Lemma spec_induction_1 : 
   forall A1 B A0,
   forall (lt:binary (A0*A1)) (Wf: wf lt) f (L:A0->A1->~~B->Prop),
@@ -809,6 +782,36 @@ Proof.
       intros x' y' Lt. apply (proj2 (IH _ Lt)).
 Qed.
 
+Axiom spec_induction_2 : 
+  forall A1 A2 B A0 (lt:binary(A0*A1*A2)),
+  forall (Wf: wf lt) f (L:A0->A1->A2->~~B->Prop),
+  (forall y, is_spec_2 (L y)) ->
+  spec_2 (fun x1 x2 R => forall x0,
+    spec_2 (fun y1 y2 R' => forall y0, 
+      lt (y0,y1,y2) (x0,x1,x2) -> L y0 y1 y2 R') f ->
+    L x0 x1 x2 R) f ->
+  spec_2 (fun x1 x2 R => forall x0, L x0 x1 x2 R) f.
+
+Axiom spec_induction_3 : 
+  forall A1 A2 A3 B A0 (lt:binary(A0*A1*A2*A3)) (Wf: wf lt) f 
+         (L:A0->A1->A2->A3->~~B->Prop),
+  (forall y, is_spec_3 (L y)) ->
+  spec_3 (fun x1 x2 x3 R => forall x0,
+    spec_3 (fun y1 y2 y3 R' => forall y0,
+      lt (y0,y1,y2,y3) (x0,x1,x2,x3) -> L y0 y1 y2 y3 R') f ->
+    L x0 x1 x2 x3 R) f ->
+  spec_3 (fun x1 x2 x3 R => forall x0, L x0 x1 x2 x3 R) f.
+
+Axiom spec_induction_4 : 
+  forall A1 A2 A3 A4 B A0 (lt:binary(A0*A1*A2*A3*A4)) (Wf: wf lt) f 
+         (L:A0->A1->A2->A3->A4->~~B->Prop),
+  (forall y, is_spec_4 (L y)) ->
+  spec_4 (fun x1 x2 x3 x4 R => forall x0,
+    spec_4 (fun y1 y2 y3 y4 R' => forall y0,
+       lt (y0,y1,y2,y3,y4) (x0,x1,x2,x3,x4) -> L y0 y1 y2 y3 y4 R') f ->
+    L x0 x1 x2 x3 x4 R) f ->
+  spec_4 (fun x1 x2 x3 x4 R => forall x0, L x0 x1 x2 x3 x4 R) f.
+
 Lemma spec_induction_1_noarg : 
   forall A1 B A0,
   forall (lt:binary A0) (Wf: wf lt) f (L:A0->A1->~~B->Prop),
@@ -821,33 +824,55 @@ Proof.
   introv W Is H. applys* spec_induction_1 (unproj21_wf (A2:=A1) W).
 Qed. 
 
+Lemma spec_induction_1_noheap : 
+  forall A1 B,
+  forall (lt:binary A1) (Wf: wf lt) f (K:A1->~~B->Prop),
+  spec_1 (fun x R => 
+    spec_1 (fun x' R' => lt x' x -> K x' R') f ->
+    K x R) f ->
+  spec_1 K f.
+Proof.
+  introv W H.
+  cuts Hyp: (forall x, is_spec_0 (K x) /\ K x (app_1 f x)).
+    apply spec_intro_1. 
+      intros x. apply (proj1 (Hyp x)).
+      apply* spec_curried_1.
+      intros x. destruct~ (Hyp x). 
+  intros x. pattern x. induction_wf IH: W x.
+  lets C: (spec_curried_1 H). 
+  lets I: (proj1 H x).
+  lets S: (spec_elim_1 H x). clear H. 
+  asserts M: (spec_1 (fun x' R' => lt x' x -> K x' R') f). split.
+    intros x'. introv HK HP Lt. applys~ (proj1 (IH _ Lt)).
+    intros x' Lt. apply (proj2 (IH _ Lt)).
+  split.
+    introv HK HP. applys~ (I R R').
+    apply~ S.
+Qed.
 
-Axiom spec_induction_2 : 
-  forall A1 A2 B A0 (lt:(A0*A1*A2)->(A0*A1*A2)->Prop),
-  forall (Wf: wf lt) f (L:A0->A1->A2->~~B->Prop),
-  (forall y, is_spec_2 (L y)) ->
-  spec_2 (fun x1 x2 R => forall x0,
-    spec_2 (fun y1 y2 R' => forall y0, lt (y0,y1,y2) (x0,x1,x2) -> L y0 y1 y2 R') f ->
-    L x0 x1 x2 R) f ->
-  spec_2 (fun x1 x2 R => forall x0, L x0 x1 x2 R) f.
+Axiom spec_induction_2_noheap : 
+  forall A1 A2 B (lt:(A1*A2)->(A1*A2)->Prop),
+  forall (Wf: wf lt) f (K:A1->A2->~~B->Prop),
+  spec_2 (fun x1 x2 R => 
+    spec_2 (fun y1 y2 R' => lt (y1,y2) (x1,x2) -> K y1 y2 R') f ->
+    K x1 x2 R) f ->
+  spec_2 K f.
 
-(* todo: monter les ordres *)
-Axiom spec_induction_3 :
-  forall A1 B A0,
-  forall (lt:binary (A0*A1)) (Wf: wf lt) f (L:A0->A1->~~B->Prop),
-  (forall y, is_spec_1 (L y)) ->
-  spec_1 (fun x R => forall y,
-    spec_1 (fun x' R' => forall y', lt (y',x') (y,x) -> L y' x' R') f ->
-    L y x R) f ->
-  spec_1 (fun x R => forall y, L y x R) f.
-Axiom spec_induction_4 : 
-  forall A1 B A0,
-  forall (lt:binary (A0*A1)) (Wf: wf lt) f (L:A0->A1->~~B->Prop),
-  (forall y, is_spec_1 (L y)) ->
-  spec_1 (fun x R => forall y,
-    spec_1 (fun x' R' => forall y', lt (y',x') (y,x) -> L y' x' R') f ->
-    L y x R) f ->
-  spec_1 (fun x R => forall y, L y x R) f.
+Axiom spec_induction_3_noheap : 
+  forall A1 A2 A3 B (lt:(A1*A2*A3)->(A1*A2*A3)->Prop) (Wf: wf lt) f 
+         (K:A1->A2->A3->~~B->Prop),
+  spec_3 (fun x1 x2 x3 R => 
+    spec_3 (fun y1 y2 y3 R' => lt (y1,y2,y3) (x1,x2,x3) -> K y1 y2 y3 R') f ->
+    K x1 x2 x3 R) f ->
+  spec_3 K f.
+
+Axiom spec_induction_4_noheap : 
+  forall A1 A2 A3 A4 B (lt:(A1*A2*A3*A4)->(A1*A2*A3*A4)->Prop) (Wf: wf lt) f 
+         (K:A1->A2->A3->A4->~~B->Prop),
+  spec_4 (fun x1 x2 x3 x4 R => 
+    spec_4 (fun y1 y2 y3 y4 R' => lt (y1,y2,y3,y4) (x1,x2,x3,x4) -> K y1 y2 y3 y4 R') f ->
+    K x1 x2 x3 x4 R) f ->
+  spec_4 K f.
 
 
 (*
@@ -1009,6 +1034,7 @@ Qed.
 
 *)
 
+
 (********************************************************************)
 (* ** Lemmas for other tactics *)
 
@@ -1048,6 +1074,12 @@ Lemma xret_lemma : forall B (v:B) H (Q:B->hprop),
   local (fun H' Q' => H' ==> Q' v) H Q.
 Proof.  
   introv W. apply~ local_erase.
+Qed.
+
+Lemma xret_lemma_unify : forall B (v:B) H,
+  local (fun H' Q' => H' ==> Q' v) H (\= v \*+ H).
+Proof.  
+  intros. apply~ local_erase. hsimpl. auto. 
 Qed.
 
 (* todo: move *)

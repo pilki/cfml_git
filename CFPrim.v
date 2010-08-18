@@ -419,6 +419,13 @@ Hint Extern 1 (RegisterSpec ml_set) => Provide ml_set_spec.
 Hint Extern 1 (RegisterSpec ml_incr) => Provide ml_incr_spec.
 Hint Extern 1 (RegisterSpec ml_decr) => Provide ml_decr_spec.
 
+(** Strong References --todo unify ? *)
+Parameter ml_sset : val.
+Parameter ml_sset_spec : forall a a',
+  Spec ml_sset (l:loc) (v:a) |R>> 
+    forall (v':a'), R (l ~> Ref Id v') (# l ~> Ref Id v).
+Hint Extern 1 (RegisterSpec ml_sset) => Provide ml_sset_spec.
+
 
 (** Derived specifications for references *)
 
@@ -559,3 +566,7 @@ Parameter ml_array_set_spec : forall a,
 
 
 
+
+
+Opaque Zplus.
+Opaque Ref.

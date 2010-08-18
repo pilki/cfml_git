@@ -549,7 +549,8 @@ Ltac xret_gc :=
   eapply xret_gc_lemma.
 
 Ltac xret_core :=
-  apply xret_lemma.
+  first [ apply xret_lemma_unify
+        | apply xret_lemma ].
 
 Ltac xret_pre cont := 
   cont tt.
@@ -990,10 +991,11 @@ Ltac xinduction_base_lt lt :=
     [ apply (spec_induction_1 (lt:=lt))
     | apply (spec_induction_2 (lt:=lt))
     | apply (spec_induction_3 (lt:=lt)) 
-    | apply (spec_induction_4 (lt:=lt)) 
+    | apply (spec_induction_4 (lt:=lt))
     | apply (spec_induction_2 (lt:=uncurryp2 lt))
     | apply (spec_induction_3 (lt:=uncurryp3 lt))
-    | apply (spec_induction_4 (lt:=uncurryp4 lt)) ];
+    | apply (spec_induction_4 (lt:=uncurryp4 lt)) 
+    | apply (spec_induction_1_noarg (lt:=lt)) ];
   [ try prove_wf | try xisspec | unfolds_wf ].
 
 Ltac xinduction_base_wf wf :=
@@ -1001,7 +1003,8 @@ Ltac xinduction_base_wf wf :=
     [ apply (spec_induction_1 wf)
     | apply (spec_induction_2 wf)
     | apply (spec_induction_3 wf) 
-    | apply (spec_induction_4 wf) ];
+    | apply (spec_induction_4 wf) 
+    | apply (spec_induction_1_noarg wf) ];
    [ try xisspec | unfolds_wf ].
 
 Ltac xinduction_base_measure m :=
@@ -1012,13 +1015,51 @@ Ltac xinduction_base_measure m :=
     | apply (spec_induction_4 (measure_wf m))
     | apply (spec_induction_2 (measure_wf (uncurry2 m)))
     | apply (spec_induction_3 (measure_wf (uncurry3 m)))
-    | apply (spec_induction_4 (measure_wf (uncurry4 m))) ];
+    | apply (spec_induction_3 (measure_wf (uncurry4 m)))
+    | apply (spec_induction_1_noarg (measure_wf m)) ];
     [ try xisspec | unfolds_wf; unfold measure ].
 
-Tactic Notation "xinduction" constr(arg) :=
+Tactic Notation "xinduction_heap" constr(arg) :=
   first [ xinduction_base_lt arg
         | xinduction_base_wf arg
         | xinduction_base_measure arg ].
+
+
+Ltac xinduction_noheap_base_lt lt :=
+  first   
+    [ apply (spec_induction_1_noheap (lt:=lt))
+    | apply (spec_induction_2_noheap (lt:=lt))
+    | apply (spec_induction_3_noheap (lt:=lt)) 
+    | apply (spec_induction_4_noheap (lt:=lt)) 
+    | apply (spec_induction_2_noheap (lt:=uncurryp2 lt))
+    | apply (spec_induction_3_noheap (lt:=uncurryp3 lt))
+    | apply (spec_induction_4_noheap (lt:=uncurryp4 lt)) ];
+  [ try prove_wf | unfolds_wf ].
+
+Ltac xinduction_noheap_base_wf wf :=
+  first   
+    [ apply (spec_induction_1_noheap wf)
+    | apply (spec_induction_2_noheap wf)
+    | apply (spec_induction_3_noheap wf) 
+    | apply (spec_induction_4_noheap wf) ];
+   [ unfolds_wf ].
+
+Ltac xinduction_noheap_base_measure m :=
+  first   
+    [ apply (spec_induction_1_noheap (measure_wf m))
+    | apply (spec_induction_2_noheap (measure_wf m))
+    | apply (spec_induction_3_noheap (measure_wf m))
+    | apply (spec_induction_4_noheap (measure_wf m))
+    | apply (spec_induction_2_noheap (measure_wf (uncurry2 m)))
+    | apply (spec_induction_3_noheap (measure_wf (uncurry3 m)))
+    | apply (spec_induction_4_noheap (measure_wf (uncurry4 m))) ];
+    [ unfolds_wf; unfold measure ].
+
+Tactic Notation "xinduction" constr(arg) :=
+  first [ xinduction_noheap_base_lt arg
+        | xinduction_noheap_base_wf arg
+        | xinduction_noheap_base_measure arg ].
+
 
 (** Lemmas to set up induction for two mutually-recursive functions. 
 
@@ -1163,7 +1204,7 @@ Ltac unfolds_to_spec tt :=
   | _ => progress(unfolds); unfolds_to_spec tt
   end. 
 
-(* -- TODO
+(* -- TODO *)
 
 Tactic Notation "xfun_induction" constr(S) constr(I) :=
   xfun_core S ltac:(fun _ => 
@@ -1173,7 +1214,14 @@ Tactic Notation "xfun_induction_nointro" constr(S) constr(I) :=
   xfun_core S ltac:(fun _ => 
     intro; unfolds_to_spec tt; xinduction I; xbody_nointro).
 
-*)
+Tactic Notation "xfun_induction_heap" constr(S) constr(I) :=
+  xfun_core S ltac:(fun _ => 
+    intro; unfolds_to_spec tt; xinduction_heap I; xbody).
+
+Tactic Notation "xfun_induction_heap_nointro" constr(S) constr(I) :=
+  xfun_core S ltac:(fun _ => 
+    intro; unfolds_to_spec tt; xinduction_heap I; xbody_nointro).
+
 
 
 

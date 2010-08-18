@@ -322,6 +322,7 @@ let normalize_expression named e =
       | Pexp_constraint (e,to1,to2) -> 
          let e',b = aux named e in
          return (Pexp_constraint (e',to1,to2)), b
+          (* todo: if e' is just a name, then the constraint should be contained in b *)
       | Pexp_when (econd,ebody) -> 
          let econd' = protect false econd in
          let ebody' = protect false ebody in

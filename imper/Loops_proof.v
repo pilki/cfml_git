@@ -19,38 +19,61 @@ Proof.
   xapp~. hsimpl.
   (* case a <= b *)
   intros I Hbody.
-  xfun_noxbody (fun f => Spec f i |R>> a <= i <= b+1 -> R (I i) (# I (b+1))).
-    apply (spec_induction_1_noheap (lt:=upto (b+1))). prove_wf.
-    xbody. intros IH Le. 
-    xif.
+  xfun_induction (fun f => Spec f i |R>> a <= i <= b+1 -> R (I i) (# I (b+1))) (upto (b+1)).
+    intros IH Le. xif.
       xapp. math.
        xapp; auto with maths.
       xret. math_rewrite (i = b+1). auto.
   xapp. math. xsimpl.
 Qed.
-    
+
+(* details of xfun_induction:  
+  xfun_noxbody (fun f => Spec f i |R>> a <= i <= b+1 -> R (I i) (# I (b+1))).
+    apply (spec_induction_1_noheap (lt:=upto (b+1))). prove_wf. xbody. 
+*)    
 
 (********************************************************************)
 (* ** While loops *)
 
-
-
+Lemma loop_while : 
+  Spec loop_while cond body |R>>
+    forall A (I:A->hprop) (J:A->bool->hprop) (lt:binary A) X0 (Q:unit->hprop),
+      wf lt -> 
+      (Spec cond () |R'>> forall X, R' (I X) (J X)) ->
+      (Spec body () |R'>> forall X, R' (J X true) (# Hexists Y, (I Y) \* [lt Y X])) ->
+      (forall X, J X false ==> Q tt) ->
+      R (I X0) Q.
+Proof.
+  xcf. introv W Hc Hb Ho.
+  xfun_induction_heap (fun f => Spec f () |R>> forall X, R (I X) Q) lt.
+    intros IH. xlet. xapp y. xif.
+      xseq. xapp y. xextract. intros y' Lt. xapp~ y'. hsimpl.
+      xret. destruct _x1; tryfalse. hchange (Ho y). hsimpl.
+  xapp X0. hsimpl.
+Qed.
 
 (*
-Notation "'For' i '=' a 'To' b 'Do' Q1 'Done'" :=
-  (!For (fun H Q => (a > (b)%Z -> H ==> (Q tt)) /\ (a <= (b)%Z -> exists H', exists I,
-       (H ==> I a \* H') 
-    /\ (forall i, a <= i /\ i <= (b)%Z -> Q1 (I i) (# I(i+1))) 
-    /\ (I ((b)%Z+1) \* H' ==> Q tt))))
-  (at level 69, i ident) : charac.
-
-Notation "'While' Q1 'Do' Q2 'Done'" :=
-  (!While (fun H Q => exists H', exists A, exists I, exists R,
-       wf R 
-     /\ (exists x, H ==> I x \* H')
-     /\ (forall x, local (fun Hl Ql => exists Q', 
-            Q1 Hl Q'
-         /\ Q2 (Q' true) (# Hexists y, (I y) \* [R y x])
-         /\ (Q' false \* H' ==> Ql tt)) (I x) Q)))
-  (at level 69) : charac.
+xfun_noxbody (fun f => Spec f () |R>> forall X, R (I X) Q).
+    apply (spec_induction_1_noarg (lt:=lt)). auto. xisspec. xbody.
 *)
+
+
+(*TODO
+Notation "'While' Q1 'Do' Q2 'Done'" :=
+  (!While (fun H Q => exists A, exists I, exists J, exists R,
+       wf R 
+     /\ (exists x, H ==> I x)
+     /\ (forall x, Q1 (I x) (J x)
+                /\ Q2 (J x true) (# Hexists y, (I y) \* [R y x])
+                /\ (J x false) ==> Q1 tt)
+  (at level 69) : charac.
+
+--
+tactic : if J is not of type "A->bool->hprop"
+then J' may be of type "A->bool" or "A->Prop" and then J is
+   fun X b => (b = bool_of (J' X)) \* (I X)
+--
+*)
+
+
+

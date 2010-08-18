@@ -93,7 +93,7 @@ let all_primitives_table = (*todo:complete*)
     "MyLib.is_null", "ml_is_null";
     "MyLib.sref", "ml_ref";    
     "MyLib.sget", "ml_get";
-    "MyLib.sset", "ml_set"; ]
+    "MyLib.sset", "ml_sset"; ]
 
 let builtin_constructors_table = (* todo: indiquer pervasives *)
   [ "[]", "Coq.Lists.List.nil";
