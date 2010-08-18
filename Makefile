@@ -94,6 +94,8 @@ imper/MyLib_ml.vo/:imper/MyLib_ml.v
 
 NEW=\
 	imper/MyLib_ml.v \
+	imper/Swap_ml.v \
+	imper/Swap_proof.v \
 	imper/ListRev_ml.v \
 	imper/ListRev_proof.v \
 	imper/TreeCopy_ml.v \
