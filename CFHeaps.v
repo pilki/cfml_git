@@ -14,6 +14,8 @@ Record dynamic := dyn {
   dyn_type : Type; 
   dyn_value : dyn_type }.
 
+Implicit Arguments dyn [[dyn_type]].
+
 Lemma dyn_inj : forall A (x y : A),
   dyn x = dyn y -> x = y. 
 Proof. introv H. inverts~ H. Qed.
@@ -556,6 +558,17 @@ Tactic Notation "hextract" "as" simple_intropattern(I1) simple_intropattern(I2)
 Tactic Notation "hextract" "as" simple_intropattern(I1) simple_intropattern(I2)
  simple_intropattern(I3) simple_intropattern(I4) := 
   hextract as; intros I1 I2 I3 I4. 
+Tactic Notation "hextract" "as" simple_intropattern(I1) simple_intropattern(I2)
+ simple_intropattern(I3) simple_intropattern(I4) simple_intropattern(I5) := 
+  hextract as; intros I1 I2 I3 I4 I5. 
+Tactic Notation "hextract" "as" simple_intropattern(I1) simple_intropattern(I2)
+ simple_intropattern(I3) simple_intropattern(I4) simple_intropattern(I5)
+ simple_intropattern(I6) := 
+  hextract as; intros I1 I2 I3 I4 I5 I6. 
+Tactic Notation "hextract" "as" simple_intropattern(I1) simple_intropattern(I2)
+ simple_intropattern(I3) simple_intropattern(I4) simple_intropattern(I5)
+ simple_intropattern(I6) simple_intropattern(I7) := 
+  hextract as; intros I1 I2 I3 I4 I5 I6 I7. 
 
 
 Lemma hextract_demo_1 : forall n J H2 H3 H4 H',

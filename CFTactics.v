@@ -1283,6 +1283,29 @@ Tactic Notation "xfor_general" constr(I) :=
   let H := fresh "Hfor" in xfor_general I as H.
 
 
+(* todo: improve *)
+
+Ltac xfor_base_manual I cont1 cont2 := 
+  apply local_erase; split; 
+    [ cont1 tt 
+    | cont2 tt; esplit; exists I; splits 3%nat; 
+       [  
+       | xfor_bounds_intro tt
+       | ]
+    ].
+
+Ltac xfor_core_gen_manual I H :=
+  xfor_base_manual I ltac:(fun _ => intros H)
+                     ltac:(fun _ => intros H).
+
+Ltac xfor_base_gen_manual I H :=
+  xfor_pre ltac:(fun _ => xfor_core_gen_manual I H).
+
+Tactic Notation "xfor_general_manual" constr(I) "as" ident(H) := 
+  xfor_base_gen_manual I H.
+Tactic Notation "xfor_general_manual" constr(I) := 
+  let H := fresh "Hfor" in xfor_general_manual I as H.
+
 
 (*--------------------------------------------------------*)
 (* ** [xwhile] *)

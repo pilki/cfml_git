@@ -299,6 +299,36 @@ Qed.
 Opaque List.
 
 
+(*------------------------------------------------------------------*)
+(* ** Tools for stdio *)
+
+Definition list_dyn A (L:list A) :=
+  LibList.map dyn L.
+
+Lemma list_dyn_nil : forall A,
+  list_dyn (@nil A) = nil.
+Proof. auto. Qed.
+
+Lemma list_dyn_cons : forall A X (L:list A),
+  list_dyn (X::L) = (dyn X)::(list_dyn L).
+Proof. auto. Qed.
+
+Lemma list_dyn_last : forall A X (L:list A),
+  list_dyn (L&X) = (list_dyn L)&(dyn X).
+Proof. intros. unfold list_dyn. rew_list~. Qed.
+
+Hint Rewrite list_dyn_nil : rew_app.
+Hint Rewrite list_dyn_nil : rew_map.
+Hint Rewrite list_dyn_nil : rew_list.
+Hint Rewrite list_dyn_cons : rew_app.
+Hint Rewrite list_dyn_cons : rew_map.
+Hint Rewrite list_dyn_cons : rew_list.
+Hint Rewrite list_dyn_last : rew_app.
+Hint Rewrite list_dyn_last : rew_map.
+Hint Rewrite list_dyn_last : rew_list.
+
+
+
 (************************************************************)
 (** Axiomatic specification of the primitive functions *)
 
@@ -604,3 +634,4 @@ let not b =
 let fst (x,y) = x
 let snd (x,y) = y
 *)
+

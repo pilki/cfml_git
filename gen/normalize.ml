@@ -312,7 +312,9 @@ let normalize_expression named e =
              (* todo: à tester: if then else fun x -> x *)
       | Pexp_sequence (e1,e2) -> 
           let e1', b = aux true e1 in
-          return (Pexp_sequence (e1', protect named e2)), b     
+          let tunit = Some { ptyp_desc = Ptyp_constr (Lident "unit", []); ptyp_loc = loc } in
+          let e1'' = return (Pexp_constraint (e1', tunit, None)) in
+          return (Pexp_sequence (e1'', protect named e2)), b     
       | Pexp_while (e1,e2) -> 
          return (Pexp_while (protect named e1, protect named e2)), []      
       | Pexp_for (s,e1,e2,d,e3) -> 
