@@ -624,7 +624,7 @@ let rec cfg_structure_item s : cftops =
   | Tstr_modtype(id, decl) -> cfg_modtype id decl
 
   | Tstr_open path -> 
-      if Path.name path = "Stream" then [] else
+      if is_primitive_module (Path.name path) then [] else
       [ Cftop_coqs [ Coqtop_require_import (lift_full_path_name path) ] ]
 
   (* todo: check actually a primitive, sinon conflicts... *)

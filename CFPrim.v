@@ -570,3 +570,15 @@ Parameter ml_array_set_spec : forall a,
 
 Opaque Zplus.
 Opaque Ref.
+
+
+(*
+let incr r = 
+   r := !r + 1
+
+let not b =
+  if b then false else true
+
+let fst (x,y) = x
+let snd (x,y) = y
+*)

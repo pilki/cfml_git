@@ -1,4 +1,4 @@
-open MyLib
+open NullPointers
 
 type 'a mlist = ('a * 'a mlist) ref 
 (*todo:nref*)

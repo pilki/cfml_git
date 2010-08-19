@@ -89,11 +89,12 @@ OKA=$(OKAS) $(OKAQ) $(OKAH) $(OKAO)
 
 #	imper/MyLib.cmi \
 
-imper/MyLib_ml.vo/:imper/MyLib_ml.v
-	$(COQC) imper/MyLib_ml.v
+#imper/MyLib_ml.vo/:imper/MyLib_ml.v
+#	$(COQC) imper/MyLib_ml.v
 
 NEW=\
-	imper/MyLib_ml.v \
+	imper/Landin_ml.v \
+	imper/Landin_proof.v \
 	imper/Swap_ml.v \
 	imper/Swap_proof.v \
 	imper/ListRev_ml.v \
@@ -160,16 +161,22 @@ TEST=\
 	demo/test_ml.v \
 	demo/test_proof.v 
 
+
+BUILTIN=\
+	imper/NullPointers.cmi \
+	imper/StrongPointers.cmi
+
+
 ALL=$(IMP) $(TEST) 
 OLD=$(TOOLS) $(DEMO) $(OKA) $(OKACOD)
 # $(COD) $(DEV) $(TUTO) $(FORM) $(DEV) $(OKA) $(DEV:.v=.vo)
 
 .PHONY: all def clean cleanall dep tools tools demo oka new cod dvpt test gen lib none
 .SUFFIXES: .camldep .ml _ml.v _ml.vo _proof.v _proof.vo .v .vo 
-.SECONDARY: *.cmi okasaki/*.cmi demo/*.cmi
-.SECONDARY: *_ml.v okasaki/*_ml.v demo/*_ml.v
-.SECONDARY: *_ml.vo okasaki/*_ml.vo demo/*_ml.vo
-.SECONDARY: *.d okasaki/*.d demo/*.d *_ml.d okasaki/*_ml.d demo/*_ml.d
+.SECONDARY: *.cmi okasaki/*.cmi demo/*.cmi imper/*.cmi
+.SECONDARY: *_ml.v okasaki/*_ml.v demo/*_ml.v imper/*_ml.v
+.SECONDARY: *_ml.vo okasaki/*_ml.vo demo/*_ml.vo imper/*_ml.vo
+.SECONDARY: *.d okasaki/*.d demo/*.d imper/*.d
 
 def: all
 all: gen full .camldep 
@@ -178,6 +185,7 @@ tools: $(TOOLS:.v=.vo)
 demo: $(DEMO:.v=.vo)
 imp: $(IMP:.v=.vo)
 imper: $(IMPER:.v=.vo)
+builtin: $(BUILTIN)
 
 oka: $(OKA:.v=.vo) $(OKACOD:.v=.vo)
 okac: $(OKACOD:.v=.vo)
@@ -242,16 +250,20 @@ $(GENERATOR):
 $(MYOCAMLDEP): 
 	make -C gen 
 
-%_ml.v: %.ml %.cmi $(GENERATOR) 
+
+imper/StrongPointers.cmi: imper/StrongPointers.mli
+	$(OCAMLC) $<
+imper/NullPointers.cmi: imper/NullPointers.mli
+	$(OCAMLC) $<
+#TODO	$(GENERATOR) -rectypes -onlycmi imper/MyLib.mli
+
+
+%_ml.v: %.ml %.cmi $(GENERATOR) $(BUILTIN)
 	@echo "GENERATING $@"
 	@$(GENERATOR) -rectypes $(INCLUDES) $<
 # -debug
 
-imper/MyLib.cmi: imper/MyLib.mli
-	$(OCAMLC) imper/MyLib.mli
-#TODO	$(GENERATOR) -rectypes -onlycmi imper/MyLib.mli
-
-%.cmi: %.ml 
+%.cmi: %.ml $(BUILTIN)
 	@echo "MAKING CMI: $@"
 	@$(GENERATOR) -rectypes -onlycmi $(INCLUDES) $<
 

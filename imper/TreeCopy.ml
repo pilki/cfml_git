@@ -1,4 +1,4 @@
-open MyLib
+open NullPointers
 
 type 'a mtree = ('a * 'a mtree * 'a mtree) ref
 

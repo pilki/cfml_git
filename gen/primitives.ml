@@ -41,7 +41,7 @@ let inlined_primitives_table =
    "Stream.reverse", (1, "LibList.rev");
    "Lazy.force", (1, ""); (* @LibLogic.id _*)
    "Okasaki.!$", (1, "");
-   "MyLib.cast", (1, "")
+   "StrongPointers.cast", (1, "")
    ]
    (* todo: add asr, etc.. *)
 
@@ -89,11 +89,11 @@ let all_primitives_table = (*todo:complete*)
     "Stream.append", "ml_append";
     "Stream.take", "ml_take";  
     "Stream.drop", "ml_drop"; 
-    "MyLib.null", "null";
-    "MyLib.is_null", "ml_is_null";
-    "MyLib.sref", "ml_ref";    
-    "MyLib.sget", "ml_get";
-    "MyLib.sset", "ml_sset"; ]
+    "NullPointers.null", "null";
+    "NullPointers.is_null", "ml_is_null";
+    "StrongPointers.sref", "ml_ref";    
+    "StrongPointers.sget", "ml_get";
+    "StrongPointers.sset", "ml_sset"; ]
 
 let builtin_constructors_table = (* todo: indiquer pervasives *)
   [ "[]", "Coq.Lists.List.nil";
@@ -130,3 +130,5 @@ let skip_cf_for = function
   | "!$" -> true
   | _ -> false
 
+let is_primitive_module n =
+   List.mem n [ "Stream"; "NullPointers"; "StrongPointers" ]

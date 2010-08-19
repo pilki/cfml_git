@@ -1,4 +1,4 @@
-open MyLib
+open StrongPointers
 
 let test_strong () =
    let x = ref () in
