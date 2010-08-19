@@ -21,13 +21,14 @@ Qed.
 Lemma landin_spec : forall A B,
   Spec landin bigf |Rmain>>
     forall C (lt:binary (C*A)) (Wf: wf lt) (L:C->A->~~B->Prop),
+    (forall y, is_spec_1 (L y)) ->
     (forall I:hprop, Spec bigf f x |R>> forall y,
         (Spec f x' |R'>> forall y', lt (y',x') (y,x) -> sframe I (L y') x' R') ->
         sframe I (L y) x R) ->
     Rmain [] (fun f => Hexists I, I \* 
             [Spec f x |R>> forall y, sframe I (L y) x R]).
 Proof.
-  xcf. introv W Hbigf.
+  xcf. introv W Is Hbigf.
   xapp.
   (* verification of G *)
   xfun (fun g => Spec g x |R>> forall (K:A->~~B->Prop) f',
@@ -41,12 +42,27 @@ Proof.
      intros H Q Happ. xapp. intro_subst. 
      rewrite star_comm. apply Happ.
   (* verification of f *)
-  xfun 
-    
-
-
-lets: spec_elim_1.
-
+  xfun (fun f => Spec f x |R>> forall y f',
+     let I := (r ~> Ref Id f') in
+     (Spec f' x' |R'>> forall y', lt (y',x') (y,x) -> sframe I (L y') x' R') ->
+     sframe I (L y) x R).
+     intros_all. applys~ sframe_is_spec_1.
+     intros I Sf'. applys Is.
+       apply (spec_elim_2 (Hbigf I) g x y). xweaken.
+         intros_all. applys~ sframe_is_spec_1.
+         simpl. intros x' R LR SK y' Lt.
+         unfold sframe in SK|-*. unfold I. gen y'.
+         apply SK; [ | apply Sf' ].
+         introv H. intros. applys Is. apply~ H. auto.       
+       intros H Q Happ. apply Happ.
+  (* tight the knot *)
+  xapp. xret. hsimpl (r ~> Ref Id f).
+  (* prove the spec of the result by induction *)
+  xinduction_heap W.
+      intros_all. applys sframe_is_spec_1. auto. apply H. auto.
+    xweaken.
+      intros_all. applys sframe_is_spec_1. auto. apply H. auto. auto.
+    auto.
 Qed.
 
 
