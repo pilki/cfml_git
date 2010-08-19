@@ -75,6 +75,8 @@ let all_primitives_table = (*todo:complete*)
     "Pervasives.snd", "ml_snd";   
     "Pervasives.max_int", "ml_max_int";
     "Pervasives.min_int", "ml_min_int";
+    "Pervasives.read_int", "ml_read_int";
+    "Pervasives.print_int", "ml_print_int";
     "Array.make", "ml_array_make";    
     "Array.get", "ml_array_get";
     "Array.set", "ml_array_set";

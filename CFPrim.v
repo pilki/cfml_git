@@ -384,6 +384,28 @@ Parameter ml_snd_spec : forall a1 a2,
     pure R (= snd p).
 Hint Extern 1 (RegisterSpec ml_snd) => Provide ml_snd_spec.
 
+(** IO *)
+
+Parameter Channel : forall (L:list dynamic) (l:loc), hprop.
+
+Notation "l ~>> L" := (l ~> Channel L)
+  (at level 32, no associativity).
+
+Parameter stdin : loc.
+Parameter stdout : loc.
+
+Parameter ml_read_int : val.
+Parameter ml_read_int_spec :
+  Spec ml_read_int () |R>> forall L (n:int),
+    R (stdin ~>> (dyn n::L)) (\=n \*+ stdin ~>> L).
+Hint Extern 1 (RegisterSpec ml_read_int) => Provide ml_read_int_spec.
+
+Parameter ml_print_int : val.
+Parameter ml_print_int_spec :
+  Spec ml_print_int (n:int) |R>> forall L,
+    R (stdout ~>> L) (# stdout ~>> L & (dyn n)).
+Hint Extern 1 (RegisterSpec ml_print_int) => Provide ml_print_int_spec.
+
 
 (** References *)
 

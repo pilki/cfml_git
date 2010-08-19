@@ -93,6 +93,8 @@ OKA=$(OKAS) $(OKAQ) $(OKAH) $(OKAO)
 #	$(COQC) imper/MyLib_ml.v
 
 NEW=\
+	imper/InOut_ml.v \
+	imper/InOut_proof.v \
 	imper/Compose_ml.v \
 	imper/Compose_proof.v \
 	imper/Swap_ml.v \
