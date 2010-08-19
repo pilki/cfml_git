@@ -746,8 +746,9 @@ Ltac xapp_inst args solver :=
   let KR := fresh "K" R in let IR := fresh "I" R in
   intros R LR KR; hnf in KR; (* lazy beta in *)
   let H := xapp_compact KR args in
-  forwards_then H ltac:(fun HR => xapp_final HR);    
-  solver tt.
+  forwards_then H ltac:(fun HR => try xapp_final HR);    
+  try clears R; solver tt.
+(* todo: should clear R in indirect subgoals *)
 
 Ltac xapp_spec_core H cont :=
    let arity_goal := spec_goal_arity tt in
@@ -790,7 +791,8 @@ Ltac xapp_with spec args solver :=
 Tactic Notation "xapp" := 
   xapp_with ___ (>>>) ltac:(fun _ => idtac).
 Tactic Notation "xapp" constr(E) := 
-  xapp_with ___ E ltac:(fun _ => idtac).Tactic Notation "xapp" constr(E1) constr(E2) := 
+  xapp_with ___ E ltac:(fun _ => idtac).
+Tactic Notation "xapp" constr(E1) constr(E2) := 
   xapp (>>> E1 E2).
 Tactic Notation "xapp" constr(E1) constr(E2) constr(E3) := 
   xapp (>>> E1 E2 E3).

@@ -93,8 +93,8 @@ OKA=$(OKAS) $(OKAQ) $(OKAH) $(OKAO)
 #	$(COQC) imper/MyLib_ml.v
 
 NEW=\
-	imper/Landin_ml.v \
-	imper/Landin_proof.v \
+	imper/Compose_ml.v \
+	imper/Compose_proof.v \
 	imper/Swap_ml.v \
 	imper/Swap_proof.v \
 	imper/ListRev_ml.v \
@@ -116,12 +116,14 @@ IMPER=\
 	imper/TreeCopy_ml.v \
 	imper/Loops_ml.v \
 	imper/StrongUpdate_ml.v \
+	imper/Landin_ml.v \
 	imper/Counter_proof.v \
 	imper/Facto_proof.v \
 	imper/ListRev_proof.v \
 	imper/TreeCopy_proof.v \
 	imper/Loops_proof.v \
 	imper/StrongUpdate_proof.v \
+	imper/Landin_proof.v \
 	imper/Dijkstra_ml.v \
 	imper/Dijkstra_proof.v 
 

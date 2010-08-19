@@ -38,7 +38,7 @@ Proof.
   (* verification of G *)
   xfun (fun g => Spec g x |R>> forall (K:A->~~B->Prop) f',
      is_spec_1 K -> let K' := sframe (r ~> Ref Id f') K in
-     spec_1 K' f' -> K' x R). 
+     Spec_1 f' K' -> K' x R). 
      intros SK K' Sf'. unfold K', sframe.
      applys SK. apply (spec_elim_1 Sf' x).
      intros H Q Happ. xapp. intro_subst. 
