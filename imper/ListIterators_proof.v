@@ -1,7 +1,7 @@
 Set Implicit Arguments.
 Require Import CFPrim ListIterators_ml LibList.
 Module LI := ListIterators_ml.
-
+Opaque List.
 
 
 (********************************************************************)
@@ -19,9 +19,8 @@ Proof.
   xmatch.
   (* base case *)
   xret.
-  hchange (@unfocus_nil' _ L _ T). hextract. subst L. hsimpl (@nil B).
+  hchange (@unfocus_nil' _ L _ T). hextract. subst L. hsimpl~ (@nil B).
     hchange (@focus_nil _ _ U). hchange (@focus_nil _ _ T). hsimpl.
-    auto.
   (* rec case *)
   xchange (@focus_cons' _ a0 l0). xextract as X L' E. subst L.
   xapp. simple~.

@@ -209,6 +209,14 @@ Lemma elim_isTrue_false : forall (b:bool) (P:Prop),
 Proof. intros_all. subst~. destruct b; simpls; false. Qed.
 
 
+Axiom bool_of_impl : forall (P Q : Prop) x, 
+  bool_of P x -> (P <-> Q) -> bool_of Q x.
+Axiom bool_of_impl_neg : forall (P Q : Prop) x, 
+  bool_of P x -> (~P <-> Q) -> bool_of Q (!x).
+Axiom bool_of_neg_impl : forall (P Q : Prop) x, 
+  bool_of P (!x) -> (~P <-> Q) -> bool_of Q x.
+(* todo *)
+
 Hint Rewrite isTrue_istrue istrue_isTrue : rew_istrue.
 Ltac rew_istrue := autorewrite with rew_istrue.
 

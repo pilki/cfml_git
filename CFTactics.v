@@ -435,6 +435,17 @@ Tactic Notation "xextract" "as" simple_intropattern(I1) simple_intropattern(I2)
 Tactic Notation "xextract" "as" simple_intropattern(I1) simple_intropattern(I2) 
  simple_intropattern(I3) simple_intropattern(I4) := 
   xextract; intros I1 I2 I3 I4; xclean.
+Tactic Notation "xextract" "as" simple_intropattern(I1) simple_intropattern(I2) 
+ simple_intropattern(I3) simple_intropattern(I4) simple_intropattern(I5) := 
+  xextract; intros I1 I2 I3 I4 I5; xclean.
+Tactic Notation "xextract" "as" simple_intropattern(I1) simple_intropattern(I2) 
+ simple_intropattern(I3) simple_intropattern(I4) simple_intropattern(I5)
+ simple_intropattern(I6) := 
+  xextract; intros I1 I2 I3 I4 I5 I6; xclean.
+Tactic Notation "xextract" "as" simple_intropattern(I1) simple_intropattern(I2) 
+ simple_intropattern(I3) simple_intropattern(I4) simple_intropattern(I5)
+ simple_intropattern(I6) simple_intropattern(I7) := 
+  xextract; intros I1 I2 I3 I4 I5 I6 I7; xclean.
 
 Tactic Notation "xsimpl" := try hextract; try hsimpl.
 Tactic Notation "xsimpl" "~" := xsimpl; xauto~.
@@ -851,6 +862,27 @@ Tactic Notation "xapp_spec_manual" constr(H) "as" :=
 
 Tactic Notation "xapp" "as" simple_intropattern(x) :=
   xlet as x; [ xapp | instantiate; xextract ].
+
+Ltac xapps_core spec args solver :=
+  let cont tt := 
+    xapp_inst args solver in
+  match ltac_get_tag tt with
+  | tag_let_trm => xlet; [ xuntag tag_apply; cont tt | instantiate; xextract; intro_subst ]
+  | tag_seq =>     xseq; [ xuntag tag_apply; cont tt | instantiate; xextract; intro_subst ]
+  end.
+
+Tactic Notation "xapps" := 
+  xapps_core ___ (>>>) ltac:(fun _ => idtac).
+Tactic Notation "xapps" constr(E) := 
+  xapps_core ___ E ltac:(fun _ => idtac).
+Tactic Notation "xapps" constr(E1) constr(E2) := 
+  xapps_core (>>> E1 E2).
+Tactic Notation "xapps" constr(E1) constr(E2) constr(E3) := 
+  xapps_core (>>> E1 E2 E3).
+Tactic Notation "xapps" constr(E1) constr(E2) constr(E3) constr(E4) := 
+  xapps_core (>>> E1 E2 E3 E4).
+Tactic Notation "xapps" constr(E1) constr(E2) constr(E3) constr(E4) constr(E5) := 
+  xapps_core (>>> E1 E2 E3 E4 E5).
 
 
 (* todo: when hypothesis in an app instance *)

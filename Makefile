@@ -93,8 +93,6 @@ OKA=$(OKAS) $(OKAQ) $(OKAH) $(OKAO)
 #	$(COQC) imper/MyLib_ml.v
 
 NEW=\
-	imper/MutableList_ml.v \
-	imper/MutableList_proof.v \
 	imper/ListIterators_ml.v \
 	imper/ListIterators_proof.v \
 	imper/Compose_ml.v \
