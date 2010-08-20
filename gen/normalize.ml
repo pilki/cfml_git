@@ -170,32 +170,31 @@ let normalize_expression named e =
        { e with pexp_desc = edesc' } in
      let assign_fct pick_var = 
          get_assign_fct loc named pick_var in
+     let assign_var = 
+         assign_fct next_var in      
      match e.pexp_desc with
       | Pexp_ident li -> check_lident loc li; return (Pexp_ident li), []
       | Pexp_constant c -> return (Pexp_constant c), []
       | Pexp_let (Recursive, l, b) -> 
-          let assign = assign_fct next_var in
           let l' = List.map protect_branch l in
           let b' = protect true b in
           let e' = Pexp_let (Recursive, l', b') in
-          assign (return e') []
+          assign_var (return e') []
       | Pexp_let (rf, [], e2) -> unsupported "let without any binding"
       | Pexp_let (rf, [p1,e1], e2) ->
          begin match p1.ppat_desc with
          | Ppat_var x 
          | Ppat_constraint ({ ppat_desc = Ppat_var x}, _) ->
-             let assign = assign_fct next_var in
              let e1',b1 = aux true e1 in
              let e' = create_let loc b1 (
                       create_let loc [normalize_pattern p1, e1'] (
                        protect named e2)) in
-             assign e' []
+             assign_var e' []
          | _ ->  
-             let assign = assign_fct next_var in
              let e1',b1 = aux false e1 in
              let e' = create_let loc b1 (
                       create_match_one loc e1' (normalize_pattern p1) (protect named e2)) in
-             assign e' []
+             assign_var e' []
          end
       | Pexp_let (rf, l, e) -> 
           let check_is_named_pat p =
@@ -247,16 +246,14 @@ let normalize_expression named e =
       | Pexp_apply (e0, l) when is_failwith_function e0 -> 
          return Pexp_assertfalse, []
       | Pexp_apply (e0, l) ->
-         let assign = assign_fct next_var in      
          let e0',b0 = aux false e0 in
          let ei',bi = List.split (List.map (fun (lk,ek) -> let ek',bk = aux false ek in (lk, ek'), bk) l) in
          let e' = return (Pexp_apply (e0', ei')) in
          let b' = (List.flatten bi) @ b0 in
          if is_inlined_primitive e0 l
             then e', b'
-            else assign e' b'
+            else assign_var e' b'
       | Pexp_match (e0, l) -> 
-         let assign = assign_fct next_var in      
          let e0',b0 = aux false e0 in
          let l' =
             let rec or_pats (p,e) = 
@@ -276,7 +273,7 @@ let normalize_expression named e =
               vx, b0@[px,e0']       
             end in
          let e' = Pexp_match (e0', List.map protect_branch l') in
-         assign (return e') b0
+         assign_var (return e') b0
       | Pexp_try (e,l) -> unsupported "exceptions"
       | Pexp_tuple l -> 
          let l',bi = List.split (List.map (aux false) l) in
@@ -292,35 +289,33 @@ let normalize_expression named e =
          let l',bi = List.split (List.map (fun (i,(e,b)) -> ((i,e),b)) (assoc_list_map (aux false) l)) in
          return (Pexp_record (l', None)), List.flatten bi
       | Pexp_field (e,i) -> 
-          let assign = assign_fct next_var in      
           let e',b = aux false e in
-          assign (return (Pexp_field (e', i))) b
+          assign_var (return (Pexp_field (e', i))) b
       | Pexp_setfield (e,i,e2) -> 
-          let assign = assign_fct next_var in      
           let e',b = aux false e in
           let e2',b2 = aux false e2 in
-          assign (return (Pexp_setfield (e', i, e2'))) (b2 @ b)
+          assign_var (return (Pexp_setfield (e', i, e2'))) (b2 @ b)
       | Pexp_array l -> 
          let l',bi = List.split (List.map (aux false) l) in
          return (Pexp_array l'), List.flatten bi
       | Pexp_ifthenelse (e1, e2, None) ->
           let e1', b = aux false e1 in
-          return (Pexp_ifthenelse (e1', protect named e2, Some (return (Pexp_construct (Lident "()", None, false))))), b
+          assign_var (return (Pexp_ifthenelse (e1', protect named e2, Some (return (Pexp_construct (Lident "()", None, false)))))) b
       | Pexp_ifthenelse (e1, e2, Some e3) -> 
           let e1', b = aux false e1 in
-          return (Pexp_ifthenelse (e1', protect named e2, Some (protect named e3))), b
+          assign_var (return (Pexp_ifthenelse (e1', protect named e2, Some (protect named e3)))) b
              (* todo: à tester: if then else fun x -> x *)
       | Pexp_sequence (e1,e2) -> 
           let e1', b = aux true e1 in
           let tunit = Some { ptyp_desc = Ptyp_constr (Lident "unit", []); ptyp_loc = loc } in
           let e1'' = return (Pexp_constraint (e1', tunit, None)) in
-          return (Pexp_sequence (e1'', protect named e2)), b     
+          assign_var (return (Pexp_sequence (e1'', protect named e2))) b     
       | Pexp_while (e1,e2) -> 
-         return (Pexp_while (protect named e1, protect named e2)), []      
+         assign_var (return (Pexp_while (protect named e1, protect named e2))) []      
       | Pexp_for (s,e1,e2,d,e3) -> 
           let e1', b1 = aux false e1 in
           let e2', b2 = aux false e2 in
-          return (Pexp_for (s, e1', e2', d, protect named e3)), b1 @ b2
+          assign_var (return (Pexp_for (s, e1', e2', d, protect named e3))) (b1 @ b2)
       | Pexp_constraint (e,to1,to2) -> 
          let e',b = aux named e in
          return (Pexp_constraint (e',to1,to2)), b
@@ -336,7 +331,7 @@ let normalize_expression named e =
       | Pexp_letmodule (_,_,_) -> unsupported "let-module expression"
       | Pexp_assert e -> unsupported "assertions other than [assert false]"          
       | Pexp_assertfalse -> 
-          return Pexp_assertfalse, []
+          assign_var (return Pexp_assertfalse) []
       | Pexp_lazy e -> 
           let e',b = aux false e in
           return (Pexp_lazy e'), b

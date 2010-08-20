@@ -92,7 +92,12 @@ OKA=$(OKAS) $(OKAQ) $(OKAH) $(OKAO)
 #imper/MyLib_ml.vo/:imper/MyLib_ml.v
 #	$(COQC) imper/MyLib_ml.v
 
+#	imper/LambdaByte_ml.v \
+#	imper/LambdaByte_proof.v \
+
 NEW=\
+	imper/LambdaEval_ml.v \
+	imper/LambdaEval_proof.v \
 	imper/ListIterators_ml.v \
 	imper/ListIterators_proof.v \
 	imper/Compose_ml.v \
