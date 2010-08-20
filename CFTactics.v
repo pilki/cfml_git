@@ -1310,6 +1310,60 @@ Tactic Notation "xfor_general_manual" constr(I) :=
 (*--------------------------------------------------------*)
 (* ** [xwhile] *)
 
+Ltac xwhile_core_inner I J R X0 cont1 cont2 cont3 :=
+  apply local_erase; esplit; esplit; exists I; exists J;
+  first [ exists R | exists (measure R) ]; splits 3%nat;
+  [ cont1 tt 
+  | match X0 with __ => esplit | _ => exists X0 end; cont2 tt 
+  | cont3 tt ].
+
+Ltac xwhile_fixj I J :=
+  match type of J with
+  | _ -> bool => constr:(fun X B => I X \* [B = J X])
+  | _ -> Prop => constr:(fun X B => I X \* [B = bool_of (J X)])
+  end.
+
+Ltac xwhile_core I J R X0 X cont2 cont31 cont32 cont33 :=
+  let J' := xwhile_fixj I J in
+  xwhile_core_inner I J' R X0 
+    ltac:(fun _ => prove_wf)
+    ltac:(cont2)
+    ltac:(intros X; splits 3%nat; [ cont31 tt | cont32 tt | cont33 tt ]).
+    
+Ltac xwhile_pre cont :=
+  match ltac_get_tag tt with
+  | tag_seq => xseq; [ cont tt | ]
+  | tag_while => cont tt
+  end.
+
+Ltac xwhile_base I J R X0 X :=
+  xwhile_pre ltac:(fun _ => xwhile_core I J R X0 X
+    ltac:(fun _ => hsimpl)
+    ltac:(fun _ => hextract as)
+    ltac:(fun _ => hextract as)
+    ltac:(fun _ => hsimpl)).
+
+Ltac xwhile_base_manual I J R X0 :=
+  xwhile_pre ltac:(fun _ => xwhile_core I J R X0 X
+    ltac:(idcont) ltac:(idcont) ltac:(idcont) ltac:(idcont)).
+
+Tactic Notation "xwhile" constr(I) constr(J) constr(R) constr(X0) "as" simple_intropattern(X) := 
+  xwhile_base I J R X0 X.
+Tactic Notation "xwhile" constr(I) constr(J) constr(R) constr(X0) := 
+  let X := fresh "X" in xwhile I J R X0 as X.
+Tactic Notation "xwhile" constr(I) constr(J) constr(R) := 
+  xwhile I J R __.
+
+Tactic Notation "xwhile_manual" constr(I) constr(J) constr(R) constr(X0) "as" simple_intropattern(X) := 
+  xwhile_base_manual I J R X0 X.
+Tactic Notation "xwhile_manual" constr(I) constr(J) constr(R) constr(X0) := 
+  let X := fresh "X" in xwhile_manual I J R X0 as X.
+Tactic Notation "xwhile_manual" constr(I) constr(J) constr(R) := 
+  xwhile_manual I J R __.
+
+
+(*--------------------------------------------------------*)
+(* ** [xwhile] --old while
 
 Ltac xwhile_core I R X0 :=
   apply local_erase; esplit; esplit; exists I; 
@@ -1354,6 +1408,8 @@ Tactic Notation "xcond" constr(P) :=
   xcond_base P.
 Tactic Notation "xcond" :=
   xcond_base __.
+
+*)
 
 
 (*--------------------------------------------------------*)

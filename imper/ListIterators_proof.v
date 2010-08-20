@@ -3,59 +3,6 @@ Require Import CFPrim ListIterators_ml LibList.
 Module LI := ListIterators_ml.
 
 
-(*------------------------------------------------------------------*)
-(* ** Lists *)
-
-Fixpoint List A a (T:A->a->hprop) (L:list A) (l:list a) : hprop :=
-  match L,l with
-  | nil, nil => [l = nil]
-  | X::L', x::l' => x ~> T X \* l' ~> List T L'
-  | _,_=> [False]
-  end.
-
-Lemma focus_nil : forall A a (T:A->a->hprop),
-  [] ==> nil ~> List T nil.
-Proof. intros. simpl. hdata_simpl. hsimpl~. Qed.
-
-Lemma unfocus_nil : forall a (l:list a) A (T:A->a->hprop),
-  l ~> List T nil ==> [l = nil].
-Proof. intros. simpl. hdata_simpl. destruct l. auto. hextract. false. Qed.
-
-Lemma unfocus_nil' : forall A (L:list A) a (T:A->a->hprop),
-  nil ~> List T L ==> [L = nil].
-Proof.
-  intros. destruct L.
-  simpl. hdata_simpl. hextract. hsimpl. auto. (* todo simplify *)
-  simpl. hdata_simpl. hextract. false.
-Qed.
-
-Lemma focus_cons : forall a (l:list a) A (X:A) (L':list A) (T:A->a->hprop),
-  (l ~> List T (X::L')) ==>
-  Hexists x l', (x ~> T X) \* (l' ~> List T L') \* [l = x::l'].
-Proof.
-  intros. simpl. hdata_simpl. destruct l.
-  hextract. false.
-  hsimpl. auto.
-Qed.
-
-Lemma focus_cons' : forall a (x:a) (l:list a) A (L:list A) (T:A->a->hprop),
-  (x::l) ~> List T L ==> 
-  Hexists X L', [L = X::L'] \* (x ~> T X) \* (l ~> List T L').
-Proof.
-  intros. destruct L.
-  simpl. hdata_simpl. hextract. false.
-  simpl. hdata_simpl. hsimpl. auto.
-Qed.
-
-Lemma unfocus_cons : forall a (x:a) (l:list a) A (X:A) (L:list A) (T:A->a->hprop),
-  (x ~> T X) \* (l ~> List T L) ==> 
-  ((x::l) ~> List T (X::L)).
-Proof.
-  intros. simpl. hdata_simpl. hsimpl.
-Qed.
-
-Opaque List.
-
 
 (********************************************************************)
 (** Spec map simple *)

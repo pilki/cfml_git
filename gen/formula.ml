@@ -354,6 +354,7 @@ let rec coq_of_imp_cf cf =
                     /\  forall i, v1 <= i /\ i <= v2 -> F1 (I i) (# I (i+1)) 
                     /\  I (b+1) \* H' ==> Q tt *)
       
+(*--old while
   | Cf_while (cf1,cf2) -> 
       let x = Coq_var "X" in
       let y = Coq_var "Y" in
@@ -377,6 +378,32 @@ let rec coq_of_imp_cf cf =
                    F1 H2 Q'
                 /\ (F2 (Q' true) (# Hexists y, (I y) \* [R y x]))
                 /\ (Q' false \* H' ==> Q2 tt))) (I x) Q)) *)
+*)
+  | Cf_while (cf1,cf2) -> 
+      let x = Coq_var "X" in
+      let y = Coq_var "Y" in
+      let typa = Coq_var "A" in
+      let invi = Coq_var "I" in
+      let invj = Coq_var "J'" in
+      let p1 = Coq_app (Coq_var "LibWf.wf", Coq_var "R") in
+      let p2 = coq_exist "X" typa (heap_impl h (heap_star (Coq_app (invi, x)) (Coq_var "H'"))) in
+      let c1 = coq_apps (coq_of_cf cf1) [ Coq_app (invi, x); Coq_app (invj, x)] in
+      let c2heap = heap_exists "Y" typa (heap_star (Coq_app (invi, y)) (heap_pred (coq_apps (Coq_var "R") [y;x]))) in
+      let c2 = coq_apps (coq_of_cf cf2) [ (coq_apps invj [x; coq_bool_true]); post_unit c2heap] in   
+      let c3 = heap_impl (heap_star (coq_apps invj [x; coq_bool_false]) (Coq_var "H'")) (Coq_app (q, coq_tt)) in
+      let p3 = Coq_forall (("X", typa), coq_conjs [c1;c2;c3]) in
+      let fr1 = coq_exist "R" (coq_impls [typa; typa] Coq_prop) (coq_conjs [p1;p2;p3]) in
+      let fr2 = coq_exist "I" (Coq_impl (typa, hprop)) (coq_exists "J" (coq_impls [typa; coq_bool] hprop) fr1) in
+      funhq "tag_while" (coq_exist "H'" hprop (coq_exist "A" Coq_type fr2))
+      (* (!While: (fun H Q => exists H', exists A, exists I, exists J, exists R, 
+               (wf R)
+            /\ (exists x, H ==> I x \* H')
+            /\ (forall x, 
+                   F1 (I x) (J x)
+                /\ F2 (J x true) (# Hexists y, (I y) \* [R y x])
+                /\ (J x false \* H' ==> Q tt))  *)
+
+
 
   | Cf_letpure _ -> unsupported "letpure-expression in imperative mode"
 

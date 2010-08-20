@@ -247,42 +247,97 @@ Qed.
 
 Opaque Ref3.
 
+
 (*------------------------------------------------------------------*)
 (* ** Lists *)
 
-Fixpoint List A a (T:A->a->hprop) (L:list A) (l:loc) : hprop :=
+Fixpoint List A a (T:A->a->hprop) (L:list A) (l:list a) : hprop :=
+  match L,l with
+  | nil, nil => [l = nil]
+  | X::L', x::l' => x ~> T X \* l' ~> List T L'
+  | _,_=> [False]
+  end.
+
+Lemma focus_nil : forall A a (T:A->a->hprop),
+  [] ==> nil ~> List T nil.
+Proof. intros. simpl. hdata_simpl. hsimpl~. Qed.
+
+Lemma unfocus_nil : forall a (l:list a) A (T:A->a->hprop),
+  l ~> List T nil ==> [l = nil].
+Proof. intros. simpl. hdata_simpl. destruct l. auto. hextract. false. Qed.
+
+Lemma unfocus_nil' : forall A (L:list A) a (T:A->a->hprop),
+  nil ~> List T L ==> [L = nil].
+Proof.
+  intros. destruct L.
+  simpl. hdata_simpl. hextract. hsimpl. auto. (* todo simplify *)
+  simpl. hdata_simpl. hextract. false.
+Qed.
+
+Lemma focus_cons : forall a (l:list a) A (X:A) (L':list A) (T:A->a->hprop),
+  (l ~> List T (X::L')) ==>
+  Hexists x l', (x ~> T X) \* (l' ~> List T L') \* [l = x::l'].
+Proof.
+  intros. simpl. hdata_simpl. destruct l.
+  hextract. false.
+  hsimpl. auto.
+Qed.
+
+Lemma focus_cons' : forall a (x:a) (l:list a) A (L:list A) (T:A->a->hprop),
+  (x::l) ~> List T L ==> 
+  Hexists X L', [L = X::L'] \* (x ~> T X) \* (l ~> List T L').
+Proof.
+  intros. destruct L.
+  simpl. hdata_simpl. hextract. false.
+  simpl. hdata_simpl. hsimpl. auto.
+Qed.
+
+Lemma unfocus_cons : forall a (x:a) (l:list a) A (X:A) (L:list A) (T:A->a->hprop),
+  (x ~> T X) \* (l ~> List T L) ==> 
+  ((x::l) ~> List T (X::L)).
+Proof.
+  intros. simpl. hdata_simpl. hsimpl.
+Qed.
+
+Opaque List.
+
+
+(*------------------------------------------------------------------*)
+(* ** MLists *)
+
+Fixpoint MList A a (T:A->a->hprop) (L:list A) (l:loc) : hprop :=
   match L with
   | nil => [l = null]
   | X::L' => l ~> Ref2 T (List T) X L'
   end.
 
 Lemma focus_nil : forall A a (T:A->a->hprop),
-  [] ==> null ~> List T nil.
+  [] ==> null ~> MList T nil.
 Proof. intros. simpl. hdata_simpl. hsimpl~. Qed.
 
 Lemma unfocus_nil : forall (l:loc) A a (T:A->a->hprop),
-  l ~> List T nil ==> [l = null].
+  l ~> MList T nil ==> [l = null].
 Proof. intros. simpl. hdata_simpl. hsimpl~. Qed.
 
 Lemma unfocus_nil' : forall A (L:list A) a (T:A->a->hprop),
-  null ~> List T L ==> [L = nil].
+  null ~> MList T L ==> [L = nil].
 Proof.
   intros. destruct L.
   simpl. unfold hdata. xsimpl~. 
-  unfold hdata, List. hchange focus_ref2_null. hextract. false.
+  unfold hdata, MList. hchange focus_ref2_null. hextract. false.
 Qed.
 
 Lemma focus_cons : forall (l:loc) a A (X:A) (L':list A) (T:A->a->hprop),
-  (l ~> List T (X::L')) ==>
-  Hexists x l', (x ~> T X) \* (l' ~> List T L') \* (l ~> Ref Id (x,l')).
+  (l ~> MList T (X::L')) ==>
+  Hexists x l', (x ~> T X) \* (l' ~> MList T L') \* (l ~> Ref Id (x,l')).
 Proof.
   intros. simpl. hdata_simpl. hchange (@focus_ref2 l). xsimpl.
 Qed.
 
 Lemma focus_cons' : forall (l:loc) a A (L:list A) (T:A->a->hprop),
-  [l <> null] \* (l ~> List T L) ==> 
+  [l <> null] \* (l ~> MList T L) ==> 
   Hexists x l', Hexists X L', 
-    [L = X::L'] \*  (l ~> Ref Id (x,l')) \* (x ~> T X) \* (l' ~> List T L').
+    [L = X::L'] \*  (l ~> Ref Id (x,l')) \* (x ~> T X) \* (l' ~> MList T L').
 Proof.
   intros. destruct L. lets: (@unfocus_nil l _ _ T). (* Show Existentials. *)
   hextract. false~.
@@ -290,13 +345,13 @@ Proof.
 Qed.
 
 Lemma unfocus_cons : forall (l:loc) a (x:a) (l':loc) A (X:A) (L':list A) (T:A->a->hprop),
-  (l ~> Ref Id (x,l')) \* (x ~> T X) \* (l' ~> List T L') ==> 
-  (l ~> List T (X::L')).
+  (l ~> Ref Id (x,l')) \* (x ~> T X) \* (l' ~> MList T L') ==> 
+  (l ~> MList T (X::L')).
 Proof.
   intros. simpl. hdata_simpl. hchange (@unfocus_ref2 l _ x _ l'). hsimpl.
 Qed.
 
-Opaque List.
+Opaque MList.
 
 
 (*------------------------------------------------------------------*)
