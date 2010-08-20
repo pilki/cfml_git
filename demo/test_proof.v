@@ -26,31 +26,21 @@ Qed.
 Lemma decr_while_spec : Spec decr_while x |R>> 
   forall n, n >= 0 -> R (x ~> Ref Id n) (# x ~> Ref Id 0).
 Proof.
-  xcf. intros.
-  xwhile (fun i:int => x ~> Ref Id i \* [i >= 0]) (downto 0).
-   auto. intros i Li. xcond.
-     xapp. intro_subst. xret. hsimpl~. xclean.
-     intros. xclean. xapp. hsimpl; auto with maths.
-     xsimpl. xclean. math.
+  xcf. intros. dup.
+  (* details *)
+  xwhile_manual (fun i:int => x ~> Ref Id i \* [i >= 0]) (fun i => i > 0) (downto 0).
+  hsimpl. auto.
+  xextract. intros Ge. xapp. intro_subst. xret. hsimpl~. xclean. auto*.
+  xextract. intros Ge M. xclean. xapp. hsimpl; auto with maths.
+  hextract. hsimpl. xclean. math.
+  (* auto *)
+  xwhile (fun i:int => x ~> Ref Id i \* [i >= 0]) (fun i => i > 0) (downto 0).
+  auto.
+  intros Ge. xapp. intro_subst. xret. hsimpl~. xclean. auto*.
+  intros Ge M. xapp. hsimpl; auto with maths.
+  hextract. xclean. hsimpl. math.
 Qed.
 
-(* details:
-  xcf. intros.
-  apply local_erase. esplit. esplit.
-    exists (fun i:int => x ~> Ref Id i \* [i >= 0]). 
-    exists (downto 0).
-    splits 3%nat.
-    prove_wf.
-    esplit. hsimpl. auto. (* ou bien exists X *)
-    intros i. 
-      match goal with |- local _ ?H _ => 
-        let P := fresh in evar (P:Prop); apply local_erase; exists (\[ bool_of P ] \*+ H); subst P 
-        (* ou exists (\[ bool_of P ] \*+ H) *) 
-      end. splits 3%nat.
-      xextract. intros. xapp. intro_subst. xret. hsimpl. auto. xclean.
-      xextract. intros. xapp. xclean. hsimpl; auto with maths.
-  hextract. xclean. hsimpl. math. 
-*)
 
 
 

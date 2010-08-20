@@ -1320,15 +1320,19 @@ Ltac xwhile_core_inner I J R X0 cont1 cont2 cont3 :=
 Ltac xwhile_fixj I J :=
   match type of J with
   | _ -> bool => constr:(fun X B => I X \* [B = J X])
-  | _ -> Prop => constr:(fun X B => I X \* [B = bool_of (J X)])
+  | _ -> Prop => constr:(fun X B => I X \* [bool_of (J X) B])
   end.
+
+Ltac xextract_post_clean tt :=
+  try ( pose ltac_mark; intros; xclean; gen_until_mark ).
+(* todo: hextract with clean in it ! *)
 
 Ltac xwhile_core I J R X0 X cont2 cont31 cont32 cont33 :=
   let J' := xwhile_fixj I J in
   xwhile_core_inner I J' R X0 
     ltac:(fun _ => prove_wf)
     ltac:(cont2)
-    ltac:(intros X; splits 3%nat; [ cont31 tt | cont32 tt | cont33 tt ]).
+    ltac:(fun _ => intros X; splits 3%nat; [ cont31 tt | cont32 tt | cont33 tt ]).
     
 Ltac xwhile_pre cont :=
   match ltac_get_tag tt with
@@ -1339,11 +1343,11 @@ Ltac xwhile_pre cont :=
 Ltac xwhile_base I J R X0 X :=
   xwhile_pre ltac:(fun _ => xwhile_core I J R X0 X
     ltac:(fun _ => hsimpl)
-    ltac:(fun _ => hextract as)
-    ltac:(fun _ => hextract as)
-    ltac:(fun _ => hsimpl)).
+    ltac:(fun _ => try xextract)
+    ltac:(fun _ => try xextract; xextract_post_clean tt)
+    ltac:(fun _ => idtac)).
 
-Ltac xwhile_base_manual I J R X0 :=
+Ltac xwhile_base_manual I J R X0 X :=
   xwhile_pre ltac:(fun _ => xwhile_core I J R X0 X
     ltac:(idcont) ltac:(idcont) ltac:(idcont) ltac:(idcont)).
 

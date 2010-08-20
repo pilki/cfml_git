@@ -384,7 +384,7 @@ let rec coq_of_imp_cf cf =
       let y = Coq_var "Y" in
       let typa = Coq_var "A" in
       let invi = Coq_var "I" in
-      let invj = Coq_var "J'" in
+      let invj = Coq_var "J" in
       let p1 = Coq_app (Coq_var "LibWf.wf", Coq_var "R") in
       let p2 = coq_exist "X" typa (heap_impl h (heap_star (Coq_app (invi, x)) (Coq_var "H'"))) in
       let c1 = coq_apps (coq_of_cf cf1) [ Coq_app (invi, x); Coq_app (invj, x)] in
@@ -393,7 +393,7 @@ let rec coq_of_imp_cf cf =
       let c3 = heap_impl (heap_star (coq_apps invj [x; coq_bool_false]) (Coq_var "H'")) (Coq_app (q, coq_tt)) in
       let p3 = Coq_forall (("X", typa), coq_conjs [c1;c2;c3]) in
       let fr1 = coq_exist "R" (coq_impls [typa; typa] Coq_prop) (coq_conjs [p1;p2;p3]) in
-      let fr2 = coq_exist "I" (Coq_impl (typa, hprop)) (coq_exists "J" (coq_impls [typa; coq_bool] hprop) fr1) in
+      let fr2 = coq_exist "I" (Coq_impl (typa, hprop)) (coq_exist "J" (coq_impls [typa; coq_bool] hprop) fr1) in
       funhq "tag_while" (coq_exist "H'" hprop (coq_exist "A" Coq_type fr2))
       (* (!While: (fun H Q => exists H', exists A, exists I, exists J, exists R, 
                (wf R)

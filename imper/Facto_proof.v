@@ -1,6 +1,7 @@
 Set Implicit Arguments.
 Require Import LibCore CFPrim Facto_ml.
 
+Opaque Ref.
 
 (********************************************************************)
 (* ** Factorial function *)
@@ -48,21 +49,21 @@ Lemma facto_while_spec : Spec facto_while n |R>>
   n >= 0 -> R [] (\= fact n).
 Proof.
   xcf. intros. xapp. xapp. xseq.
-  xwhile (fun i => m ~> Ref Id (i+1) \* r ~> Ref Id (fact i) \* [0<=i<=n]) (upto n) 0.
+  xwhile (fun i => m ~> Ref Id (i+1) \* r ~> Ref Id (fact i) \* [0<=i<=n])
+         (fun i => i+1 <= n) (upto n) 0 as i.
     rewrite~ fact_zero. 
     auto~.
-    intros i [L U]. xcond.
-      xapp. intro_subst. xret. hsimpl~. xclean.
-      intros. xclean.
-       xapp. intro_subst.
-       xapp. intro_subst. 
-       xapp.
-       xapp. intro_subst.
-       xapp. hsimpl. rewrite~ Zmult_comm. rewrite (@fact_succ (i+1)). fequals_rec; auto~.    
+    intros [L U]. xapp. intro_subst. xret. hsimpl~. xclean. iff*.
+    intros [L U] Le.
+      xapp. intro_subst.
+      xapp. intro_subst. 
+      xapp.
+      xapp. intro_subst.
+      xapp. hsimpl. rewrite~ Zmult_comm. rewrite (@fact_succ (i+1)). fequals_rec; auto~.    
       auto~.
       auto~.
       auto~.    
-  hextract. xclean. math_rewrite (i = n). auto.
+    hextract. xclean. math_rewrite (i = n). auto.
   xapp. xsimpl~.
 Qed.
  

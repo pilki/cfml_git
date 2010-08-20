@@ -308,18 +308,18 @@ Opaque List.
 Fixpoint MList A a (T:A->a->hprop) (L:list A) (l:loc) : hprop :=
   match L with
   | nil => [l = null]
-  | X::L' => l ~> Ref2 T (List T) X L'
+  | X::L' => l ~> Ref2 T (MList T) X L'
   end.
 
-Lemma focus_nil : forall A a (T:A->a->hprop),
+Lemma focus_mnil : forall A a (T:A->a->hprop),
   [] ==> null ~> MList T nil.
 Proof. intros. simpl. hdata_simpl. hsimpl~. Qed.
 
-Lemma unfocus_nil : forall (l:loc) A a (T:A->a->hprop),
+Lemma unfocus_mnil : forall (l:loc) A a (T:A->a->hprop),
   l ~> MList T nil ==> [l = null].
 Proof. intros. simpl. hdata_simpl. hsimpl~. Qed.
 
-Lemma unfocus_nil' : forall A (L:list A) a (T:A->a->hprop),
+Lemma unfocus_mnil' : forall A (L:list A) a (T:A->a->hprop),
   null ~> MList T L ==> [L = nil].
 Proof.
   intros. destruct L.
@@ -327,24 +327,24 @@ Proof.
   unfold hdata, MList. hchange focus_ref2_null. hextract. false.
 Qed.
 
-Lemma focus_cons : forall (l:loc) a A (X:A) (L':list A) (T:A->a->hprop),
+Lemma focus_mcons : forall (l:loc) a A (X:A) (L':list A) (T:A->a->hprop),
   (l ~> MList T (X::L')) ==>
   Hexists x l', (x ~> T X) \* (l' ~> MList T L') \* (l ~> Ref Id (x,l')).
 Proof.
   intros. simpl. hdata_simpl. hchange (@focus_ref2 l). xsimpl.
 Qed.
 
-Lemma focus_cons' : forall (l:loc) a A (L:list A) (T:A->a->hprop),
+Lemma focus_mcons' : forall (l:loc) a A (L:list A) (T:A->a->hprop),
   [l <> null] \* (l ~> MList T L) ==> 
   Hexists x l', Hexists X L', 
     [L = X::L'] \*  (l ~> Ref Id (x,l')) \* (x ~> T X) \* (l' ~> MList T L').
 Proof.
-  intros. destruct L. lets: (@unfocus_nil l _ _ T). (* Show Existentials. *)
+  intros. destruct L. lets: (@unfocus_mnil l _ _ T). (* Show Existentials. *)
   hextract. false~.
-  hchange (@focus_cons l). hextract as x l' E. hsimpl~.  
+  hchange (@focus_mcons l). hextract as x l' E. hsimpl~.  
 Qed.
 
-Lemma unfocus_cons : forall (l:loc) a (x:a) (l':loc) A (X:A) (L':list A) (T:A->a->hprop),
+Lemma unfocus_mcons : forall (l:loc) a (x:a) (l':loc) A (X:A) (L':list A) (T:A->a->hprop),
   (l ~> Ref Id (x,l')) \* (x ~> T X) \* (l' ~> MList T L') ==> 
   (l ~> MList T (X::L')).
 Proof.
