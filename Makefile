@@ -93,14 +93,14 @@ OKA=$(OKAS) $(OKAQ) $(OKAH) $(OKAO)
 #	$(COQC) imper/MyLib_ml.v
 
 NEW=\
+	imper/MutableList_ml.v \
+	imper/MutableList_proof.v \
 	imper/ListIterators_ml.v \
 	imper/ListIterators_proof.v \
 	imper/Compose_ml.v \
 	imper/Compose_proof.v \
 	imper/Swap_ml.v \
 	imper/Swap_proof.v \
-	imper/ListRev_ml.v \
-	imper/ListRev_proof.v \
 	imper/TreeCopy_ml.v \
 	imper/TreeCopy_proof.v \
 
@@ -114,7 +114,7 @@ IMP=\
 IMPER=\
 	imper/Counter_ml.v \
 	imper/Facto_ml.v \
-	imper/ListRev_ml.v \
+	imper/MutableList_ml.v \
 	imper/TreeCopy_ml.v \
 	imper/Loops_ml.v \
 	imper/StrongUpdate_ml.v \
@@ -122,7 +122,7 @@ IMPER=\
 	imper/InOut_ml.v \
 	imper/Counter_proof.v \
 	imper/Facto_proof.v \
-	imper/ListRev_proof.v \
+	imper/MutableList_proof.v \
 	imper/TreeCopy_proof.v \
 	imper/Loops_proof.v \
 	imper/StrongUpdate_proof.v \
