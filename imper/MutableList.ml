@@ -11,11 +11,11 @@ let head (l:'a mlist) =
 let tail (l:'a mlist) =
    snd (!l)
 
-let set_head x (l:'a mlist) =
+let set_head (l:'a mlist) x =
    let (_,t) = !l in
    l := (x,t)
 
-let set_tail t (l:'a mlist) =
+let set_tail (l:'a mlist) t =
    let (x,_) = !l in
    l := (x,t)
 
