@@ -22,7 +22,7 @@ let set_tail (l:'a mlist) t =
 let append (l1 : 'a mlist) (l2 : 'a mlist) =
    if l1 == null then l2 else
    let h = ref l1 in
-   while tail (!h) != null do
+   while not (is_nil (tail (!h))) do
       h := tail (!h);
    done;
    set_tail (!h) l2;
@@ -31,7 +31,7 @@ let append (l1 : 'a mlist) (l2 : 'a mlist) =
 let length (l:'a mlist) =
    let h = ref l in
    let n = ref 0 in
-   while !h != null do
+   while not (is_nil (!h)) do
      incr n;
      h := tail !h;
    done;

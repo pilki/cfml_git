@@ -135,6 +135,7 @@ Implicit Arguments focus_mscons [ a A ].
 Implicit Arguments unfocus_mscons [ a A ].
 Implicit Arguments unfocus_mcons [ a A ].
 Implicit Arguments focus_mcons [ ].
+Implicit Arguments focus_mcons [ a A ].
 
 Lemma focus_msapp : forall (l l' e:loc) a A (L L':list A) (T:A->a->hprop),
   l ~> MListSeg l' T L \* l' ~> MListSeg e T L' ==> l ~> MListSeg e T (L++L').
@@ -160,6 +161,14 @@ Axiom mlist_to_mlistseg : forall (l:loc) a A (T:htype A a) L,
 
 Opaque MList.
 
+Axiom bool_of_impl : forall (P Q : Prop) x, 
+  bool_of P x -> (P <-> Q) -> bool_of Q x.
+Axiom bool_of_impl_neg : forall (P Q : Prop) x, 
+  bool_of P x -> (~P <-> Q) -> bool_of Q (!x).
+Axiom bool_of_neg_impl : forall (P Q : Prop) x, 
+  bool_of P (!x) -> (~P <-> Q) -> bool_of Q x.
+
+
 Lemma append_spec : forall a,
   Spec ML.append (l1:mlist a) (l2:mlist a) |R>> forall A (T:A->a->hprop) (L1 L2:list A),
      R (l1 ~> MList T L1 \* l2 ~> MList T L2) (~> MList T (L1 ++ L2)).
@@ -174,12 +183,26 @@ Proof.
     l1 ~> MListSeg e T L11 \* h ~> Ref Id e \* e ~> MList T L12 \* [L1 = L11 ++ L12] \* [L12 <> nil])
     (fun L12 => forall X:A, L12 <> X::nil) (@list_sub A) L1 as L12.
    hchange (focus_msnil l1 T). hsimpl~ (@nil A) l1.
-   xextract as L11 e E NL12. xapps.
-    destruct L12 as [|X L12']. false.
-    hchange (focus_mscons l1 e _ _ X L12' T).
-
-   skip. 
-   hextract as L11 e E1 E2. xclean. 
+   xextract as L11 e E NL12. xapps. 
+    sets_eq R:L12; destruct R as [|X L12']. false.
+    xchange (focus_mcons e). xextract as x t.
+    xapps. xapps. intros Hb. xret.
+    hchange (unfocus_mcons e x t X L12'). hsimpl~.
+      applys bool_of_impl_neg Hb. iff M.
+        intros Y EY. inversions EY. false.
+        intros EY. subst. false.
+   xextract as L11 e E NL12. intros TL12. (*todo*)
+    xapps. 
+    sets_eq R:L12; destruct R as [|X L12']. false.
+    xchange (focus_mcons e). xextract as x t.
+    xapps. xapps. intros _.
+    hchange (focus_msnil t T).
+    hchange (unfocus_mscons e x t t X nil).
+    hchange (focus_msapp l1 e). hsimpl.
+      auto.
+      intros Y. subst. false.
+      rew_app~.
+   hextract as L11 e E1 N2 E2. xclean. 
     rew_classic in E2. destruct E2 as [x E2]. rew_classic in E2.
     subst L12. subst L1. hsimpl~.
   intros e X LX E. subst L1. xapps. hdata_simpl.
