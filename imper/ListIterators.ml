@@ -1,4 +1,8 @@
 
+let rec append x y k = 
+   match x with
+   | [] -> k y
+   | a::x' -> append x' y (fun z -> k (a::z))
 
 let rec map f = function
     [] -> []

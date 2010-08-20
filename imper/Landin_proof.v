@@ -19,7 +19,14 @@ Ltac xisspec_core ::=
     lets K: sframe_is_spec_1; unfold is_spec_1, is_spec_0 in *;
     intros_all; unfolds rel_le, pred_le; auto; auto* ].
 
-
+(*
+let landin bigf =
+   let r = sref () in
+   let g x = (!r) x in
+   let f x = bigf g x in
+   sset r f;
+   f
+*)
 
 (********************************************************************)
 (* ** Landin's knot *)
@@ -44,6 +51,25 @@ Proof.
      intros H Q Happ. xapp. intro_subst. 
      rewrite star_comm. apply Happ.
   (* verification of f *)
+  xfun (fun f => Spec f x |R>> forall y,
+     let I := (r ~> Ref Id f) in
+     (Spec f x' |R'>> forall y', lt (y',x') (y,x) -> sframe I (L y') x' R') ->
+     sframe I (L y) x R).
+    intros I Sf. applys Is.
+      apply (spec_elim_2 (Hbigf I) g x y). xweaken.
+       simpl. intros x' R LR SK. unfold sframe in SK|-*.
+       apply SK; [ xisspec | apply Sf ].
+      intros H Q Happ. apply Happ.
+  (* tie the knot *)
+  xapp. xret. hsimpl (r ~> Ref Id f).
+  (* prove the spec of the result by induction *)
+  xinduction_heap W. xweaken~.
+Qed.
+
+
+(*
+
+  (* verification of f *)
   xfun (fun f => Spec f x |R>> forall y f',
      let I := (r ~> Ref Id f') in
      (Spec f' x' |R'>> forall y', lt (y',x') (y,x) -> sframe I (L y') x' R') ->
@@ -53,14 +79,10 @@ Proof.
        simpl. intros x' R LR SK. unfold sframe in SK|-*.
        apply SK; [ xisspec | apply Sf' ].
       intros H Q Happ. apply Happ.
-  (* tight the knot *)
+  (* tie the knot *)
   xapp. xret. hsimpl (r ~> Ref Id f).
   (* prove the spec of the result by induction *)
-  xinduction_heap W. xweaken~.
-Qed.
-
-
-
+  xinduction_heap W. xweaken~.*)
 
 
 (*bin*)

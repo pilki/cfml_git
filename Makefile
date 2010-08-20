@@ -96,10 +96,10 @@ OKA=$(OKAS) $(OKAQ) $(OKAH) $(OKAO)
 #	imper/LambdaByte_proof.v \
 
 NEW=\
-	imper/LambdaEval_ml.v \
-	imper/LambdaEval_proof.v \
 	imper/ListIterators_ml.v \
 	imper/ListIterators_proof.v \
+	imper/LambdaEval_ml.v \
+	imper/LambdaEval_proof.v \
 	imper/Compose_ml.v \
 	imper/Compose_proof.v \
 	imper/Swap_ml.v \
