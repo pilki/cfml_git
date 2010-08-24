@@ -35,6 +35,60 @@ Qed.
 (********************************************************************)
 (* ** While loops *)
 
+Definition loop_cf' (F1:~~bool) (F2:~~unit) :=
+  fun H Q => exists A:Type, exists I:A->hprop, exists J:A->bool->hprop, exists lt:binary A,
+      wf lt 
+   /\ (exists X0, H ==> (I X0))
+   /\ (forall X, F1 (I X) (J X)) 
+   /\ (forall X, F2 (J X true) (# Hexists Y, (I Y) \* [lt Y X])) 
+   /\ (forall X, J X false ==> Q tt).
+
+Notation "'Local' H0 Q0 'as' H Q 'in' F" := (local (fun H Q => F) H0 Q0)
+  (at level 99, H0 at level 0, Q0 at level 0, H ident, Q ident).
+
+Definition loop_cf (F1:~~bool) (F2:~~unit) :=
+  fun (H:hprop) (Q:unit->hprop) => forall R:~~unit, is_local R ->
+    (forall H Q, (exists Q', F1 H Q' 
+       /\ (Local (Q' true) Q as H Q in exists H'', F2 H (#H'') /\ R H'' Q)
+       /\ Q' false ==> Q tt) -> R H Q) 
+    -> R H Q.
+
+Axiom local_extract_exists : forall B (F:~~B) A (J:A->hprop) Q,
+  is_local F ->
+  (forall x, F (J x) Q) -> 
+  F (heap_is_pack J) Q.
+
+Lemma loop_inv : forall (F1:~~bool) (F2:~~unit),
+  loop_cf' F1 F2 ===> loop_cf F1 F2.
+Proof.
+  intros F1 F2 H Q (A&I&J&lt&Wlt&(X0&M0)&M1&M2&M3) R LR W.
+  applys~ local_weaken M0. generalize X0.
+  intros X. induction_wf IH: Wlt X.
+  apply W. exists (J X). splits~.
+  apply local_erase. esplit. split. apply M2.
+  apply~ local_extract_exists. intros x.
+  rewrite star_comm. apply~ CFHeaps.local_intro_prop.
+Qed.
+
+Lemma loop_while : 
+  Spec loop_while cond body |R>>
+    forall A (I:A->hprop) (J:A->bool->hprop) (lt:binary A) X0 (Q:unit->hprop),
+      wf lt -> 
+      (Spec cond () |R'>> forall X, R' (I X) (J X)) ->
+      (Spec body () |R'>> forall X, R' (J X true) (# Hexists Y, (I Y) \* [lt Y X])) ->
+      (forall X, J X false ==> Q tt) ->
+      R (I X0) Q.
+Proof.
+  xcf. introv W Hc Hb Ho.
+  xfun_induction_heap (fun f => Spec f () |R>> forall X, R (I X) Q) lt.
+    intros IH. xlet. xapp y. xif.
+      xseq. xapp y. xextract. intros y' Lt. xapp~ y'. hsimpl.
+      xret. destruct _x1; tryfalse. hchange (Ho y). hsimpl.
+  xapp X0. hsimpl.
+Qed.
+
+
+
 Lemma loop_while : 
   Spec loop_while cond body |R>>
     forall A (I:A->hprop) (J:A->bool->hprop) (lt:binary A) X0 (Q:unit->hprop),
