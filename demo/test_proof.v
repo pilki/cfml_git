@@ -23,10 +23,112 @@ Qed.
 (********************************************************)
 (* while loops *)
 
+Lemma xpost_lemma : forall B Q' Q (F:~~B) H,
+  is_local F -> 
+  F H Q' -> 
+  Q' ===> Q ->
+  F H Q.
+Proof. intros. applys* local_weaken. Qed.
+
+Tactic Notation "xpost" :=
+  eapply xpost_lemma; [ try xlocal | | ].
+
+
+Notation "'While' Q1 'Do' Q2 'Done'" :=
+  (!While (fun H Q => forall R:~~unit, is_local R ->
+        (forall H Q, (exists Q', Q1 H Q' 
+           /\ (local (fun H Q => exists Q', Q2 H Q' /\ R (Q' tt) Q) (Q' true) Q)
+           /\ Q' false ==> Q tt) -> R H Q) 
+        -> R H Q))
+  (at level 69) : charac.
+
+
+Notation "'GWhile' Q1 Q2" :=
+  (!While (fun H Q => forall R:~~unit, is_local R ->
+        (forall H Q, (exists Q', Q1 H Q' 
+           /\ (local (fun H Q => exists Q', Q2 H Q' /\ R (Q' tt) Q) (Q' true) Q)
+           /\ Q' false ==> Q tt) -> R H Q) 
+        -> R H Q))
+  (at level 69, only parsing, Q1 at level 0, Q2 at level 0) : charac.
+
+
+Definition loop_cf' (F1:~~bool) (F2:~~unit) :=
+  (fun H Q => exists A:Type, exists I:A->hprop, exists J:A->bool->hprop, exists lt:binary A,
+      wf lt 
+   /\ (exists X0, H ==> (I X0))
+   /\ (forall X, F1 (I X) (J X)
+              /\ F2 (J X true) (# Hexists Y, (I Y) \* [lt Y X])
+              /\ J X false ==> Q tt)).
+
+Definition loop_cf (F1:~~bool) (F2:~~unit) :=
+  (fun (H:hprop) (Q:unit->hprop) => forall R:~~unit, is_local R ->
+    (forall H Q, (exists Q', F1 H Q' 
+       /\ (local (fun H Q => exists Q', F2 H Q' /\ R (Q' tt) Q) (Q' true) Q)
+       /\ Q' false ==> Q tt) -> R H Q) 
+    -> R H Q).
+
+Axiom local_extract_exists : forall B (F:~~B) A (J:A->hprop) Q,
+  is_local F ->
+  (forall x, F (J x) Q) -> 
+  F (heap_is_pack J) Q.
+
+Lemma loop_inv : forall (F1:~~bool) (F2:~~unit),
+  loop_cf' F1 F2 ===> loop_cf F1 F2.
+Proof.
+  intros F1 F2 H Q (A&I&J&lt&Wlt&(X0&M0)&M) R LR W.
+  applys~ local_weaken M0. generalize X0.
+  intros X. induction_wf IH: Wlt X.
+  destruct (M X) as (M1&M2&M3).
+  apply W. exists (J X). splits~.
+  apply local_erase. esplit. split. apply M2.
+  apply~ local_extract_exists. intros x.
+  rewrite star_comm. apply~ CFHeaps.local_intro_prop.
+Qed.
+
+
+Ltac xwhile_core_inner I J R X0 cont1 cont2 cont3 ::=
+  esplit; esplit; exists I; exists J;
+  first [ exists R | exists (measure R) ]; splits 3%nat;
+  [ cont1 tt 
+  | match X0 with __ => esplit | _ => exists X0 end; cont2 tt 
+  | cont3 tt ].
+Ltac xwhile_pre cont ::= cont tt.
+
 Lemma decr_while_spec : Spec decr_while x |R>> 
   forall n, n >= 0 -> R (x ~> Ref Id n) (# x ~> Ref Id 0).
 Proof.
-  xcf. intros. dup.
+  xcf. introv Le. dup.
+  (* details *)
+  apply local_erase. intros R LR HR.
+  gen Le. induction_wf IH: (int_downto_wf 0) n. intros Le.
+  apply HR; clear HR. esplit. splits 3%nat.
+  xapp. intro_subst. xret. 
+  simpl. xextract. intros. xclean. apply local_erase. esplit. split.
+  xapp.
+  simpl. xextract. (*todo:xwframe*) apply IH. auto with maths. auto with maths.
+  simpl. xsimpl. xclean. math.
+  (* inv *)
+  match goal with |- (GWhile (?P) (?Q)) _ _ => lets H: (@loop_inv P Q) end.
+  apply local_erase. apply H. clear H. unfold loop_cf'.
+
+  
+
+  xwhile_manual (fun i:int => x ~> Ref Id i \* [i >= 0]) (fun i => i > 0) (downto 0).
+  hsimpl. auto.
+  xextract. intros Ge. xapp. intro_subst. xret. hsimpl~. xclean. auto*.
+  xextract. intros Ge M. xclean. xapp. hsimpl; auto with maths.
+  hextract. hsimpl. xclean. math.
+    
+  (* auto *)
+  xwhile (fun i:int => x ~> Ref Id i \* [i >= 0]) (fun i => i > 0) (downto 0).
+  auto.
+  intros Ge. xapp. intro_subst. xret. hsimpl~. xclean. auto*.
+  intros Ge M. xapp. hsimpl; auto with maths.
+  hextract. xclean. hsimpl. math.
+Qed.
+
+(* with old while
+
   (* details *)
   xwhile_manual (fun i:int => x ~> Ref Id i \* [i >= 0]) (fun i => i > 0) (downto 0).
   hsimpl. auto.
@@ -39,8 +141,7 @@ Proof.
   intros Ge. xapp. intro_subst. xret. hsimpl~. xclean. auto*.
   intros Ge M. xapp. hsimpl; auto with maths.
   hextract. xclean. hsimpl. math.
-Qed.
-
+*)
 
 
 

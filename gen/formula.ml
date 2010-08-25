@@ -354,7 +354,7 @@ let rec coq_of_imp_cf cf =
                     /\  forall i, v1 <= i /\ i <= v2 -> F1 (I i) (# I (i+1)) 
                     /\  I (b+1) \* H' ==> Q tt *)
       
-(*--old while
+(*--older while
   | Cf_while (cf1,cf2) -> 
       let x = Coq_var "X" in
       let y = Coq_var "Y" in
@@ -379,6 +379,7 @@ let rec coq_of_imp_cf cf =
                 /\ (F2 (Q' true) (# Hexists y, (I y) \* [R y x]))
                 /\ (Q' false \* H' ==> Q2 tt))) (I x) Q)) *)
 *)
+(* ---old while
   | Cf_while (cf1,cf2) -> 
       let x = Coq_var "X" in
       let y = Coq_var "Y" in
@@ -402,8 +403,27 @@ let rec coq_of_imp_cf cf =
                    F1 (I x) (J x)
                 /\ F2 (J x true) (# Hexists y, (I y) \* [R y x])
                 /\ (J x false \* H' ==> Q tt))  *)
+*)
 
-
+  | Cf_while (cf1,cf2) -> 
+      let r = Coq_var "R" in
+      let typr = formula_type in
+      let q' = Coq_var "Q'" in
+      let p1 = coq_apps (coq_of_cf cf1) [h;q'] in
+      let c1 = coq_apps (coq_of_cf cf2) [h;q'] in
+      let c2 = coq_apps r [ Coq_app (q', coq_tt); q] in
+      let bodyl = coq_funs [("H",hprop); ("Q", Coq_impl (coq_unit, hprop))] (coq_exist "Q'" wild_to_hprop (coq_conj c1 c2)) in
+      let p2 = coq_apps (Coq_var "local") [bodyl; Coq_app(q',coq_bool_true); q] in
+      let p3 = heap_impl (Coq_app (q', coq_bool_false)) (Coq_app (q, coq_tt)) in
+      let localr = Coq_app (Coq_var "is_local", r) in
+      let bodyr = coq_exist "Q'" (Coq_impl (coq_bool, hprop)) (coq_conjs [p1;p2;p3]) in
+      let hypr = coq_foralls [("H", hprop); ("Q", Coq_impl (coq_unit, hprop))] (Coq_impl (bodyr,(coq_apps r [h;q]))) in
+      funhq "tag_while" (Coq_forall (("R",typr), coq_impls [localr; hypr] (coq_apps r [h;q])))
+      (* (!While: (fun H Q => forall R:~~unit, is_local R ->
+          (forall H Q, (exists Q', F1 H Q' 
+             /\ (local (fun H Q => exists Q', F2 H Q' /\ R (Q' tt) Q) (Q' true) Q)
+             /\ Q' false ==> Q tt) -> R H Q) 
+          -> R H Q). *)
 
   | Cf_letpure _ -> unsupported "letpure-expression in imperative mode"
 

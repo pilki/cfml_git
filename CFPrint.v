@@ -701,7 +701,7 @@ Notation "'For' i '=' a 'To' b 'Do' Q1 'Done'" :=
     /\ (I ((b)%Z+1) \* H' ==> Q tt))))
   (at level 69, i ident) : charac.
 
-(*--old while
+(*--older while
 Notation "'While' Q1 'Do' Q2 'Done'" :=
   (!While (fun H Q => exists H', exists A, exists I, exists R,
        wf R 
@@ -713,6 +713,7 @@ Notation "'While' Q1 'Do' Q2 'Done'" :=
   (at level 69) : charac.
 *)
 
+(*--old while
 Notation "'While' Q1 'Do' Q2 'Done'" :=
   (!While (fun H Q => exists H', exists A, exists I, exists J, exists R,
        wf R 
@@ -721,6 +722,15 @@ Notation "'While' Q1 'Do' Q2 'Done'" :=
             Q1 (I x) (J x)
          /\ Q2 (J x true) (# Hexists y, (I y) \* [R y x])
          /\ J x false \* H' ==> Q tt)))
+  (at level 69) : charac.
+*)
+
+Notation "'While' Q1 'Do' Q2 'Done'" :=
+  (!While (fun H Q => forall R:~~unit, is_local R ->
+        (forall H Q, (exists Q', Q1 H Q' 
+           /\ (local (fun H Q => exists H', Q2 H (# H') /\ R H' Q) (Q' true) Q)
+           /\ Q' false ==> Q tt) -> R H Q) 
+        -> R H Q))
   (at level 69) : charac.
 
 Open Scope charac.
