@@ -1059,6 +1059,29 @@ Axiom hextract_prop : forall H H' (P:Prop),
 
 Lemma spec_iff_app_2 : forall A1 A2 B f (G:A1->A2->~~B),
   (forall K, is_spec_2 K -> (forall x y, K x y (G x y)) -> spec_2 K f) <->
+  (forall x (P:val->Prop), 
+     (forall g, (forall y H' Q', G x y H' Q' -> app_1 g y H' Q') -> P g) ->
+     pureapp f x P).
+Proof.
+  intros. iff M.
+  introv S. 
+    forwards N: M (fun (x:A1) (y:A2) (R:~~B) => True). intros_all~. auto.
+    destruct (pureapp_witness (proj2 N x)) as (g&Sg&Ag). clear Sg N.
+    apply* pureapp_weaken. intros g'. intro_subst.
+    apply S. intros y H' Q' Ap.
+    forwards N: M (fun (x':A1) (y':A2) (R:~~B) => x' = x -> y' = y -> R H' Q').
+       intros_all. subst. applys* H0. 
+       intros_all. subst~.
+    lets Ag': (proj2 N x). lets Sg: (>>> (@pureapp_join A1 val) Ag Ag').
+    apply~ (proj2 Sg y).
+  introv Is S. split~. intros x. apply M. intros g N.
+   split~. intros y. applys Is. apply S. intros H Q L. apply~ N.
+Qed.
+
+
+(*
+Lemma spec_iff_app_2 : forall A1 A2 B f (G:A1->A2->~~B),
+  (forall K, is_spec_2 K -> (forall x y, K x y (G x y)) -> spec_2 K f) <->
   (forall x H Q, 
      (forall g, (forall y H' Q', G x y H' Q' -> app_1 g y H' Q') -> H ==> Q g) ->
      app_1 f x H Q).
@@ -1074,9 +1097,9 @@ Proof.
        intros_all. subst~.
     lets Ag': (proj2 N x). lets Sg: (>>> (@pureapp_join A1 val) Ag Ag').
     apply~ (proj2 Sg y).
-  
-Qed.
-
+  introv Is S. split~. intros x. 
+Qed
+*)
 
 
 (********************************************************************)
