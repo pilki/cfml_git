@@ -1034,6 +1034,50 @@ Qed.
 
 *)
 
+(********************************************************************)
+(* ** Proofs that SpecN can be eliminated *)
+
+Section SpecIff.
+Hint Extern 1 (is_spec_1 _) =>
+  let P := fresh in intros ? ? ? ? P; applys* P.
+Hint Resolve app_local_1.
+
+Lemma spec_iff_app_1 : forall A1 B f (G:A1->~~B),
+  (forall K, is_spec_1 K -> (forall x, K x (G x)) -> spec_1 K f) <->
+  (forall x H Q, G x H Q -> app_1 f x H Q).
+Proof.
+  intros. iff M.
+  introv S. forwards* [U V]: (>>> M (fun (x':A1) (R:~~B) => x' = x -> R H Q)).
+    intros_all. subst. applys* H1.
+    intros. subst~.
+  introv Is S. split~. intros x. applys Is S. intros H Q N. apply~ M.
+Qed.
+
+
+Axiom hextract_prop : forall H H' (P:Prop),
+  (P -> H ==> H') -> ([P] \* H) ==> H'.
+
+Lemma spec_iff_app_2 : forall A1 A2 B f (G:A1->A2->~~B),
+  (forall K, is_spec_2 K -> (forall x y, K x y (G x y)) -> spec_2 K f) <->
+  (forall x H Q, 
+     (forall g, (forall y H' Q', G x y H' Q' -> app_1 g y H' Q') -> H ==> Q g) ->
+     app_1 f x H Q).
+Proof.
+  intros. iff M.
+  introv S. 
+    forwards N: M (fun (x:A1) (y:A2) (R:~~B) => True). intros_all~. auto.
+    destruct (pureapp_witness (proj2 N x)) as (g&Sg&Ag). clear Sg N.
+    applys pureapp_app_1 Ag. intros g'. apply hextract_prop. intro_subst.  
+    apply S. intros y H' Q' Ap.
+    forwards N: M (fun (x':A1) (y':A2) (R:~~B) => x' = x -> y' = y -> R H' Q').
+       intros_all. subst. applys* H1. 
+       intros_all. subst~.
+    lets Ag': (proj2 N x). lets Sg: (>>> (@pureapp_join A1 val) Ag Ag').
+    apply~ (proj2 Sg y).
+  
+Qed.
+
+
 
 (********************************************************************)
 (* ** Lemmas for other tactics *)
