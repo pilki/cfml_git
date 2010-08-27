@@ -53,6 +53,59 @@ Definition loop_cf (F1:~~bool) (F2:~~unit) :=
        /\ Q' false ==> Q tt) -> R H Q) 
     -> R H Q.
 
+Lemma local_weaken_formula : forall B (F1 F2:~~B) H Q,
+  local F1 H Q -> (F1 ===> F2) -> local F2 H Q.
+Proof.
+  introv M W. introv Hh.
+  destruct (M h Hh) as (?&?&?&?&?&?&?).
+  exists___. splits; [ | apply W; apply H1 |]. eauto. eauto. 
+Qed.
+
+
+
+Lemma loop_while : 
+  Spec loop_while cond body |R>> forall H Q,
+    (forall R':~~unit, is_local R' ->
+     (exists Q', app_1 cond tt H Q' 
+       /\ (Local (Q' true) Q as H Q in exists Q'', app_1 body tt H Q'' /\ R' (Q'' tt) Q)
+       /\ Q' false ==> Q tt) )
+    -> R H Q.
+Proof.
+  xintros. 
+   introv M. applys app_spec_2 loop_while_cf.
+    intros_all. subst. applys* H1.
+  intros. subst x1 x2.
+  apply local_erase. intros aux.
+  lets U: M (app_1 (B:=unit) aux tt) __. xlocal. clear M.
+  destruct U as (Q'&M1&M2&M3).
+  exists (fun f => app_1 f tt H Q). split; [ | intros N; apply N ].
+  intros G. 
+  applys app_spec_1. apply G. intros_all. subst. applys* H1.
+  intros. subst _x0.
+  xlet Q'. apply M1.
+  xif. 
+  applys local_weaken_formula M2. intros H'' Q''.
+   introv (Y&N1&N2). exists (Y tt). split. applys_eq N1 1. apply~ func_ext_1. intros a. destruct a. auto. apply N2.
+  destruct _x1. false. xret. auto.
+Qed.
+  
+ 
+ skip. intros cond body H Q. intros (Q'&M1&M2).
+  lets: loop_while_cf.
+  apply spec_ap
+  dest
+
+  xcf. skip. intros.
+  introv W Hc Hb Ho.
+  xfun_induction_heap (fun f => Spec f () |R>> forall X, R (I X) Q) lt.
+    intros IH. xlet. xapp y. xif.
+      xseq. xapp y. xextract. intros y' Lt. xapp~ y'. hsimpl.
+      xret. destruct _x1; tryfalse. hchange (Ho y). hsimpl.
+  xapp X0. hsimpl.
+Qed.
+
+
+
 Axiom local_extract_exists : forall B (F:~~B) A (J:A->hprop) Q,
   is_local F ->
   (forall x, F (J x) Q) -> 

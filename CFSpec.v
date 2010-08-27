@@ -1077,6 +1077,7 @@ Proof.
   introv Is S. split~. intros x. apply M. intros g N.
    split~. intros y. applys Is. apply S. intros H Q L. apply~ N.
 Qed.
+End SpecIff.
 
 
 (*
