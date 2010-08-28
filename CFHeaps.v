@@ -202,8 +202,10 @@ Notation "\= V" := (fun X => [X = V])
 Notation "H1 '\*' H2" := (heap_is_star H1 H2)
   (at level 41, right associativity) : heap_scope.
 
-Notation "l '~~>' v" := (heap_is_single l v)
+(*
+Notation "l '~~~>' v" := (heap_is_single l v)
   (at level 35, no associativity) : heap_scope.
+*)
 
 Notation "'Hexists' x1 , H" := (heap_is_pack (fun x1 => H))
   (at level 39, x1 ident, H at level 50) : heap_scope.

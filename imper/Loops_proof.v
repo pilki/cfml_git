@@ -1,6 +1,36 @@
 Set Implicit Arguments.
 Require Import CFPrim Loops_ml.
 
+Lemma myincr_spec : 
+  Spec myincr (l:loc) |R>> 
+    forall n, R (l ~~> n) (# l ~~> (n+1)).
+Proof. xgo. xsimpl~. Qed. 
+
+
+Lemma incr_for_spec : 
+  Spec incr_for (k:int) (l:loc) |R>> forall n, k >= 0 ->
+    R (l ~~> n) (# l ~~> (n+k)).
+Proof. xcf. intros. 
+   xfor (fun i => l ~~> (n+i-1)).
+   skip. (* todo: *)
+   math.
+   xapp. xsimpl. math.
+   math.
+Qed.
+
+(*
+
+let incr_for k l =
+  for i = 1 to k do incr l done
+
+let incr_while k l =
+  while !k > 0 do incr l; decr k done
+
+*)
+
+
+
+
 
 (********************************************************************)
 (* ** For loops *)

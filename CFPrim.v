@@ -107,25 +107,33 @@ Definition Void {a A} (v:a) (V:A) := [].
 (* ** References *)
 
 Definition Ref a A (T:htype A a) (V:A) (l:loc) :=
-  Hexists v, l ~~> v \* v ~> T V.
+  Hexists v, heap_is_single l v \* v ~> T V.
 
+Notation "l '~~>' v" := (l ~> Ref Id v)
+  (at level 32, no associativity).
+Notation "'~~>' v" := (~> Ref Id v)
+  (at level 32, no associativity) : heap_scope.
+(*
 Lemma focus_ref_core : forall (l:loc) a A (T:htype A a) V,
-  l ~> Ref T V ==> Hexists v, l ~~> v \* v ~> T V.
+  l ~> Ref T V ==> Hexists v, l> v \* v ~> T V.
 Proof. auto. Qed.
+*)
 
 Lemma focus_ref : forall (l:loc) a A (T:htype A a) V,
-  l ~> Ref T V ==> Hexists v, l ~> Ref Id v \* v ~> T V.
+  l ~> Ref T V ==> Hexists v, l ~~> v \* v ~> T V.
 Proof. intros. unfold Ref, hdata. unfold Id. hextract.
 hsimpl x x. auto. Qed.
 
 Lemma unfocus_ref : forall (l:loc) a (v:a) A (T:htype A a) V,
-  l ~> Ref Id v \* v ~> T V ==> l ~> Ref T V.
+  l ~~> v \* v ~> T V ==> l ~> Ref T V.
 Proof. intros. unfold Ref. hdata_simpl. xsimpl~. Qed.
 
 Axiom focus_ref_null : forall a A (T:htype A a) V,
   null ~> Ref T V ==> [False]. (* todo *)
 
 Opaque Ref.
+
+
 
    (*--todo: Record ref A := { content : A }. *)
 
@@ -582,11 +590,11 @@ Parameter ml_decr : val.
 
 Parameter ml_ref_spec : forall a,
   Spec ml_ref (v:a) |R>> 
-    R [] (~> Ref Id v).
+    R [] (~~> v).
 
 Parameter ml_get_spec : forall a,
   Spec ml_get (l:loc) |R>> 
-    forall (v:a), keep R (l ~> Ref Id v) (\=v).
+    forall (v:a), keep R (l ~~> v) (\=v).
 
 Parameter ml_set_spec : forall a,
   Spec ml_set (l:loc) (v:a) |R>> 
@@ -594,11 +602,11 @@ Parameter ml_set_spec : forall a,
 
 Parameter ml_incr_spec : 
   Spec ml_incr (l:loc) |R>> 
-    forall n, R (l ~> Ref Id n) (# l ~> Ref Id (n+1)).
+    forall n, R (l ~~> n) (# l ~~> (n+1)).
  
 Parameter ml_decr_spec : 
   Spec ml_decr (l:loc) |R>> 
-    forall n, R (l ~> Ref Id n) (# l ~> Ref Id (n-1)).
+    forall n, R (l ~~> n) (# l ~~> (n-1)).
 
 Hint Extern 1 (RegisterSpec ml_ref) => Provide ml_ref_spec.
 Hint Extern 1 (RegisterSpec ml_get) => Provide ml_get_spec.
@@ -610,7 +618,7 @@ Hint Extern 1 (RegisterSpec ml_decr) => Provide ml_decr_spec.
 Parameter ml_sset : val.
 Parameter ml_sset_spec : forall a a',
   Spec ml_sset (l:loc) (v:a) |R>> 
-    forall (v':a'), R (l ~> Ref Id v') (# l ~> Ref Id v).
+    forall (v':a'), R (l ~~> v') (# l ~~> v).
 Hint Extern 1 (RegisterSpec ml_sset) => Provide ml_sset_spec.
 
 
