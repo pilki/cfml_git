@@ -1873,6 +1873,78 @@ Axiom spec_induction_4_noarg :
 
 
 
+
+(*test*)
+
+Definition pureapp' A B (F:val) (V:A) (P:B->Prop) :=
+  app_1 F V [] \[P].
+
+Definition spec_2' A1 A2 B (K: A1 -> A2 -> ~~B -> Prop) f :=
+  is_spec_2 K /\ forall x1, pureapp' f x1 (spec_1 (K x1)).
+
+Definition curried_2' (A1 A2 B:Type) f := 
+  spec_2' (fun (x1:A1) (x2:A2) (R:~~B) => True) f.
+
+
+Lemma spec_intro_2 : forall A1 A2 B f (K:A1->A2->~~B->Prop),
+  is_spec_2 K ->
+  curried_2' A1 A2 B f ->
+  (forall x1 x2, K x1 x2 (app_2 f x1 x2)) ->
+  spec_2' K f.
+Proof.
+  introv I C HK. split~.
+  intros x1.
+  lets U: (proj2 C x1). unfolds pureapp'.
+  applys local_weaken U. skip. skip. intros g.
+  hextract. hsimpl.
+  split. skip. intros x2. applys I. apply HK.
+  intros H Q Ap.
+  apply local_name_heap. skip.
+  intros h Hh. specializes Ap Hh.
+  destruct Ap as (H1&H2&Q1&H'&?&(Q'&Ap1&Ap2)&Po).
+  hnf in Ap1.
+  destruct H3 as (h1&h2&?&?&H5&H6).
+  specializes Ap1 h1 h2 __ __. auto. auto.
+  destruct Ap1 as (v'&h'&g'&D'&Re&Ev).
+
+  hnf. intros h_ i D'' E. hnf in E. subst h_.
+  exists___. splits 3%nat. skip. skip. 
+
+  applys local_wgframe Po. skip. apply Ap2.
+  intros h'. intro_subst.
+  hnf in U.
+  specializes 
+
+  intros h i Dhi Hh.
+  specializes Ap Hh.
+  destruct Ap as (H1&H2&Q1&H'&?&(Q'&Ap1&Ap2)&Po).
+  destruct H3 as (h1&h2&?&?&H5&H6).
+  specializes Ap1 h1 (h2 \+ i) __ __. skip. auto. (* todo*)
+  destruct Ap1 as (v'&h'&g'&D'&Re&Ev).
+  exists v'. (h' \+ h2).
+    
+
+ hnf.
+
+ destruct (pureapp_witness (proj2 C x1)) as [g [_ Hg]].
+  apply* pureapp_abstract. split~. intros x2. eapply I.
+  apply HK.
+  intros H Q M.
+  rewrite app_local_1. introv Hh.
+  destruct (M _ Hh) as (H1&H2&Q1&H'&?&(Q'&Ap1&Ap2)&Po).
+  specializes Ap2 g.
+  destruct H0 as (h1&h2&?&?&?&?).
+  forwards* (H''&Ro): (>>> (@pureapp_and_app_1) f x1).
+  exists (Q' g \* H'') H2 __ (H' \* H''). splits.
+    subst. exists___*.
+    apply* local_wframe.
+    intros r. specializes Po r. hsimpl. auto.
+Admitted. (* existentials *)
+
+
+
+
 Lemma unfocus_mnil : forall (l:loc) A,
   l ~> @Mlist A nil ==> [l = null].
 Proof. intros. simpl. hdata_simpl. hsimpl~. Qed.
+

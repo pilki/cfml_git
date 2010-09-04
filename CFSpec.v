@@ -299,7 +299,6 @@ Definition spec_3 A1 A2 A3 B (K: A1 -> A2 -> A3 -> ~~B -> Prop) f :=
 Definition spec_4 A1 A2 A3 A4 B (K: A1 -> A2 -> A3 -> A4 -> ~~B -> Prop) f :=
   is_spec_4 K /\ forall x1, pureapp f x1 (spec_3 (K x1)).
 
-
 (********************************************************************)
 (* ** Curried functions *)
 
@@ -350,6 +349,7 @@ Proof.
     intros x. eapply (pureapp_weaken (proj2 H x)).
      intros g G. apply* spec_curried_3.
 Qed.
+
 
 
 (********************************************************************)
