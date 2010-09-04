@@ -96,6 +96,8 @@ OKA=$(OKAS) $(OKAQ) $(OKAH) $(OKAO)
 #	imper/LambdaByte_proof.v \
 
 NEW=\
+	imper/CPS_ml.v \
+	imper/CPS_proof.v \
 	demo/test_ml.v \
 	demo/test_proof.v \
 	imper/ListIterators_ml.v \

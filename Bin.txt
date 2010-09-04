@@ -1870,3 +1870,9 @@ Axiom spec_induction_4_noarg :
 
 
 
+
+
+
+Lemma unfocus_mnil : forall (l:loc) A,
+  l ~> @Mlist A nil ==> [l = null].
+Proof. intros. simpl. hdata_simpl. hsimpl~. Qed.

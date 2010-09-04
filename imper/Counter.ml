@@ -9,14 +9,27 @@ let gensym () =
       n in
    f
 
+
+let rec iter f = function
+    [] -> ()
+  | a::l -> f a; iter f l
+
+
+let test l = 
+  iter (fun f -> let i:int = f() in ()) l
+
+(*
+
+
+
 let test () =
    let f = gensym() in
    f() + f()
+*)
 
 
 
-
-(*  list de compteurs, à incrémenter un par un 
+(*  list de compteurs, Ã  incrÃ©menter un par un 
 
 let list_init n f =
    let aux i =

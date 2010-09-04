@@ -654,14 +654,14 @@ Tactic Notation "xframe" "-" constr(H) :=
 Ltac xchange_lemma_core L :=
   let K := fresh "TEMP" in
   forwards_nounfold K: L; eapply xchange_lemma; 
-    [ clear K; try apply local_is_local
+    [ clear K; try xlocal
     | apply K
     | clear K; instantiate; hsimpl
     | clear K ].
 
 Ltac xchange_with_core H H' :=
   eapply xchange_lemma with (H1:=H) (H1':=H'); 
-    [ try apply local_is_local
+    [ try xlocal
     | 
     | hsimpl
     | ].

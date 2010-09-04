@@ -223,7 +223,7 @@ let rec coq_of_imp_cf cf =
      let f = Coq_app (Coq_var "local", f_core) in
      match label with 
      | None -> coq_tag tag f 
-     | Some x -> coq_tag tag ~label:x f 
+     | Some x -> coq_tag tag f  (* coq_tag tag ~label:x f *)
      in (* todo improve *)
 
   match cf with
@@ -264,14 +264,14 @@ let rec coq_of_imp_cf cf =
       let type_of_q1 = Coq_impl (typ, hprop) in
       let c1 = coq_apps (coq_of_cf cf1) [h; q1] in
       let c2 = coq_foralls [x,typ] (coq_apps (coq_of_cf cf2) [(Coq_app (q1, Coq_var x)); q]) in
-      funhq "tag_let_trm" ~label:x (coq_exist "Q1" type_of_q1 (coq_conj c1 c2))
+      funhq "tag_let_trm" (*~label:x*) (coq_exist "Q1" type_of_q1 (coq_conj c1 c2))
       (* !L: fun H Q => exists Q1, F1 H Q1 /\ forall (x:T), F2 (Q1 x) Q *)
 
   | Cf_letval (x, fvs_strict, fvs_other, typ, v, cf) ->
       let type_of_x = coq_forall_types fvs_strict typ in
       let equ = coq_eq (Coq_var x) v in
       let conc = coq_apps (coq_of_cf cf) [h;q] in
-      funhq "tag_let_val" ~label:x (Coq_forall ((x, type_of_x), Coq_impl (equ, conc)))
+      funhq "tag_let_val" (*~label:x*) (Coq_forall ((x, type_of_x), Coq_impl (equ, conc)))
       (*(!!L x: (fun H Q => forall (x:forall Ai,T), x = v -> F H Q)) *)
 
       (* DEPRECATED
@@ -283,7 +283,7 @@ let rec coq_of_imp_cf cf =
       let hyp_on_x = coq_forall_types fvs_strict (coq_apps (Coq_var "@P1") (tvars @ [ x_on_tvars ])) in
       let c2 = coq_foralls [x,type_of_x] (Coq_impl (hyp_on_x, coq_apps (coq_of_cf cf) [h;q])) in
       let type_of_p1 = coq_forall_types fvs_strict (coq_pred typ) in
-      funhq "tag_val" ~label:x (coq_exist "P1" type_of_p1 (coq_conj c1 c2))
+      funhq "tag_val" (*~label:x*) (coq_exist "P1" type_of_p1 (coq_conj c1 c2))
       (*(!L a: (fun H Q => exists (P1:forall Ai, T -> Prop), (forall Ai Bj, P1 A1 v)
                              /\ forall (x1:forall Ai,T), ((forall Ai, P1 Ai (x1 Ai)) -> F H Q)) *)
       *)
@@ -300,7 +300,7 @@ let rec coq_of_imp_cf cf =
       let c2conc = coq_apps (coq_of_cf cf) [h;q] in
       let c2 = coq_impls c2hyps c2conc in
       let x = List.hd ns in
-      funhq "tag_let_fun" ~label:x (coq_foralls fs (coq_exists ps (coq_conj c1 c2)))
+      funhq "tag_let_fun" (*~label:x*) (coq_foralls fs (coq_exists ps (coq_conj c1 c2)))
       (* (!F a: fun H Q => forall f1 f2, exists P1 P2,
               (B1 -> B2 -> P1 f1 /\ P2 f2) /\ (P1 f1 -> P2 f2 -> F H Q)) *)            
 
@@ -329,7 +329,7 @@ let rec coq_of_imp_cf cf =
           where trueb are implicit by coercions *)
   
   | Cf_match (label, n,cf1) ->
-     coq_tag (Printf.sprintf "(tag_match %d%snat)" n "%") ~label:label (coq_of_cf cf1)
+     coq_tag (Printf.sprintf "(tag_match %d%snat)" n "%") (*~label:label*) (coq_of_cf cf1)
 
   | Cf_seq (cf1,cf2) -> 
       let c1 = coq_apps (coq_of_cf cf1) [h; post_unit (Coq_var "H1")] in
