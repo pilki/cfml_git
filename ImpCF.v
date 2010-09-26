@@ -147,18 +147,41 @@ Definition assertion_impl (P Q:Assertion) :=
 
 Notation "P '===>' Q" := (assertion_impl P Q) (at level 68).
 
+Lemma assertion_impl_refl : forall P,
+  P ===> P.
+Proof. intros. unfolds~. Qed.
+
+Hint Resolve assertion_impl_refl.
 
 Definition bassn b : Assertion :=
   fun st => beval st b = true.
 
 
 (*****************************************************************************)
-(** Characteristic formula generation *)
+(** Weakenable formulae *)
 
 Definition Formula := Assertion -> Assertion -> Prop.
 
+Definition weaken (R:Formula) :=
+  fun H Q => forall st, H st -> exists H' Q', 
+               H' st /\ R H' Q' /\ Q' ===> Q.
+
+Lemma weaken_elim : forall (R:Formula) H Q,
+  R H Q -> weaken R H Q.
+Proof. intros_all*. Qed.
+
+Notation "= x" := (fun y => y = x) (at level 69).
+
+Lemma weaken_name : forall (R:Formula) H Q,
+  (forall st, H st -> R (= st) Q) -> weaken R H Q.
+Proof. introv M Pre. exists* (= st). Qed.
+
+
+(*****************************************************************************)
+(** Characteristic formula generation *)
+
 Definition cf_skip : Formula :=
-  fun H Q => H ===> Q.
+  weaken (fun H Q => H ===> Q).
 
 Definition cf_ass (V : id) (a : aexp) : Formula :=
   fun H Q => H ===> (fun st => Q (update st V (aeval st a))).
@@ -198,12 +221,6 @@ Fixpoint cf (c : com) : Formula :=
   end.
 
 
-(* toadd after
-Definition weaken (R:Formula) :=
-  fun H Q => forall st, H st -> exists H' Q', 
-               H' st /\ R H' Q' /\ Q' ===> Q.
-*)
-
 
 (*****************************************************************************)
 (** Soundness proof *)
@@ -215,20 +232,20 @@ Lemma E_Ass' : forall st a1 l,
 Proof. intros. apply E_Ass. auto. Qed.
 Hint Resolve E_Ass'.
 
-(*
-Lemma bassn_case : forall b st,
-  bassn b st \/ ~ bassn b st.
-Proof. intros. unfold bassn. destruct~ (beval st b). Qed.
-*)
 Lemma beval_false : forall st b,
  beval st b = false -> ~ bassn b st.
 Proof. intros. unfold bassn. rewrite~ H. Qed. 
 Hint Resolve beval_false.
 
+
 Lemma cf_sound : forall (c:com) (P Q:Assertion), 
   cf c P Q -> forall st, P st -> exists st', c / st ==> st' /\ Q st'.
 Proof.
-  induction c; intros P Q H st Hst; hnf in H.
+  induction c; intros P Q H st Hst.
+  unfolds in H. unfolds in H.
+  specializes H Hst. destruct H as (P'&Q'&Pre&Main&Post).
+
+  
   eauto.
   eauto.
   destruct H as (H'&H1&H2).
@@ -247,13 +264,21 @@ Proof.
 Qed.
 
 
+Lemma cf_sound : forall (c:com) (P Q:Assertion), 
+  cf c P Q -> forall st, P st -> exists st', c / st ==> st' /\ Q st'.
+
 (*****************************************************************************)
 (** Completeness proof *)
 
 Lemma cf_complete : forall (c:com) (st st':state), 
   c / st ==> st'  ->  cf c (= st) (= st').
 Proof.
-  skip.
+  introv H. induction H.
+  hnf. simple~.
+  hnf. simpl. intros. subst~.
+  hnf. exists~ (=st').
+  hnf. split.
+  
 Qed.
 
 
@@ -269,9 +294,18 @@ Definition hoare_triple (P:Assertion) (c:com) (Q:Assertion) : Prop :=
 Notation "{{ P }} c {{ Q }}" := (hoare_triple P c Q) (at level 90) : hoare_spec_scope.
 Open Scope hoare_spec_scope.
 
+(* to get somewhere else *)
+Axiom deterministic : forall c st st' st'',
+  c / st ==> st' -> 
+  c / st ==> st'' ->
+  st' = st''.
+
 Lemma cf_to_hoare : forall (c:com) (P Q:Assertion), 
   cf c P Q  ->  {{P}} c {{Q}}. 
 Proof.
-  skip.
+  introv Hcf Red Pre.
+  forwards* [st'' [Red' Post]]: (>>> cf_sound Hcf).
+  forwards* E: (>>> deterministic Red Red').
+  rewrite~ E.
 Qed.
 
