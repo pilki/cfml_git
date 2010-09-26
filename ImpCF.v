@@ -1,6 +1,25 @@
 Set Implicit Arguments.
 Require Import LibTactics.
 
+
+
+(*****************************************************************************)
+(** Maths *)
+
+
+Require Export Arith.EqNat.
+
+Fixpoint ble_nat (n m : nat) : bool :=
+  match n with
+  | O => true
+  | S n' =>
+      match m with
+      | O => false
+      | S m' => ble_nat n' m'
+      end
+  end.
+
+
 (*****************************************************************************)
 (** Identifiers *)
 
@@ -10,13 +29,12 @@ Inductive id : Type :=
 Definition beq_id id1 id2 :=
   match (id1, id2) with
     (Id n1, Id n2) => beq_nat n1 n2
-  end.
-End Id.
-
+  end.
 Definition X : id := Id 0.
 Definition Y : id := Id 1.
 Definition Z : id := Id 2.
-
+End Id.
+Import Id.
 
 (*****************************************************************************)
 (** Syntax *)
@@ -72,7 +90,7 @@ Notation "'IFB' e1 'THEN' e2 'ELSE' e3 'FI'" :=
 Fixpoint aeval (st : state) (e : aexp) : nat :=
   match e with
   | ANum n => n
-  | AId i => st i (* <----- NEW *)
+  | AId i => st i
   | APlus a1 a2 => (aeval st a1) + (aeval st a2)
   | AMinus a1 a2 => (aeval st a1) - (aeval st a2)
   | AMult a1 a2 => (aeval st a1) * (aeval st a2)
@@ -130,10 +148,55 @@ Definition assertion_impl (P Q:Assertion) :=
 Notation "P '===>' Q" := (assertion_impl P Q) (at level 68).
 
 
+Definition bassn b : Assertion :=
+  fun st => beval st b = true.
+
+
 (*****************************************************************************)
 (** Characteristic formula generation *)
 
 Definition Formula := Assertion -> Assertion -> Prop.
+
+Definition cf_skip : Formula :=
+  fun H Q => H ===> Q.
+
+Definition cf_ass (V : id) (a : aexp) : Formula :=
+  fun H Q => H ===> (fun st => Q (update st V (aeval st a))).
+
+Definition cf_seq (F1 F2 : Formula) : Formula :=
+  fun H Q => exists H', F1 H H' /\ F2 H' Q.
+
+Definition cf_if (b : bexp) (F1 F2 : Formula) : Formula :=
+  fun H Q => F1 (fun st => H st /\ bassn b st) Q
+          /\ F2 (fun st => H st /\ ~ bassn b st) Q.
+
+Definition cf_while (b : bexp) (F1 : Formula) : Formula :=
+  fun H Q => forall (R:Formula),
+    (forall H' Q',
+      (cf_if b (cf_seq F1 R) cf_skip) H' Q' -> R H' Q') ->
+    R H Q.
+
+Notation "'\SKIP'" := 
+  cf_skip.
+Notation "l '\::=' a" := 
+  (cf_ass l a) (at level 60).
+Notation "c1 \; c2" := 
+  (cf_seq c1 c2) (at level 80, right associativity).
+Notation "'\WHILE' b 'DO' c 'END'" := 
+  (cf_while b c) (at level 80, right associativity).
+Notation "'\IFB' e1 'THEN' e2 'ELSE' e3 'FI'" := 
+  (cf_if e1 e2 e3) (at level 80, right associativity).
+
+
+Fixpoint cf (c : com) : Formula :=
+  match c with 
+    | SKIP => \SKIP
+    | l ::= a1 => l \::= a1
+    | c1 ; c2 => cf c1 \; cf c2
+    | IFB b THEN c1 ELSE c2 FI => \IFB b THEN cf c1 ELSE cf c2 FI
+    | WHILE b1 DO c1 END => \WHILE b1 DO cf c1 END
+  end.
+
 
 (* toadd after
 Definition weaken (R:Formula) :=
@@ -145,10 +208,42 @@ Definition weaken (R:Formula) :=
 (*****************************************************************************)
 (** Soundness proof *)
 
+Hint Constructors ceval.
+
+Lemma E_Ass' : forall st a1 l,
+      (l ::= a1) / st ==> (update st l (aeval st a1)).
+Proof. intros. apply E_Ass. auto. Qed.
+Hint Resolve E_Ass'.
+
+(*
+Lemma bassn_case : forall b st,
+  bassn b st \/ ~ bassn b st.
+Proof. intros. unfold bassn. destruct~ (beval st b). Qed.
+*)
+Lemma beval_false : forall st b,
+ beval st b = false -> ~ bassn b st.
+Proof. intros. unfold bassn. rewrite~ H. Qed. 
+Hint Resolve beval_false.
+
 Lemma cf_sound : forall (c:com) (P Q:Assertion), 
   cf c P Q -> forall st, P st -> exists st', c / st ==> st' /\ Q st'.
 Proof.
-  skip.
+  induction c; intros P Q H st Hst; hnf in H.
+  eauto.
+  eauto.
+  destruct H as (H'&H1&H2).
+   forwards* (st1&Red1&Post1): (>>> IHc1 H1).
+   forwards* (st2&Red2&Post2): (>>> IHc2 H2).
+  destruct H as (H1&H2). case_eq (beval st b); intro B.
+   forwards* (st1&Red1&Post1): (>>> IHc1 H1).
+   forwards* (st2&Red2&Post2): (>>> IHc2 H2).
+  gen st. pattern P. pattern Q. apply H.
+   clear H Q. intros H Q [M1 M2] st Hst.
+   case_eq (beval st b); intro B.
+     destruct M1 as (H'&M11&M12).
+      forwards* (st1&Red1&Post1): (>>> IHc M11).
+      forwards* (st2&Red2&Post2): M12.
+     hnf in M2. eauto 7.
 Qed.
 
 
