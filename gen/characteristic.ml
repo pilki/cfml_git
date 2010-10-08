@@ -9,29 +9,24 @@ open Print_type
 open Formula
 open Coq
 open Primitives
+open Path
+
+(*#########################################################################*)
+(* ** Switch for generating formulae for purely-functional programs *)
+
+let pure_mode = ref false
+
+(*#########################################################################*)
+(* ** Error messages *)
 
 exception Not_in_normal_form of string
 
 let not_in_normal_form s =
    raise (Not_in_normal_form s)
 
-(*
-Predef.type_lazy_t arg.exp_type
-Tconstr(path_lazy_t, [t], ref Mnil)
-*)
-
-(* todo: check that primitive functions are not rebound locally ! *)
-
-let pure_mode = ref false
-
-let record_constructor name =
-  name ^ "_of"
-
 
 (*#########################################################################*)
-(* Lifting of paths *)
-
-open Path
+(* ** Lifting of paths *)
 
 let lift_ident_name id =
    if Ident.persistent id  
@@ -48,19 +43,29 @@ let lift_path = function
   | Pdot(p, s, pos) -> Pdot(lift_full_path p, s, pos) 
   | Papply(p1, p2) -> assert false 
 
-let lift_path_name p =
-  Path.name (lift_path p)
+(** Translates a path into a string. A module called "Test" 
+    becomes "Test_ml" if it refers to a file, and it becomes
+    "MLTest" if it refers to a functor argument. 
+    --todo: call them all "Test_ml"? *)
 
 let lift_full_path_name p =
   Path.name (lift_full_path p)
 
+(** Translates a path into a string --todo: why not full? *)
+
+let lift_path_name p =
+  Path.name (lift_path p)
+
+(** Convention for naming record constructors *)
+
+let record_constructor name =
+  name ^ "_of"
+
 
 (*#########################################################################*)
-(* Lifting of types *)
+(* ** Lifting of types *)
 
-
-let loc_type =
-  Coq_var "CFHeaps.loc"
+(** Computes the free variables of a [btyp] *)
 
 let rec fv_btyp ?(through_arrow = true) t =
    let aux = fv_btyp in
@@ -72,6 +77,8 @@ let rec fv_btyp ?(through_arrow = true) t =
    | Btyp_var (b,s) -> [s]
    | Btyp_poly (ss,t) -> unsupported "poly-types"
    | Btyp_alias (t,s) -> s :: aux t 
+
+(** Translates a [btyp] into a Coq type *)
 
 let rec lift_btyp t =
    let aux = lift_btyp in
@@ -108,8 +115,12 @@ let rec lift_btyp t =
         then unsupported ("found a recursive type that is not erased by an arrow:" ^ (print_out_type t));
       aux t1 
 
+(** Translates a Caml type into a Coq type *)
+
 let lift_typ_exp ty =
   lift_btyp (btyp_of_typ_exp ty)  
+
+(** Translates a Caml type scheme into a Coq type *)
 
 let lift_typ_sch ty =
    mark_loops ty;
@@ -117,20 +128,21 @@ let lift_typ_sch ty =
    let fv = fv_btyp~through_arrow:false t in
    fv, lift_btyp t
 
+(** Translates the type of a Caml expression into a Coq type *)
+
 let coq_typ e =
    lift_typ_exp (e.exp_type)
+
+(** Translates the type of a Caml pattern into a Coq type *)
 
 let coq_typ_pat p =
    lift_typ_exp (p.pat_type)
 
 
 (*#########################################################################*)
-(* Arity functions *)
+(* ** Type arity functions *)
 
-let typ_arity_constr c =
-   match (c.cstr_res).desc with
-   | Tconstr (_,ts,_) -> List.length ts
-   | _ -> failwith "typ_arity_constr: result type of constructor is not a type constructor"
+(** Get the number of type arguments of a (polymorphic) free variable *)
 
 let typ_arity_var env x =
    match x with
@@ -138,6 +150,15 @@ let typ_arity_var env x =
       begin try Ident.find_same id env
       with Not_found -> 0 end
    | _ -> 0
+
+(** Get the number of type arguments of a (polymorphic) data constructor *)
+
+let typ_arity_constr c =
+   match (c.cstr_res).desc with
+   | Tconstr (_,ts,_) -> List.length ts
+   | _ -> failwith "typ_arity_constr: result type of constructor is not a type constructor"
+
+(** Translate a Caml data constructor into a Coq expression *)
 
 let coq_of_constructor c =
    let x = string_of_constructor c in
@@ -147,7 +168,9 @@ let coq_of_constructor c =
 
 
 (*#########################################################################*)
-(* Lifting of patterns *)
+(* ** Lifting of patterns *)
+
+(** Compute the free variables of a pattern *)
 
 let rec pattern_variables p : typed_vars = (* ignores aliases *)
    let aux = pattern_variables in
@@ -164,7 +187,10 @@ let rec pattern_variables p : typed_vars = (* ignores aliases *)
    | Tpat_array pats -> unsupported "array patterns"
    | Tpat_or (_,p1,p2) -> unsupported "or patterns"
 
-let rec lift_pat ?(through_aliases=true) p : coq = (* ignores aliases *)
+(** Translate a Caml pattern into a Coq expression, and
+    ignores the aliases found in the pattern *)
+
+let rec lift_pat ?(through_aliases=true) p : coq = 
    let aux = lift_pat ~through_aliases:through_aliases in
    match p.pat_desc with
    | Tpat_var s -> 
@@ -186,30 +212,31 @@ let rec lift_pat ?(through_aliases=true) p : coq = (* ignores aliases *)
    | Tpat_variant (_,_,_) -> unsupported "variant patterns"
    | Tpat_or (_,p1,p2) -> unsupported "or patterns in depth"
 
-let rec pattern_aliases_rec p : (typed_var*coq) list = (* returns aliases *)
-   let aux = pattern_aliases_rec in
-   match p.pat_desc with
-   | Tpat_var s -> []
-   | Tpat_constant (Const_int n) -> []
-   | Tpat_tuple l -> list_concat_map aux l
-   | Tpat_construct (c, ps) -> list_concat_map aux ps
-   | Tpat_alias (p1, s) -> 
-      ((Ident.name s, coq_typ_pat p), lift_pat ~through_aliases:false p1) :: (aux p1)
-   | Tpat_lazy p1 ->  aux p1
-   | Tpat_record _ -> unsupported "record patterns" (* todo! *)
-   | Tpat_array pats -> unsupported "array patterns" (* todo! *)
-   | Tpat_constant _ -> unsupported "only integer constant are supported"
-   | Tpat_any -> not_in_normal_form "wildcard patterns remain after normalization"
-   | Tpat_variant (_,_,_) -> unsupported "variant patterns"
-   | Tpat_or (_,p1,p2) -> unsupported "or patterns"   
+(** Extracts the aliases from a Caml pattern, in the form of an
+    association list mapping variables to Coq expressions *)
 
-let pattern_aliases p = 
-   List.rev (pattern_aliases_rec p)
-
+let pattern_aliases p : (typed_var*coq) list = 
+   let rec aux p =
+      match p.pat_desc with
+      | Tpat_var s -> []
+      | Tpat_constant (Const_int n) -> []
+      | Tpat_tuple l -> list_concat_map aux l
+      | Tpat_construct (c, ps) -> list_concat_map aux ps
+      | Tpat_alias (p1, s) -> 
+         ((Ident.name s, coq_typ_pat p), lift_pat ~through_aliases:false p1) :: (aux p1)
+      | Tpat_lazy p1 ->  aux p1
+      | Tpat_record _ -> unsupported "record patterns" (* todo! *)
+      | Tpat_array pats -> unsupported "array patterns" (* todo! *)
+      | Tpat_constant _ -> unsupported "only integer constant are supported"
+      | Tpat_any -> not_in_normal_form "wildcard patterns remain after normalization"
+      | Tpat_variant (_,_,_) -> unsupported "variant patterns"
+      | Tpat_or (_,p1,p2) -> unsupported "or patterns"   
+      in
+   List.rev (aux p)
 
 
 (*#########################################################################*)
-(* Lifting of values *)
+(* ** Lifting of values *)
 
 let prefix_for_label typ = 
   match typ.desc with  
@@ -312,7 +339,7 @@ let rec lift_val env e =
 
 
 (*#########################################################################*)
-(* Characteristic formulae for expressions *)
+(* ** Characteristic formulae for expressions *)
 
 let pattern_ident p =
    match p.pat_desc with
@@ -519,7 +546,7 @@ and cfg_func env fvs pat bod =
 
 
 (*#########################################################################*)
-(* Characteristic formulae for modules *)
+(* ** Characteristic formulae for modules *)
 
  let is_algebraic (name,dec) =
     match dec.type_kind with Type_variant _ -> true | _ -> false 
@@ -864,39 +891,3 @@ let cfg_file str =
    [ Cftop_coqs [ Coqtop_set_implicit_args; Coqtop_require_import (if !pure_mode then "FuncPrim" else "CFPrim") ] ]
    @ cfg_structure str
 
-(*#########################################################################*)
-(* BIN
-
-let btyp_of_typ_exp t =
-let btyp_of_typ_sch t =
-
-
-let btyp_of_typ_exp t =
-   mark_loops t;
-   btree_of_typexp false t
-
-let btyp_of_typ_sch t =
-   mark_loops t;
-   let typ = btree_of_typexp true t;
-   let fvt = extract_occured () in
-   let fvtg = List.concat (List.map (function Occ_gen x -> [x] | _ -> []) fvt) in
-   let fvta = List.concat (List.map (function Occ_alias x -> [x] | _ -> []) fvt) in
-   (fvtg, fvta, typ)
-
-
-   
-      end else if is_one_record then begin
-         let d = match l with [(s,d)] -> d | _ -> assert false in
-         let branches = match d.atypdec_descr with Atypdescr_record bs -> bs | _ -> assert false in
-         let trans_branch (c, mutable_flag, t) =
-            (c, lift_typ t)
-            in
-         let ind = { 
-               coqind_name = d.atypdec_name;
-               coqind_args = List.map (fun x -> (x, coq_type)) d.atypdec_params;
-               coqind_ret = coq_type;
-               coqind_branches = List.map trans_branch branches; } in
-         let maxis = List.map (fun (c,_,_) -> Coqtop_maximal (c, d.atypdec_params)) branches in
-         [ Cft_coqs ([ Coqtop_record ind ] @ maxis) ] 
-         
-*)

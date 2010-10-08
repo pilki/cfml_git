@@ -7,9 +7,12 @@ open Longident
 open Location
 open Primitives
 
+(** This file takes as input an abstract syntax tree and produces
+    an abstract syntax tree in "normal form", i.e. where intermediate
+    expressions have been bound to a name. *)
 
 (*#########################################################################*)
-(* Management of fresh identifiers *)
+(* ** Management of fresh identifiers *)
 
 let name_of_lident idt =
   let words = Longident.flatten idt in
@@ -28,10 +31,11 @@ let check_var loc x =
 let check_lident loc idt =
    check_var loc (name_of_lident idt)
 
-(*#########################################################################*)
-(* Detection of primitive and exception-raising functions *)
 
-(* todo: forbid rebinding of primitive names *)
+(*#########################################################################*)
+(* ** Detection of primitive functions and exception-raising *)
+
+(* --todo: forbid the rebinding of primitive names *)
 
 let is_inlined_primitive e largs =
     let args = List.map snd largs in (* todo: check no labels*)
@@ -52,8 +56,9 @@ let is_failwith_function e =
       end
    | _ -> false
 
+
 (*#########################################################################*)
-(* Normalization of patterns *)
+(* ** Normalization of patterns *)
 
 let normalize_pattern p =
    let i = ref (-1) in
@@ -80,7 +85,7 @@ let normalize_pattern p =
 
 
 (*#########################################################################*)
-(* Free variables of patterns and values *)
+(* ** Free variables of patterns and values *)
 
 let rec pattern_variables p =
    let aux = pattern_variables in
@@ -130,7 +135,7 @@ let rec values_variables e =
 
 
 (*#########################################################################*)
-(* Normalization of expression *)
+(* ** Normalization of expression *)
 
 type bindings = (pattern*expression) list
 
@@ -146,7 +151,6 @@ let create_match_one loc exp pat body =
    { pexp_loc = loc; 
      pexp_desc = Pexp_match (exp,[pat,body]) }
 
-
 let get_assign_fct loc already_named new_name : expression -> bindings -> expression * bindings =
    if already_named 
       then fun e b -> e,b
@@ -156,7 +160,7 @@ let get_assign_fct loc already_named new_name : expression -> bindings -> expres
               let e' = { pexp_loc = Location.none; pexp_desc = Pexp_ident (Lident x) } in
               e', b @ [ p, e ]
 
-(* todo: check eval order *)
+(* -- todo: check evaluation order for tuples and records *)
 let normalize_expression named e =
    let i = ref (-1) in
    let next_var () =
@@ -354,7 +358,7 @@ let normalize_pattern_expression (p,e) =
 
 
 (*#########################################################################*)
-(* Normalization of modules and top-level phrases *)
+(* ** Normalization of modules and top-level phrases *)
 
 let rec normalize_module m =
    { m with pmod_desc = match m.pmod_desc with

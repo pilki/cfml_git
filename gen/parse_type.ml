@@ -1,11 +1,15 @@
-(*#########################################################################*)
-(* copied from ocaml doc *)
-
 open Config
 open Clflags
 open Misc
 open Format
 open Typedtree
+
+(** The purpose of this file is to parse an interface file.
+    The content of this file is a copy-pasting from the source
+    code of OCamldoc. *)
+
+(*#########################################################################*)
+(* ** Parsing of MLI files *)
 
 (** Initialize the search path.
    The current directory is always searched first,

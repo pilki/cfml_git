@@ -1,26 +1,5 @@
+(** This file contains some helper functions *)
 
-
-(*#########################################################################*)
-(* Recent *)
-
-let bool_of_option xo =
-   match xo with 
-   | None -> false 
-   | Some x -> x 
-
-(*#########################################################################*)
-(* Exceptions *)
-
-let unsupported s =
-   failwith ("Unsupported language construction : " ^ s)
-
-
-(**************************************************************)
-(** Try-with manipulation functions *)
-
-let gives_not_found f =
-   try ignore (f()); false 
-   with Not_found -> true
 
 (**************************************************************)
 (** Option manipulation functions *)
@@ -37,7 +16,7 @@ let unsome = function
   | None -> assert false
   | Some v -> v
 
-let option_to_list = function
+let option_to_list = function (* todo: rename as [list_of_option] *)
   | None -> []
   | Some v -> [v]
 
@@ -48,6 +27,12 @@ let option_app d f = function
 let unsome_safe d = function
   | None -> d
   | Some s -> s
+
+let bool_of_option xo =
+   match xo with 
+   | None -> false 
+   | Some x -> x 
+
 
 (**************************************************************)
 (** List manipulation functions *)
@@ -71,12 +56,6 @@ let rec list_separ sep = function
   | [] -> []
   | a::[] -> a::[]
   | a::l -> a::sep::(list_separ sep l)
-
-(*bug?
-let rec filter_map f g = function
-  | [] -> []
-  | a::l -> if f a then (g a) :: (filter_map f g l)
-*)
 
 let rec filter_somes = function
   | [] -> []
@@ -103,6 +82,11 @@ let list_concat_map f l =
 let list_assoc_option x l =
    try Some (List.assoc x l)
    with Not_found -> None
+
+let rec assoc_list_map f = function
+  | [] -> []
+  | (k,v)::l -> (k, f v)::(assoc_list_map f l)
+
 
 (**************************************************************)
 (** String manipulation functions *)
@@ -134,11 +118,24 @@ let cutlines width s =
 
 
 (**************************************************************)
-(** Assoc list manipulation functions *)
+(** File manipulation functions *)
 
-let rec assoc_list_map f = function
-  | [] -> []
-  | (k,v)::l -> (k, f v)::(assoc_list_map f l)
+let file_put_contents filename text =
+   try 
+      let handle = open_out filename in
+      output_string handle text;
+      close_out handle
+   with Sys_error s -> 
+     failwith ("Could not write in file: " ^ filename ^ "\n" ^ s)
+
+
+(**************************************************************)
+(** Try-with manipulation functions *)
+
+(** Tests whether a function throws [Not_found] *)
+let gives_not_found f =
+   try ignore (f()); false 
+   with Not_found -> true
 
 
 (**************************************************************)
@@ -170,20 +167,16 @@ let show_str s =
 let show_par required s =
   if required then "(" ^ s ^ ")" else s
 
+
+(**************************************************************)
+(** Error messages *)
+
 let output s = 
   Printf.printf "%s\n" s
 
 let warning s =
   Printf.printf "### WARNING: %s\n" s
 
+let unsupported s =
+   failwith ("Unsupported language construction : " ^ s)
 
-(**************************************************************)
-(** File manipulation *)
-
-let file_put_contents filename text =
-   try 
-      let handle = open_out filename in
-      output_string handle text;
-      close_out handle
-   with Sys_error s -> 
-     failwith ("Could not write in file: " ^ filename ^ "\n" ^ s)

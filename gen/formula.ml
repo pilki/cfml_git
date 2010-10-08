@@ -69,17 +69,22 @@ and cftops = cftop list
 
 (** Abstract datatype for functions *)
 
-let val_type = Coq_var "val"   (**--todo: change to Func *)
+let val_type = Coq_var "val"   (**--todo: change to Func: --todo: add Coq module *)
+
+(** Abstract data type for locations *)
+
+let loc_type =
+  Coq_var "CFHeaps.loc"
 
 (** Abstract data type for heaps *)
 
 let heap =
-   Coq_var "heap"
+   Coq_var "CFHeaps.heap"
 
 (** Type of proposition on heaps, [hprop], a shorthand for [heap->Prop] *)
 
 let hprop =
-   Coq_var "hprop"
+   Coq_var "CFHeaps.hprop"
 
 (** Type of pure post-conditions [_ -> Prop] *)
 
