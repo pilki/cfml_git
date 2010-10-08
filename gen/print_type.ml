@@ -13,8 +13,12 @@ open Btype
 open Printtyp
 open Outcometree
 
+(** This file contains a data structure for representing types in an
+    explicit form, as well as an algorithm for extracting such types
+    from the representation used by OCaml's compiler. *)
+
 (*#########################################################################*)
-(* Simple representation of types *)
+(* ** Simple representation of types, called [btyp] *)
 
 type btyp =
    | Btyp_alias of btyp * string
@@ -24,7 +28,8 @@ type btyp =
    | Btyp_var of bool * string 
    | Btyp_poly of string list * btyp
    | Btyp_val 
-   (*
+
+   (*--later:
    | Btyp_abstract
    | Btyp_stuff of string
    | Btyp_manifest of out_type * out_type
@@ -35,26 +40,9 @@ type btyp =
    *)
 
 (*#########################################################################*)
-(* Gathering of free type variables *)
+(* ** Helper functions *)
 
-(*BIN
-let quantified_recently = ref []
-let add_quantified_recently t = 
-  if not (List.memq t !quantified_recently) 
-     then quantified_recently := t :: !quantified_recently
-let extract_quantified_recently () =
-   let r = List.map (fun x -> "'" ^ name_of_type x) (List.rev !quantified_recently) in
-   quantified_recently := [];
-   r
-
-let quantified = ref []
-let is_quantified t =
-   List.memq (proxy t) !quantified
-let add_quantified t = 
-  if not (List.memq t !quantified) 
-     then (quantified := t :: !quantified;
-           add_quantified_recently t)
-*)
+(** Gathering of free type variables of a btyp *)
 
 type occ = Occ_gen of type_expr | Occ_alias of type_expr 
 let occured : (occ list) ref = ref []
@@ -66,8 +54,7 @@ let extract_occured () =
    occured := [];
    r
 
-(*#########################################################################*)
-(* Function wrappers *)
+(** Wrapper for functions from [Printtyp.ml] *)
 
 let mark_loops = mark_loops 
 
@@ -78,9 +65,11 @@ let name_of_type ty =
 
 let reset_names = reset_names 
 
-(*#########################################################################*)
-(* Generation of simple type representations *)
 
+(*#########################################################################*)
+(* ** Generation of simple type representations *)
+
+(** Algorithm translating an OCaml's typechecker type into a btyp *)
 
 let rec btree_of_typexp sch ty =
   let ty = repr ty in
@@ -152,28 +141,45 @@ let rec btree_of_typexp sch ty =
 and btree_of_typlist sch tyl =
   List.map (btree_of_typexp sch) tyl
 
-(*
-let rec otyp_of_btyp t = 
-   let aux = otyp_of_btyp in
-   match t with 
-   | Btyp_abstract -> Otyp_abstract
-   | Btyp_alias (t,s) -> Otyp_alias (aux t,s)
-   | Btyp_arrow (s,t1,t2) -> Otyp_arrow (s, aux t1, aux t2)
-   | Btyp_constr (id,ts) -> Otyp_constr (id, List.map aux ts)
-   | Btyp_tuple ts -> Otyp_tuple (List.map aux ts)
-   | Btyp_var (b,s) -> Otyp_var (b,s)
-   | Btyp_poly (ss,t) -> Otyp_poly (ss, aux t)
-
-let = Format.std_formatter
-
-let string_of_btyp t =
-   !Oprint.out_type (otyp_of_btyp t)
-*)
 
 (*#########################################################################*)
-(* Printing of simple type representations *)
+(* ** Main functions *)
+
+(** --todo: there is some redundancy with, e.g., [string_of_type_exp] *)
+
+(** Translates a type expression [t] into a [btyp], including the call 
+    to [mark_loops]. *)
+
+let btyp_of_typ_exp t =
+   mark_loops t;
+   btree_of_typexp false t
+
+(** Translates of a type scheme [t] into a [btyp], including the call
+    to [mark_loops]. *)
+
+let btyp_of_typ_sch t =
+   mark_loops t;
+   let typ = btree_of_typexp true t in
+   let fvt = extract_occured () in
+   let fvtg = list_concat_map (function Occ_gen x -> [x] | _ -> []) fvt in
+   let fvta = list_concat_map (function Occ_alias x -> [x] | _ -> []) fvt in
+   (fvtg, fvta, typ)
+
+
+(*#########################################################################*)
+(* ** Printing of simple type representations *)
+
+(** Helper functions *)
 
 let ign f () = f
+
+let print_list pr sep =
+   show_list pr sep
+
+let pr_vars s =
+  print_list (fun s -> sprintf "'%s" s) " " s
+
+(** Printing of paths and identifiers *)
 
 let print_path s = 
    Path.name s
@@ -185,11 +191,7 @@ let rec print_ident =
   | Oide_apply (id1, id2) ->
       sprintf "%a(%a)" (ign print_ident) id1 (ign print_ident) id2
 
-let print_list pr sep =
-   show_list pr sep
-
-let pr_vars s =
-  print_list (fun s -> sprintf "'%s" s) " " s
+(** Printing of types *)
 
 let rec print_out_type =
   function
@@ -236,32 +238,26 @@ and print_typargs =
   | tyl -> sprintf "@[<1>(%a)@]@ " (ign (print_typlist print_out_type ",")) tyl
 
 
-
 (*#########################################################################*)
-(* Main functions *)
+(* ** Main functions *)
 
-let btyp_of_typ_exp t =
-   mark_loops t;
-   btree_of_typexp false t
-
-let btyp_of_typ_sch t =
-   mark_loops t;
-   let typ = btree_of_typexp true t in
-   let fvt = extract_occured () in
-   let fvtg = list_concat_map (function Occ_gen x -> [x] | _ -> []) fvt in
-   let fvta = list_concat_map (function Occ_alias x -> [x] | _ -> []) fvt in
-   (fvtg, fvta, typ)
-
-
-(*#########################################################################*)
-(* Printing functions *)
+(** Translates an OCaml's compiler type [t] into a string.
+    Boolean parameter [sch] indicates whether free type variables
+    should be quantified at head. The function [mark_loops] should
+    be called on [t] first for recursive types to be handled correctly. *)
 
 let show_typ sch t =
    print_out_type (btree_of_typexp sch t)
 
+(** Translates a type expression [t] into a string, including the call 
+    to [mark_loops]. *)
+
 let string_of_type_exp t =
    mark_loops t;
    show_typ false t
+
+(** Translates of a type scheme [t] into a string, including the call
+    to [mark_loops]. *)
 
 let string_of_type_sch fvs t =
    mark_loops t;

@@ -1,5 +1,13 @@
 open Mytools
 
+(** This file contains information for properly handling 
+    Caml builtin functions and Coq builtin functions and
+    data types. *)
+ 
+
+(*#########################################################################*)
+(* ** Helper function to decompose Coq paths *)
+
 let rec split_at_dots s pos =
   try
     let dot = String.index_from s pos '.' in
@@ -12,7 +20,10 @@ let name_of_mlpath s =
 
 
 (*#########################################################################*)
-(* Detection of primitive and exception-raising functions *)
+(* ** List of inlined primitives *)
+
+(** Fully-applied "inlined primitive" aretranslated directly as a 
+    Coq application, and does not involve the "AppReturns" predicate. *)
 
 let primitive_special = -1
 
@@ -39,13 +50,19 @@ let inlined_primitives_table =
    "List.append", (2, "LibList.append"); 
    "Stream.++", (2, "LibList.append"); 
    "Stream.reverse", (1, "LibList.rev");
-   "Lazy.force", (1, ""); (* @LibLogic.id _*)
-   "Okasaki.!$", (1, "");
+   "Lazy.force", (1, ""); (* i.e., @LibLogic.id _*)
+   "Okasaki.!$", (1, ""); (* i.e., @LibLogic.id _*)
    "StrongPointers.cast", (1, "")
    ]
-   (* todo: add asr, etc.. *)
+   (* --todo: add asr, etc.. *)
 
-let all_primitives_table = (*todo:complete*)
+(*#########################################################################*)
+(* ** List of all primitives *)
+
+(** Primitive functions from the following list are mapped to special
+    Coq constants whose specification is axiomatized. *)
+
+let all_primitives_table =
   [ "Pervasives.=", "ml_eqb";
     "Pervasives.<>", "ml_neq";
     "Pervasives.==", "ml_phy_eq";
@@ -60,7 +77,6 @@ let all_primitives_table = (*todo:complete*)
     "Pervasives.<", "ml_lt";
     "Pervasives.>", "ml_gt";
     "Pervasives.>=", "ml_geq";
-   (* todo: not et fst et snd manquent *)
     "Pervasives.&&", "ml_and";
     "Pervasives.||", "ml_or";
     "Pervasives.@", "ml_append";
@@ -96,8 +112,16 @@ let all_primitives_table = (*todo:complete*)
     "StrongPointers.sref", "ml_ref";    
     "StrongPointers.sget", "ml_get";
     "StrongPointers.sset", "ml_sset"; ]
+    (* ---todo: add not, fst, snd *)
 
-let builtin_constructors_table = (* todo: indiquer pervasives *)
+
+(*#########################################################################*)
+(* ** List of primitive data constructors *)
+
+(** Data constructors from the following lists are mapped to particular
+    inductive data constructors in Coq. *)
+
+let builtin_constructors_table =
   [ "[]", "Coq.Lists.List.nil";
     "::", "Coq.Lists.List.cons";
     "()", "Coq.Init.Datatypes.tt";
@@ -108,29 +132,56 @@ let builtin_constructors_table = (* todo: indiquer pervasives *)
     "Stream.Nil", "Coq.Lists.List.nil";
     "Stream.Cons", "Coq.Lists.List.cons";
     ]
+    (* --todo: add [Pervasives] as prefix *)
+
+
+(*#########################################################################*)
+(* ** Accessor functions *)
+
+(** Precomputations *)
 
 let inlined_primitives_names =
    List.map (fun (x,(n,y)) -> name_of_mlpath x, n) inlined_primitives_table
+
+(** Test whether [p] is an inlined primitive of arity [arity] *)
 
 let is_inlined_primitive_name p arity =
    match list_assoc_option (name_of_mlpath p) inlined_primitives_names with
    | None -> false
    | Some n -> (arity = n)
 
+(** Find the inlined primitive associated with [p] of arity [arity],
+    (this is a partial function, which returns an option) *)
+
 let find_inlined_primitive p arity =
    match list_assoc_option p inlined_primitives_table with
    | None -> None
    | Some (n,x) -> if n = arity then Some x else None
 
+(** Find the primitive associated with [p]. This partial function
+    returns an option. *)
+
 let find_primitive p =
    list_assoc_option p all_primitives_table
 
+(** Find the primitive data-constructor associated with [p]. 
+    This partial function returns an option. *)
+
 let find_builtin_constructor p =
    list_assoc_option p builtin_constructors_table
+
+(** List of special top-level definitions that should not lead
+    to the generation of a characteristic formula. The definition
+    of [!$] as a keyword for forcing lazy expressions is one such
+    exception. *)
 
 let skip_cf_for = function
   | "!$" -> true
   | _ -> false
 
+(** List of special modules whose [open] should not lead to the
+    generation of an [Require Import] statement. *)
+
 let is_primitive_module n =
    List.mem n [ "Stream"; "NullPointers"; "StrongPointers" ]
+

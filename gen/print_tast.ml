@@ -8,9 +8,11 @@ open Format
 open Print_past
 open Print_type
 
+(** Printing facility for typed abstract syntax trees produced by the 
+    type-checker*)
 
 (*#########################################################################*)
-(* Printing of items *)
+(* ** Printing of items *)
 
 let string_of_typed_var s t =
    sprintf "(%s : %s)" s (string_of_type_exp t)
@@ -23,7 +25,7 @@ let string_of_constructor cd =
 
 
 (*#########################################################################*)
-(* Printing of patterns *)
+(* ** Printing of patterns *)
 
 let string_of_pattern par p =
    let rec aux par p =
@@ -67,7 +69,7 @@ let string_of_let_pattern par fvs p =
    *)  
 
 (*#########################################################################*)
-(* Printing of expression *)
+(* ** Printing of expression *)
 
 let rec string_of_expression par e =
    let aux ?par e =
@@ -175,7 +177,7 @@ let rec string_of_expression par e =
    
 
 (*#########################################################################*)
-(* Normalization of modules and top-level phrases *)
+(* ** Normalization of modules and top-level phrases *)
 
 let rec string_of_module m =
    match m.mod_desc with

@@ -6,9 +6,10 @@ open Mytools
 open Longident
 open Format
 
+(** Printing facility for abstract syntax trees produced by the parser *)
 
 (*#########################################################################*)
-(* Printing of base values *)
+(* ** Printing of base values *)
 
 let string_of_ident s = 
    Ident.name s
@@ -33,7 +34,7 @@ let string_of_recflag = function
 
 
 (*#########################################################################*)
-(* Printing of patterns *)
+(* ** Printing of patterns *)
 
 let string_of_pattern par p =
    let rec aux par p =
@@ -66,7 +67,7 @@ let string_of_pattern par p =
 
 
 (*#########################################################################*)
-(* Printing of expression *)
+(* ** Printing of expression *)
 
 let rec string_of_expression par e =
    let aux ?par e =
@@ -165,7 +166,7 @@ let rec string_of_expression par e =
    
 
 (*#########################################################################*)
-(* Normalization of modules and top-level phrases *)
+(* ** Normalization of modules and top-level phrases *)
 
 let rec string_of_module m =
    match m.pmod_desc with
