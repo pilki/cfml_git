@@ -236,7 +236,7 @@ let pattern_aliases p : (typed_var*coq) list =
 
 
 (*#########################################################################*)
-(* ** Lifting of values *)
+(* ** Helper functions for primitive functions *)
 
 let prefix_for_label typ = 
   match typ.desc with  
@@ -270,12 +270,22 @@ let get_inlined_primitive e oargs =
    | Some x -> x
    | _ -> failwith "get_inlined_primitive: not an inlined primitive"
 
+
+(*#########################################################################*)
+(* ** Lifting of values *)
+
+(** Translate a Caml identifier into a Coq identifier, possibly 
+    applied to wildcards for taking type applications into account *)
+
 let lift_exp_path env p =
    match find_primitive (Path.name p) with
    | None -> 
       let x = lift_path_name p in
       coq_app_var_wilds x (typ_arity_var env p)
    | Some y -> Coq_var y 
+
+(** Translate a Caml value into a Coq value. Fails if the Coq 
+    expression provided is not a value. *)
 
 let rec lift_val env e = 
    let aux = lift_val env in
@@ -299,13 +309,6 @@ let rec lift_val env e =
        List.iter (fun (lbl,v) -> register_arg lbl (aux v)) l;
        let constr = record_constructor (prefix_for_label (e.exp_type)) in
        coq_apps (Coq_var constr) (Array.to_list args)
-       (*bin: Coq_record(List.map (fun (n,v) -> (string_of_label typ n, aux v)) l)*)
-   
-   (* not a value in imperative ! 
-   | Texp_field (e, lbl) ->
-       let typ = e.exp_type in
-       Coq_app (Coq_var (string_of_label typ lbl), aux e)
-   *)
    | Texp_apply (funct, oargs) when is_inlined_primitive funct oargs ->
       let f = get_inlined_primitive funct oargs in
       let args = simplify_apply_args oargs in
@@ -315,8 +318,11 @@ let rec lift_val env e =
    | Texp_array [] -> 
       Coq_var "array_empty"
    | _ -> not_in_normal_form (Print_tast.string_of_expression false e)
-
-   (*
+   (* --todo: could be a value in a purely-functional setting
+   | Texp_field (e, lbl) ->
+       let typ = e.exp_type in
+       Coq_app (Coq_var (string_of_label typ lbl), aux e) *)
+   (* --later: other constructors
    | Texp_assertfalse -> Texp_assertfalse
    | Texp_try(body, pat_expr_list) -> unsupported "try expression"
    | Texp_variant(l, arg) ->  unsupported "variant expression"
@@ -339,15 +345,7 @@ let rec lift_val env e =
 
 
 (*#########################################################################*)
-(* ** Characteristic formulae for expressions *)
-
-let pattern_ident p =
-   match p.pat_desc with
-   | Tpat_var s -> s
-   | _ -> failwith ("pattern_ident: the pattern is not a name: " ^ (Print_tast.string_of_pattern false p))
-
-let pattern_name p =
-   Ident.name (pattern_ident p)
+(* ** Helper functions for producing label names *)
 
 let counter_local_label = 
    ref 0
@@ -371,6 +369,30 @@ let cfg_extract_labels () =
    reset_used_labels();
    cft
 
+
+(*#########################################################################*)
+(* ** Helper functions for names *)
+
+(** Takes a pattern that is expected to be reduced simply to an identifier, 
+    and returns this identifier *)
+
+let pattern_ident p =
+   match p.pat_desc with
+   | Tpat_var s -> s
+   | _ -> failwith ("pattern_ident: the pattern is not a name: " ^ (Print_tast.string_of_pattern false p))
+
+(** Takes a pattern that is expected to be reduced simply to an identifier, 
+    and returns the name of this identifier *)
+
+let pattern_name p =
+   Ident.name (pattern_ident p)
+
+
+(*#########################################################################*)
+(* ** Characteristic formulae for expressions *)
+
+(** Translate a Caml expression into its Coq characteristic formula *)
+
 let rec cfg_exp env e =
    let aux = cfg_exp env in
    let lift e = lift_val env e in
@@ -383,7 +405,7 @@ let rec cfg_exp env e =
    | Texp_tuple el -> ret e
    | Texp_construct(cstr, args) -> ret e
    | Texp_record (lbl_expr_list, opt_init_expr) -> ret e
-   (*| Texp_field (arg, lbl) -> ret e*)
+   (*--later: only in purely-functional setting: | Texp_field (arg, lbl) -> ret e*)
    | Texp_apply (funct, oargs) when is_inlined_primitive funct oargs -> ret e
 
    | Texp_function (pat_expr_list, partial) -> not_normal ()
@@ -400,15 +422,15 @@ let rec cfg_exp env e =
         let env' = match rf with 
            | Nonrecursive -> env
            | Recursive -> env
-               (* TODO: gérer la récursion polymorphe 
+              (* --todo: add better support for local polymorphic recursion
               List.fold_left (fun (pat,bod) acc -> Ident.add (pattern_ident pat) 0 acc) env pat_expr_list *)
            | Default -> unsupported "Default recursion mode"
            in
         let ncs = List.map (fun (pat,bod) -> (pattern_name pat, cfg_func env' fvs pat bod)) pat_expr_list in
-        let cf_body = cfg_exp env' body in (* TODO: gérer la récursion polymorphe *)
+        let cf_body = cfg_exp env' body in 
         add_used_label (fst (List.hd ncs));
         Cf_letfunc (ncs, cf_body)
-        (* TODO: bug avec les types récursifs genre ceux "fixpoint". pour l'instant, on hack avec val *)
+        (* --todo: check what happens with recursive types *)
 
       (* let-binding of a single value *)
       end else begin 
@@ -502,17 +524,15 @@ let rec cfg_exp env e =
    | Texp_for(param, low, high, dir, body) -> 
       begin match dir with 
         | Upto -> Cf_for (Ident.name param, lift low, lift high, aux body)
-        | Downto -> unsupported "for-downto expressions" (* todo *)
+        | Downto -> unsupported "for-downto expressions" (* later *)
       end
 
-   | Texp_array expr_list -> unsupported "array expressions" (* todo *)
-
+   | Texp_array expr_list -> unsupported "array expressions" (* later *)
    | Texp_field (e, lbl) -> unsupported "field expression"
-       (*let typ = e.exp_type in
+       (* --later:
+       let typ = e.exp_type in
        Coq_app (Coq_var (string_of_label typ lbl), aux e)*)
-
    | Texp_setfield(arg, lbl, newval) -> unsupported "set-field expression"
-
    | Texp_try(body, pat_expr_list) -> unsupported "try expression"
    | Texp_variant(l, arg) ->  unsupported "variant expression"
    | Texp_ifthenelse(cond, ifso, None) -> unsupported "if-then-without-else expressions should have been normalized"
@@ -540,29 +560,33 @@ and cfg_func env fvs pat bod =
    let cf_body = cfg_exp env body in
    let fvs = List.map name_of_type fvs in
    Cf_body (f, fvs, targs, cf_body) 
-   (* TODO: c'est peut être un peu trop conservatif sur les let-rec:
-      on va sans-doute quantifier trop de variables de type; que faire? *)
-
+   (* --todo: check if the set of type variables quantified is not too
+      conservative. Indeed, some type variables may no longer occur. *)
 
 
 (*#########################################################################*)
 (* ** Characteristic formulae for modules *)
 
- let is_algebraic (name,dec) =
-    match dec.type_kind with Type_variant _ -> true | _ -> false 
- let is_type_abbrev (name,dec) =
-    match dec.type_kind with Type_abstract -> true | _ -> false 
- let is_type_record (name,dec) =
-    match dec.type_kind with Type_record _ -> true | _ -> false 
+(** Helper functions to find out the kind of a type declaration *)
 
-let typ_of ty = lift_typ_exp ty
+let is_algebraic (name,dec) =
+   match dec.type_kind with Type_variant _ -> true | _ -> false 
+
+let is_type_abbrev (name,dec) =
+   match dec.type_kind with Type_abstract -> true | _ -> false 
+
+let is_type_record (name,dec) =
+   match dec.type_kind with Type_record _ -> true | _ -> false 
+
+(** Generate the top-level Coq declarations associated with 
+    a top-level declaration from a module. *)
 
 let rec cfg_structure_item s : cftops = 
   match s with
   | Tstr_value(rf, fvs, pat_expr_list) ->
       reset_local_labels();
 
-      (* TODO: factorize with let in expression *)
+      (* --todo: improve code sharing between local bindings and top-level bindings *)
       let is_let_fun (pat,exp) = 
          match exp.exp_desc with
          | Texp_function (_,_) -> true
@@ -572,7 +596,7 @@ let rec cfg_structure_item s : cftops =
         let env' = match rf with 
            | Nonrecursive -> Ident.empty
            | Recursive -> Ident.empty
-               (* TODO: gérer la récursion polymorphe 
+               (* --todo: better support for polymorphic recursion
               List.fold_left (fun (pat,bod) acc -> Ident.add (pattern_ident pat) 0 acc) env pat_expr_list *)
            | Default -> unsupported "Default recursion mode"
            in
@@ -582,8 +606,7 @@ let rec cfg_structure_item s : cftops =
         @ [Cftop_coqs (List.map (fun (name,_) -> Coqtop_registercf name) ncs)]
    
       (* let-binding of a single value *)
-      end else if (List.length pat_expr_list = 1) then begin  (* todo: check it is not a function *)
-        (* todo:  avoid copy paste of this block with treatment of expressions *) 
+      end else if (List.length pat_expr_list = 1) then begin (* later: check it is not a function *)
         let (pat,bod) = List.hd pat_expr_list in
         let x = pattern_name pat in
         if (skip_cf_for x) then [] else begin
@@ -624,20 +647,19 @@ let rec cfg_structure_item s : cftops =
              Cftop_val_cf (x, fvs_strict, fvs_others, v); 
              Cftop_coqs [Coqtop_registercf x]; ] 
 
-        (* term let-binding *)
+        (* term let-binding -- later *)
         end else begin
             
            failwith "unsupported top-level binding of terms that are not values";
-           (*
-           if fvs_strict <> [] || fvs_others <> [] 
+
+           (* if fvs_strict <> [] || fvs_others <> [] 
                then not_in_normal_form ("(unsatisfied value restriction) "
                                         ^ (Print_tast.string_of_expression false e));
            let cf1 = cfg_exp env bod in
            let env' = Ident.add (pattern_ident pat) (List.length fvs_strict) env in
            let cf2 = cfg_exp env' body in
            add_used_label x;
-           Cf_let ((x,typ), cf1, cf2)
-           *)
+           Cf_let ((x,typ), cf1, cf2) *)
 
         end
 
@@ -657,7 +679,7 @@ let rec cfg_structure_item s : cftops =
       if is_primitive_module (Path.name path) then [] else
       [ Cftop_coqs [ Coqtop_require_import (lift_full_path_name path) ] ]
 
-  (* todo: check actually a primitive, sinon conflicts... *)
+  (* -- todo: check no name clash occurs here *)
   | Tstr_primitive(id, descr) ->
       [] 
   | Tstr_exception(id, decl) ->
@@ -671,15 +693,21 @@ let rec cfg_structure_item s : cftops =
   | Tstr_include(modl, ids) -> unsupported "module-include"
   | Tstr_eval expr -> unsupported "top level eval expression (let _)"
 
+(** Generate the top-level Coq declarations associated with 
+    a type abbreviation. *)
+
 and cfg_type_abbrev (name,dec) =
    let x = Ident.name name in
    let args = List.map name_of_type dec.type_params in
    let sort = coq_impl_types (List.length args) in
    let coqs = match dec.type_manifest with
       | None -> [Coqtop_param (x, sort)]
-      | Some t -> [Coqtop_def ((x, sort), coq_fun_types args (typ_of t));
+      | Some t -> [Coqtop_def ((x, sort), coq_fun_types args (lift_typ_exp t));
                    Coqtop_hint_unfold ([x],"typeclass_instances") ] in
    coqs 
+
+(** Generate the top-level Coq declarations associated with 
+    a record definition. *)
 
 and cfg_type_record (name,dec) =
    let x = Ident.name name in
@@ -691,7 +719,7 @@ and cfg_type_record (name,dec) =
       coqind_name = x;
       coqind_targs = coq_types params;
       coqind_ret = Coq_type;
-      coqind_branches = List.map (fun (lbl, mut, typ) -> (field lbl, typ_of typ)) branches } in
+      coqind_branches = List.map (fun (lbl, mut, typ) -> (field lbl, lift_typ_exp typ)) branches } in
    let implicit_decl =
       match params with
       | [] -> []
@@ -701,20 +729,22 @@ and cfg_type_record (name,dec) =
    @ (implicit_decl)
    @ [ Coqtop_hint_constructors ([x], "typeclass_instances") ]
 
+(** Generate the top-level Coq declarations associated with 
+    a algebraic data type definition. *)
 
 and cfg_algebraic decls =
-   (* todo: pb si des variables polymorphes correspondent à des trucs tous remplacés par Val;
-      il faudrait en fait modifier l'arité des constructeurs, y compris lorsqu'on les applique *)
-   (* todo: uppercase types *)
+   (* -- todo: data constructor type arity may be reduced when types are erased *)
+   (* -- todo: Caml types often clash with Caml program variables, since in Coq
+         they get put in the same namespace *)
     let trans_ind (name,dec) =
       let x = Ident.name name in
       let branches = match dec.type_kind with Type_variant l -> l | _ -> assert false in
       let params = List.map name_of_type dec.type_params in
       let ret_typ = coq_apps (Coq_var x) (coq_vars params) in
       let get_typed_constructor (c,ts) =
-         (c, coq_impls (List.map typ_of ts) ret_typ) in
+         (c, coq_impls (List.map lift_typ_exp ts) ret_typ) in
       let coqind_decl = 
-         if List.length decls = 1 then (* todo: tester aussi récursion non polymorphe ! *)
+         if List.length decls = 1 then
             {  coqind_name = x;
                coqind_targs = coq_types params;
                coqind_ret = Coq_type;
@@ -740,6 +770,9 @@ and cfg_algebraic decls =
    @ (List.concat maxiss)
    @ [ Coqtop_hint_constructors (List.map (fun i -> i.coqind_name) inds, "typeclass_instances") ]
 
+(** Generate the top-level Coq declarations associated with 
+    a type definition. *)
+
 and cfg_type_decls decls =
     if List.length decls = 1 && is_type_abbrev (List.hd decls)  
        then cfg_type_abbrev (List.hd decls)
@@ -750,11 +783,16 @@ and cfg_type_decls decls =
     else
        unsupported "type definitions must be single abbreviations or mutually-recursive inductive definitions (mixing both is not supported in Coq)"
 
+(** Generate the top-level Coq declarations associated with 
+    the content of a module. *)
 
 and cfg_structure s =
    reset_used_labels();
    let body = list_concat_map (fun si -> reset_names(); cfg_structure_item si) s in
    cfg_extract_labels() @ body
+
+(** Generate the top-level Coq declarations associated with 
+    a Caml signature definition. *)
 
 and cfg_modtype id mt =
    let id = lift_ident_name id in
@@ -772,6 +810,8 @@ and cfg_modtype id mt =
    | None -> [ Cftop_coqs [ mod_typ_dec ] ]
    | Some sign -> [ Cftop_coqs ( [mod_typ_dec] @ sign @ [Coqtop_end id] ) ]
 
+(** Generate the top-level Coq declarations associated with 
+    a top-level declaration from a signature. *)
 
 and cfg_signature_item s =
   match s with
@@ -790,7 +830,6 @@ and cfg_signature_item s =
   | Tsig_type (id, td, rs) -> failwith "should have been treated before"
       (* -- old
       if rs <> Trec_not then unsupported "recursive type definitions in signatures"; 
-
       begin match td.type_kind with
       | Type_abstract -> cfg_type_abbrev (id,td)
       | Type_variant _ -> cfg_algebraic [id,td]
@@ -820,9 +859,11 @@ and cfg_signature_item s =
   | Tsig_class _ -> unsupported "objects"
   | Tsig_cltype _ -> unsupported "objects"
 
+(** Generate the top-level Coq declarations associated with 
+    a signature. Handles mutually-recursive type definitions
+    for algebraic data types. *)
 
 and cfg_signature s = 
-(* --old   list_concat_map cfg_signature_item s  *)
    match s with
    | [] -> []
    | Tsig_type (id, td, Trec_first) :: s0 ->
@@ -836,6 +877,9 @@ and cfg_signature s =
        cfg_type_decls decls @ cfg_signature s'
    | si :: s' -> let si1 = cfg_signature_item si in
                  si1 @ cfg_signature s'
+
+(** Generate the top-level Coq declarations associated with 
+    a Caml module. *)
 
 and cfg_module id m =
    let id = lift_ident_name id in
@@ -886,6 +930,8 @@ and cfg_module id m =
    | None -> [ Cftop_coqs [ mod_dec ] ]
    | Some str -> [ Cftop_coqs [ mod_dec ] ] @ str @ [ Cftop_coqs [ Coqtop_end id ] ]
 
+(** Generate the top-level Coq declarations associated with 
+    a Caml file. *)
 
 let cfg_file str =
    [ Cftop_coqs [ Coqtop_set_implicit_args; Coqtop_require_import (if !pure_mode then "FuncPrim" else "CFPrim") ] ]
