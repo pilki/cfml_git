@@ -1,11 +1,8 @@
 Set Implicit Arguments.
 Require Import LibTactics.
 
-
-
 (*****************************************************************************)
 (** Maths *)
-
 
 Require Export Arith.EqNat.
 
@@ -29,12 +26,13 @@ Inductive id : Type :=
 Definition beq_id id1 id2 :=
   match (id1, id2) with
     (Id n1, Id n2) => beq_nat n1 n2
-  end.
+  end.
 Definition X : id := Id 0.
 Definition Y : id := Id 1.
 Definition Z : id := Id 2.
 End Id.
 Import Id.
+
 
 (*****************************************************************************)
 (** Syntax *)
@@ -137,6 +135,7 @@ Inductive ceval : com -> state -> state -> Prop :=
 
   where "c1 '/' st '==>' st'" := (ceval c1 st st').
 
+
 (*****************************************************************************)
 (** Reasoning *)
 
@@ -222,6 +221,140 @@ Fixpoint cf (c : com) : Formula :=
 
 
 
+(********************************************************************)
+(* ** Lemmas for tactics *)
+
+(* find elsewhre *)
+Axiom beq_id_refl : forall x, beq_id x x = true.
+
+Lemma assignement : forall st V X,
+  update st V (aeval st (AId X)) V = st X.
+Proof.
+  intros. unfold aeval, update. rewrite~ beq_id_refl.
+Qed.
+
+Lemma ass_eq : forall st V a,
+  update st V a V = a.
+Proof.
+  intros. unfold aeval, update. rewrite~ beq_id_refl.
+Qed.
+
+Lemma ass_neq : forall st V V' a,
+  V <> V' ->
+  update st V a V' = st V'.
+Proof.
+  intros. unfold aeval, update. skip. (* todo *)
+Qed.
+
+
+(********************************************************************)
+(* ** Tactics *)
+
+Tactic Notation "xseq" :=
+  hnf; eapply weaken_elim; esplit; split.
+
+Tactic Notation "xseq" constr(H) :=
+  hnf; eapply weaken_elim; exists H; split.
+
+Tactic Notation "xass" :=
+  let st := fresh "st" in let Pst := fresh "Pst" in
+  hnf; eapply weaken_elim; intros st Pst; 
+  repeat rewrite ass_eq; repeat rewrite ass_neq;
+  simpl aeval.
+
+Tactic Notation "xif" :=
+  hnf; eapply weaken_elim; split.
+
+Tactic Notation "xskip" :=
+  let st := fresh "st" in let Pst := fresh "Pst" in
+  hnf; eapply weaken_elim; intros st Pst.
+
+Tactic Notation "xwhile" :=
+  let R := fresh "R" in let HR := fresh "H" R in
+  hnf; eapply weaken_elim; intros R HR.
+
+
+(********************************************************************)
+(* ** Mathematics *)
+
+Require Arith Omega.
+
+Lemma mult_one : forall x, x = 1 * x.
+Proof. intros. simpl. apply plus_n_O. Qed.
+
+(* find elsewhere *)
+Axiom peano_induction : forall P : nat -> Prop,
+   (forall n : nat, (forall m : nat, lt m n -> P m) -> P n) ->
+ forall n : nat, P n.
+
+(* find elsewhere *)
+Hint Extern 1 (Y <> Z) => skip.
+Hint Extern 1 (Z <> Y) => skip.
+
+
+(********************************************************************)
+(* ** Facto *)
+
+Module Factorial.
+
+(** Mathematical factorial *)
+
+Fixpoint real_fact (n:nat) : nat :=
+  match n with
+  | O => 1
+  | S n' => n * (real_fact n')
+  end.
+
+Definition fact_body : com :=
+  Y ::= AMult (AId Y) (AId Z);
+  Z ::= AMinus (AId Z) (ANum 1).
+
+Definition fact_loop : com :=
+  WHILE BNot (BEq (AId Z) (ANum 0)) DO
+    fact_body
+  END.
+
+Definition fact_com : com :=
+  Z ::= (AId X);
+  Y ::= ANum 1;
+  fact_loop.
+
+Lemma end_loop : forall Z st,
+  ~ bassn (BNot (BEq (AId Z) (ANum 0))) st -> st Z = 0.
+Proof.
+  intros. simpls. unfolds bassn, beval. simpls.
+  destruct (st Z0); simpls. auto. false. 
+Qed.
+
+Theorem fact_com_correct : forall x,
+  cf fact_com (fun st => st X = x)
+              (fun st => st Y = real_fact x).
+Proof.
+  intros x. 
+  xseq (fun st => st Z = x). xass. auto.
+  xseq (fun st => st Z = x /\ st Y = 1). xass; auto. 
+  xwhile. cuts M: (forall n k, 
+    R (fun st => st Z = n /\ st Y = k)
+      (fun st => st Y = k * real_fact n)).
+    rewrite (mult_one (real_fact x)). apply M.
+   induction n using peano_induction; intros k.
+   apply HR. xif.
+     asserts: (n <> 0). skip. destruct n as [|n']. false.
+     xseq (fun st => st Z = n' /\ st Y = k * (S n')).     
+       xseq (fun st => st Z = S n' /\ st Y = k * (S n')).
+         xass; auto*.
+         xass; auto. destruct Pst. omega.
+       unfold real_fact. fold (real_fact n').
+        rewrite Mult.mult_assoc. apply~ H.
+     xskip. destruct Pst as [[I J] K]. rewrite J.
+      lets: (end_loop K). asserts_rewrite (n = 0). omega.
+      simpl. omega.
+Qed.
+
+End Factorial.
+
+
+
 (*****************************************************************************)
 (** Soundness proof *)
 
@@ -274,230 +407,6 @@ Qed.
 Lemma cf_sound' : forall (c:com) (P Q:Assertion) (st:state), 
   cf c P Q -> P st -> exists st', c / st ==> st' /\ Q st'.
 Proof. intros. apply* cf_sound. Qed.
-
-
-(*****************************************************************************)
-(** Hoare *)
-
-Definition hoare_triple (P:Assertion) (c:com) (Q:Assertion) : Prop :=
-  forall st st', 
-       c / st ==> st' ->
-       P st ->
-       Q st'.
-
-Notation "{{ P }} c {{ Q }}" := (hoare_triple P c Q) (at level 90) : hoare_spec_scope.
-Open Scope hoare_spec_scope.
-
-(* to get somewhere else *)
-Axiom deterministic : forall c st st' st'',
-  c / st ==> st' -> 
-  c / st ==> st'' ->
-  st' = st''.
-
-Lemma cf_to_hoare : forall (c:com) (P Q:Assertion), 
-  cf c P Q  ->  {{P}} c {{Q}}. 
-Proof.
-  introv Hcf Red Pre.
-  forwards* [st'' [Red' Post]]: (>>> cf_sound Hcf).
-  forwards* E: (>>> deterministic Red Red').
-  rewrite~ E.
-Qed.
-
-(********************************************************************)
-(* ** Facto *)
-
-Module Factorial.
-
-Fixpoint real_fact (n:nat) : nat :=
-  match n with
-  | O => 1
-  | S n' => n * (real_fact n')
-  end.
-
-Definition fact_body : com :=
-  Y ::= AMult (AId Y) (AId Z);
-  Z ::= AMinus (AId Z) (ANum 1).
-
-Definition fact_loop : com :=
-  WHILE BNot (BEq (AId Z) (ANum 0)) DO
-    fact_body
-  END.
-
-Definition fact_com : com :=
-  Z ::= (AId X);
-  Y ::= ANum 1;
-  fact_loop.
-
-Tactic Notation "xseq" :=
-  hnf; eapply weaken_elim; esplit; split.
-Tactic Notation "xseq" constr(H) :=
-  hnf; eapply weaken_elim; exists H; split.
-
-Axiom beq_id_refl : forall x, beq_id x x = true.
-
-Lemma assignement : forall st V X,
-  update st V (aeval st (AId X)) V = st X.
-Proof.
-  intros. unfold aeval, update. rewrite~ beq_id_refl.
-Qed.
-
-Lemma ass_eq : forall st V a,
-  update st V a V = a.
-Proof.
-  intros. unfold aeval, update. rewrite~ beq_id_refl.
-Qed.
-
-Lemma ass_neq : forall st V V' a,
-  V <> V' ->
-  update st V a V' = st V'.
-Proof.
-  intros. unfold aeval, update. skip. (* todo *)
-Qed.
-
-Tactic Notation "xass" :=
-  let st := fresh "st" in let Pst := fresh "Pst" in
-  hnf; eapply weaken_elim; intros st Pst;
-  repeat rewrite ass_eq; repeat rewrite ass_neq;
-  simpl aeval.
-  (*try rewrite assignement.*)
-
-Tactic Notation "xwhile" :=
-  let R := fresh "R" in let HR := fresh "H" R in
-  hnf; eapply weaken_elim; intros R HR.
-
-Tactic Notation "xif" :=
-  hnf; eapply weaken_elim; split.
-
-Lemma mult_one : forall x, x = 1 * x.
-Proof. intros. simpl. apply plus_n_O. Qed.
-
-(*Require LibNat.*)
-Axiom peano_induction : forall P : nat -> Prop,
-   (forall n : nat, (forall m : nat, lt m n -> P m) -> P n) ->
- forall n : nat, P n.
-
-Tactic Notation "xskip" :=
-  let st := fresh "st" in let Pst := fresh "Pst" in
-  hnf; eapply weaken_elim; intros st Pst.
-
-Lemma end_loop : forall Z st,
-  ~ bassn (BNot (BEq (AId Z) (ANum 0))) st -> st Z = 0.
-Proof.
-  intros. simpls. unfolds bassn, beval. simpls.
-  destruct (st Z0); simpls. auto. false. 
-Qed.
-Require Arith Omega.
-
-Hint Extern 1 (Y <> Z) => skip.
-Hint Extern 1 (Z <> Y) => skip.
-
-Theorem fact_com_correct : forall x,
-  cf fact_com (fun st => st X = x)
-              (fun st => st Y = real_fact x).
-Proof.
-  intros x. 
-  xseq (fun st => st Z = x). xass. auto.
-  xseq (fun st => st Z = x /\ st Y = 1). xass; auto. 
-  xwhile. cuts M: (forall n k, 
-    R (fun st => st Z = n /\ st Y = k)
-      (fun st => st Y = k * real_fact n)).
-    rewrite (mult_one (real_fact x)). apply M.
-   induction n using peano_induction; intros k.
-   apply HR. xif.
-     asserts: (n <> 0). skip. destruct n as [|n']. false.
-     xseq (fun st => st Z = n' /\ st Y = k * (S n')).     
-       xseq (fun st => st Z = S n' /\ st Y = k * (S n')).
-         xass; auto*.
-         xass; auto. destruct Pst. omega.
-       unfold real_fact. fold (real_fact n').
-        rewrite Mult.mult_assoc. apply~ H.
-     xskip. destruct Pst as [[I J] K]. rewrite J.
-      lets: (end_loop K). asserts_rewrite (n = 0). omega.
-      simpl. omega.
-End Factorial.
-
-
-
-
-(********************************************************************)
-(* ** Tactics *)
-
-Ltac xcf :=
-  intros; apply cf_sound; simpl.
-
-Ltac xdone := 
-  hnf.
-
-Ltac xseq :=
-  esplit; split.
-
-Ltac xwrite :=
-  hnf; simpl; try reflexivity.
-
-Ltac xwhile P I W X0 :=
-  esplit; exists P; exists I; exists W; 
-  split; [|split; [exists X0; split|]].
-
-
-Fixpoint fact (n:nat) : nat :=
-  match n with
-  | 0 => 1
-  | S n' => n * (fact n')
-  end.
-
-Fixpoint prod_from (n:nat) (k:nat) : nat :=
-  match k with
-  | 0 => 1
-  | S k' => n * prod_from (S n) k'
-  end.
-
-Lemma prod_from_cut : forall m n, m <= n ->
-  fact (n-m) * prod_from (S(n-m)) m = fact n.
-Proof.
-  intros m n. induction m; intros Le.
-  simpl. math_rewrite (n-0=n). omega.
-  rewrite <- IHm; try omega.
-  simpl. math_rewrite (n-m=S(n-(S m))). simpl. ring.
-Qed.
-
-Lemma prod_from_zero : forall n, n > 0 ->
-  prod_from 1 n = fact n.
-Proof.
-  intros. destruct n. omega.
-  rewrite <- (prod_from_cut n); try omega.
-  math_rewrite (S n - n = 1). simpl. auto.
-Qed.
-
-Lemma prod_from_succ : forall i k,
-  prod_from i (S k) = i * prod_from (S i) k.
-Proof. auto. Qed.
-
-(********************************************************************)
-(* ** Facto verif *)
-
-
-Lemma facto_proof' : forall n, n > 0 ->
-  red facto '[N := n; M := 1] '[N := 0; M := fact n].
-Proof.
-  xcf.
-  xwhile (fun i => i <= n)
-         (fun i => '[N:=i; M:=prod_from (S i) (n-i)])
-         lt 
-         n.  
-  apply lt_wf.
-  omega. 
-  repeat fequal. math_rewrite (n-n=0). auto.
-  (* loop *)
-  simpl. intros i Le. destruct (i == 0).
-    subst i. rewrite prod_from_zero; math_fequal. 
-    exists (i-1). split; [|split]; try omega.
-  (* body of the loop *)
-  xseq.
-  xwrite.
-  xwrite. rewrite <- prod_from_succ. math_fequal.
-Qed.
-
-
 
 
 (*****************************************************************************)
@@ -557,10 +466,7 @@ Proof.
       eapply weaken_name. intros st2 [? ?]. subst. 
        exists (=st'). split~. skip.
       eapply weaken_name. intros st2 [? G]. subst. false*.
-    
-    
-
-
+      (*todo*)    
     apply M. clear M. apply weaken_elim. split.
       eapply weaken_name. intros st2 [? ?]. subst. 
        exists (=st'). split~. skip.
@@ -568,3 +474,29 @@ Proof.
 Qed.
 
 
+(*****************************************************************************)
+(** Hoare *)
+
+Definition hoare_triple (P:Assertion) (c:com) (Q:Assertion) : Prop :=
+  forall st st', 
+       c / st ==> st' ->
+       P st ->
+       Q st'.
+
+Notation "{{ P }} c {{ Q }}" := (hoare_triple P c Q) (at level 90) : hoare_spec_scope.
+Open Scope hoare_spec_scope.
+
+(* to get somewhere else *)
+Axiom deterministic : forall c st st' st'',
+  c / st ==> st' -> 
+  c / st ==> st'' ->
+  st' = st''.
+
+Lemma cf_to_hoare : forall (c:com) (P Q:Assertion), 
+  cf c P Q  ->  {{P}} c {{Q}}. 
+Proof.
+  introv Hcf Red Pre.
+  forwards* [st'' [Red' Post]]: (>>> cf_sound Hcf).
+  forwards* E: (>>> deterministic Red Red').
+  rewrite~ E.
+Qed.
