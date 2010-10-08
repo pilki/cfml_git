@@ -189,8 +189,12 @@ Definition cf_seq (F1 F2 : Formula) : Formula :=
   weaken (fun H Q => exists H', F1 H H' /\ F2 H' Q).
 
 Definition cf_if (b : bexp) (F1 F2 : Formula) : Formula :=
+  weaken (fun H Q => F1 (fun st => H st /\ beval st b = true) Q
+                  /\ F2 (fun st => H st /\ beval st b = false) Q).
+
+(*Definition cf_if (b : bexp) (F1 F2 : Formula) : Formula :=
   weaken (fun H Q => F1 (fun st => H st /\ bassn b st) Q
-                  /\ F2 (fun st => H st /\ ~ bassn b st) Q).
+                  /\ F2 (fun st => H st /\ ~ bassn b st) Q).*)
 
 Definition cf_while (b : bexp) (F1 : Formula) : Formula :=
   weaken (fun H Q => forall (R:Formula),
@@ -245,6 +249,12 @@ Inductive conseq (A:Type) : A->A->list A->Prop :=
 
 Hint Constructors seq conseq.
 
+Lemma conseq_cons_seq : forall A (x y z : A) L,
+  seq y z L -> conseq x y (x :: L).
+Proof. introv H. inverts~ H. Qed.
+
+Hint Resolve conseq_cons_seq.
+
 (** Alternative semantics *)
 
 Reserved Notation "c1 '//' st '==>' st'" (at level 40, st at level 39).
@@ -289,8 +299,8 @@ Proof.
   introv H. induction H; auto; eauto.
   induction H.
     apply~ E_WhileEnd.
-    forwards: H0 x y. inverts~ H.
-     forwards: H2 x y. inverts~ H.
+    forwards: H0 x y. eauto.
+     forwards: H2 x y. eauto.
      applys~ E_WhileLoop y. apply* IHseq.
 Qed.
 
@@ -339,8 +349,8 @@ Lemma cf_name : forall (c:com) (H Q : Assertion),
 Proof. intros. apply weaken_cf. apply~ weaken_name. Qed.
 
 
-Lemma cf_complete : forall (c:com) (st st':state), 
-  c / st ==> st'  ->  cf c (= st) (= st'). 
+Lemma cf_complete' : forall (c:com) (st st':state), 
+  c // st ==> st'  ->  cf c (= st) (= st'). 
 Proof.
   introv H. induction H; simpl.
   apply~ weaken_elim.
@@ -353,29 +363,26 @@ Proof.
     eapply cf_name. intros st2 [? G]. subst. false*.
     eapply cf_name. intros st2 [? ?]. subst~.
   apply~ weaken_elim. intros R M.
-    apply M. clear M. apply weaken_elim. split.
-      eapply weaken_name. intros st2 [? ?]. subst. false*.
-      eapply weaken_name. intros st2 [? G]. subst~.
-  apply~ weaken_elim. intros R M.
-    asserts* F: ((WHILE b1 DO c1 END) / st ==> st'').
-    clear H H0 H1 IHceval1 IHceval2. 
-    gen_eq E: (WHILE b1 DO c1 END).
-    gen_eq S1: st.
-    gen_eq S1': st'. gen st st'.
-    induction F; intros; subst; tryfalse.
-    skip.
-    inversions H2.
-    apply M. apply weaken_elim. split. 
-      eapply weaken_name. intros st2 [? ?]. subst. 
-       exists (=st'). split~. skip.
-      eapply weaken_name. intros st2 [? G]. subst. false*.
-      (*todo*)    
-    apply M. clear M. apply weaken_elim. split.
-      eapply weaken_name. intros st2 [? ?]. subst. 
-       exists (=st'). split~. skip.
-      eapply weaken_name. intros st2 [? G]. subst. false*.
+   renames H0 to Hcond, H2 to Hcfc. induction H as [|stj sti stn L].
+   (* base case for loops *)
+   apply M. clear M. apply weaken_elim. split.
+     eapply weaken_name. intros st2 [? ?]. subst. false*.
+     eapply weaken_name. intros st2 [? ?]. subst~.
+   (* step case for loops *)
+   apply M. clear M. apply weaken_elim. split.
+     eapply weaken_name. intros st2 [? ?]. subst.
+      exists (=stj). split. 
+        apply* Hcfc.
+        apply* IHseq.
+     eapply weaken_name. intros st2 [? ?]. subst~. 
+      forwards: Hcond sti stj. eauto. false.
 Qed.
 
+Lemma cf_complete : forall (c:com) (st st':state), 
+  c / st ==> st'  ->  cf c (= st) (= st'). 
+Proof.
+  intros. apply cf_complete'. apply~ ceval_to_deval.
+Qed.
 
 
 (********************************************************************)
