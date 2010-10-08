@@ -1,10 +1,15 @@
 open Coq
 open Mytools
 
-(*#########################################################################*)
-(* Syntax of characteristic formulae *)
+(** This file contains a data structure for representing characteristic
+    formulae. Such data is constructed in file [characteristic.ml] from
+    the typed abstract syntax tree, and is converted into a Coq expression
+    (as described in [coq.ml]), using an algorithm contained in this file. *)
 
-(* todo: rename les "let_" *)
+(*#########################################################################*)
+(* ** Syntax of characteristic formulae *)
+
+(** Characteristic formulae for terms *)
 
 type cf =
   | Cf_ret of coq 
@@ -38,6 +43,8 @@ type cf =
   | Cf_while of cf * cf
     (* while Q1 do Q2 done *)
 
+(** Characteristic formulae for top-level declarations *)
+
 type cftop = 
   | Cftop_val of typed_var
     (* Lemma x_safe : Inhab t. Proof. typeclass. Qed.
@@ -58,16 +65,75 @@ type cftop =
 and cftops = cftop list
 
 (*#########################################################################*)
-(* Shared functions *)
+(* ** Shared functions *)
 
-let val_type = Coq_var "val"
+(** Abstract datatype for functions *)
 
+let val_type = Coq_var "val"   (**--todo: change to Func *)
 
-(*#########################################################################*)
-(* Conversion of PURE characteristic formulae to Coq *)
+(** Abstract data type for heaps *)
+
+let heap =
+   Coq_var "heap"
+
+(** Type of proposition on heaps, [hprop], a shorthand for [heap->Prop] *)
+
+let hprop =
+   Coq_var "hprop"
+
+(** Type of pure post-conditions [_ -> Prop] *)
 
 let wild_to_prop =
    coq_pred Coq_wild
+
+(** Type of imperative post-conditions [_ -> hrop] *)
+
+let wild_to_hprop =
+   Coq_impl (Coq_wild, hprop)
+
+(** Type of imperative characteristic formulae *)
+
+let formula_type =
+   coq_impls [hprop; wild_to_hprop] Coq_prop
+
+(** Hprop entailment [H1 ==> H2] *)
+
+let heap_impl h1 h2 =
+  coq_apps (Coq_var "pred_le") [h1;h2]
+
+(** Specialized Hprop entailment [H1 ==> Q2 tt] *)
+
+let heap_impl_unit h1 q2 =
+  heap_impl h1 (Coq_app (q2, coq_tt))
+
+(** Postcondition entailment [Q1 ===> Q2] *)
+
+let post_impl q1 q2 =
+  coq_apps (Coq_var "rel_le") [q1;q2]
+
+(** Specialized post-conditions [fun (_:unit) => H] *)
+
+let post_unit h =
+  Coq_fun (("_",coq_unit), h)
+
+(** Separating conjunction [H1 * H2] *)
+
+let heap_star h1 h2 = 
+  coq_apps (Coq_var "heap_is_star") [h1;h2]
+
+(** Lifted existentials [Hexists x, H] *)
+
+let heap_exists xname xtype h =
+   Coq_app (Coq_var "heap_is_pack", Coq_fun ((xname, xtype), h))
+
+(** Lifted propositions [ [P] ] *)
+
+let heap_pred c =
+   Coq_app (Coq_var "heap_is_empty_st", c)
+
+
+(*#########################################################################*)
+(* ** Conversion of PURE characteristic formulae to Coq *)
 
 let rec coq_of_pure_cf cf =
   let coq_of_cf = coq_of_pure_cf in
@@ -172,47 +238,7 @@ let rec coq_of_pure_cf cf =
 
 
 (*#########################################################################*)
-(* Specific coq *)
-
-let heap =
-   Coq_var "heap"
-
-let hprop =
-   Coq_var "hprop"
-
-let wild_to_hprop =
-   Coq_impl (Coq_wild, hprop)
-
-let formula_type =
-   coq_impls [hprop; wild_to_hprop] Coq_prop
-
-let heap_empty =
-   Coq_var "heap_empty"
-
-let heap_impl h1 h2 =
-  coq_apps (Coq_var "pred_le") [h1;h2]
-
-let heap_impl_unit h1 q2 =
-  heap_impl h1 (Coq_app (q2, coq_tt))
-
-let post_impl q1 q2 =
-  coq_apps (Coq_var "rel_le") [q1;q2]
-
-let post_unit h =
-  Coq_fun (("_",coq_unit), h)
-
-let heap_star h1 h2 = 
-  coq_apps (Coq_var "heap_is_star") [h1;h2]
-
-let heap_exists xname xtype h =
-   Coq_app (Coq_var "heap_is_pack", Coq_fun ((xname, xtype), h))
-
-let heap_pred c =
-   Coq_app (Coq_var "heap_is_empty_st", c)
-
-
-(*#########################################################################*)
-(* Conversion of IMPERATIVE characteristic formulae to Coq *)
+(* ** Conversion of IMPERATIVE characteristic formulae to Coq *)
 
 let rec coq_of_imp_cf cf =
   let coq_of_cf = coq_of_imp_cf in
@@ -224,12 +250,11 @@ let rec coq_of_imp_cf cf =
      match label with 
      | None -> coq_tag tag f 
      | Some x -> coq_tag tag f  (* coq_tag tag ~label:x f *)
-     in (* todo improve *)
+     in (* todo improve tags *)
 
   match cf with
 
   | Cf_ret v -> funhq "tag_ret" (heap_impl h (Coq_app (q,v)))
-        (* deprecated (coq_conj (Coq_app (h,heap_empty)) (coq_apps q [v;heap_empty]))*)
      (* (!R: fun H Q => H ==> Q v *)
 
   | Cf_fail -> funhq "tag_fail" coq_false
@@ -273,21 +298,7 @@ let rec coq_of_imp_cf cf =
       let conc = coq_apps (coq_of_cf cf) [h;q] in
       funhq "tag_let_val" (*~label:x*) (Coq_forall ((x, type_of_x), Coq_impl (equ, conc)))
       (*(!!L x: (fun H Q => forall (x:forall Ai,T), x = v -> F H Q)) *)
-
-      (* DEPRECATED
-      let type_of_x = coq_forall_types fvs_strict typ in
-      let tvars = coq_vars fvs_strict in
-      let p1_on_tvars = if tvars = [] then Coq_var "P1" else coq_apps (coq_var_at "P1") tvars in
-      let c1 = coq_forall_types (fvs_strict @ fvs_other) (Coq_app (p1_on_tvars, v)) in
-      let x_on_tvars = if tvars = [] then Coq_var x else coq_apps (coq_var_at x) tvars in 
-      let hyp_on_x = coq_forall_types fvs_strict (coq_apps (Coq_var "@P1") (tvars @ [ x_on_tvars ])) in
-      let c2 = coq_foralls [x,type_of_x] (Coq_impl (hyp_on_x, coq_apps (coq_of_cf cf) [h;q])) in
-      let type_of_p1 = coq_forall_types fvs_strict (coq_pred typ) in
-      funhq "tag_val" (*~label:x*) (coq_exist "P1" type_of_p1 (coq_conj c1 c2))
-      (*(!L a: (fun H Q => exists (P1:forall Ai, T -> Prop), (forall Ai Bj, P1 A1 v)
-                             /\ forall (x1:forall Ai,T), ((forall Ai, P1 Ai (x1 Ai)) -> F H Q)) *)
-      *)
-    
+ 
   | Cf_letfunc (ncs, cf) ->
       let ns, cs = List.split ncs in
       let p_of n = "P" ^ n in
@@ -354,57 +365,6 @@ let rec coq_of_imp_cf cf =
                     /\  forall i, v1 <= i /\ i <= v2 -> F1 (I i) (# I (i+1)) 
                     /\  I (b+1) \* H' ==> Q tt *)
       
-(*--older while
-  | Cf_while (cf1,cf2) -> 
-      let x = Coq_var "X" in
-      let y = Coq_var "Y" in
-      let inv = Coq_var "I" in
-      let q' = Coq_var "Q'" in
-      let p1 = Coq_app (Coq_var "LibWf.wf", Coq_var "R") in
-      let p2 = coq_exist "X" (Coq_var "A") (heap_impl h (heap_star (Coq_app (inv, x)) (Coq_var "H'"))) in
-      let c1 = coq_apps (coq_of_cf cf1) [ Coq_var "H2"; q'] in
-      let c2heap = heap_exists "Y" (Coq_var "A") (heap_star (Coq_app (inv, y)) (heap_pred (coq_apps (Coq_var "R") [y;x]))) in
-      let c2 = coq_apps (coq_of_cf cf2) [Coq_app (q', coq_bool_true); post_unit c2heap] in   
-      let c3 = heap_impl (heap_star (Coq_app (q', coq_bool_false)) (Coq_var "H'")) (Coq_app (Coq_var "Q2", coq_tt)) in
-      let bo = coq_exist "Q'" (Coq_impl (coq_bool, hprop)) (coq_conjs [c1;c2;c3]) in
-      let lo = coq_funs [("H2",hprop); ("Q2",wild_to_hprop)] bo in
-      let p3 = Coq_forall (("X", Coq_var "A"), coq_apps (Coq_var "local") [lo; Coq_app (inv, x); q]) in
-      let fr = coq_exist "R" (coq_impls [Coq_var "A"; Coq_var "A"] Coq_prop) (coq_conjs [p1;p2;p3]) in
-      funhq "tag_while" (coq_exist "H'" hprop (coq_exist "A" Coq_type (coq_exist "I" (Coq_impl (Coq_var "A", hprop)) fr)))
-      (* (!While: (fun H Q => exists H', exists A, exists I, exists R, 
-               wf R
-            /\ (exists x, H ==> I x \* H')
-            /\ (forall x, local (fun H2 Q2 => exists Q', 
-                   F1 H2 Q'
-                /\ (F2 (Q' true) (# Hexists y, (I y) \* [R y x]))
-                /\ (Q' false \* H' ==> Q2 tt))) (I x) Q)) *)
-*)
-(* ---old while
-  | Cf_while (cf1,cf2) -> 
-      let x = Coq_var "X" in
-      let y = Coq_var "Y" in
-      let typa = Coq_var "A" in
-      let invi = Coq_var "I" in
-      let invj = Coq_var "J" in
-      let p1 = Coq_app (Coq_var "LibWf.wf", Coq_var "R") in
-      let p2 = coq_exist "X" typa (heap_impl h (heap_star (Coq_app (invi, x)) (Coq_var "H'"))) in
-      let c1 = coq_apps (coq_of_cf cf1) [ Coq_app (invi, x); Coq_app (invj, x)] in
-      let c2heap = heap_exists "Y" typa (heap_star (Coq_app (invi, y)) (heap_pred (coq_apps (Coq_var "R") [y;x]))) in
-      let c2 = coq_apps (coq_of_cf cf2) [ (coq_apps invj [x; coq_bool_true]); post_unit c2heap] in   
-      let c3 = heap_impl (heap_star (coq_apps invj [x; coq_bool_false]) (Coq_var "H'")) (Coq_app (q, coq_tt)) in
-      let p3 = Coq_forall (("X", typa), coq_conjs [c1;c2;c3]) in
-      let fr1 = coq_exist "R" (coq_impls [typa; typa] Coq_prop) (coq_conjs [p1;p2;p3]) in
-      let fr2 = coq_exist "I" (Coq_impl (typa, hprop)) (coq_exist "J" (coq_impls [typa; coq_bool] hprop) fr1) in
-      funhq "tag_while" (coq_exist "H'" hprop (coq_exist "A" Coq_type fr2))
-      (* (!While: (fun H Q => exists H', exists A, exists I, exists J, exists R, 
-               (wf R)
-            /\ (exists x, H ==> I x \* H')
-            /\ (forall x, 
-                   F1 (I x) (J x)
-                /\ F2 (J x true) (# Hexists y, (I y) \* [R y x])
-                /\ (J x false \* H' ==> Q tt))  *)
-*)
-
   | Cf_while (cf1,cf2) -> 
       let r = Coq_var "R" in
       let typr = formula_type in
@@ -427,11 +387,11 @@ let rec coq_of_imp_cf cf =
 
   | Cf_letpure _ -> unsupported "letpure-expression in imperative mode"
 
- (* todo: scope of type variables should be different: prefix them! *)
+  (* --todo: scope of type variables should be different than that of program variables: prefix them! *)
 
 
 (*#########################################################################*)
-(* Characteristic formulae for top level declarations *)
+(* ** Characteristic formulae for top level declarations *)
 
 let coqtops_of_cftop coq_of_cf cft =
   match cft with
@@ -443,7 +403,7 @@ let coqtops_of_cftop coq_of_cf cft =
        Coqtop_text "";
        Coqtop_param (x,t) ]
      (* Lemma x_safe : Inhab t. Proof. typeclass. Qed.
-       Parameter x : t *)
+        Parameter x : t *)
 
   | Cftop_pure_cf (x,fvs_strict,fvs_other,cf) -> 
       let type_of_p = coq_forall_types fvs_strict wild_to_prop in
@@ -462,7 +422,6 @@ let coqtops_of_cftop coq_of_cf cft =
       (* Parameter x_cf: (!TV forall Ai Bi, x = v) *)
 
   | Cftop_fun_cf (x,cf) -> 
-      (* the following is the same as for pure *)
       let t = coq_tag "tag_top_fun" (coq_of_cf cf) in
       [ Coqtop_param (x ^ "_cf", t) ]
       (* Parameter x_cf : (!TF a: H) *)
@@ -486,14 +445,3 @@ let coqtops_of_cftop coq_of_cf cft =
 let coqtops_of_cftops coq_of_cf cfts =
    list_concat_map (coqtops_of_cftop coq_of_cf) cfts
 
-
-(*#########################################################################*)
-(* Printing of characteristic formulae as Coq term 
-
-let string_of_cftop cftop =
-   string_of_coqtops (coqtops_of_cftop) cftop
-
-let string_of_coqtops cftops =
-   string_of_coqtops (list_concat_map coqtops_of_cftop cftops)
-
-*)
