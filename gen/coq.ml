@@ -192,6 +192,9 @@ let coq_prod cs =
 
 (** Logic combinators *)
 
+let coq_eq c1 c2 =
+  coq_apps (Coq_var "Logic.eq") [ c1; c2 ]
+
 let coq_neq c1 c2 =
   coq_apps (Coq_var "Logic.not") [coq_eq c1 c2]
 
@@ -218,9 +221,6 @@ let coq_exists xcs c2 =
   List.fold_right (fun (x,c) acc -> coq_exist x c acc) xcs c2
 
 (** Arithmetic operations *)
-
-let coq_eq c1 c2 =
-  coq_apps (Coq_var "Logic.eq") [ c1; c2 ]
 
 let coq_le c1 c2 =
   coq_apps (Coq_var "LibOrder.le") [ c1; c2 ]

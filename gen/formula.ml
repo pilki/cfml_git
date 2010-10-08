@@ -315,7 +315,7 @@ let rec coq_of_imp_cf cf =
       let c2hyps = List.map (fun n -> Coq_app (Coq_var (p_of n), Coq_var n)) ns in
       let c2conc = coq_apps (coq_of_cf cf) [h;q] in
       let c2 = coq_impls c2hyps c2conc in
-      let x = List.hd ns in
+      (*let x = List.hd ns in*)
       funhq "tag_let_fun" (*~label:x*) (coq_foralls fs (coq_exists ps (coq_conj c1 c2)))
       (* (!F a: fun H Q => forall f1 f2, exists P1 P2,
               (B1 -> B2 -> P1 f1 /\ P2 f2) /\ (P1 f1 -> P2 f2 -> F H Q)) *)            

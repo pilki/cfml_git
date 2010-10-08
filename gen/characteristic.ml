@@ -88,7 +88,7 @@ let rec lift_btyp t =
    | Btyp_arrow (t1,t2) -> 
       val_type
    | Btyp_constr (id,[t]) when Path.name id = "ref" || Path.name id = "Pervasives.ref"  
-      || Path.name id = "mlist" -> (* todo ... tracker les impératifs *)
+      || Path.name id = "mlist" -> (* --todo: not needed anymore *)
       loc_type
    | Btyp_constr (id,[t]) when Path.name id = "array" || Path.name id = "Pervasives.array" -> 
       loc_type
