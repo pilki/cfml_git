@@ -1,8 +1,14 @@
 open Format
 open Mytools
 
+(** This file contains facilities for representing and printing Coq
+    expressions. Most of the core language is supported. A subset
+    of the top-level declarations are supported. *)
+
 (*#########################################################################*)
-(* Syntax of Coq expressions *)
+(* ** Syntax of Coq expressions *)
+
+(** Coq variables and paths *)
 
 type var = string
 and vars = var list
@@ -13,6 +19,8 @@ and typed_vars = typed_var list
 and coq_path =
   | Coqp_var of var
   | Coqp_dot of coq_path * string
+
+(** Coq expressions *)
 
 and coq =
   | Coq_var of var
@@ -25,11 +33,12 @@ and coq =
   | Coq_prop
   | Coq_type
   | Coq_tuple of coqs
-  | Coq_record of (var * coq) list (* not used *)
+  | Coq_record of (var * coq) list 
   | Coq_tag of string * string option * coq
 
-
 and coqs = coq list
+
+(** Toplevel declarations *)
 
 type coqtop =
   | Coqtop_def of typed_var * coq
@@ -54,6 +63,10 @@ type coqtop =
   | Coqtop_module_type of var * mod_bindings * mod_def
   | Coqtop_end of var
   
+and coqtops = coqtop list
+
+(** Modules and signatures *)
+
 and mod_cast =
    | Mod_cast_exact of mod_typ
    | Mod_cast_super of mod_typ
@@ -75,12 +88,7 @@ and mod_binding = vars * mod_typ
 
 and mod_bindings = mod_binding list
 
-and implicit =
-  | Coqi_maximal
-  | Coqi_implicit
-  | Coqi_explicit
-
-and coqtops = coqtop list
+(** Inductive definitions *)
 
 and coqind = {
    coqind_name : var;
@@ -88,60 +96,128 @@ and coqind = {
    coqind_ret : coq;
    coqind_branches : typed_vars; }
 
+(** Implicit Arguements declarations *)
+
+and implicit =
+  | Coqi_maximal
+  | Coqi_implicit
+  | Coqi_explicit
+
 
 (*#########################################################################*)
-(* Helper functions to manipulate syntax *)
+(* ** Helper functions to construct expressions *)
+
+(** Identifier [x] *)
 
 let coq_var x =
   Coq_var x
 
-let coq_vars xs =
-  List.map coq_var xs
+(** Identifier [@x] *)
 
 let coq_var_at x =
   coq_var ("@" ^ x)
 
-let coq_pred c =
-  Coq_impl (c, Coq_prop)
+(** List of identifiers [x1 x2 .. xn] *)
+
+let coq_vars xs =
+  List.map coq_var xs
+
+(** List of names [(A1:Type)::(A2::Type)::...::(AN:Type)::nil] *)
 
 let coq_types names =
    List.map (fun n -> (n, Coq_type)) names
 
+(** Application to a list of arguments [c e1 e2 .. eN] *)
+
 let coq_apps c args = 
   List.fold_left (fun acc ci -> Coq_app (acc, ci)) c args
+
+(** Application to wildcards [c _ _ .. _] *)
 
 let coq_app_wilds c n =
    coq_apps c (list_make n Coq_wild) 
 
+(** Applications of an identifier to wildcars [x _ _ .. _] *)
+
 let coq_app_var_wilds x n =
    if n = 0 then Coq_var x else coq_app_wilds (coq_var_at x) n
+
+(** Function [fun (x1:T1) .. (xn:Tn) => c] *)
 
 let coq_funs args c =
   List.fold_right (fun ci acc -> Coq_fun (ci, acc)) args c
 
+(** Function [fun (x1:Type) .. (xn:Type) => c] *)
+
 let coq_fun_types names c =
   coq_funs (coq_types names) c
+
+(** Universal [forall (x1:T1) .. (xn:Tn), c] *)
 
 let coq_foralls args c =
   List.fold_right (fun ci acc -> Coq_forall (ci, acc)) args c
 
-let coq_foralls_wild names c =
-  coq_foralls (List.map (fun n -> (n, Coq_wild)) names) c
+(** Universal [forall (x1:Type) .. (xn:Type), c] *)
 
 let coq_forall_types names c =
   coq_foralls (coq_types names) c
 
+(** Universal [forall (x1:_) .. (xn:_), c] *)
+
+let coq_foralls_wild names c =
+  coq_foralls (List.map (fun n -> (n, Coq_wild)) names) c
+
+(** Implication [c1 -> c2 -> .. -> cn -> c] *)
+
 let coq_impls cs c =
   List.fold_right (fun ci acc -> Coq_impl (ci, acc)) cs c
 
+(** Implication [Type -> Type -> .. -> Type] *)
+
 let coq_impl_types n = 
    coq_impls (list_make n Coq_type) Coq_type
+
+(** Predicate type [A->Prop] *)
+
+let coq_pred c =
+  Coq_impl (c, Coq_prop)
+
+(** Product type [(c1 * c2 * .. * cN)%type] *)
 
 let coq_prod cs =
   assert (List.length cs > 1); (* otherwise not a tupple *)
   match cs with 
   | c0::cs' -> List.fold_left (fun acc c -> coq_apps (Coq_var "prod") [acc;c]) c0 cs'
   | _ -> assert false
+
+(** Logic combinators *)
+
+let coq_neq c1 c2 =
+  coq_apps (Coq_var "Logic.not") [coq_eq c1 c2]
+
+let coq_disj c1 c2 = 
+  coq_apps (Coq_var "Logic.or") [c1; c2]
+
+let coq_conj c1 c2 = 
+  coq_apps (Coq_var "Logic.and") [c1; c2]
+
+let coq_neg c =
+  Coq_app (Coq_var "LibBool.neg", c)
+
+let coq_exist x c1 c2 = 
+  coq_apps (Coq_var "Logic.ex") [Coq_fun ((x, c1), c2)]
+
+(** Iterated logic combinators *)
+
+let coq_conjs cs =
+  match List.rev cs with
+  | [] -> Coq_var "true"
+  | c::cs -> List.fold_left (fun acc ci -> coq_conj ci acc) c cs
+
+let coq_exists xcs c2 = 
+  List.fold_right (fun (x,c) acc -> coq_exist x c acc) xcs c2
+
+(** Arithmetic operations *)
 
 let coq_eq c1 c2 =
   coq_apps (Coq_var "Logic.eq") [ c1; c2 ]
@@ -155,28 +231,7 @@ let coq_gt c1 c2 =
 let coq_plus c1 c2 =
   coq_apps (Coq_var "Zplus") [ c1; c2 ]
 
-let coq_neq c1 c2 =
-  coq_apps (Coq_var "Logic.not") [coq_eq c1 c2]
-
-let coq_conj c1 c2 = 
-  coq_apps (Coq_var "Logic.and") [c1; c2]
-
-let coq_conjs cs =
-  match List.rev cs with
-  | [] -> Coq_var "true"
-  | c::cs -> List.fold_left (fun acc ci -> coq_conj ci acc) c cs
- 
-let coq_disj c1 c2 = 
-  coq_apps (Coq_var "Logic.or") [c1; c2]
-
-let coq_exist x c1 c2 = 
-  coq_apps (Coq_var "Logic.ex") [Coq_fun ((x, c1), c2)]
-
-let coq_neg c =
-  Coq_app (Coq_var "LibBool.neg", c)
-
-let coq_exists xcs c2 = 
-  List.fold_right (fun (x,c) acc -> coq_exist x c acc) xcs c2
+(** Several Coq constants *)
 
 let coq_false =  
   Coq_var "False"
@@ -203,11 +258,10 @@ let coq_bool =
   Coq_var "bool"
 
 
-let record_constructor name =
-  name ^ "_of"
-
 (*#########################################################################*)
-(* Representation of labels (notation of the form "'x" := `1`0`1`0) *)
+(* ** Representation of labels (notation of the form "'x" := `1`0`1`0) *)
+
+(** --todo: deprecated *)
 
 type label = string
 
@@ -228,7 +282,9 @@ let coq_tag (tag : string) ?label (term : coq) =
 
 
 (*#########################################################################*)
-(* Printing of Coq expressions *)
+(* ** Printing of Coq expressions *)
+
+(** Print a Coq expression *)
 
 let rec string_of_coq c = 
   let aux = string_of_coq in
@@ -253,12 +309,17 @@ let rec string_of_coq c =
         sprintf "(tag %s %s %s)" tag slab (aux term)
          (* todo: FuncPrint.tag ou CFPrint.tag *)
 
+(** Print a typed identifier [(x:T)] *)
 
 let string_of_typed_var ?(par=true) (x,c) =
    show_par par (sprintf "%s : %s" x (string_of_coq c))
 
+(** Print a list of typed identifier [(x1:T1) (x2:T2) .. (xN:TN)]  *)
+
 let string_of_typed_vars ?(par=true) tvs =
   show_list (string_of_typed_var ~par:par) " " tvs
+
+(** Print a top-level declarations *)
 
 let rec string_of_coqtop ct =
   let aux = string_of_coq in 
@@ -317,6 +378,11 @@ let rec string_of_coqtop ct =
   | Coqtop_end x ->
       sprintf "End %s." x
 
+and string_of_coqtops cts =
+  show_list string_of_coqtop "\n\n" cts
+
+(** Printing for modules *)
+
 and string_of_mod_def x d =
    match d with
    | Mod_def_inline m -> sprintf ":= %s." (string_of_mod_expr m)
@@ -347,8 +413,4 @@ and string_of_mod_binding (vs,mt) =
 
 and string_of_mod_bindings bs = 
    show_list string_of_mod_binding " " bs
-
-
-and string_of_coqtops cts =
-  show_list string_of_coqtop "\n\n" cts
 

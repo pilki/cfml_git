@@ -24,6 +24,10 @@ Tconstr(path_lazy_t, [t], ref Mnil)
 
 let pure_mode = ref false
 
+let record_constructor name =
+  name ^ "_of"
+
+
 (*#########################################################################*)
 (* Lifting of paths *)
 
