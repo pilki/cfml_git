@@ -221,6 +221,163 @@ Fixpoint cf (c : com) : Formula :=
 
 
 
+
+(*****************************************************************************)
+(** Alternative semantics *)
+
+Require Import List.
+
+(** Auxiliary definitions *)
+
+Inductive seq (A:Type) : A->A->list A->Prop :=
+  | seq_init : forall x, 
+      seq x x (x::nil)
+  | seq_cons : forall y x z L,
+      seq y z L -> 
+      seq x z (x::L).
+
+Inductive conseq (A:Type) : A->A->list A->Prop :=
+  | conseq_here : forall x y L,
+      conseq x y (x::y::L)
+  | conseq_next : forall x y z L,
+      conseq x y L ->
+      conseq x y (z::L).
+
+Hint Constructors seq conseq.
+
+(** Alternative semantics *)
+
+Reserved Notation "c1 '//' st '==>' st'" (at level 40, st at level 39).
+
+Inductive deval : com -> state -> state -> Prop :=
+  | D_Skip : forall st,
+      SKIP // st ==> st
+  | D_Ass : forall st a1 n l,
+      aeval st a1 = n ->
+      (l ::= a1) // st ==> (update st l n)
+  | D_Seq : forall c1 c2 st st' st'',
+      c1 // st ==> st' ->
+      c2 // st' ==> st'' ->
+      (c1 ; c2) // st ==> st''
+  | D_IfTrue : forall st st' b1 c1 c2,
+      beval st b1 = true ->
+      c1 // st ==> st' ->
+      (IFB b1 THEN c1 ELSE c2 FI) // st ==> st'
+  | D_IfFalse : forall st st' b1 c1 c2,
+      beval st b1 = false ->
+      c2 // st ==> st' ->
+      (IFB b1 THEN c1 ELSE c2 FI) // st ==> st'
+  | D_While : forall L b1 c1 s1 sn,
+      seq s1 sn L ->
+      (forall si sj, conseq si sj L -> beval si b1 = true) ->
+      (forall si sj, conseq si sj L -> c1 // si ==> sj) ->
+      beval sn b1 = false ->
+      (WHILE b1 DO c1 END) // s1 ==> sn
+
+(* Note: a conjunction in D_While looks better unfortunately
+   Coq doesn't give us the induction hypothesis that we want. *)
+
+  where "c1 '//' st '==>' st'" := (deval c1 st st').
+
+(** Semantic equivalence *)
+
+Hint Constructors ceval deval.
+
+Lemma deval_to_ceval : forall c s s',
+  (c // s ==> s') -> (c / s ==> s').
+Proof.
+  introv H. induction H; auto; eauto.
+  induction H.
+    apply~ E_WhileEnd.
+    forwards: H0 x y. inverts~ H.
+     forwards: H2 x y. inverts~ H.
+     applys~ E_WhileLoop y. apply* IHseq.
+Qed.
+
+Lemma ceval_to_deval : forall c s s',
+  (c / s ==> s') -> (c // s ==> s').
+Proof.
+  introv H. induction H; auto; eauto.
+  applys~ (@D_While (st::nil)).
+    introv M. inverts M as M. inverts M.
+    introv M. inverts M as M. inverts M.
+  inverts keep IHceval2 as Hseq Heach Hcond.
+  applys~ (@D_While (st::L)). eauto.
+    introv M. inverts M as M.
+      inverts~ Hseq.
+      forwards*: Heach.
+    introv M. inverts M as M.
+      inverts~ Hseq.
+      forwards*: Heach.
+Qed.
+
+
+(*****************************************************************************)
+(** Completeness proof *)
+
+Ltac introeq := 
+  let x := fresh in intros x; intro; subst x.
+
+Lemma assertion_impl_trans : forall H2 H1 H3,
+  H1 ===> H2 -> H2 ===> H3 -> H1 ===> H3.
+Proof. intros_all~. Qed.
+
+Lemma weaken_idem : forall (R:Formula) H Q,
+  weaken (weaken R) H Q -> weaken R H Q.
+Proof.
+  introv M Pre. destruct~ (M st) as (H'&Q'&?&?&I1).
+  destruct~ (H1 st) as (H''&Q''&?&?&I2).
+  lets*: (>>> assertion_impl_trans I2 I1).
+Qed.
+
+Lemma weaken_cf : forall (c:com) (H Q : Assertion),
+  weaken (cf c) H Q -> cf c H Q.
+Proof. intros. destruct c; apply~ weaken_idem. Qed.
+ 
+Lemma cf_name : forall (c:com) (H Q : Assertion),
+  (forall st, H st -> cf c (= st) Q) -> cf c H Q. 
+Proof. intros. apply weaken_cf. apply~ weaken_name. Qed.
+
+
+Lemma cf_complete : forall (c:com) (st st':state), 
+  c / st ==> st'  ->  cf c (= st) (= st'). 
+Proof.
+  introv H. induction H; simpl.
+  apply~ weaken_elim.
+  apply~ weaken_elim. introeq. subst~.
+  apply~ weaken_elim. exists~ (=st').
+  apply~ weaken_elim. split.
+    eapply cf_name. intros st2 [? ?]. subst~.
+    eapply cf_name. intros st2 [? G]. subst. false*.
+  apply~ weaken_elim. split.
+    eapply cf_name. intros st2 [? G]. subst. false*.
+    eapply cf_name. intros st2 [? ?]. subst~.
+  apply~ weaken_elim. intros R M.
+    apply M. clear M. apply weaken_elim. split.
+      eapply weaken_name. intros st2 [? ?]. subst. false*.
+      eapply weaken_name. intros st2 [? G]. subst~.
+  apply~ weaken_elim. intros R M.
+    asserts* F: ((WHILE b1 DO c1 END) / st ==> st'').
+    clear H H0 H1 IHceval1 IHceval2. 
+    gen_eq E: (WHILE b1 DO c1 END).
+    gen_eq S1: st.
+    gen_eq S1': st'. gen st st'.
+    induction F; intros; subst; tryfalse.
+    skip.
+    inversions H2.
+    apply M. apply weaken_elim. split. 
+      eapply weaken_name. intros st2 [? ?]. subst. 
+       exists (=st'). split~. skip.
+      eapply weaken_name. intros st2 [? G]. subst. false*.
+      (*todo*)    
+    apply M. clear M. apply weaken_elim. split.
+      eapply weaken_name. intros st2 [? ?]. subst. 
+       exists (=st'). split~. skip.
+      eapply weaken_name. intros st2 [? G]. subst. false*.
+Qed.
+
+
+
 (********************************************************************)
 (* ** Lemmas for tactics *)
 
@@ -409,69 +566,6 @@ Lemma cf_sound' : forall (c:com) (P Q:Assertion) (st:state),
 Proof. intros. apply* cf_sound. Qed.
 
 
-(*****************************************************************************)
-(** Completeness proof *)
-
-Ltac introeq := 
-  let x := fresh in intros x; intro; subst x.
-
-Lemma assertion_impl_trans : forall H2 H1 H3,
-  H1 ===> H2 -> H2 ===> H3 -> H1 ===> H3.
-Proof. intros_all~. Qed.
-
-Lemma weaken_idem : forall (R:Formula) H Q,
-  weaken (weaken R) H Q -> weaken R H Q.
-Proof.
-  introv M Pre. destruct~ (M st) as (H'&Q'&?&?&I1).
-  destruct~ (H1 st) as (H''&Q''&?&?&I2).
-  lets*: (>>> assertion_impl_trans I2 I1).
-Qed.
-
-Lemma weaken_cf : forall (c:com) (H Q : Assertion),
-  weaken (cf c) H Q -> cf c H Q.
-Proof. intros. destruct c; apply~ weaken_idem. Qed.
- 
-Lemma cf_name : forall (c:com) (H Q : Assertion),
-  (forall st, H st -> cf c (= st) Q) -> cf c H Q. 
-Proof. intros. apply weaken_cf. apply~ weaken_name. Qed.
-
-
-Lemma cf_complete : forall (c:com) (st st':state), 
-  c / st ==> st'  ->  cf c (= st) (= st'). 
-Proof.
-  introv H. induction H; simpl.
-  apply~ weaken_elim.
-  apply~ weaken_elim. introeq. subst~.
-  apply~ weaken_elim. exists~ (=st').
-  apply~ weaken_elim. split.
-    eapply cf_name. intros st2 [? ?]. subst~.
-    eapply cf_name. intros st2 [? G]. subst. false*.
-  apply~ weaken_elim. split.
-    eapply cf_name. intros st2 [? G]. subst. false*.
-    eapply cf_name. intros st2 [? ?]. subst~.
-  apply~ weaken_elim. intros R M.
-    apply M. clear M. apply weaken_elim. split.
-      eapply weaken_name. intros st2 [? ?]. subst. false*.
-      eapply weaken_name. intros st2 [? G]. subst~.
-  apply~ weaken_elim. intros R M.
-    asserts* F: ((WHILE b1 DO c1 END) / st ==> st'').
-    clear H H0 H1 IHceval1 IHceval2. 
-    gen_eq E: (WHILE b1 DO c1 END).
-    gen_eq S1: st.
-    gen_eq S1': st'. gen st st'.
-    induction F; intros; subst; tryfalse.
-    skip.
-    inversions H2.
-    apply M. apply weaken_elim. split. 
-      eapply weaken_name. intros st2 [? ?]. subst. 
-       exists (=st'). split~. skip.
-      eapply weaken_name. intros st2 [? G]. subst. false*.
-      (*todo*)    
-    apply M. clear M. apply weaken_elim. split.
-      eapply weaken_name. intros st2 [? ?]. subst. 
-       exists (=st'). split~. skip.
-      eapply weaken_name. intros st2 [? G]. subst. false*.
-Qed.
 
 
 (*****************************************************************************)

@@ -1,25 +1,6 @@
 Set Implicit Arguments.
 Require Export LibInt CFSpec CFPrint.
 
-(* todo move *)
-
-Ltac idcont tt := idtac.
-
-(** [get_tail E] is a tactic that decomposes an application
-    term [E], ie, when applied to a term of the form [X1 ... XN] 
-    it returns a pair made of [X1 .. X(N-1)] and [XN]. *)
-
-Ltac get_tail E :=
-  match E with
-  | ?X1 ?X2 ?X3 ?X4 ?X5 ?X6 ?X7 ?X => constr:((X1 X2 X3 X4 X5 X6,X))
-  | ?X1 ?X2 ?X3 ?X4 ?X5 ?X6 ?X => constr:((X1 X2 X3 X4 X5,X))
-  | ?X1 ?X2 ?X3 ?X4 ?X5 ?X => constr:((X1 X2 X3 X4,X))  
-  | ?X1 ?X2 ?X3 ?X4 ?X => constr:((X1 X2 X3,X))
-  | ?X1 ?X2 ?X3 ?X => constr:((X1 X2,X)) 
-  | ?X1 ?X2 ?X => constr:((X1,X))
-  | ?X1 ?X => constr:((X1,X))
-  end.
-
 
 (********************************************************************)
 (* ** Tactics *)
