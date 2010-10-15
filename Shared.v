@@ -98,12 +98,12 @@ Ltac subst_hyp H :=
 (************************************************************)
 (* * Tactics for case analysis *)
 
-Tactic Notation "cases" := 
+Tactic Notation "old_cases" := 
   case_if; try solve [ falseb ].
-Tactic Notation "cases" "~" :=  
-  cases; auto~.
-Tactic Notation "cases" "*" :=  
-  cases; auto*.
+Tactic Notation "old_cases" "~" :=  
+  old_cases; auto~.
+Tactic Notation "old_cases" "*" :=  
+  old_cases; auto*.
 
 
 (************************************************************)

@@ -84,12 +84,25 @@ Proof.
   introv H. unfolds pfun_disjoint. intros z. specializes H z. intuition.
 Qed.
 
+Lemma pfun_disjoint_sym' : forall A B (f1 f2 : pfun A B),
+  pfun_disjoint f1 f2 -> pfun_disjoint f2 f1.
+Proof. apply pfun_disjoint_sym. Qed.
+
+Hint Resolve pfun_disjoint_sym'.
+
 (** Commutativity of disjoint union *)
 
- pfun_union_com.
-H : pfun_disjoint f1 f2
-______________________________________(1/1)
-forall x : loc, pfun_union f1 f2 x = pfun_union f2 f1 x
+Tactic Notation "cases" constr(E) := 
+  let H := fresh "Eq" in cases E as H.
+
+
+Lemma pfun_union_comm : forall (A B : Type) (f1 f2 : pfun A B),
+  pfun_disjoint f1 f2 -> 
+  pfun_union f1 f2 = pfun_union f2 f1.
+Proof. 
+  introv H. extens. intros x. unfolds pfun_disjoint, pfun_union.
+  specializes H x. cases (f1 x); cases (f2 x); auto. destruct H; false. 
+Qed.
 
 
 
@@ -159,13 +172,14 @@ Proof.
   apply dheap_eq. intros x. destruct~ (f x).
 Qed.
 
-Lemma dheap_union_com : forall d1 d2,
+Lemma dheap_union_comm : forall d1 d2,
   pfun_disjoint (dheap_data d1) (dheap_data d2) ->
   dheap_union d1 d2 = dheap_union d2 d1.
 Proof.
   intros [f1 F1] [f2 F2] H. simpls. apply dheap_eq. simpl.
-  apply pfun_union_com.
+  intros. rewrite~ pfun_union_comm.
 Qed.
+
 
 (*------------------------------------------------------------------*)
 (* ** Construction of heaps *)
@@ -224,23 +238,19 @@ Lemma If_r : forall (A:Type) (P:Prop) (x y : A),
   ~ P -> (If P then x else y) = y.
 Proof. intros. case_if*. Qed.
 
-Lemma pfun_disjoint_sym' : forall A B (f1 f2 : pfun A B),
-  pfun_disjoint f1 f2 -> pfun_disjoint f2 f1.
-Proof. apply pfun_disjoint_sym. Qed.
-Hint Resolve pfun_disjoint_sym'.
+
 
 Lemma heap_union_comm : 
   comm heap_union.
 Proof.
   intros [d1|] [d2|].
   unfold heap_union. case_if.
-    rewrite~ If_l. fequal. unfold dheap_union.
-
+    rewrite~ If_l. fequal. unfold dheap_union. apply~ dheap_union_comm.
+    case_if. false~. auto.
   apply heap_union_none_r.
   apply heap_union_none_l.
   apply heap_union_none_l.
 Qed.
-
 
 Lemma heap_union_neutral_l : 
   neutral_l heap_union heap_empty.
@@ -252,30 +262,23 @@ Proof.
   apply heap_union_none_r.
 Qed.
 
-
 Lemma heap_union_neutral_r : 
   neutral_r heap_union heap_empty.
-Proof. skip. Qed.
-
-
+Proof. intros_all. rewrite heap_union_comm. apply heap_union_neutral_l. Qed.
 
 Lemma heap_disjoint_comm : forall h1 h2,
   \# h1 h2 = \# h2 h1.
-Proof. skip. Qed.
-  (*
-  intros [|] [|]; unfold heap_disjoint, heap_defined; simpl; introv H.
-  skip_rewrite (disjoint (dom_impl m0) (dom_impl m) = disjoint (dom_impl m) (dom_impl m0)).
-  case_if. 
-    skip_rewrite (m0 \u m = m \u m0). auto.
-    false.
-  auto.
-  auto.
-  auto.
-  *)
+Proof.
+  unfold heap_disjoint. intros [d1|] [d2|]; auto.
+  lets: pfun_disjoint_sym. extens*.
+Qed.
 
+(*
 Lemma heap_disjoint_empty_r : forall h,
   \# h heap_empty.
-Proof. skip. Qed.
+Proof. 
+  unfold heap_disjoint. intros [d|]. 
+  skip.
 
 Lemma heap_disjoint_empty_l : forall h,
   \# heap_empty h.
@@ -284,10 +287,10 @@ Proof. intros. rewrite heap_disjoint_comm. apply heap_disjoint_empty_r. Qed.
 Lemma heap_disjoint_union_inv : forall h1 h2 h3,
   \# h1 (heap_union h2 h3) = (\# h1 h2 /\ \# h1 h3).
 Proof. skip. Qed.
+*)
 
 
-
-
+(*
 
 ----
 
@@ -308,7 +311,7 @@ Notation "\# h1 h2" := (heaps_disjoint (h2::h1::nil))
   (at level 40, h1 at level 0, h2 at level 0, no associativity).
 Notation "\# h1 h2 h3" := (heaps_disjoint (h3::h2::h1::nil))
   (at level 40, h1 at level 0, h2 at level 0, h3 at level 0, no associativity).
-
+*)
 (*
 Lemma test : forall h1 h2 h3, (\# h1 h2) = (\# h1 h2) /\ (\# h1 h2 h3) = (\# h1 h2 h3).
 *)
@@ -432,8 +435,19 @@ Notation "# H" := (fun _:unit => H)
 (*------------------------------------------------------------------*)
 (* ** Properties of [star] *)
 
+Section Star.
+Transparent heap_is_star.
+
 Lemma star_neutral_l : neutral_l heap_is_star [].
-Proof. skip. Qed.
+Proof.
+  intros H. unfold hprop, heap_is_star. extens. intros h.
+  iff (h1&h2&D&U&H1&H2) M1. skip.
+  exists heap_empty h. splits. 
+    skip.
+    rewrite~ heap_union_neutral_l.
+    hnf. auto.
+    auto.
+Qed.
 
 Lemma star_neutral_r : neutral_r heap_is_star [].
 Proof. skip. Qed.
@@ -469,6 +483,7 @@ Lemma heap_weaken_pack : forall A (x:A) H J,
   H ==> J x -> H ==> (heap_is_pack J).
 Proof. introv W h. exists x. apply~ W. Qed.
 
+End Star.
 
 (*------------------------------------------------------------------*)
 (* ** Normalization of [star] *)
