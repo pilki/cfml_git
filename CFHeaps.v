@@ -450,7 +450,7 @@ Proof.
 Qed.
 
 Lemma star_comm_assoc : comm_assoc heap_is_star.
-Proof. skip. Qed.
+Proof. apply comm_assoc_prove. apply star_comm. apply star_assoc. Qed.
 
 Lemma starpost_neutral : forall B (Q:B->hprop),
   Q \*+ [] = Q.
@@ -463,7 +463,7 @@ Proof. introv W (h1&h2&?). exists* h1 h2. Qed.
 Lemma heap_star_prop_elim : forall (P:Prop) H h,
   ([P] \* H) h -> P /\ H h.
 Proof.
-  introv (?&?&?&?&N&?). destruct N. subst. rewrite~ heap_union_neutral_l.
+  introv (?&?&N&?&?&?). destruct N. subst. rewrite~ heap_union_neutral_l.
 Qed.
 
 Lemma heap_extract_prop : forall (P:Prop) H H',
@@ -677,7 +677,9 @@ Lemma hextract_prop : forall H1 H2 H' (P:Prop),
   (P -> H1 \* H2 ==> H') -> H1 \* ([P] \* H2) ==> H'.
 Proof.
   introv W. intros h Hh.
-  destruct Hh as (h1&h2'&?&?&?&(h2&h3&?&?&(?&M)&?)).
+  destruct Hh as (h1&h2'&?&(h2&h3&?&?&?&?)&?&?).
+
+---
   apply~ W. exists h1 h3. subst h h2 h2'.
   skip_rewrite (heap_union heap_empty h3 = h3) in H. (* todo*) 
   skip_rewrite (heap_union heap_empty h3 = h3). (* todo*) 
