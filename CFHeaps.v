@@ -13,6 +13,16 @@ Axiom Mem_app_or : forall (A:Type) (l1 l2 : list A) x,
 
 Hint Constructors Mem.
 
+Lemma If_l : forall (A:Type) (P:Prop) (x y : A), 
+  P -> (If P then x else y) = x.
+Proof. intros. case_if*. Qed.
+
+Lemma If_r : forall (A:Type) (P:Prop) (x y : A), 
+  ~ P -> (If P then x else y) = y.
+Proof. intros. case_if*. Qed.
+
+
+
 (********************************************************************)
 (* ** Heaps *)
 
@@ -84,17 +94,10 @@ Proof.
   introv H. unfolds pfun_disjoint. intros z. specializes H z. intuition.
 Qed.
 
-Lemma pfun_disjoint_sym' : forall A B (f1 f2 : pfun A B),
-  pfun_disjoint f1 f2 -> pfun_disjoint f2 f1.
-Proof. apply pfun_disjoint_sym. Qed.
-
-Hint Resolve pfun_disjoint_sym'.
-
 (** Commutativity of disjoint union *)
 
 Tactic Notation "cases" constr(E) := 
   let H := fresh "Eq" in cases E as H.
-
 
 Lemma pfun_union_comm : forall (A B : Type) (f1 f2 : pfun A B),
   pfun_disjoint f1 f2 -> 
@@ -104,8 +107,6 @@ Proof.
   specializes H x. cases (f1 x); cases (f2 x); auto. destruct H; false. 
 Qed.
 
-
-
 (*------------------------------------------------------------------*)
 (* ** Representation of heaps *)
 
@@ -113,186 +114,159 @@ Qed.
 
 Definition loc : Type := nat.
 
-(** Representation of defined heaps *)
-
-Inductive dheap : Type := dheap_of {
-  dheap_data :> pfun loc dynamic;
-  dheap_finite : pfun_finite dheap_data }.
-
-Implicit Arguments dheap_of [].  
-
 (** Representation of heaps *)
 
-Definition heap := option dheap.
+Inductive heap : Type := heap_of {
+  heap_data :> pfun loc dynamic;
+  heap_finite : pfun_finite heap_data }.
+
+Implicit Arguments heap_of [].  
+
+(** Proving heaps equals *)
+
+Lemma heap_eq : forall f1 f2 F1 F2,
+  (forall x, f1 x = f2 x) ->
+  heap_of f1 F1 = heap_of f2 F2.
+Proof.
+  introv H. asserts: (f1 = f2). extens~. subst. 
+  fequals. (* note: involves proof irrelevance *)
+Qed.
+
+(** Disjoint heaps *)
+
+Definition heap_disjoint (h1 h2 : heap) : Prop :=
+  pfun_disjoint h1 h2.
+
+Notation "\# h1 h2" := (heap_disjoint h1 h2)
+  (at level 40, h1 at level 0, h2 at level 0, no associativity).
 
 (** Union of heaps *)
 
-Program Definition dheap_union (d1 d2 : dheap) : dheap :=
-  dheap_of (pfun_union d1 d2) _.
-Next Obligation. destruct d1. destruct d2. apply~ pfun_union_finite. Qed.
+Program Definition heap_union (h1 h2 : heap) : heap :=
+  heap_of (pfun_union h1 h2) _.
+Next Obligation. destruct h1. destruct h2. apply~ pfun_union_finite. Qed.
 
-(** Empty dheap *)
+(** Empty heap *)
 
-Program Definition dheap_empty : dheap :=
-  dheap_of (fun l => None) _.
+Program Definition heap_empty : heap :=
+  heap_of (fun l => None) _.
 Next Obligation. exists (@nil loc). auto_false. Qed.
 
-(** Singleton dheap *)
+(** Singleton heap *)
 
-Program Definition dheap_single (l:loc) A (v:A) : dheap := 
-  dheap_of (fun l' => If l = l' then Some (dyn v) else None) _.
+Program Definition heap_single (l:loc) A (v:A) : heap := 
+  heap_of (fun l' => If l = l' then Some (dyn v) else None) _.
 Next Obligation.
   exists (l::nil). intros. case_if. 
     subst~.
     false.
 Qed.
 
-Lemma dheap_empty_disjoint_l : forall f,
-  pfun_disjoint (dheap_data dheap_empty) f.
-Proof. intros f x. simple~. Qed.
-
-Lemma dheap_eq : forall f1 f2 F1 F2,
-  (forall x, f1 x = f2 x) ->
-  dheap_of f1 F1 = dheap_of f2 F2.
-Proof.
-  introv H. asserts: (f1 = f2). extens~. subst. fequals.
-Qed.
-
-Lemma dheap_union_empty_l : forall d,
-  dheap_union dheap_empty d = d.
-Proof. 
-  intros [f F]. unfold dheap_union, pfun_union, dheap_empty. simpl.
-  apply~ dheap_eq.
-Qed.
-
-Lemma dheap_union_empty_r : forall d,
-  dheap_union d dheap_empty = d.
-Proof. 
-  intros [f F]. unfold dheap_union, pfun_union, dheap_empty. simpl.
-  apply dheap_eq. intros x. destruct~ (f x).
-Qed.
-
-Lemma dheap_union_comm : forall d1 d2,
-  pfun_disjoint (dheap_data d1) (dheap_data d2) ->
-  dheap_union d1 d2 = dheap_union d2 d1.
-Proof.
-  intros [f1 F1] [f2 F2] H. simpls. apply dheap_eq. simpl.
-  intros. rewrite~ pfun_union_comm.
-Qed.
-
-
 (*------------------------------------------------------------------*)
-(* ** Construction of heaps *)
+(* ** Properties on heaps *)
 
-(** Disjoint heaps *)
+(** Disjointness *)
 
-Definition heap_disjoint (h1 h2 : heap) : Prop :=
-  match h1, h2 with
-  | Some d1, Some d2 => pfun_disjoint d1 d2
-  | _,_ => False
-  end.
-
-Notation "\# h1 h2" := (heap_disjoint h1 h2)
-  (at level 40, h1 at level 0, h2 at level 0, no associativity).
-
-(** Empty heap *)
-
-Definition heap_empty : heap := 
-  Some dheap_empty.
-
-(** Singleton heap *)
-
-Definition heap_single (l:loc) A (v:A) : heap := 
-  Some (dheap_single l v).
-
-(** Heap union *)
-
-Definition heap_union (h1 h2 : heap) : heap := 
-  match h1,h2 with
-  | Some d1, Some d2 => 
-     If pfun_disjoint d1 d2
-       then Some (dheap_union d1 d2)
-       else None
-  | _,_ => None
-  end.
-
-(** Properties of heap_union *)
-
-Lemma heap_union_none_l : forall (h : heap),
-  heap_union None h = None.
-Proof. intros [[d F]|]; auto. Qed.
-
-Lemma heap_union_none_r : forall (h : heap),
-  heap_union h None = None.
-Proof. intros [[d F]|]; auto. Qed.
-
-
-(*------------------------------------------------------------------*)
-(* ** Properties of operations on heaps *)
-
-Lemma If_l : forall (A:Type) (P:Prop) (x y : A), 
-  P -> (If P then x else y) = x.
-Proof. intros. case_if*. Qed.
-
-Lemma If_r : forall (A:Type) (P:Prop) (x y : A), 
-  ~ P -> (If P then x else y) = y.
-Proof. intros. case_if*. Qed.
-
-
-
-Lemma heap_union_comm : 
-  comm heap_union.
-Proof.
-  intros [d1|] [d2|].
-  unfold heap_union. case_if.
-    rewrite~ If_l. fequal. unfold dheap_union. apply~ dheap_union_comm.
-    case_if. false~. auto.
-  apply heap_union_none_r.
-  apply heap_union_none_l.
-  apply heap_union_none_l.
-Qed.
-
-Lemma heap_union_neutral_l : 
-  neutral_l heap_union heap_empty.
-Proof.
-  intros [d|].
-  unfold heap_empty. unfold heap_union.
-   rewrite If_l; [| apply dheap_empty_disjoint_l ]. 
-   fequals. apply dheap_union_empty_l.
-  apply heap_union_none_r.
-Qed.
-
-Lemma heap_union_neutral_r : 
-  neutral_r heap_union heap_empty.
-Proof. intros_all. rewrite heap_union_comm. apply heap_union_neutral_l. Qed.
+Lemma heap_disjoint_sym : forall h1 h2,
+  heap_disjoint h1 h2 -> heap_disjoint h2 h1.
+Proof. intros [f1 F1] [f2 F2]. apply pfun_disjoint_sym. Qed.
 
 Lemma heap_disjoint_comm : forall h1 h2,
   \# h1 h2 = \# h2 h1.
-Proof.
-  unfold heap_disjoint. intros [d1|] [d2|]; auto.
-  lets: pfun_disjoint_sym. extens*.
-Qed.
-
-(*
-Lemma heap_disjoint_empty_r : forall h,
-  \# h heap_empty.
-Proof. 
-  unfold heap_disjoint. intros [d|]. 
-  skip.
+Proof. lets: heap_disjoint_sym. extens*. Qed. 
 
 Lemma heap_disjoint_empty_l : forall h,
-  \# heap_empty h.
-Proof. intros. rewrite heap_disjoint_comm. apply heap_disjoint_empty_r. Qed.
+  heap_disjoint heap_empty h.
+Proof. intros [f F] x. simple~. Qed.
 
-Lemma heap_disjoint_union_inv : forall h1 h2 h3,
-  \# h1 (heap_union h2 h3) = (\# h1 h2 /\ \# h1 h3).
-Proof. skip. Qed.
+Lemma heap_disjoint_empty_r : forall h,
+  heap_disjoint h heap_empty.
+Proof. intros [f F] x. simple~. Qed.
+
+Hint Resolve heap_disjoint_sym heap_disjoint_empty_l heap_disjoint_empty_r.
+
+Lemma heap_disjoint_union_eq_r : forall h1 h2 h3,
+  heap_disjoint h1 (heap_union h2 h3) =
+  (heap_disjoint h1 h2 /\ heap_disjoint h1 h3).
+Proof.
+  intros [f1 F1] [f2 F2] [f3 F3].
+  unfolds heap_disjoint, heap_union. simpls.
+  unfolds pfun_disjoint, pfun_union. extens. iff M [M1 M2].
+  split; intros x; specializes M x; 
+   destruct (f2 x); intuition; tryfalse.
+  intros x. specializes M1 x. specializes M2 x. 
+   destruct (f2 x); intuition.
+Qed.
+
+Lemma heap_disjoint_union_eq_l : forall h1 h2 h3,
+  heap_disjoint (heap_union h2 h3) h1 =
+  (heap_disjoint h1 h2 /\ heap_disjoint h1 h3).
+Proof.
+  intros. rewrite heap_disjoint_comm. 
+  apply heap_disjoint_union_eq_r.
+Qed.
+
+(* todo: bin
+Lemma heap_disjoint_union_r : forall h1 h2 h3,
+  heap_disjoint h1 h2 -> heap_disjoint h1 h3 ->
+  heap_disjoint h1 (heap_union h2 h3).
+Proof.
+Qed.
+
+Lemma heap_disjoint_union_inv_r : forall h1 h2 h3,
+  heap_disjoint h1 (heap_union h2 h3) ->
+  heap_disjoint h1 h2 /\ heap_disjoint h1 h3.
+Proof.
+  intros [f1 F1] [f2 F2] [f3 F3] M.
+  unfolds heap_disjoint, heap_union. simpls.
+  unfolds pfun_disjoint, pfun_union. 
+  split; intros x; specializes M x; 
+   destruct (f2 x); intuition. false.
+Qed.
+
+Lemma heap_disjoint_union_inv_l : forall h1 h2 h3,
+  heap_disjoint (heap_union h2 h3) h1 ->
+  heap_disjoint h1 h2 /\ heap_disjoint h1 h3.
+Proof. introv H. apply~ heap_disjoint_union_inv_r. Qed.
 *)
 
 
-(*
+(** Union *)
 
-----
+Lemma heap_union_neutral_l : forall h,
+  heap_union heap_empty h = h.
+Proof. 
+  intros [f F]. unfold heap_union, pfun_union, heap_empty. simpl.
+  apply~ heap_eq.
+Qed.
+
+Lemma heap_union_neutral_r : forall h,
+  heap_union h heap_empty = h.
+Proof. 
+  intros [f F]. unfold heap_union, pfun_union, heap_empty. simpl.
+  apply heap_eq. intros x. destruct~ (f x).
+Qed.
+
+Lemma heap_union_comm : forall h1 h2,
+  heap_disjoint h1 h2 ->
+  heap_union h1 h2 = heap_union h2 h1.
+Proof.
+  intros [f1 F1] [f2 F2] H. simpls. apply heap_eq. simpl.
+  intros. rewrite~ pfun_union_comm.
+Qed.
+
+Lemma heap_union_assoc : 
+  LibOperation.assoc heap_union.
+Proof.
+  intros [f1 F1] [f2 F2] [f3 F3]. unfolds heap_union. simpls.
+  apply heap_eq. intros x. unfold pfun_union. destruct~ (f1 x).
+Qed.
+
+
+(*------------------------------------------------------------------*)
+(* ** Disjointness between three heaps  *)
+
+(*
 
 Definition heaps_union (hs : list heap) : heap :=
   LibList.fold_right heap_union heap_empty hs.
@@ -307,17 +281,12 @@ Definition heap_defined (h : heap) : Prop :=
 Definition heaps_disjoint (hs : list heap) : Prop :=
   heap_defined (heaps_union hs).
 
-Notation "\# h1 h2" := (heaps_disjoint (h2::h1::nil))
-  (at level 40, h1 at level 0, h2 at level 0, no associativity).
 Notation "\# h1 h2 h3" := (heaps_disjoint (h3::h2::h1::nil))
   (at level 40, h1 at level 0, h2 at level 0, h3 at level 0, no associativity).
 *)
 (*
 Lemma test : forall h1 h2 h3, (\# h1 h2) = (\# h1 h2) /\ (\# h1 h2 h3) = (\# h1 h2 h3).
 *)
-
-
-
 
 
 (********************************************************************)
@@ -343,7 +312,7 @@ Definition heap_is_single (l:loc) A (v:A) : hprop :=
 (** Heap union *)
 
 Definition heap_is_star (H1 H2 : hprop) : hprop := 
-  fun h => exists h1 h2, \# h1 h2 /\ h = heap_union h1 h2 /\ H1 h1 /\ H2 h2.
+  fun h => exists h1 h2, H1 h1 /\ H2 h2 /\ \# h1 h2 /\ h = heap_union h1 h2.
 
 (** Pack in heaps *)
 
@@ -436,27 +405,49 @@ Notation "# H" := (fun _:unit => H)
 (* ** Properties of [star] *)
 
 Section Star.
-Transparent heap_is_star.
+Transparent heap_is_star heap_union.
+
+Lemma star_comm : comm heap_is_star. 
+Proof. 
+  intros H1 H2. unfold hprop, heap_is_star. extens. intros h.
+  iff (h1&h2&M1&M2&D&U); rewrite~ heap_union_comm in U; exists* h2 h1.
+Qed.
 
 Lemma star_neutral_l : neutral_l heap_is_star [].
 Proof.
   intros H. unfold hprop, heap_is_star. extens. intros h.
-  iff (h1&h2&D&U&H1&H2) M1. skip.
-  exists heap_empty h. splits. 
-    skip.
-    rewrite~ heap_union_neutral_l.
+  iff (h1&h2&M1&M2&D&U) M. 
+  hnf in M1. subst h1 h. rewrite~ heap_union_neutral_l.
+  exists heap_empty h. splits~. 
     hnf. auto.
-    auto.
+    rewrite~ heap_union_neutral_l.
 Qed.
 
 Lemma star_neutral_r : neutral_r heap_is_star [].
-Proof. skip. Qed.
-
-Lemma star_comm : comm heap_is_star. 
-Proof. skip. Qed.
+Proof.
+  apply neutral_r_from_comm_neutral_l.
+  apply star_comm. apply star_neutral_l.
+Qed.
 
 Lemma star_assoc : LibOperation.assoc heap_is_star. 
-Proof. skip. Qed.
+Proof. 
+  intros H1 H2 H3. unfold hprop, heap_is_star. extens. intros h. split.
+  intros (h1&h'&M1&(h2&h3&M3&M4&D'&U')&D&U). subst h'.
+   exists (heap_union h1 h2) h3. rewrite heap_disjoint_union_eq_r in D.
+   splits.
+    exists h1 h2. splits*.
+    auto.
+    rewrite* heap_disjoint_union_eq_l.
+    rewrite~ <- heap_union_assoc.
+  (* todo: exploit symmetry ! *)
+  intros (h'&h3&(h1&h2&M3&M4&D'&U')&M2&D&U). subst h'.
+   exists h1 (heap_union h2 h3). rewrite heap_disjoint_union_eq_l in D.
+   splits.
+    auto.
+    exists h2 h3. splits*.
+    rewrite* heap_disjoint_union_eq_r.
+    rewrite~ heap_union_assoc.
+Qed.
 
 Lemma star_comm_assoc : comm_assoc heap_is_star.
 Proof. skip. Qed.
