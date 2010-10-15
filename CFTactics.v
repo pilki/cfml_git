@@ -179,7 +179,7 @@ Ltac get_app_intro_x_y x y :=
 
 Ltac post_is_meta tt :=
   match goal with |- ?E => 
-  match get_tail E with (_,?Q) =>
+  match get_fun_arg E with (_,?Q) =>
   match Q with
   | Q => constr:(false) 
   | _ => constr:(true)
@@ -1629,9 +1629,9 @@ Ltac xpats_core :=
   let E := fresh "M" in
   match goal with 
   | |- ?P /\ ?Q => 
-    split; [ introv E; hnf in E; try substeq E
+    split; [ introv E; hnf in E; try subst_eq E
            | introv E; xpats_core ]
-  | |- forall _, _ => introv E; hnf in E; try substeq E
+  | |- forall _, _ => introv E; hnf in E; try subst_eq E
   end.
 *)
 

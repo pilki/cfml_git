@@ -144,8 +144,6 @@ Tactic Notation "xfunc" "as" "f" :=
       end. *)
 
 (*--todo: deprecated?
-Tactic Notation "xok" := 
-  first [ apply_last_hyp | apply refl_equal ].
 *)
 
 

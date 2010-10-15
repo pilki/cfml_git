@@ -1160,9 +1160,9 @@ Ltac xpats_core :=
   let E := fresh "M" in
   match goal with 
   | |- ?P /\ ?Q => 
-    split; [ introv E; hnf in E; try substeq E
+    split; [ introv E; hnf in E; try subst_eq E
            | introv E; xpats_core ]
-  | |- forall _, _ => introv E; hnf in E; try substeq E
+  | |- forall _, _ => introv E; hnf in E; try subst_eq E
   end.
 *)
 
@@ -1252,9 +1252,9 @@ Ltac xrep_core_with solver :=
   xrep_core ltac:(fun _ => xrep_core_post tt; solver tt) ltac:(solver).
 
 Tactic Notation "xrep" constr(E) :=
-  xrep_core_using E ltac:(xrep_core_post) ltac:(idtacs).
+  xrep_core_using E ltac:(xrep_core_post) ltac:(idcont).
 Tactic Notation "xrep" :=
-  xrep_core ltac:(xrep_core_post) ltac:(idtacs).
+  xrep_core ltac:(xrep_core_post) ltac:(idcont).
 Tactic Notation "xrep" "~" constr(E) :=
   xrep_core_using_with E ltac:(fun _ => xauto_tilde).
 Tactic Notation "xrep" "~" :=

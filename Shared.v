@@ -1,54 +1,24 @@
 Set Implicit Arguments.
-(* todo: move *)
-Require Import LibTactics. Import List.
-Tactic Notation "forwards_nounfold" simple_intropattern(I) ":" constr(Ei) :=
-  let args := ltac_args Ei in
-  let args := (eval simpl in (args ++ ((boxer ___)::nil))) in
-  build_app args ltac:(fun R => lets_base I R).
 
+(********************************************************************)
+(** Treatment of partially-applied equality *)
+
+Require Import LibTactics. 
 
 Require Import LibCore.
 
-(* todo: move*)
 Global Opaque LibInt.eqb_inst.
-Global Opaque LibNat.eqb_inst. (*etc..*)
+Global Opaque LibNat.eqb_inst. 
 
 Hint Unfold pred_le.
 
-(* Another proof, based on the lemma [measure_induction]
-  Proof.
-  intros A mu x. apply (@measure_induction _ mu). clear x. 
-  intros x H. apply Acc_intro. intros y Lt. apply H. auto.
-  Defined.
-*)
-
-Ltac idtacs tt :=
-  idtac.
-
-
-(* todo move *)
-
-Ltac idcont tt := idtac.
-
-(** [get_tail E] is a tactic that decomposes an application
-    term [E], ie, when applied to a term of the form [X1 ... XN] 
-    it returns a pair made of [X1 .. X(N-1)] and [XN]. *)
-
-Ltac get_tail E :=
-  match E with
-  | ?X1 ?X2 ?X3 ?X4 ?X5 ?X6 ?X7 ?X => constr:((X1 X2 X3 X4 X5 X6,X))
-  | ?X1 ?X2 ?X3 ?X4 ?X5 ?X6 ?X => constr:((X1 X2 X3 X4 X5,X))
-  | ?X1 ?X2 ?X3 ?X4 ?X5 ?X => constr:((X1 X2 X3 X4,X))  
-  | ?X1 ?X2 ?X3 ?X4 ?X => constr:((X1 X2 X3,X))
-  | ?X1 ?X2 ?X3 ?X => constr:((X1 X2,X)) 
-  | ?X1 ?X2 ?X => constr:((X1,X))
-  | ?X1 ?X => constr:((X1,X))
-  end.
-
+Tactic Notation "false" "~" constr(E) := 
+  false E; instantiate; auto_tilde. 
+  (* to work around a coq bug *)
 
 
 (********************************************************************)
-
+(** Treatment of partially-applied equality *)
 
 Lemma if_eq_1 : forall A (x:bool) (v1 v2 y : A), 
   ((if x then = v1 else = v2) y) -> (y = (if x then v1 else v2)).
@@ -73,22 +43,17 @@ Tactic Notation "if_eq" "in" hyp(H) :=
 Tactic Notation "if_eq" :=
   repeat match goal with H: ((if _ then _ else _) _) |- _ => if_eq in H end.
 
-
-
-Ltac subst_hyp H :=
-  match type of H with 
-  | ?x = ?y => first [ subst x | subst y ] 
-  | ?x == ?y => substb H
-  | isTrue ?x => subst x
-  | isTrue (! ?x) => apply eq_false_r_back in H; subst x
-  end.  (*todo: ~b *)
-
 Ltac calc_partial_eq tt :=
   repeat match goal with
   | H: (= _) _ |- _ => simpl in H 
   | H: ((if _ then _ else _) _) |- _ => if_eq in H
   end.
 
+
+(************************************************************)
+(* * Tactics for substitutions *)
+
+(* todo: check not too slow *)
 
 Ltac substs_core :=
   let go x y := first [ subst x | subst y ] in
@@ -114,7 +79,24 @@ Ltac substs_base :=
   try injects_core. (* temporary: to avoid loops *)
 
 Tactic Notation "substs" := substs_base.
-  
+
+Tactic Notation "substs" constr(z) := 
+  match goal with 
+  | H: z = _ |- _ => subst z
+  | H: (= _) z |- _ => hnf in H; subst z
+  end.
+
+Ltac subst_hyp H :=
+  match type of H with 
+  | ?x = ?y => first [ subst x | subst y ] 
+  | ?x == ?y => substb H
+  | isTrue ?x => subst x
+  | isTrue (! ?x) => apply eq_false_r_back in H; subst x
+  end.  (*todo: ~b *)
+
+
+(************************************************************)
+(* * Tactics for case analysis *)
 
 Tactic Notation "cases" := 
   case_if; try solve [ falseb ].
@@ -125,49 +107,7 @@ Tactic Notation "cases" "*" :=
 
 
 (************************************************************)
-(* * General tactics *)
-
-Ltac intro_hnf :=
-  intro; match goal with H: _ |- _ => hnf in H end.
-
-
-(*
-Tactic Notation "intro_subst":=
-  let x := fresh "TEMP" in let H := fresh "TEMP" in
-  intros x H; subst x.
-*)
-
-Ltac invert_first_hyp :=
-  let H := get_last_hyp tt in inverts H.
-
-Ltac apply_last_hyp :=
-  match goal with H: _ |- _ => apply H end.
-
-(*
-Tactic Notation "substs" := 
-  hnfs; repeat (match goal with H: ?x = ?y |- _ => 
-                first [ subst x | subst y] end).
-*)
-
-Tactic Notation "substs" constr(z) := 
-  match goal with 
-  | H: z = _ |- _ => subst z
-  | H: (= _) z |- _ => hnf in H; subst z
-  end.
-
-Ltac substeq E :=
-  try (hnf in E);
-  match type of E with ?x = ?y => 
-    first [ subst x | subst y | rewrite E in * ] end.
-
-
-
-(************************************************************)
-(* * Misc *)
-
-Lemma conj_swap: forall (P Q: Prop), P -> Q -> Q /\ P.
-Proof. auto*. Qed.
-
+(* * Predicate for post-conditions on boolean values *)
 
 Definition bool_of (P:Prop) :=
    fun b => (isTrue b = P).
@@ -227,18 +167,36 @@ Lemma elim_isTrue_false : forall (b:bool) (P:Prop),
   !b -> (isTrue b = P) -> ~ P.
 Proof. intros_all. subst~. destruct b; simpls; false. Qed.
 
-
-Axiom bool_of_impl : forall (P Q : Prop) x, 
+Lemma bool_of_impl : forall (P Q : Prop) x, 
   bool_of P x -> (P <-> Q) -> bool_of Q x.
-Axiom bool_of_impl_neg : forall (P Q : Prop) x, 
+Proof. unfold bool_of. intros. subst. extens*. Qed.
+
+Lemma bool_of_impl_neg : forall (P Q : Prop) x, 
   bool_of P x -> (~P <-> Q) -> bool_of Q (!x).
-Axiom bool_of_neg_impl : forall (P Q : Prop) x, 
+Proof. unfold bool_of. intros. subst. extens. rew_reflect*. Qed.
+
+Lemma bool_of_neg_impl : forall (P Q : Prop) x, 
   bool_of P (!x) -> (~P <-> Q) -> bool_of Q x.
-(* todo *)
+Proof.
+  unfold bool_of. introv M K. subst. extens.
+  rew_reflect in K. rew_classic in K. auto.
+Qed.
+
+Lemma pred_le_bool_of : forall (P Q : Prop), 
+  (P <-> Q) -> (pred_le (bool_of P) (bool_of Q)).
+Proof. unfold bool_of; intros_all. rewrite H0. apply~ prop_ext. Qed.
+
+
+(********************************************************************)
+(* ** Tactics for normalizing hypotheses *)
+
+Lemma true_eq_P : forall (P:Prop),
+  (isTrue true = P) = P.
+Proof. intros. apply prop_ext. iff. subst~. apply* prop_ext. Qed.
+Hint Rewrite true_eq_P : rew_reflect.  
 
 Hint Rewrite isTrue_istrue istrue_isTrue : rew_istrue.
 Ltac rew_istrue := autorewrite with rew_istrue.
-
 
 Ltac fix_bool_of_known tt := 
   match goal with 
@@ -261,32 +219,16 @@ Ltac fix_bool_of_known tt :=
   end.
 
 
-Lemma pred_le_bool_of : forall (P Q : Prop), 
-  (P <-> Q) -> (pred_le (bool_of P) (bool_of Q)).
-Proof. unfold bool_of; intros_all. rewrite H0. apply~ prop_ext. Qed.
+(********************************************************************)
+(* ** Case analysis after pattern matching *)
 
+(* todo: move to CFTactics *)
+
+Ltac invert_first_hyp :=
+  let H := get_last_hyp tt in inverts H.
 
 Ltac invert_first_hyp ::=
   let H := get_last_hyp tt in symmetry in H; inverts H.
-
-(* todo move *)
-Implicit Arguments lt_irrefl [A H Lt_irrefl]. 
-
-Lemma true_eq_P : forall (P:Prop),
-  (isTrue true = P) = P.
-Proof. intros. apply prop_ext. iff. subst~. apply* prop_ext. Qed.
-Hint Rewrite true_eq_P : rew_reflect.  
-
-
-
-
-Tactic Notation "false" "~" constr(E) := (* coqfix *)
-  false E; instantiate; auto_tilde. 
-
-Tactic Notation "splits_all" "~" :=
-  splits_all; auto_tilde.
-Tactic Notation "splits_all" "*" :=
-  splits_all; auto_star.
 
 
 (********************************************************************)
@@ -310,3 +252,5 @@ Notation "P ===> Q" := (rel_le P Q)
   (at level 55, right associativity) : func.
 
 Open Scope func.
+
+
