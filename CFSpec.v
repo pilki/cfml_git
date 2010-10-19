@@ -483,7 +483,7 @@ Proof.
   lets M: ((proj2 Pg) x2). applys (proj1 S) M. clear M. intros H Q Ap1.
   applys app_intro_1_2 (fun g' => [g'=g] \* H). 
     apply* pureapp_app_1. 
-    intros g'. apply~ CFHeaps.local_intro_prop. intro_subst~.
+    intros g'. apply~ local_intro_prop'. intro_subst~.
 Qed.    
 
 Lemma spec_elim_3 : forall A1 A2 A3 B (K: A1 -> A2 -> A3 -> ~~B -> Prop) f,
@@ -493,7 +493,7 @@ Proof.
   forwards M: (spec_elim_2 Pg). applys (proj1 S) M. clear M. intros H Q Ap1.
   applys app_intro_1_3 (fun g' => [g'=g] \* H). 
     apply* pureapp_app_1. 
-    intros g'. apply~ CFHeaps.local_intro_prop. intro_subst~.
+    intros g'. apply~ local_intro_prop'. intro_subst~.
 Qed.
 
 Lemma spec_elim_4 : forall A1 A2 A3 A4 B (K: A1 -> A2 -> A3 -> A4 -> ~~B -> Prop) f,
@@ -503,7 +503,7 @@ Proof.
   forwards M: (spec_elim_3 Pg). applys (proj1 S) M. clear M. intros H Q Ap1.
   applys app_intro_1_4 (fun g' => [g'=g] \* H). 
     apply* pureapp_app_1. 
-    intros g'. apply~ CFHeaps.local_intro_prop. intro_subst~.
+    intros g'. apply~ local_intro_prop'. intro_subst~.
 Qed.
 
 
