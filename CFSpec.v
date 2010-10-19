@@ -313,7 +313,6 @@ Proof.
 Qed.
 
 
-
 (********************************************************************)
 (* ** Change of arities in applications *)
 
@@ -360,27 +359,57 @@ Lemma app_intro_2_4 :
   app_2 f x1 x2 H Q' ->
   (forall g, app_2 g x3 x4 (Q' g) Q) ->
   app_4 f x1 x2 x3 x4 H Q.
-Proof. Admitted.
-(*
 Proof. 
-  introv (Q1&M1&M2) M. exists Q1. split~.
-  intros g. exists~ Q'. 
+  introv M1 M2.
+  introv Hh. specializes M1 Hh. destruct M1 as (H1&H2&Q1&H'&?&(Q''&Ap1&Ap2)&Po).
+  exists (= h) [] Q []. splits; rew_heap~.
+  exists (Q'' \*+ H2). split.
+    applys* local_wframe. intros h'. intro_subst~.
+    intros. apply local_erase. exists __. split.
+       apply* local_wframe.
+       intros g'. specializes Po g'. applys* local_wgframe.
 Qed.
-*)
 
 Lemma app_intro_3_4 : 
   app_3 f x1 x2 x3 H Q' ->
   (forall g, app_1 g x4 (Q' g) Q) ->
   app_4 f x1 x2 x3 x4 H Q.
-Proof. Admitted.
-
-(*
 Proof. 
-  introv (Q1&M1&M2) M. exists Q1. split~.
-  intros g. destruct (M2 g) as (Q2&M3&M4).
-  exists Q2. split~. intros g'. exists~ Q'.
-Qed.
+(* TODO
+  introv M1 M2.
+  introv Hh. specializes M1 Hh. destruct M1 as (H1&H2&Q1&H'&?&(Q''&Ap1&Ap2)&Po).
+  exists (= h) [] Q []. splits; rew_heap~.
+  exists (Q'' \*+ H2). split.
+    applys* local_wframe. intros h'. intro_subst~.
+    intros.
+  renames Ap2 to M1. specializes M1 g. clears h H1.
+  intros h0 (h&h'&Hh&Hh'&HD&HU). specializes M1 Hh.
+   destruct M1 as (H1&H2'&Q1'&H''&(h1&h2&?&?&?&?)&(Q'''&Ap1&Ap2)&Po').
+  exists (= h1) (= h2 \+ h') Q (= h2 \+ h'). splits; rew_heap~. 
+  exists h1 (h2 \+ h'). subst h0 h. splits~.
+    rew_disjoint*.
+    rewrite~ heap_union_assoc.
+  exists Q'''. split.
+    (* applys* local_wframe. intro. intro_subst~. exists h1 heap_empty. splits*. apply heap_is_empty_prove. *) skip.
+    intros. apply local_erase. exists __. split.
+       apply* local_wframe. skip.
+       intros g'. specializes Po g'. applys* local_wgframe.
+ 
+    intros
+
+  exists (Q'' \*+ H2). split.
+    applys* local_wframe. intros h'. intro_subst~.
+    intros. apply local_erase. exists __. split.
+       apply* local_wframe.
+       intros g'. specializes Po g'. applys* local_wgframe.
+
+apply local_erase. exists __. split.
+       apply* local_wframe.
+       intros g'. specializes Po g'. applys* local_wgframe.
 *)
+skip.
+Qed.
+
 
 End AppIntro.
 
@@ -395,6 +424,7 @@ Lemma spec_intro_1 : forall A1 B f (K:A1->~~B->Prop),
   spec_1 K f.
 Proof. introv S _ H. split~. Qed.
 
+(* todo: move *)
 Lemma pureapp_and_app_1 : forall A B (F:val) (V:A) (V':B) (H:hprop) (Q:B->hprop),
   pureapp F V (= V') -> app_1 F V H Q -> 
      forall h, H h -> 
@@ -415,20 +445,18 @@ Lemma spec_intro_2 : forall A1 A2 B f (K:A1->A2->~~B->Prop),
   spec_2 K f.
 Proof.
   introv I C HK. split~.
-  intros x1. destruct (pureapp_witness (proj2 C x1)) as [g [_ Hg]].
-  apply* pureapp_abstract. split~. intros x2. eapply I.
-  apply HK.
-  intros H Q M.
-  rewrite app_local_1. introv Hh.
-  destruct (M _ Hh) as (H1&H2&Q1&H'&?&(Q'&Ap1&Ap2)&Po).
-  specializes Ap2 g.
-  destruct H0 as (h1&h2&?&?&?&?).
-  forwards* (H''&Ro): (>>> (@pureapp_and_app_1) f x1).
-  exists (Q' g \* H'') H2 __ (H' \* H''). splits.
+  intros x1. destruct (pureapp_witness (proj2 C x1)) as [g1 [_ Hg1]].
+  apply* pureapp_abstract. split~. 
+  intros x2. eapply I. apply HK.
+  intros H Q M. rewrite app_local_1. introv Hh.
+  destruct (M _ Hh) as (H1&H2&Q1&H'&(h1&h2&?&?&?&?)&(Q'&Ap1&Ap2)&Po). clear M.
+  specializes Ap2 g1.
+  forwards* (H''&Ro): (>>> (@pureapp_and_app_1 A1 val) f x1).
+  exists (Q' g1 \* H'') H2 __ (H' \* H''). splits.
     subst. exists___*.
     apply* local_wframe.
     intros r. specializes Po r. hsimpl. auto.
-Admitted. (* todo: coq bug with existentials *)
+Qed.
 
 Lemma spec_intro_3 : forall A1 A2 A3 B f (K:A1->A2->A3->~~B->Prop),
   is_spec_3 K ->
@@ -436,17 +464,29 @@ Lemma spec_intro_3 : forall A1 A2 A3 B f (K:A1->A2->A3->~~B->Prop),
   (forall x1 x2 x3, K x1 x2 x3 (app_3 f x1 x2 x3)) ->
   spec_3 K f.
 Proof.
-Admitted.
-(*
-  introv I C HK. split~. split. intros_all~. intros x1.
-  destruct (app_1_witness (proj2 C x1)) as [g [Cg Hg]].
-  apply* app_1_abstract. split~. split. intros_all~. intros x2.
-  destruct (app_1_witness (proj2 Cg x2)) as [h [_ Hh]]. 
-  apply* app_1_abstract. split. apply I. intros x3. eapply I.
-  apply HK. intros P HP. pattern h. apply* app_1_join.
-  pattern g. apply* app_1_join.
+  introv I C HK. split~.
+  intros x1. destruct (pureapp_witness (proj2 C x1)) as [g1 [S1 Hg1]].
+  apply* pureapp_abstract. split~.
+  intros x2. destruct (pureapp_witness (proj2 S1 x2)) as [g2 [_ Hg2]].
+  apply* pureapp_abstract. split~. apply I. 
+  intros x3. eapply I. apply HK.
+  intros H Q M. rewrite app_local_1. introv Hh.
+  destruct (M _ Hh) as (H1&H2&Q1&H'&(h1&h2&?&?&?&?)&(Q'&Ap1&Ap2)&Po). clear M.
+  specializes Ap2 g1. 
+  forwards* (H''&(h3&h4&PH3&PH4&?&?)): (>>> (@pureapp_and_app_1 A1 val) f x1).
+  destruct (Ap2 _ PH3) as (H1'&H2'&Q1'&H'''&(h1'&h2'&?&?&?&?)&(Q''&Ap1'&Ap2')&Po'). 
+  forwards* (Hf&(h3'&h4'&PH3'&PH4'&?&?)): (>>> (@pureapp_and_app_1 A2 val) g1 x2).
+  specializes Ap2' g2.
+  exists (Q'' g2 \* H'') (H2 \* H2' \* Hf) __ (H' \* H'' \* H''' \* Hf). splits.
+    exists (h3' \+ h4) (h2 \+ h2' \+ h4'). splits.
+      exists___. subst. splits*. rew_disjoint*.
+      exists h2 (h2' \+ h4'). splits~.
+        exists___. subst. splits*. rew_disjoint*. subst. rew_disjoint*. 
+        subst. rew_disjoint*.    
+      subst. do 2 rewrite heap_union_assoc. auto. skip. (* todo: equal up to commutativity *)
+    apply* local_wframe.
+    intros v. hsimpl. hchange (Po' v). hchange (Po v). hsimpl.
 Qed.
-*)
 
 Lemma spec_intro_4 : forall A1 A2 A3 A4 B f (K:A1->A2->A3->A4->~~B->Prop),
   is_spec_4 K ->
@@ -454,6 +494,7 @@ Lemma spec_intro_4 : forall A1 A2 A3 A4 B f (K:A1->A2->A3->A4->~~B->Prop),
   (forall x1 x2 x3 x4, K x1 x2 x3 x4 (app_4 f x1 x2 x3 x4)) ->
   spec_4 K f.
 Proof.
+  (* todo: follow the same idea as previous proof -- need a tactic! *)
 Admitted.
 
 
