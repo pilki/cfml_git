@@ -2539,3 +2539,15 @@ Notation "'For' i '=' a 'To' b 'Do' Q1 'Done'" :=
     /\ (I ((b)%Z+1) \* H' ==> Q tt))))
   (at level 69, i ident) : charac.
 
+
+(*
+
+Notation "'LetFuncs' a f1 ':=' Q1 'in' F" :=
+  (!!F a fun H Q => forall f1, exists P1,
+     (Q1 -> P1 f1) /\ (P1 f1 -> F H Q))
+  (at level 69, a at level 0, f1 ident, only parsing) : charac.
+
+Notation "'LetFun_' a f x ':=' Q 'in' F" :=
+  (LetFuncs a f := (Body f x => Q) in F)
+  (at level 69, a at level 0, f ident, x ident) : charac.
+

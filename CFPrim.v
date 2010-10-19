@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-Require Export LibInt LibArray CFSpec CFPrint CFTactics.
+Require Export LibInt LibArray CFSpec CFPrint.
 
 
 (* todo: move *)
@@ -22,7 +22,7 @@ Ltac inhab :=
     | apply @arbitrary; eauto 10 with typeclass_instances ].
 
 Instance inhabited_Z : Inhabited Z.
-Admitted.
+Admitted. (* todo --trivial *)
 
 
 (********************************************************************)
@@ -126,7 +126,7 @@ hsimpl x x. auto. Qed.
 
 Lemma unfocus_ref : forall (l:loc) a (v:a) A (T:htype A a) V,
   l ~~> v \* v ~> T V ==> l ~> Ref T V.
-Proof. intros. unfold Ref. hdata_simpl. xsimpl~. Qed.
+Proof. intros. unfold Ref. hdata_simpl. hextract. hsimpl. subst~. Qed.
 
 Axiom focus_ref_null : forall a A (T:htype A a) V,
   null ~> Ref T V ==> [False]. (* todo *)
@@ -331,7 +331,7 @@ Lemma unfocus_mnil' : forall A (L:list A) a (T:A->a->hprop),
   null ~> MList T L ==> [L = nil].
 Proof.
   intros. destruct L.
-  simpl. unfold hdata. xsimpl~. 
+  simpl. unfold hdata. hextract. hsimpl~. 
   unfold hdata, MList. hchange focus_ref2_null. hextract. false.
 Qed.
 
@@ -343,7 +343,7 @@ Lemma focus_mcons : forall (l:loc) a A (X:A) (L':list A) (T:A->a->hprop),
   (l ~> MList T (X::L')) ==>
   Hexists x l', (x ~> T X) \* (l' ~> MList T L') \* (l ~> Ref Id (x,l')).
 Proof.
-  intros. simpl. hdata_simpl. hchange (@focus_ref2 l). xsimpl.
+  intros. simpl. hdata_simpl. hchange (@focus_ref2 l). hextract. hsimpl.
 Qed.
 
 Lemma focus_mcons' : forall (l:loc) a A (L:list A) (T:A->a->hprop),
@@ -391,7 +391,7 @@ Lemma unfocus_msnil' : forall A (L:list A) (e:loc) a (T:A->a->hprop),
   null ~> MListSeg e T L ==> [L = nil] \* [e = null].
 Proof.
   intros. destruct L.
-  simpl. unfold hdata. xsimpl~. 
+  simpl. unfold hdata. hextract. hsimpl~. 
   unfold hdata, MListSeg. hchange focus_ref2_null. hextract. false.
 Qed.
 
@@ -399,7 +399,7 @@ Lemma focus_mscons : forall (l e:loc) a A (X:A) (L':list A) (T:A->a->hprop),
   (l ~> MListSeg e T (X::L')) ==>
   Hexists x l', (x ~> T X) \* (l' ~> MListSeg e T L') \* (l ~> Ref Id (x,l')).
 Proof.
-  intros. simpl. hdata_simpl. hchange (@focus_ref2 l). xsimpl.
+  intros. simpl. hdata_simpl. hchange (@focus_ref2 l). hextract. hsimpl.
 Qed.
 
 Lemma focus_mscons' : forall (l e:loc) a A (L:list A) (T:A->a->hprop),
@@ -670,7 +670,7 @@ Parameter ml_array_length : val.
 
 (*
 Definition ArrayOn A (v:array A) (l:loc) : hprop.
-Admitted. (* := l ~~> v.*)
+ (* := l ~~> v.*)
 *)
 
 Axiom array_make : forall A (n:int) (v:A), array A.
@@ -782,21 +782,6 @@ let snd (x,y) = y
 
 
 
-
-(*todo:remove*)
-Ltac xapps_core spec args solver ::=
-  let cont1 tt :=
-    xapp_with spec args solver in
-  let cont2 tt :=
-    instantiate; xextract; try intro_subst in    
-  match ltac_get_tag tt with
-  | tag_let_trm => xlet; [ cont1 tt | cont2 tt ]
-  | tag_seq =>     xseq; [ cont1 tt | cont2 tt ]
-  end.
-
-Notation "'Func'" := val.
-
-
 (*
 
 Lemma focus_mcons : forall (l:loc) A (X:A) (L':list A),
@@ -806,67 +791,5 @@ Proof.
   intros. simpl. hdata_simpl. auto. 
 Qed.
 *)
-
-
-Notation "'AppReturns'" := app_1.
-Ltac xinduct E := xinduction_heap E.
-
-
-
-Tactic Notation "xchange" constr(E) "as" := 
-  xchange E; xextract.
-Tactic Notation "xchange" constr(E) "as" simple_intropattern(I1) := 
-  xchange E; xextract as I1.
-Tactic Notation "xchange" constr(E) "as" simple_intropattern(I1) simple_intropattern(I2) := 
-  xchange E; xextract as I1 I2.
-Tactic Notation "xchange" constr(E) "as" simple_intropattern(I1) simple_intropattern(I2)
- simple_intropattern(I3) := 
-  xchange E; xextract as I1 I2 I3.
-Tactic Notation "xchange" constr(E) "as" simple_intropattern(I1) simple_intropattern(I2)
- simple_intropattern(I3) simple_intropattern(I4) := 
-  xchange E; xextract as I1 I2 I3 I4. 
-
-Tactic Notation "xchange" "~" constr(E) "as" := 
-  xchange~ E; xextract.
-Tactic Notation "xchange" "~" constr(E) "as" simple_intropattern(I1) := 
-  xchange~ E; xextract as I1.
-Tactic Notation "xchange" "~" constr(E) "as" simple_intropattern(I1) simple_intropattern(I2) := 
-  xchange~ E; xextract as I1 I2.
-Tactic Notation "xchange" "~" constr(E) "as" simple_intropattern(I1) simple_intropattern(I2)
- simple_intropattern(I3) := 
-  xchange~ E; xextract as I1 I2 I3.
-Tactic Notation "xchange" "~" constr(E) "as" simple_intropattern(I1) simple_intropattern(I2)
- simple_intropattern(I3) simple_intropattern(I4) := 
-  xchange~ E; xextract as I1 I2 I3 I4. 
-
-Tactic Notation "xapp_hyp" :=
-  eapply local_weaken; 
-    [ xlocal
-    | let f := spec_goal_fun tt in let H := get_spec_hyp f in 
-      apply (proj2 H) (* todo generalize to arities*)
-    | hsimpl
-    | hsimpl ].
-
-
-Notation "'LetFuncs' a f1 ':=' Q1 'in' F" :=
-  (!!F a fun H Q => forall f1, exists P1,
-     (Q1 -> P1 f1) /\ (P1 f1 -> F H Q))
-  (at level 69, a at level 0, f1 ident, only parsing) : charac.
-
-Notation "'LetFun_' a f x ':=' Q 'in' F" :=
-  (LetFuncs a f := (Body f x => Q) in F)
-  (at level 69, a at level 0, f ident, x ident) : charac.
-
-
-
-Notation "'LetFuncss' f1 ':=' Q1 'in' F" :=
-  (!F fun H Q => forall f1, exists P1,
-     (Q1 -> P1 f1) /\ (P1 f1 -> F H Q))
-  (at level 69, f1 ident, only parsing) : charac.
-
-Notation "'LetFun' f x ':=' Q 'in' F" :=
-  (LetFuncss f := (Body f x => Q) in F)
-  (at level 69, f ident, x ident) : charac.
-
 
 

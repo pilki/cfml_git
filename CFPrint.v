@@ -3,6 +3,9 @@ Require Import CFSpec.
 
 (*todo: move *)
 
+Notation "'Func'" := val.
+Notation "'AppReturns'" := app_1.
+
 Definition is_local_1 A1 B (S:A1->~~B) :=
   forall x, is_local (S x).
 
@@ -254,9 +257,10 @@ End AtomsEff.
 (********************************************************************)
 (* ** Implementation of tags and labels *)
 
-Class Label := Label_create { Label_get : atom }.
-
+Definition tag_name := atom.
 Definition no_name := `0.
+
+Class Label := Label_create { Label_get : tag_name }.
 
 Instance Label_default : Label.
 Proof. constructor. exact no_name. Defined.
@@ -370,6 +374,8 @@ Notation "'Done'" :=
   (!D (fun _ _ => True))
   (at level 0) : charac.
 
+Open Scope charac.
+
 (** Application *)
 
 Notation "'App' f x1 ;" :=
@@ -390,6 +396,20 @@ Notation "'App' f x1 x2 x3 x4 ;" :=
   (!A (app_3 f x1 x2 x3 x4))
   (at level 68, f at level 0, x1 at level 0, x2 at level 0,
    x3 at level 0, x4 at level 0) : charac.
+
+(** Let *)
+
+Notation "'LetVal' x ':=' V 'in' F" :=
+  (!V (fun H Q => forall x, x = V -> F H Q))
+  (at level 69, a at level 0, x ident) : charac.
+
+Notation "'Let' x ':=' F1 'in' F2" :=
+  (!T (fun H Q => exists Q1, F1 H Q1 /\ forall x, F2 (Q1 x) Q))
+  (at level 69, a at level 0, x ident) : charac.
+
+Notation "Q1 ;; Q2" :=
+  (!Seq fun H Q => exists H', Q1 H (#H') /\ Q2 H' Q)
+  (at level 68, right associativity) : charac.
 
 (** Body *)
 
@@ -428,38 +448,38 @@ Notation "'Body' f [ A1 A2 ]  x1 x2 '=>' Q" :=
                  (forall x1 x2, K x1 x2 Q) -> spec_2 K f))
   (at level 0, f at level 0, x1 ident, x2 ident, A1 ident, A2 ident) : charac.
 
-Notation "'Func' f ':=' Q" := (* todo:needed?*)
-  (!F (fun P => forall f, Q -> P f))
-  (at level 69) : charac.
-
-(** Let *)
-
-Notation "'LetVal' x ':=' V 'in' F" :=
-  (!V (fun H Q => forall x, x = V -> F H Q))
-  (at level 69, a at level 0, x ident) : charac.
-
-Notation "'Let' x ':=' F1 'in' F2" :=
-  (!T (fun H Q => exists Q1, F1 H Q1 /\ forall x, F2 (Q1 x) Q))
-  (at level 69, a at level 0, x ident) : charac.
+(** Functions *)
 
 Notation "'LetFunc' f1 ':=' Q1 'in' Q" :=
   (!F fun H Q => forall f1, exists P1,
      (Q1 -> P1 f1) /\ (P1 f1 -> Q H Q))
-  (at level 69, f1 ident) : charac.
+  (at level 69, f1 ident, only parsing) : charac.
 
-Notation "'LetFunc' f1 ':=' Q1 'and' f2 ':=' Q2 'in' F" :=
+Notation "'LetFun' f x1 ':=' Q 'in' F" :=
+  (LetFunc f := (Body f x1 => Q) in F)
+  (at level 69, f ident, x1 ident) : charac.
+
+Notation "'LetFun' f x1 x2 ':=' Q 'in' F" :=
+  (LetFunc f := (Body f x1 x2 => Q) in F)
+  (at level 69, f ident, x1 ident, x2 ident) : charac.
+
+Notation "'LetFun' f x1 x2 x3 ':=' Q 'in' F" :=
+  (LetFunc f := (Body f x1 x2 x3 => Q) in F)
+  (at level 69, f ident, x1 ident, x2 ident, x3 ident) : charac.
+
+  (* todo: LetFun for local polymorphic functions *)
+
+(** Mutually-recursive functions *)
+
+Notation "'LetFuns' f1 ':=' Q1 'and' f2 ':=' Q2 'in' F" :=
   (!F fun H Q => forall f1 f2, exists P1 P2,
      (Q1 -> Q2 -> P1 f1 /\ P2 f2) /\ (P1 f1 -> P2 f2 -> F H Q))
   (at level 69, f1 ident, f2 ident) : charac.
 
-Notation "'LetFunc' f1 ':=' Q1 'and' f2 ':=' Q2 'and' f3 ':=' Q3 'in' F" :=
+Notation "'LetFuns' f1 ':=' Q1 'and' f2 ':=' Q2 'and' f3 ':=' Q3 'in' F" :=
   (!F fun H Q => forall f1 f2 f3, exists P1 P2 P3,
      (Q1 -> Q2 -> Q3 -> P1 f1 /\ P2 f2 /\ P3 f3) /\ (P1 f1 -> P2 f2 -> P3 f3 -> F H Q))
   (at level 69, f1 ident, f2 ident, f3 ident) : charac.
-
-Notation "Q1 ;; Q2" :=
-  (!Seq fun H Q => exists H', Q1 H (#H') /\ Q2 H' Q)
-  (at level 68, right associativity) : charac.
 
 (** Tests *)
 
@@ -587,8 +607,6 @@ Notation "'For' i '=' a 'To' b 'Do' Q1 'Done'" :=
        -> S a H Q)) 
   (at level 69) : charac.
 
-Open Scope charac.
-
 (** Top-level *)
 
 Notation "'TopLet' x ':=' Q" :=
@@ -614,6 +632,11 @@ Notation "'TopLet' [ A1 A2 A3 ]  x ':=' Q" :=
 Notation "'TopLetFunc' ':=' H" :=
   (!TF H)
   (at level 69, H at level 200).
+
+(* todo:needed?*)
+Notation "'Func' f ':=' Q" := 
+  (!F (fun P => forall f, Q -> P f))
+  (at level 69) : charac.
 
 
 (********************************************************************)

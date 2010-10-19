@@ -358,7 +358,7 @@ let rec coq_of_imp_cf cf =
       let i = Coq_var "i" in
       let typs = Coq_impl (coq_int,formula_type) in
       let q' = Coq_var "Q'" in
-      let c1 = coq_apps (coq_of_cf cf1) [h;q'] in
+      let c1 = coq_apps (coq_of_cf cf) [h;q'] in
       let c2 = coq_apps s [ i; Coq_app (q', coq_tt); q] in
       let body_ge = coq_funs [("H",hprop); ("Q", Coq_impl (coq_unit, hprop))] (coq_exist "Q'" wild_to_hprop (coq_conj c1 c2)) in
       let cont_ge = coq_apps (Coq_var "local") [body_ge; h; q] in
@@ -372,7 +372,7 @@ let rec coq_of_imp_cf cf =
         (forall i H Q,  
                ((i <= v2 -> (local (fun H Q => exists Q', Q1 H Q' /\ S i (Q' tt) Q) H Q))
              /\ (i > v2 -> H ==> Q tt) )) 
-           -> S i H Q) ->
+           -> S i H Q) 
          -> S v1 H Q)  *)
 
      (* ---todo:deprecated

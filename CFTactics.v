@@ -323,7 +323,7 @@ Ltac xcf_for_core f :=
   ltac_database_get database_cf f;
   let H := fresh "TEMP" in intros H; 
   match type of H with
-  | tag tag_top_fun _ _ => sapply H; instantiate; try solve_type; [ try xisspec | ]
+  | @tag tag_top_fun _ _ _ => sapply H; instantiate; try solve_type; [ try xisspec | ]
   | _ => sapply H; try solve_type
   end; clear H; xcf_post tt.
 
@@ -2062,3 +2062,51 @@ Tactic Notation "xgo" "~" constr(a1) constr(h1) "," constr(a2) constr(h2) ","
   add_hint a1 h1; add_hint a2 h2; add_hint a3 h3; add_hint a4 h4; xgo~.
 
 
+
+(*todo:remove*)
+Ltac xapps_core spec args solver ::=
+  let cont1 tt :=
+    xapp_with spec args solver in
+  let cont2 tt :=
+    instantiate; xextract; try intro_subst in    
+  match ltac_get_tag tt with
+  | tag_let_trm => xlet; [ cont1 tt | cont2 tt ]
+  | tag_seq =>     xseq; [ cont1 tt | cont2 tt ]
+  end.
+
+
+Ltac xinduct E := xinduction_heap E.
+
+Tactic Notation "xchange" constr(E) "as" := 
+  xchange E; xextract.
+Tactic Notation "xchange" constr(E) "as" simple_intropattern(I1) := 
+  xchange E; xextract as I1.
+Tactic Notation "xchange" constr(E) "as" simple_intropattern(I1) simple_intropattern(I2) := 
+  xchange E; xextract as I1 I2.
+Tactic Notation "xchange" constr(E) "as" simple_intropattern(I1) simple_intropattern(I2)
+ simple_intropattern(I3) := 
+  xchange E; xextract as I1 I2 I3.
+Tactic Notation "xchange" constr(E) "as" simple_intropattern(I1) simple_intropattern(I2)
+ simple_intropattern(I3) simple_intropattern(I4) := 
+  xchange E; xextract as I1 I2 I3 I4. 
+
+Tactic Notation "xchange" "~" constr(E) "as" := 
+  xchange~ E; xextract.
+Tactic Notation "xchange" "~" constr(E) "as" simple_intropattern(I1) := 
+  xchange~ E; xextract as I1.
+Tactic Notation "xchange" "~" constr(E) "as" simple_intropattern(I1) simple_intropattern(I2) := 
+  xchange~ E; xextract as I1 I2.
+Tactic Notation "xchange" "~" constr(E) "as" simple_intropattern(I1) simple_intropattern(I2)
+ simple_intropattern(I3) := 
+  xchange~ E; xextract as I1 I2 I3.
+Tactic Notation "xchange" "~" constr(E) "as" simple_intropattern(I1) simple_intropattern(I2)
+ simple_intropattern(I3) simple_intropattern(I4) := 
+  xchange~ E; xextract as I1 I2 I3 I4. 
+
+Tactic Notation "xapp_hyp" :=
+  eapply local_weaken; 
+    [ xlocal
+    | let f := spec_goal_fun tt in let H := get_spec_hyp f in 
+      apply (proj2 H) (* todo generalize to arities*)
+    | hsimpl
+    | hsimpl ].

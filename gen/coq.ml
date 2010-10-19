@@ -306,7 +306,7 @@ let rec string_of_coq c =
          | None -> "_"
          | Some x -> sprintf "(Label_create '%s)" x
          in
-        sprintf "(CFPrint.tag %s %s %s)" tag slab (aux term)
+        sprintf "(%sCFPrint.tag %s %s _ %s)" "@" tag slab (aux term)
 
 (** Print a typed identifier [(x:T)] *)
 
