@@ -1177,7 +1177,14 @@ Qed.
 Lemma local_weaken' : forall B (F:~~B),
   is_local F -> weakenable F.
 Proof. intros_all. apply* local_weaken. Qed.
-    (* todo: use only one lemma *)
+    (* todo: use only one lemma from the two above *)
+
+Lemma local_weaken_pre : forall H' B (F:~~B) H Q,
+  is_local F -> 
+  F H' Q -> 
+  H ==> H' -> 
+  F H Q.
+Proof. intros. apply* local_weaken. Qed.
 
 (** Garbage collection on post-condition from [local] *)
 
@@ -1208,13 +1215,21 @@ Qed.
 
 (** Extraction of premisses from [local] *)
 
-Lemma local_intro_prop : forall B (F:~~B) H (P:Prop) Q,
+Lemma local_intro_prop : forall B (F:~~B) (H:hprop) (P:Prop) Q,
+  is_local F -> (forall h, H h -> P) -> (P -> F H Q) -> F H Q.
+Proof.
+  introv L W M. rewrite L. introv Hh. forwards~: (W h).
+  exists H [] Q []. splits; rew_heap~.
+Qed. 
+
+Lemma local_intro_prop' : forall B (F:~~B) H (P:Prop) Q,
   is_local F -> (P -> F H Q) -> F ([P] \* H) Q.
 Proof.
   introv L M. rewrite L. introv (h1&h2&(PH1&HP)&PH2&?&?).
   subst h1. rewrite heap_union_neutral_l in H1. subst h2.
   exists H [] Q []. splits; rew_heap~.
-Qed. 
+Qed.  
+  (* todo: use only one lemma? *)
 
 (** Extraction of existential from [local] *)
 
@@ -1263,7 +1278,7 @@ Proof. intros. rew_heap in *. auto. Qed.
 Lemma hclean_prop : forall B (F:~~B) H1 H2 (P:Prop) Q,
   is_local F -> (P -> F (H1 \* H2) Q) -> F (H1 \* [P] \* H2) Q.
 Proof.
-  intros. rewrite star_comm_assoc. apply~ local_intro_prop. 
+  intros. rewrite star_comm_assoc. apply~ local_intro_prop'. 
 Qed. 
 
 Lemma hclean_exists : forall B (F:~~B) H1 H2 A (J:A->hprop) Q,

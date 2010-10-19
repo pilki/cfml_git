@@ -2,24 +2,6 @@ Set Implicit Arguments.
 Require Export LibCore LibEpsilon Shared.
 Require Export CFHeaps.
 
-(** TODO; move Extraction of premisses from [local] *)
-
-(* todo move *)
-Lemma local_weaken_pre : forall H' B (F:~~B) H Q,
-  is_local F -> 
-  F H' Q -> 
-  H ==> H' -> 
-  F H Q.
-Proof. intros. apply* local_weaken. Qed.
-
-
-Lemma local_intro_prop : forall B (F:~~B) (H:hprop) (P:Prop) Q,
-  is_local F -> (forall h, H h -> P) -> (P -> F H Q) -> F H Q.
-Proof.
-  introv L W M. rewrite L. introv Hh. forwards~: (W h).
-  exists H [] Q []. splits; rew_heap~.
-Qed. 
-
 
 (********************************************************************)
 (* ** Axioms *)
@@ -179,14 +161,17 @@ Qed.
 
 (** Overlapping of AppPure and AppReturns *)
 
-Lemma pureapp_and_app : forall A B (F:val) (V:A) (V':B) (H:hprop) (Q:B->hprop) h,
-  pureapp F V (= V') -> app_1 F V H Q -> H h -> exists H', (Q V' \* H') h.  (* H ==> Q V' \* H' *)
-Proof.
-  introv (V''&N) M Hh. destruct (N h) as (HE&?). clear N.
-  subst. hnf in M. destruct~ (M h heap_empty) as (V''&h1&h2&?&HQ&HE'). 
-  do 2 rewrite heap_union_neutral_r in HE'.
-  forwards [? R]: (eval_deterministic HE HE').
-  subst. exists (=h2). exists h1 h2. rew_disjoint*.
+Lemma pureapp_and_app_1 : forall A B (F:val) (V:A) (V':B) (H:hprop) (Q:B->hprop),
+  pureapp F V (= V') -> app_1 F V H Q -> 
+     forall h, H h -> 
+       (exists H', (Q V' \* H') h).
+Proof. 
+  introv (v'&N). introv Dhi Hh. destruct (N h). subst.
+  hnf in Dhi. specializes Dhi h heap_empty Hh.
+  destruct Dhi as (v'&h'&g&?&?&?).
+  repeat rewrite heap_union_neutral_r in *.
+  forwards (?&?): (eval_deterministic H0 H3). 
+    exists (= g). exists h' g. subst. splits~. rew_disjoint*.
 Qed.
 
 
@@ -423,20 +408,6 @@ Lemma spec_intro_1 : forall A1 B f (K:A1->~~B->Prop),
   (forall x1, K x1 (app_1 f x1)) ->
   spec_1 K f.
 Proof. introv S _ H. split~. Qed.
-
-(* todo: move *)
-Lemma pureapp_and_app_1 : forall A B (F:val) (V:A) (V':B) (H:hprop) (Q:B->hprop),
-  pureapp F V (= V') -> app_1 F V H Q -> 
-     forall h, H h -> 
-       (exists H', (Q V' \* H') h).
-Proof. 
-  introv (v'&N). introv Dhi Hh. destruct (N h). subst.
-  hnf in Dhi. specializes Dhi h heap_empty Hh.
-  destruct Dhi as (v'&h'&g&?&?&?).
-  repeat rewrite heap_union_neutral_r in *.
-  forwards (?&?): (eval_deterministic H0 H3). 
-    exists (= g). exists h' g. subst. splits~. rew_disjoint*.
-Qed.
 
 Lemma spec_intro_2 : forall A1 A2 B f (K:A1->A2->~~B->Prop),
   is_spec_2 K ->
@@ -800,7 +771,7 @@ Proof.
       intros x1' x2' y' Lt. apply (proj2 (IH _ Lt)).
 Qed.
 
-Axiom spec_induction_3 : 
+Lemma spec_induction_3 : 
   forall A1 A2 A3 B A0 (lt:binary(A0*A1*A2*A3)) (Wf: wf lt) f 
          (L:A0->A1->A2->A3->~~B->Prop),
   (forall y, is_spec_3 (L y)) ->
@@ -809,8 +780,28 @@ Axiom spec_induction_3 :
       lt (y0,y1,y2,y3) (x0,x1,x2,x3) -> L y0 y1 y2 y3 R') f ->
     L x0 x1 x2 x3 R) f ->
   spec_3 (fun x1 x2 x3 R => forall x0, L x0 x1 x2 x3 R) f.
+Proof.
+  introv W Is H. 
+  cuts Hyp: (forall y x1 x2 x3, is_spec_0 (L y x1 x2 x3) /\ L y x1 x2 x3 (app_3 f x1 x2 x3)).
+    apply spec_intro_3.
+      intros x1 x2 x3. introv HK HP. hnf. intros y. applys~ (proj1 (Hyp y x1 x2 x3)).
+      apply* spec_curried_3.
+      intros x1 x2 x3 y. destruct~ (Hyp y x1 x2 x3).
+  cuts Hyp': (forall p, let '(y,x1,x2,x3) := p in is_spec_0 (L y x1 x2 x3) /\ L y x1 x2 x3 (app_3 f x1 x2 x3)).
+    intros y x1 x2 x3. apply (Hyp' (y,x1,x2,x3)).
+  intros p. induction_wf IH: W p. destruct p as [[[y x1] x2] x3].
+  lets C: (spec_curried_3 H). 
+  lets I: (proj1 H x1 x2 x3).
+  lets S: (spec_elim_3 H x1 x2 x3 y). clear H.
+  split.
+    apply~ Is.
+    apply S. apply spec_intro_3.
+      intros x'. introv HK HP Lt. applys~ (proj1 (IH _ Lt)).
+      auto.
+      intros x1' x2' x3' y' Lt. apply (proj2 (IH _ Lt)).
+Qed.
 
-Axiom spec_induction_4 : 
+Lemma spec_induction_4 : 
   forall A1 A2 A3 A4 B A0 (lt:binary(A0*A1*A2*A3*A4)) (Wf: wf lt) f 
          (L:A0->A1->A2->A3->A4->~~B->Prop),
   (forall y, is_spec_4 (L y)) ->
@@ -819,6 +810,26 @@ Axiom spec_induction_4 :
        lt (y0,y1,y2,y3,y4) (x0,x1,x2,x3,x4) -> L y0 y1 y2 y3 y4 R') f ->
     L x0 x1 x2 x3 x4 R) f ->
   spec_4 (fun x1 x2 x3 x4 R => forall x0, L x0 x1 x2 x3 x4 R) f.
+Proof.
+  introv W Is H. 
+  cuts Hyp: (forall y x1 x2 x3 x4, is_spec_0 (L y x1 x2 x3 x4) /\ L y x1 x2 x3 x4 (app_4 f x1 x2 x3 x4)).
+    apply spec_intro_4.
+      intros x1 x2 x3 x4. introv HK HP. hnf. intros y. applys~ (proj1 (Hyp y x1 x2 x3 x4)).
+      apply* spec_curried_4.
+      intros x1 x2 x3 x4 y. destruct~ (Hyp y x1 x2 x3 x4).
+  cuts Hyp': (forall p, let '(y,x1,x2,x3,x4) := p in is_spec_0 (L y x1 x2 x3 x4) /\ L y x1 x2 x3 x4 (app_4 f x1 x2 x3 x4)).
+    intros y x1 x2 x3 x4. apply (Hyp' (y,x1,x2,x3,x4)).
+  intros p. induction_wf IH: W p. destruct p as [[[[y x1] x2] x3] x4].
+  lets C: (spec_curried_4 H). 
+  lets I: (proj1 H x1 x2 x3 x4).
+  lets S: (spec_elim_4 H x1 x2 x3 x4 y). clear H.
+  split.
+    apply~ Is.
+    apply S. apply spec_intro_4.
+      intros x'. introv HK HP Lt. applys~ (proj1 (IH _ Lt)).
+      auto.
+      intros x1' x2' x3' x4' y' Lt. apply (proj2 (IH _ Lt)).
+Qed.
 
 Lemma spec_induction_1_noarg : 
   forall A1 B A0,
@@ -839,7 +850,7 @@ Lemma spec_induction_1_noheap :
     spec_1 (fun x' R' => lt x' x -> K x' R') f ->
     K x R) f ->
   spec_1 K f.
-Proof.
+Proof. (* Here is a direct proof. One could also reuse [spec_induction_1]. *)
   introv W H.
   cuts Hyp: (forall x, is_spec_0 (K x) /\ K x (app_1 f x)).
     apply spec_intro_1. 
@@ -858,192 +869,83 @@ Proof.
     apply~ S.
 Qed.
 
-Axiom spec_induction_2_noheap : 
+Hint Resolve tt.
+
+Lemma spec_induction_2_noheap : 
   forall A1 A2 B (lt:(A1*A2)->(A1*A2)->Prop),
   forall (Wf: wf lt) f (K:A1->A2->~~B->Prop),
-  spec_2 (fun x1 x2 R => 
-    spec_2 (fun y1 y2 R' => lt (y1,y2) (x1,x2) -> K y1 y2 R') f ->
-    K x1 x2 R) f ->
-  spec_2 K f.
-
-Axiom spec_induction_3_noheap : 
-  forall A1 A2 A3 B (lt:(A1*A2*A3)->(A1*A2*A3)->Prop) (Wf: wf lt) f 
-         (K:A1->A2->A3->~~B->Prop),
-  spec_3 (fun x1 x2 x3 R => 
-    spec_3 (fun y1 y2 y3 R' => lt (y1,y2,y3) (x1,x2,x3) -> K y1 y2 y3 R') f ->
-    K x1 x2 x3 R) f ->
-  spec_3 K f.
-
-Axiom spec_induction_4_noheap : 
-  forall A1 A2 A3 A4 B (lt:(A1*A2*A3*A4)->(A1*A2*A3*A4)->Prop) (Wf: wf lt) f 
-         (K:A1->A2->A3->A4->~~B->Prop),
-  spec_4 (fun x1 x2 x3 x4 R => 
-    spec_4 (fun y1 y2 y3 y4 R' => lt (y1,y2,y3,y4) (x1,x2,x3,x4) -> K y1 y2 y3 y4 R') f ->
-    K x1 x2 x3 x4 R) f ->
-  spec_4 K f.
-
-
-(*
-
-Definition with_pre (H:hprop) B (R:~~B) :=
-  fun (H':hprop) (Q:B->hprop) => H = H' /\ R H Q.
-
-Lemma spec_induction_1 : 
-  forall A1 B A' (I:A'->hprop),
-  forall (lt:binary (A1*A')) (Wf: wf lt) f (K:A1->~~B->Prop),
-  spec_1 (fun x R => forall y,
-    spec_1 (fun x' R' => forall y', lt (x',y') (x,y) -> K x' (with_pre (I y') R')) f ->
-    K x (with_pre (I y) R)) f ->
-  spec_1 K f.
-Proof.
-  introv W H.
-  cuts Hyp: (forall x, is_spec_0 (K x) /\ K x (app_1 f x)).
-    apply spec_intro_1. 
-      intros x. apply (proj1 (Hyp x)).
-      apply* spec_curried_1.
-      intros x. destruct~ (Hyp x).
-  cuts Hyp': (forall x y, is_spec_0 (K x) /\ K x (with_pre (I y) (app_1 f x))).
-    
-  intros x. pattern x.   induction_wf IH: W x.
-  lets C: (spec_curried_1 H). 
-  lets I: (spec_is_spec_1 H x).
-  lets S: (spec_elim_1 H x). clear H. 
-  asserts M: (spec_1 (fun x' R' => lt x' x -> K x' R') f). split.
-    intros x'. introv HK HP Lt. applys~ (proj1 (IH _ Lt)).
-    intros x' Lt. apply (proj2 (IH _ Lt)).
-  split.
-    introv HK HP. applys~ (I P P').
-    apply~ S.
-Qed.
-
-
-
-
-Definition post_for (h:heap) B (R:~~B) :=
-  fun (H:hprop) (Q:B->hprop) => H h -> R H Q.
-
-Lemma spec_induction_1 : 
-  forall A1 B (lt:binary (heap*A1)),
-  forall (Wf: wf lt) f (K:A1->~~B->Prop),
-  spec_1 (fun x R => forall h,
-    spec_1 (fun x' R' => forall h', lt (h',x') (h,x) -> K x' (post_for h' R')) f ->
-    K x (post_for h R)) f ->
-  spec_1 K f.
-Admitted.
-
-Proof.
-  introv W H.
-  cuts I: (forall x, weakenable (K x) /\ K x (app_1 f x)).
-    apply spec_intro_1. 
-      intros x. apply (proj1 (I x)).
-      apply* spec_curried_1.
-      intros x. destruct~ (I x).
-  intros x. pattern x. induction_wf IH: W x.
-  lets C: (spec_curried_1 H). 
-  lets I: (spec_is_spec_1 H x).
-  lets S: (spec_elim_1 H x). clear H. 
-  asserts M: (spec_1 (fun x' R' => lt x' x -> K x' R') f). split.
-    intros x'. introv HK HP Lt. applys~ (proj1 (IH _ Lt)).
-    intros x' Lt. apply (proj2 (IH _ Lt)).
-  split.
-    introv HK HP. applys~ (I P P').
-    apply~ S.
-Qed.
-
-Lemma spec_induction_2 : 
-  forall A1 A2 B (lt:(A1*A2)->(A1*A2)->Prop),
-  forall (Wf: wf lt) f (K:A1->A2->~~B->Prop),
+  is_spec_2 K ->
   spec_2 (fun x1 x2 R => 
     spec_2 (fun y1 y2 R' => lt (y1,y2) (x1,x2) -> K y1 y2 R') f ->
     K x1 x2 R) f ->
   spec_2 K f.
 Proof.
-  introv W H.
-  cuts I: (forall p : A1*A2, let (x,y) := p in
-           weakenable (K x y) /\ K x y (app_2 f x y)).
-    apply spec_intro_2. 
-      intros x y. apply (proj1 (I (x,y))).
-      apply* spec_curried_2.
-      intros x y. destruct~ (I (x,y)).
-  intros p. pattern p. induction_wf IH: W p. destruct p as [x y].
-  lets C: (spec_curried_2 H). 
-  lets I: (spec_is_spec_2 H x y).
-  lets S: (spec_elim_2 H x y). clear H. 
-  asserts M: (spec_2 (fun x' y' R' => lt (x',y') (x,y) -> K x' y' R') f). split.
-    intros x' y'. introv HK HP Lt. applys~ (proj1 (IH _ Lt)).
-    apply spec_intro_weak_2.
-      intros x' y'. introv HK WR Lt. applys~ (proj1 (IH _ Lt)).
-      auto.
-      intros x' y' Lt. apply (proj2 (IH _ Lt)).
-  split.
-    introv HK HP. applys~ (I P P').
-    apply~ S.
+  intros. 
+  forwards: (@spec_induction_2 A1 A2 B unit) 
+    (fun p q : unit*A1*A2 => let '(_,y1,y2) := p in let '(_,x1,x2) := q in lt (y1,y2) (x1,x2)) 
+    (fun _:unit => K).
+  intros [[y x1] x2]. gen_eq p: (x1,x2). gen y x1 x2.
+   induction_wf IH: Wf p. constructor. intros [[y' x1'] x2'] Lt. subst p. auto*.
+  auto.
+  applys spec_weaken_2 H0.
+    intros_all. applys~ H.
+    introv LR M _ N. apply M. applys spec_weaken_2 N.
+      intros_all. applys~ H.
+      intros_all. applys~ H2.
+  applys~ spec_weaken_2 H1.
 Qed.
 
-Lemma spec_induction_3 : 
+Lemma spec_induction_3_noheap : 
   forall A1 A2 A3 B (lt:(A1*A2*A3)->(A1*A2*A3)->Prop) (Wf: wf lt) f 
          (K:A1->A2->A3->~~B->Prop),
+  is_spec_3 K ->
   spec_3 (fun x1 x2 x3 R => 
     spec_3 (fun y1 y2 y3 R' => lt (y1,y2,y3) (x1,x2,x3) -> K y1 y2 y3 R') f ->
     K x1 x2 x3 R) f ->
   spec_3 K f.
 Proof.
-  introv W H.
-  cuts I: (forall p : A1*A2*A3, let '((x,y),z) := p in 
-           weakenable (K x y z) /\ K x y z (app_3 f x y z)).
-    apply spec_intro_3. 
-      intros x y z. apply (proj1 (I (x,y,z))).
-      apply* spec_curried_3.
-      intros x y z. destruct~ (I (x,y,z)).
-  intros p. pattern p. induction_wf IH: W p. destruct p as [[x y] z].
-  lets C: (spec_curried_3 H). 
-  lets I: (spec_is_spec_3 H x y z).
-  lets S: (spec_elim_3 H x y z). clear H. 
-  asserts M: (spec_3 (fun x' y' z' R' => lt (x',y',z') (x,y,z) -> K x' y' z' R') f). split.
-    intros x' y' z'. introv HK HP Lt. applys~ (proj1 (IH _ Lt)).
-    apply spec_intro_weak_3.
-      intros x' y' z'. introv HK WR Lt. applys~ (proj1 (IH _ Lt)).
-      auto.
-      intros x' y' z' Lt. apply (proj2 (IH _ Lt)).
-  split.
-    introv HK HP. applys~ (I P P').
-    apply~ S.
+  intros. 
+  forwards: (@spec_induction_3 A1 A2 A3 B unit) 
+    (fun p q : unit*A1*A2*A3 => let '(_,y1,y2,y3) := p in let '(_,x1,x2,x3) := q in lt (y1,y2,y3) (x1,x2,x3)) 
+    (fun _:unit => K).
+  intros [[[y x1] x2] x3]. gen_eq p: (x1,x2,x3). gen y x1 x2 x3.
+   induction_wf IH: Wf p. constructor. intros [[[y' x1'] x2'] x3'] Lt. subst p. auto*.
+  auto.
+  applys spec_weaken_3 H0.
+    intros_all. applys~ H.
+    introv LR M _ N. apply M. applys spec_weaken_3 N.
+      intros_all. applys~ H.
+      intros_all. applys~ H2.
+  applys~ spec_weaken_3 H1.
 Qed.
 
-Lemma spec_induction_4 : 
+Lemma spec_induction_4_noheap : 
   forall A1 A2 A3 A4 B (lt:(A1*A2*A3*A4)->(A1*A2*A3*A4)->Prop) (Wf: wf lt) f 
          (K:A1->A2->A3->A4->~~B->Prop),
+  is_spec_4 K ->
   spec_4 (fun x1 x2 x3 x4 R => 
     spec_4 (fun y1 y2 y3 y4 R' => lt (y1,y2,y3,y4) (x1,x2,x3,x4) -> K y1 y2 y3 y4 R') f ->
     K x1 x2 x3 x4 R) f ->
   spec_4 K f.
 Proof.
-  introv W H.
-  cuts I: (forall p : A1*A2*A3*A4, let '(((x,y),z),t) := p in
-           weakenable (K x y z t) /\ K x y z t (app_4 f x y z t)).
-    apply spec_intro_4. 
-      intros x y z t. apply (proj1 (I (x,y,z,t))).
-      apply* spec_curried_4.
-      intros x y z t. destruct~ (I (x,y,z,t)).
-  intros p. pattern p. induction_wf IH: W p. destruct p as [[[x y] z] t].
-  lets C: (spec_curried_4 H). 
-  lets I: (spec_is_spec_4 H x y z t).
-  lets S: (spec_elim_4 H x y z t). clear H. 
-  asserts M: (spec_4 (fun x' y' z' t' R' => lt (x',y',z',t') (x,y,z,t) -> K x' y' z' t' R') f). split.
-    intros x' y' z' t'. introv HK HP Lt. applys~ (proj1 (IH _ Lt)).
-    apply spec_intro_weak_4.
-      intros x' y' z' t'. introv HK WR Lt. applys~ (proj1 (IH _ Lt)).
-      auto.
-      intros x' y' z' t' Lt. apply (proj2 (IH _ Lt)).
-  split.
-    introv HK HP. applys~ (I P P').
-    apply~ S.
+  intros. 
+  forwards: (@spec_induction_4 A1 A2 A3 A4 B unit) 
+    (fun p q : unit*A1*A2*A3*A4 => let '(_,y1,y2,y3,y4) := p in let '(_,x1,x2,x3,x4) := q in lt (y1,y2,y3,y4) (x1,x2,x3,x4)) 
+    (fun _:unit => K).
+  intros [[[[y x1] x2] x3] x4]. gen_eq p: (x1,x2,x3,x4). gen y x1 x2 x3 x4.
+   induction_wf IH: Wf p. constructor. intros [[[[y' x1'] x2'] x3'] x4'] Lt. subst p. auto*.
+  auto.
+  applys spec_weaken_4 H0.
+    intros_all. applys~ H.
+    introv LR M _ N. apply M. applys spec_weaken_4 N.
+      intros_all. applys~ H.
+      intros_all. applys~ H2.
+  applys~ spec_weaken_4 H1.
 Qed.
 
-*)
 
 (********************************************************************)
-(* ** Proofs that SpecN can be eliminated *)
+(* ** Proofs that SpecN can be eliminated (part of the soundness proof) *)
 
 Section SpecIff.
 Hint Extern 1 (is_spec_1 _) =>
@@ -1060,7 +962,6 @@ Proof.
     intros. subst~.
   introv Is S. split~. intros x. applys Is S. intros H Q N. apply~ M.
 Qed.
-
 
 Lemma spec_iff_app_2 : forall A1 A2 B f (G:A1->A2->~~B),
   (forall K, is_spec_2 K -> (forall x y, K x y (G x y)) -> spec_2 K f) <->
@@ -1083,29 +984,6 @@ Proof.
    split~. intros y. applys Is. apply S. intros H Q L. apply~ N.
 Qed.
 End SpecIff.
-
-
-(*
-Lemma spec_iff_app_2 : forall A1 A2 B f (G:A1->A2->~~B),
-  (forall K, is_spec_2 K -> (forall x y, K x y (G x y)) -> spec_2 K f) <->
-  (forall x H Q, 
-     (forall g, (forall y H' Q', G x y H' Q' -> app_1 g y H' Q') -> H ==> Q g) ->
-     app_1 f x H Q).
-Proof.
-  intros. iff M.
-  introv S. 
-    forwards N: M (fun (x:A1) (y:A2) (R:~~B) => True). intros_all~. auto.
-    destruct (pureapp_witness (proj2 N x)) as (g&Sg&Ag). clear Sg N.
-    applys pureapp_app_1 Ag. intros g'. apply hextract_prop. intro_subst.  
-    apply S. intros y H' Q' Ap.
-    forwards N: M (fun (x':A1) (y':A2) (R:~~B) => x' = x -> y' = y -> R H' Q').
-       intros_all. subst. applys* H1. 
-       intros_all. subst~.
-    lets Ag': (proj2 N x). lets Sg: (>>> (@pureapp_join A1 val) Ag Ag').
-    apply~ (proj2 Sg y).
-  introv Is S. split~. intros x. 
-Qed
-*)
 
 
 (********************************************************************)
