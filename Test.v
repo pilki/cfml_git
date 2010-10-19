@@ -1,3 +1,52 @@
+
+Set Implicit Arguments.
+
+Class Label := lab { label : nat }.
+
+Instance Label_default : Label.
+Proof. constructor. exact 0. Defined.
+
+Definition tag `{x:Label} (P:Prop) := P.
+Notation "n #> P" := (@tag (lab n) P) (at level 30, only parsing).
+Notation "# P" := (@tag _ P) (at level 30).
+Lemma test : 3 #> True.
+Lemma test : # True.
+Lemma test : tag True.
+Lemma test : @tag (lab 3) True.
+
+
+Implicit Argument 
+
+Inductive Lab : nat->Type :=
+  | lab : forall n, Lab n.
+
+Class Label (n:nat) := { label : Lab n }
+
+Definition tag (n:nat) (l:Lab n) (P:Prop) := P.
+
+Notation "n #> P" := (@tag _ (lab n) P) (at level 30, only parsing).
+Notation "# P" := (@tag _ (lab _) P) (at level 30).
+
+Lemma test : #> True.
+Lemma test : 3 #> True.
+
+
+
+
+Inductive Lab : nat->Type :=
+  | lab : forall n, Lab n.
+
+Definition tag (n:nat) (l:Lab n) (P:Prop) := P.
+
+Notation "n #> P" := (@tag _ (lab n) P) (at level 30, only parsing).
+Notation "# P" := (@tag _ (lab _) P) (at level 30).
+
+Lemma test : #> True.
+Lemma test : 3 #> True.
+
+
+
+
 Require Import Omega.
 Lemma test : (1 > 0)%nat.
 omega.
