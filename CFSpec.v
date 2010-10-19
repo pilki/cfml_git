@@ -131,8 +131,11 @@ Proof.
   sets h': (heap_union h1' h2).
   forwards Hh': (HQ v' h'). subst h'. exists h1' h2. rew_disjoint*.
   destruct Hh' as (h3'&h4'&?&?&?&?).
-     asserts Hint4: (forall h : heap, \# h h1' -> \# h h2 -> \# h h3'). skip. 
-     asserts Hint5: (forall h : heap, \# h h1' -> \# h h2 -> \# h h4'). skip.
+  (* todo: optimize the assertions *)
+  asserts Hint4: (forall h : heap, \# h h1' -> \# h h2 -> \# h h3'). 
+    intros h0 H01 H02. asserts: (\# h0 h'). unfold h'. rew_disjoint*. rewrite H10 in H11. rew_disjoint*.
+  asserts Hint5: (forall h : heap, \# h h1' -> \# h h2 -> \# h h4'). 
+    intros h0 H01 H02. asserts: (\# h0 h'). unfold h'. rew_disjoint*. rewrite H10 in H11. rew_disjoint*.
   exists v' h3' (heap_union h4' i'). splits.
     subst h h'. rew_disjoint*.
     auto.
@@ -161,7 +164,7 @@ Lemma pureapp_to_app : forall A B (F:val) (V:A) (P:B->Prop),
   pureapp F V P -> app_1 F V [] \[P].
 Proof.
   introv (v'&N). introv Dhi Hh. exists v' heap_empty heap_empty. splits.
-  skip. (* heap_disjoint heap_empty *)
+  rew_disjoint*.
   destruct (N heap_empty). split~.
   hnf in Hh. subst. do 2 rewrite heap_union_neutral_l. destruct~ (N i).
 Qed.
@@ -392,27 +395,18 @@ Lemma spec_intro_1 : forall A1 B f (K:A1->~~B->Prop),
   spec_1 K f.
 Proof. introv S _ H. split~. Qed.
 
-
-
 Lemma pureapp_and_app_1 : forall A B (F:val) (V:A) (V':B) (H:hprop) (Q:B->hprop),
   pureapp F V (= V') -> app_1 F V H Q -> 
      forall h, H h -> 
        (exists H', (Q V' \* H') h).
-(*    /\ (forall V'', Q V'' h -> V'' = V').*)
 Proof. 
   introv (v'&N). introv Dhi Hh. destruct (N h). subst.
   hnf in Dhi. specializes Dhi h heap_empty Hh.
-    skip.
   destruct Dhi as (v'&h'&g&?&?&?).
   repeat rewrite heap_union_neutral_r in *.
-  forwards (?&?): (eval_deterministic H0 H3). (*split.*)
-    exists (= g). exists h' g. splits~. skip. subst~.
-    
+  forwards (?&?): (eval_deterministic H0 H3). 
+    exists (= g). exists h' g. subst. splits~. rew_disjoint*.
 Qed.
-
-
-Axiom pureapp_and_app' : forall A B (F:val) (V:A) (V':B) (H:hprop) (Q:B->hprop) h,
-  pureapp F V (= V') -> app_1 F V H Q -> H h -> exists H', (Q V' \* H') h. 
 
 Lemma spec_intro_2 : forall A1 A2 B f (K:A1->A2->~~B->Prop),
   is_spec_2 K ->
@@ -434,7 +428,7 @@ Proof.
     subst. exists___*.
     apply* local_wframe.
     intros r. specializes Po r. hsimpl. auto.
-Admitted. (* existentials *)
+Admitted. (* todo: coq bug with existentials *)
 
 Lemma spec_intro_3 : forall A1 A2 A3 B f (K:A1->A2->A3->~~B->Prop),
   is_spec_3 K ->
@@ -725,7 +719,7 @@ Proof.
   introv W Is H. 
   cuts Hyp: (forall y x, is_spec_0 (L y x) /\ L y x (app_1 f x)).
     apply spec_intro_1.
-      intros x. introv HK HP. intros y. applys~ (proj1 (Hyp y x)).
+      intros x. introv HK HP. hnf. intros y. applys~ (proj1 (Hyp y x)).
       apply* spec_curried_1.
       intros y x. destruct~ (Hyp x y).
   cuts Hyp': (forall p, let '(y,x) := p in is_spec_0 (L y x) /\ L y x (app_1 f x)).
@@ -1013,9 +1007,6 @@ Proof.
 Qed.
 
 
-Axiom hextract_prop : forall H H' (P:Prop),
-  (P -> H ==> H') -> ([P] \* H) ==> H'.
-
 Lemma spec_iff_app_2 : forall A1 A2 B f (G:A1->A2->~~B),
   (forall K, is_spec_2 K -> (forall x y, K x y (G x y)) -> spec_2 K f) <->
   (forall x (P:val->Prop), 
@@ -1064,7 +1055,6 @@ Qed
 
 (********************************************************************)
 (* ** Lemmas for other tactics *)
-
 
 Lemma xframe_lemma : forall H1 H2 B Q1 (F:~~B) H Q,
   is_local F -> 
@@ -1116,8 +1106,6 @@ Lemma local_frame : forall H' B H Q (F:~~B),
   F (H \* H') (Q \*+ H').
 Proof. intros. apply* local_wframe. Qed.
 
-
-
 Lemma xfor_frame : forall I H' a b H Q (Pof:(int->hprop)->Prop),
   (forall H', Pof I -> Pof (I \*+ H')) ->
   (a > (b)%Z -> H ==> (Q tt)) ->
@@ -1145,7 +1133,6 @@ Proof.
   intros. exists* I. intros t. destruct t. auto.
 Qed.
 
-
 Lemma xwhile_frame : forall A I (R:binary A) H' H Q Qf (F1:~~bool) (F2:~~unit),
   is_local F1 -> 
   is_local F2 -> 
@@ -1170,99 +1157,6 @@ Proof.
   exists A I R. splits*.
 Qed.
 
-
-(* -- deprecated
-Lemma xfor_frame : forall I H' a b H Q (F:~~unit),
-  is_local F ->
-  (a > (b)%Z -> H ==> (Q tt)) ->
-  ((a <= (b)%Z) -> 
-      (H ==> I a \* H') 
-   /\ (forall i, a <= i /\ i <= (b)%Z -> F (I i) (# I(i+1))) 
-   /\ (I ((b)%Z+1) \* H' ==> Q tt)) ->
-  local (fun H Q => (a > (b)%Z -> H ==> (Q tt)) /\ (a <= (b)%Z -> exists I,
-     H ==> I a /\ (forall i, a <= i /\ i <= (b)%Z -> F (I i) (# I(i+1))) /\ (I ((b)%Z+1) ==> Q tt))) H Q.
-Proof.
-  introv L M1 M2. apply local_erase. split. auto.
-  introv M3. intuit (M2 M3). exists (I \*+ H'). splits*.
-  intros i Hi. specializes H1 Hi. apply* local_wframe.
-Qed.
-
-Lemma xfor_frame_le : forall I H' a b H Q (F:~~unit),
-  (a <= (b)%Z) -> 
-  (H ==> I a \* H') ->
-  (forall i, a <= i /\ i <= (b)%Z -> F (I i) (# I(i+1))) ->
-  (I ((b)%Z+1) \* H' ==> Q tt) ->
-  local (fun H Q => (a > (b)%Z -> H ==> (Q tt)) /\ (a <= (b)%Z -> exists I,
-     H ==> I a /\ (forall i, a <= i /\ i <= (b)%Z -> F (I i) (# I(i+1))) /\ (I ((b)%Z+1) ==> Q tt))) H Q.
-Proof.
-  introv M1 M2 M3 M4. apply~ (>>> local_wframe unit __ H' (fun _:unit => I (b+1))).
-  apply local_erase. split. intros. false. math.
-  intros. exists* I. intros t. destruct t. auto.
-Qed.
-
-Lemma xwhile_frame : forall A I (R:binary A) H' H Q (F1:~~bool) (F2:~~unit),
-  is_local F1 -> 
-  is_local F2 -> 
-  wf R ->
-  (exists x, H ==> I x \* H') ->
-  (forall x, exists Q', 
-            F1 (I x) Q'
-         /\ F2 (Q' true) (# Hexists y, (I y) \* [R y x])
-         /\ (Q' false \* H' ==> Q tt )) ->
-  local (fun H Q => exists A, exists I, exists R:binary A,
-       wf R 
-     /\ (exists x, H ==> I x)
-     /\ (forall x, exists Q', 
-            F1 (I x) Q'
-         /\ F2 (Q' true) (# Hexists y, (I y) \* [R y x])
-         /\ (Q' false ==> Q tt))) H Q.
-Proof.
-  introv L1 L2 M1 M2 M3. apply local_erase.
-  exists A (I \*+ H') R. splits*.
-  intros x. destruct (M3 x) as (Q'&H1&H2&H3).
-  exists (Q' \*+ H'). splits.
-  apply* local_wframe.
-  apply* local_wframe. skip. (*todo: hsimpl_back *)
-  auto.
-Qed.
-
-Ltac xfor_core I := 
-  let Hi := fresh "Hfor" in
-  eapply (@xfor_frame I); 
-  [ xlocal
-  | intros Hfor; try solve [ false; math ]
-  | intros Hfor; splits (3%nat); 
-     [ hsimpl 
-     | xfor_bounds_intro tt
-     | hsimpl ] 
-  ].
-
-Ltac xfor_le_core I :=
-  eapply (@xfor_frame_le I);
-  [ try math
-  | hsimpl
-  | xfor_bounds_intro tt
-  | hsimpl ].
-
-
-Ltac xwhile_core I R X := 
-  first [ eapply (@xwhile_frame _ I R)
-        | eapply (@xwhile_frame _ I (measure R))];
-  [ xlocal
-  | xlocal
-  | try prove_wf
-  | exists X; instantiate; hsimpl 
-  | idtac ].
-
-Ltac xwhile_manual_core I R := 
-  first [ eapply (@xwhile_frame _ I R)
-        | eapply (@xwhile_frame _ I (measure R))];
-  [ xlocal
-  | xlocal
-  | idtac
-  | idtac
-  | idtac ].
-*)
 
 
 

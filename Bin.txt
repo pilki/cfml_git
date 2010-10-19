@@ -2100,3 +2100,108 @@ Proof.
   introv W M. eapply local_intro_prop.
 Qed.
 *)
+
+
+
+Axiom pureapp_and_app' : forall A B (F:val) (V:A) (V':B) (H:hprop) (Q:B->hprop) h,
+  pureapp F V (= V') -> app_1 F V H Q -> H h -> exists H', (Q V' \* H') h. 
+
+
+
+(* -- deprecated
+Lemma xfor_frame : forall I H' a b H Q (F:~~unit),
+  is_local F ->
+  (a > (b)%Z -> H ==> (Q tt)) ->
+  ((a <= (b)%Z) -> 
+      (H ==> I a \* H') 
+   /\ (forall i, a <= i /\ i <= (b)%Z -> F (I i) (# I(i+1))) 
+   /\ (I ((b)%Z+1) \* H' ==> Q tt)) ->
+  local (fun H Q => (a > (b)%Z -> H ==> (Q tt)) /\ (a <= (b)%Z -> exists I,
+     H ==> I a /\ (forall i, a <= i /\ i <= (b)%Z -> F (I i) (# I(i+1))) /\ (I ((b)%Z+1) ==> Q tt))) H Q.
+Proof.
+  introv L M1 M2. apply local_erase. split. auto.
+  introv M3. intuit (M2 M3). exists (I \*+ H'). splits*.
+  intros i Hi. specializes H1 Hi. apply* local_wframe.
+Qed.
+
+Lemma xfor_frame_le : forall I H' a b H Q (F:~~unit),
+  (a <= (b)%Z) -> 
+  (H ==> I a \* H') ->
+  (forall i, a <= i /\ i <= (b)%Z -> F (I i) (# I(i+1))) ->
+  (I ((b)%Z+1) \* H' ==> Q tt) ->
+  local (fun H Q => (a > (b)%Z -> H ==> (Q tt)) /\ (a <= (b)%Z -> exists I,
+     H ==> I a /\ (forall i, a <= i /\ i <= (b)%Z -> F (I i) (# I(i+1))) /\ (I ((b)%Z+1) ==> Q tt))) H Q.
+Proof.
+  introv M1 M2 M3 M4. apply~ (>>> local_wframe unit __ H' (fun _:unit => I (b+1))).
+  apply local_erase. split. intros. false. math.
+  intros. exists* I. intros t. destruct t. auto.
+Qed.
+
+Lemma xwhile_frame : forall A I (R:binary A) H' H Q (F1:~~bool) (F2:~~unit),
+  is_local F1 -> 
+  is_local F2 -> 
+  wf R ->
+  (exists x, H ==> I x \* H') ->
+  (forall x, exists Q', 
+            F1 (I x) Q'
+         /\ F2 (Q' true) (# Hexists y, (I y) \* [R y x])
+         /\ (Q' false \* H' ==> Q tt )) ->
+  local (fun H Q => exists A, exists I, exists R:binary A,
+       wf R 
+     /\ (exists x, H ==> I x)
+     /\ (forall x, exists Q', 
+            F1 (I x) Q'
+         /\ F2 (Q' true) (# Hexists y, (I y) \* [R y x])
+         /\ (Q' false ==> Q tt))) H Q.
+Proof.
+  introv L1 L2 M1 M2 M3. apply local_erase.
+  exists A (I \*+ H') R. splits*.
+  intros x. destruct (M3 x) as (Q'&H1&H2&H3).
+  exists (Q' \*+ H'). splits.
+  apply* local_wframe.
+  apply* local_wframe. skip. (*todo: hsimpl_back *)
+  auto.
+Qed.
+
+Ltac xfor_core I := 
+  let Hi := fresh "Hfor" in
+  eapply (@xfor_frame I); 
+  [ xlocal
+  | intros Hfor; try solve [ false; math ]
+  | intros Hfor; splits (3%nat); 
+     [ hsimpl 
+     | xfor_bounds_intro tt
+     | hsimpl ] 
+  ].
+
+Ltac xfor_le_core I :=
+  eapply (@xfor_frame_le I);
+  [ try math
+  | hsimpl
+  | xfor_bounds_intro tt
+  | hsimpl ].
+
+
+Ltac xwhile_core I R X := 
+  first [ eapply (@xwhile_frame _ I R)
+        | eapply (@xwhile_frame _ I (measure R))];
+  [ xlocal
+  | xlocal
+  | try prove_wf
+  | exists X; instantiate; hsimpl 
+  | idtac ].
+
+Ltac xwhile_manual_core I R := 
+  first [ eapply (@xwhile_frame _ I R)
+        | eapply (@xwhile_frame _ I (measure R))];
+  [ xlocal
+  | xlocal
+  | idtac
+  | idtac
+  | idtac ].
+*)
+
+
+
+Axiom hextract_prop : forall H H' (P:Prop),
+  (P -> H ==> H') -> ([P] \* H) ==> H'.
