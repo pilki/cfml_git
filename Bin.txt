@@ -2205,3 +2205,36 @@ Ltac xwhile_manual_core I R :=
 
 Axiom hextract_prop : forall H H' (P:Prop),
   (P -> H ==> H') -> ([P] \* H) ==> H'.
+
+
+
+(*
+
+  introv S. intros. destruct (pureapp_witness ((proj22 S) x1)) as [g [Pg Hg]].
+  lets: ((proj2 Pg) x2). apply* (proj1 S). intros H' Q Ap1.
+  exists (fun g' => [g'=g] \* H'). split. apply* pureapp_app_1. 
+   intros g'.
+   apply (@app_pre_1 (g'=g)).
+   skip. (* tactic for heaps: [g' = g] ** H' ==> [g' = g] *)
+   intro_subst.
+   eapply local_weaken with (H':=H'); eauto. 
+    skip. (* tactics for heaps: [g = g] ** H' ==> H' *)
+*)
+
+
+
+
+(*
+intros. destruct H as [I Ap1].
+specializes Ap1 x1.
+eapply app_intro_1_2.
+apply~ pureapp_app_1. eauto.
+intros g.
+rew_heap.
+apply~ app_pre_1.
+intros M.
+eapply local_weaken with (H':=[]). auto.
+forwards: (spec_elim_2_1 M). eapply H.
+skip. (* todo: heaps ==> *)
+auto.
+*)
