@@ -227,7 +227,8 @@ Ltac math_0 ::= xclean.
 
 Ltac check_not_a_tag tt :=
   match goal with 
-  | |- tag _ _ _ _ => fail 1
+  | |- tag _ _ _ _ => fail 1 (* todo: not needed? *)
+  | |- tag _ _ _ _ _ => fail 1
   | |- _ => idtac
   end.
 

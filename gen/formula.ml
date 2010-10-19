@@ -294,7 +294,7 @@ let rec coq_of_imp_cf cf =
       let type_of_q1 = Coq_impl (typ, hprop) in
       let c1 = coq_apps (coq_of_cf cf1) [h; q1] in
       let c2 = coq_foralls [x,typ] (coq_apps (coq_of_cf cf2) [(Coq_app (q1, Coq_var x)); q]) in
-      funhq "tag_let_trm" (*~label:x*) (coq_exist "Q1" type_of_q1 (coq_conj c1 c2))
+      funhq "tag_let_trm" ~label:x (coq_exist "Q1" type_of_q1 (coq_conj c1 c2))
       (* !L: fun H Q => exists Q1, F1 H Q1 /\ forall (x:T), F2 (Q1 x) Q *)
 
   | Cf_letval (x, fvs_strict, fvs_other, typ, v, cf) ->
@@ -315,8 +315,8 @@ let rec coq_of_imp_cf cf =
       let c2hyps = List.map (fun n -> Coq_app (Coq_var (p_of n), Coq_var n)) ns in
       let c2conc = coq_apps (coq_of_cf cf) [h;q] in
       let c2 = coq_impls c2hyps c2conc in
-      (*let x = List.hd ns in*)
-      funhq "tag_let_fun" (*~label:x*) (coq_foralls fs (coq_exists ps (coq_conj c1 c2)))
+      let x = List.hd ns in
+      funhq "tag_let_fun" ~label:x (coq_foralls fs (coq_exists ps (coq_conj c1 c2)))
       (* (!F a: fun H Q => forall f1 f2, exists P1 P2,
               (B1 -> B2 -> P1 f1 /\ P2 f2) /\ (P1 f1 -> P2 f2 -> F H Q)) *)            
 

@@ -296,6 +296,8 @@ Inductive tag_type : Type :=
 
 Definition tag (t:tag_type) `{x:Label} (A:Type) (P:A) := P.
 
+Implicit Arguments tag [A].
+
 Notation "'!B' P" := (tag tag_body _ P)  
   (at level 95).
 Notation "'!M' n P" := (tag (tag_match n) _ P)
