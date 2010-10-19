@@ -2,39 +2,7 @@ Set Implicit Arguments.
 Require Export LibCore LibEpsilon Shared.
 Require Export CFHeaps.
 
-
-Notation "h1 \+ h2" := (heap_union h1 h2)
-   (at level 51, right associativity).
-
-Lemma heap_union_assoc : forall h1 h2 h3,
-  \# h1 h2 h3 -> h1 \+ (h2 \+ h3) = (h1 \+ h2) \+ h3.
-Proof. skip. Qed.
-
-Hint Resolve heap_disjoint_empty_l heap_disjoint_empty_r.
-
-
-Lemma heap_disjoint_union_inv' : forall h1 h2 h3,
-  \# (heap_union h2 h3) h1 = (\# h2 h1 /\ \# h3 h1).
-Proof. skip. Qed.
-
-Lemma heaps_disjoint_3 : forall h1 h2 h3,
-  \# h1 h2 h3 = (\# h1 h2 /\ \# h2 h3 /\ \# h1 h3).
-Proof. skip. Qed.
-
-Hint Rewrite 
-  heap_disjoint_union_inv 
-  heap_disjoint_union_inv'
-  heaps_disjoint_3 : rew_disjoint.
-
-Tactic Notation "rew_disjoint" :=
-  autorewrite with rew_disjoint in *.
-Tactic Notation "rew_disjoint" "*" :=
-  rew_disjoint; auto_star.
-
-
-
 (** TODO; move Extraction of premisses from [local] *)
-
 
 (* todo move *)
 Lemma local_weaken_pre : forall H' B (F:~~B) H Q,
@@ -51,14 +19,6 @@ Proof.
   introv L W M. rewrite L. introv Hh. forwards~: (W h).
   exists H [] Q []. splits; rew_heap~.
 Qed. 
-(*
-Lemma app_intro_prop_1 : forall (U:Prop) A B (F:val) (V:A) (H:hprop) (Q:B->hprop),
-  (H ==> [U]) -> (U -> app_1 F V H Q) -> app_1 F V H Q.
-Proof.
-  introv W M. eapply local_intro_prop.
-Qed.
-*)
-
 
 
 (********************************************************************)
@@ -158,11 +118,11 @@ Lemma app_local_1 : forall B A1 (x1:A1) f,
   is_local (app_1 (B:=B) f x1).
 Proof.
   asserts Hint1: (forall h1 h2, \# h1 h2 -> \# h2 h1).
-    intros. rewrite~ heap_disjoint_comm.
+    intros. auto. 
   asserts Hint2: (forall h1 h2 h3, \# h1 h2 -> \# h1 h3 -> \# h1 (heap_union h2 h3)).
-    intros. rewrite* heap_disjoint_union_inv.
+    intros. rew_disjoint*.
   asserts Hint3: (forall h1 h2 h3, \# h1 h2 -> \# h2 h3 -> \# h1 h3 -> \# h1 h2 h3) .
-    intros. rewrite~ heaps_disjoint_3.
+    intros. rew_disjoint*.
   intros. extens. intros H Q. iff M. apply~ local_erase.
   introv Dhi Hh. destruct (M h Hh) as (H1&H2&Q'&H'&D12&N&HQ).
   destruct D12 as (h1&h2&?&?&?&?).
@@ -177,11 +137,10 @@ Proof.
     subst h h'. rew_disjoint*.
     auto.
     subst h h'. rew_disjoint. intuition. applys_eq E 1 3.
-      rewrite* <- heap_union_assoc. rewrite~ (heap_union_comm h2).
-      rewrite* <- heap_union_assoc. rewrite heap_union_assoc; [ | apply* Hint3 ].
-      rewrite <- H8. rewrite* <- heap_union_assoc. rewrite (heap_union_comm i).
-      rewrite* (@heap_union_assoc i'). rewrite (heap_union_comm i' h2).
-      rewrite* <- heap_union_assoc.
+      rewrite* <- heap_union_assoc. rewrite~ (@heap_union_comm h2).
+      do 2 rewrite* (@heap_union_assoc h3'). rewrite <- H10.
+      do 2 rewrite <- heap_union_assoc. fequal.
+      rewrite heap_union_comm. rewrite~ <- heap_union_assoc. rew_disjoint*.
 Qed.
 
 Hint Resolve app_local_1.

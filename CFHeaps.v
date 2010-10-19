@@ -21,6 +21,10 @@ Lemma If_r : forall (A:Type) (P:Prop) (x y : A),
   ~ P -> (If P then x else y) = y.
 Proof. intros. case_if*. Qed.
 
+Lemma rel_le_refl : forall A B (P:A->B->Prop),
+  rel_le P P.
+Proof. intros_all~. Qed.
+Hint Resolve rel_le_refl.
 
 
 (********************************************************************)
@@ -146,6 +150,9 @@ Program Definition heap_union (h1 h2 : heap) : heap :=
   heap_of (pfun_union h1 h2) _.
 Next Obligation. destruct h1. destruct h2. apply~ pfun_union_finite. Qed.
 
+Notation "h1 \+ h2" := (heap_union h1 h2)
+   (at level 51, right associativity).
+
 (** Empty heap *)
 
 Program Definition heap_empty : heap :=
@@ -206,30 +213,15 @@ Proof.
   apply heap_disjoint_union_eq_r.
 Qed.
 
-(* todo: bin
-Lemma heap_disjoint_union_r : forall h1 h2 h3,
-  heap_disjoint h1 h2 -> heap_disjoint h1 h3 ->
-  heap_disjoint h1 (heap_union h2 h3).
-Proof.
-Qed.
+Definition heap_disjoint_3 h1 h2 h3 :=
+  heap_disjoint h1 h2 /\ heap_disjoint h2 h3 /\ heap_disjoint h1 h3.
 
-Lemma heap_disjoint_union_inv_r : forall h1 h2 h3,
-  heap_disjoint h1 (heap_union h2 h3) ->
-  heap_disjoint h1 h2 /\ heap_disjoint h1 h3.
-Proof.
-  intros [f1 F1] [f2 F2] [f3 F3] M.
-  unfolds heap_disjoint, heap_union. simpls.
-  unfolds pfun_disjoint, pfun_union. 
-  split; intros x; specializes M x; 
-   destruct (f2 x); intuition. false.
-Qed.
+Notation "\# h1 h2 h3" := (heap_disjoint_3 h1 h2 h3)
+  (at level 40, h1 at level 0, h2 at level 0, h3 at level 0, no associativity).
 
-Lemma heap_disjoint_union_inv_l : forall h1 h2 h3,
-  heap_disjoint (heap_union h2 h3) h1 ->
-  heap_disjoint h1 h2 /\ heap_disjoint h1 h3.
-Proof. introv H. apply~ heap_disjoint_union_inv_r. Qed.
-*)
-
+Lemma heap_disjoint_3_unfold : forall h1 h2 h3,
+  \# h1 h2 h3 = (\# h1 h2 /\ \# h2 h3 /\ \# h1 h3).
+Proof. auto. Qed.
 
 (** Union *)
 
@@ -262,31 +254,19 @@ Proof.
   apply heap_eq. intros x. unfold pfun_union. destruct~ (f1 x).
 Qed.
 
+(** Hints and tactics *)
 
-(*------------------------------------------------------------------*)
-(* ** Disjointness between three heaps  *)
+Hint Resolve heap_union_neutral_l heap_union_neutral_r.
 
-(*
+Hint Rewrite 
+  heap_disjoint_union_eq_l
+  heap_disjoint_union_eq_r
+  heap_disjoint_3_unfold : rew_disjoint.
 
-Definition heaps_union (hs : list heap) : heap :=
-  LibList.fold_right heap_union heap_empty hs.
-
-(** Heap well-defineteness *)
-
-Definition heap_defined (h : heap) : Prop :=
-  h <> None.
- 
-(** Heap disjointness *)
-
-Definition heaps_disjoint (hs : list heap) : Prop :=
-  heap_defined (heaps_union hs).
-
-Notation "\# h1 h2 h3" := (heaps_disjoint (h3::h2::h1::nil))
-  (at level 40, h1 at level 0, h2 at level 0, h3 at level 0, no associativity).
-*)
-(*
-Lemma test : forall h1 h2 h3, (\# h1 h2) = (\# h1 h2) /\ (\# h1 h2 h3) = (\# h1 h2 h3).
-*)
+Tactic Notation "rew_disjoint" :=
+  autorewrite with rew_disjoint in *.
+Tactic Notation "rew_disjoint" "*" :=
+  rew_disjoint; auto_star.
 
 
 (********************************************************************)
@@ -324,14 +304,8 @@ Definition heap_is_pack A (Hof : A -> hprop) : hprop :=
 Definition heap_is_empty_st (H:Prop) : hprop :=
   fun h => h = heap_empty /\ H.
 
-(** Star with post-conditions (predicates of type [B->hprop]) 
-
-Definition starpost B (Q:B->hprop) (H:hprop) : B->hprop :=
-  fun x => heap_is_star (Q x) H.
-*)
-
-
 Opaque heap_union heap_single heap_is_star heap_is_pack.
+
 
 (*------------------------------------------------------------------*)
 (* ** Notation for heap predicates *)
@@ -349,21 +323,11 @@ Notation "[ L ]" := (heap_is_empty_st L)
 Notation "\[ P ]" := (fun v => heap_is_empty_st (P v)) 
   (at level 0, P at level 99) : heap_scope.
 
-(*bin
-Notation "\= V" := (\[ = V])
-  (at level 40) : heap_scope.
-*)
-
 Notation "\= V" := (fun X => [X = V])
   (at level 40) : heap_scope.
 
 Notation "H1 '\*' H2" := (heap_is_star H1 H2)
   (at level 41, right associativity) : heap_scope.
-
-(*
-Notation "l '~~~>' v" := (heap_is_single l v)
-  (at level 35, no associativity) : heap_scope.
-*)
 
 Notation "'Hexists' x1 , H" := (heap_is_pack (fun x1 => H))
   (at level 39, x1 ident, H at level 50) : heap_scope.
@@ -391,14 +355,26 @@ Notation "'Hexists' ( x1 : T1 ) ( x2 : T2 ) ( x3 : T3 ) ( x4 : T4 ) ( x5 : T5 ) 
   (Hexists x1:T1, Hexists x2:T2, Hexists x3:T3, Hexists x4:T4, Hexists x5:T5, H)
   (at level 39, x1 ident, x2 ident, x3 ident, x4 ident, x5 ident, H at level 50) : heap_scope.
 
-
 Notation "Q \*+ H" :=
   (fun x => heap_is_star (Q x) H)
-  (* (starpost Q H)  *)
   (at level 40) : heap_scope.
 
 Notation "# H" := (fun _:unit => H)
   (at level 39, H at level 99) : heap_scope.
+
+
+(*------------------------------------------------------------------*)
+(* ** Basic properties of heap predicates *)
+
+Lemma heap_is_empty_prove : 
+  [] heap_empty.
+Proof. hnfs~. Qed.
+
+Lemma heap_is_empty_st_prove : forall (P:Prop),
+  P -> [P] heap_empty.
+Proof. intros. hnfs~. Qed.
+
+Hint Resolve heap_is_empty_prove heap_is_empty_st_prove.
 
 
 (*------------------------------------------------------------------*)
@@ -419,8 +395,6 @@ Proof.
   iff (h1&h2&M1&M2&D&U) M. 
   hnf in M1. subst h1 h. rewrite~ heap_union_neutral_l.
   exists heap_empty h. splits~. 
-    hnf. auto.
-    rewrite~ heap_union_neutral_l.
 Qed.
 
 Lemma star_neutral_r : neutral_r heap_is_star [].
@@ -439,7 +413,6 @@ Proof.
     auto.
     rewrite* heap_disjoint_union_eq_l.
     rewrite~ <- heap_union_assoc.
-  (* todo: exploit symmetry ! *)
   intros (h'&h3&(h1&h2&M3&M4&D'&U')&M2&D&U). subst h'.
    exists h1 (heap_union h2 h3). rewrite heap_disjoint_union_eq_l in D.
    splits.
@@ -447,7 +420,7 @@ Proof.
     exists h2 h3. splits*.
     rewrite* heap_disjoint_union_eq_r.
     rewrite~ heap_union_assoc.
-Qed.
+Qed. (* later: exploit symmetry in the proof *)
 
 Lemma star_comm_assoc : comm_assoc heap_is_star.
 Proof. apply comm_assoc_prove. apply star_comm. apply star_assoc. Qed.
@@ -576,48 +549,6 @@ Ltac check_goal_himpl tt :=
   | |- pred_le _ _ => idtac
   end.
 
-(* deprecated 
-
-Ltac protect_evars_in H :=
-   match H with context [ ?X ] => 
-     let go tt := 
-       match X with
-       | _ \* _ => fail 1
-       | _ ~> _ => fail 1
-       | X => fail 1 
-       | _ => let K := fresh "TEMP" in sets_eq K: (X : ltac_tag_subst hprop)
-       end in
-     match type of X with 
-     | hprop => go tt
-     | heap -> Prop => go tt
-     end
-   end.
-
-Ltac protect_evars_in H ::=
-   match H with context [ ?X ] =>
-     let go tt := 
-       match X with
-       | _ \* _ => fail 1
-       | X => fail 1 
-       | ?x ~> ?R => 
-           match x with
-           | x => idtac             
-           | _ => fail 20 "Uninstantiated argument at left of ~>"
-           end;
-           let TR := type of R in
-           let K := fresh "TEMP" in 
-           sets_eq K: (R : ltac_tag_subst TR)
-       | _ => let K := fresh "TEMP" in
-              sets_eq K: (X : ltac_tag_subst hprop)
-       end in
-     match type of X with 
-     | hprop => go tt
-     | heap -> Prop => go tt
-     end
-  end.
-
-*)
-
 Ltac protect_evars_in H :=
    match H with context [ ?X ] =>
      let go tt := 
@@ -659,11 +590,8 @@ Ltac unprotect_evars tt :=
     subst H end;
   unfold ltac_tag_subst.
 
-
-
 Hint Rewrite <- star_assoc : hsimpl_assoc.
 Hint Rewrite star_neutral_l star_neutral_r : hsimpl_neutral.
-
 
 Lemma hextract_start : forall H H',
   [] \* (H \* []) ==> H' -> H ==> H'.
@@ -677,19 +605,18 @@ Lemma hextract_prop : forall H1 H2 H' (P:Prop),
   (P -> H1 \* H2 ==> H') -> H1 \* ([P] \* H2) ==> H'.
 Proof.
   introv W. intros h Hh.
-  destruct Hh as (h1&h2'&?&(h2&h3&?&?&?&?)&?&?).
-
----
+  destruct Hh as (h1&h2'&?&(h2&h3&(?&?)&?&?&?)&?&?).
   apply~ W. exists h1 h3. subst h h2 h2'.
-  skip_rewrite (heap_union heap_empty h3 = h3) in H. (* todo*) 
-  skip_rewrite (heap_union heap_empty h3 = h3). (* todo*) 
-  splits~.
+  splits~. rewrite~ heap_union_neutral_l.
 Qed.
 
 Lemma hextract_exists : forall A H1 H2 H' (J:A->hprop),
   (forall x, H1 \* J x \* H2 ==> H') -> H1 \* (heap_is_pack J \* H2) ==> H'.
-Proof.
-  skip. (* todo *)
+Proof.  
+  introv W. intros h Hh.
+  destruct Hh as (h1&h2'&?&(h2&h3&(?&?)&?&?&?)&?&?).
+  applys~ W x. exists h1 (heap_union h2 h3). subst h h2'.
+  splits~. exists h2 h3. splits~.
 Qed.
 
 Ltac hextract_setup tt :=
@@ -834,8 +761,6 @@ Proof.
 Qed.
 
 
-
-
 Lemma hsimpl_start : forall H1 H2,
   H1 \* [] ==> [] \* (H2 \* []) -> H1 ==> H2.
 Proof. intros. rew_heap in *. auto. Qed.
@@ -849,14 +774,14 @@ Lemma hsimpl_extract_prop : forall H1 H2 H3 (P:Prop),
 Proof.
   introv W HP PH1. destruct (W _ PH1) as (h1&h2&?&?&?&?).
   exists h1 h2. splits~. exists heap_empty h2. splits~.
-  skip. skip. (* heap *)
-  splits~.
 Qed.
 
 Lemma hsimpl_extract_exists : forall A (x:A) H1 H2 H3 (J:A->hprop),
   H1 ==> H2 \* J x \* H3 -> H1 ==> H2 \* (heap_is_pack J \* H3).
 Proof.
-  skip. (* todo *)
+  introv W. intros h1 PH1. destruct (W _ PH1) as (h2&h4&?&(hx&h3&?&?&?&?)&?&?).
+  exists h2 (heap_union hx h3). subst h1 h4. splits~.
+  exists hx h3. splits~. exists~ x.
 Qed.
 
 Lemma hsimpl_cancel_1 : forall H HA HR HT,
@@ -874,7 +799,7 @@ Proof. intros. rewrite (star_comm_assoc H2). apply~ hsimpl_cancel_2. Qed.
 Lemma hsimpl_cancel_4 : forall H HA HR H1 H2 H3 HT,
   H1 \* H2 \* H3 \* HT ==> HA \* HR -> H1 \* H2 \* H3 \* H \* HT ==> HA \* (H \* HR).
 (*Proof. intros. rewrite (star_comm_assoc H3). apply~ hsimpl_cancel_3. Qed.*)
-Admitted.
+Admitted. (* skip proof for faster compilation *)
 
 Lemma hsimpl_cancel_5 : forall H HA HR H1 H2 H3 H4 HT,
   H1 \* H2 \* H3 \* H4 \* HT ==> HA \* HR -> H1 \* H2 \* H3 \* H4 \* H \* HT ==> HA \* (H \* HR).
@@ -885,8 +810,6 @@ Lemma hsimpl_cancel_6 : forall H HA HR H1 H2 H3 H4 H5 HT,
   H1 \* H2 \* H3 \* H4 \* H5 \* HT ==> HA \* HR -> H1 \* H2 \* H3 \* H4 \* H5 \* H \* HT ==> HA \* (H \* HR).
 (*Proof. intros. rewrite (star_comm_assoc H5). apply~ hsimpl_cancel_5. Qed.*)
 Admitted.
-
-
 
 Lemma hsimpl_cancel_eq_1 : forall H H' HA HR HT,
   H = H' -> HT ==> HA \* HR -> H \* HT ==> HA \* (H' \* HR).
@@ -912,15 +835,6 @@ Lemma hsimpl_cancel_eq_6 : forall H H' HA HR H1 H2 H3 H4 H5 HT,
   H = H' -> H1 \* H2 \* H3 \* H4 \* H5 \* HT ==> HA \* HR -> H1 \* H2 \* H3 \* H4 \* H5 \* H \* HT ==> HA \* (H' \* HR).
 Proof. intros. subst. apply~ hsimpl_cancel_6. Qed.
 
-
-(*
-Ltac hsimpl_assoc_rhs tt :=
-  let M := fresh "TEMP" in
-  match goal with |- ?H ==> ?H' =>
-    sets M: H'; autorewrite with hsimpl_assoc; subst M
-  end.
-hsimpl_assoc_rhs tt.*)
-
 Ltac hsimpl_setup tt :=
   apply hsimpl_start;
   protect_evars tt; 
@@ -944,19 +858,6 @@ Ltac hsimpl_find_same H HL :=
   | _ \* _ \* _ \* _ \* H \* _ => apply hsimpl_cancel_5
   | _ \* _ \* _ \* _ \* _ \* H \* _ => apply hsimpl_cancel_6
   end.
-
-(*--deprecated
-Ltac hsimpl_find_data H HL :=
-  match H with hdata _ ?l =>
-  match HL with
-  | hdata _ l \* _ => apply hsimpl_cancel_1
-  | _ \* hdata _ l \* _ => apply hsimpl_cancel_2
-  | _ \* _ \* hdata _ l \* _ => apply hsimpl_cancel_3
-  | _ \* _ \* _ \* hdata _ l \* _ => apply hsimpl_cancel_4
-  | _ \* _ \* _ \* _ \* hdata _ l \* _ => apply hsimpl_cancel_5
-  | _ \* _ \* _ \* _ \* _ \* hdata _ l \* _ => apply hsimpl_cancel_6
-  end end.
-*)
 
 Ltac hsimpl_find_data H HL :=
   match H with hdata _ ?l =>
@@ -1044,7 +945,6 @@ Proof.
   hsimpl. skip.
 Qed.
 
-
 Lemma hsimpl_demo_2 : forall (l1 l2:loc) S1 S2 H1 H2 H3 H',
   (forall X S1' HG, X ==> H1 \* l1 ~> S1' \* H2 \* HG -> X ==> H') ->
   H1 \* l1 ~> S1 \* l2 ~> S2 \* H3 ==> H'.
@@ -1120,10 +1020,7 @@ Qed.
 
 (* todo: move *)
 
-Lemma rel_le_refl : forall A B (P:A->B->Prop),
-  rel_le P P.
-Proof. intros_all~. Qed.
-Hint Resolve rel_le_refl.
+
 
 Lemma heap_weaken_star : forall H1' H1 H2 H3,
   (H1 ==> H1') -> (H1' \* H2 ==> H3) -> (H1 \* H2 ==> H3).
@@ -1219,16 +1116,15 @@ Proof.
   extens. intros H Q. iff M. 
   introv PH.
   destruct (M _ PH) as (H1&H2&Q1&H'&PH12&N&Qle).
-  destruct PH12 as (h1&h2&Ph12&Fh12&PH1&PH2).
+  destruct PH12 as (h1&h2&PH1&PH2&Ph12&Fh12).
   destruct (N _ PH1) as (H1'&H2'&Q1'&H''&PH12'&N'&Qle').
   exists H1' (H2' \* H2) Q1' (H' \* H''). splits.
    rewrite star_assoc.
    exists~ h1 h2.
    auto.
-   intros x. specializes Qle x. specializes Qle' x. (* unfolds starpost.*)
+   intros x. specializes Qle x. specializes Qle' x. 
     rewrite star_assoc. applys heap_weaken_star Qle'.
-    rewrite (star_assoc (Q x)). 
-    skip_cuts (Q1 x \* H2 ==> Q x \* H'). auto.
+    rewrite (star_assoc (Q x)). hsimpl. auto.
   apply~ local_erase.
 Qed.
 
@@ -1315,8 +1211,8 @@ Qed.
 Lemma local_intro_prop : forall B (F:~~B) H (P:Prop) Q,
   is_local F -> (P -> F H Q) -> F ([P] \* H) Q.
 Proof.
-  introv L M. rewrite L. introv (h1&h2&?&?&(PH1&HP)&PH2).
-  skip: (h = h2). (* todo heaps *) subst h2.
+  introv L M. rewrite L. introv (h1&h2&(PH1&HP)&PH2&?&?).
+  subst h1. rewrite heap_union_neutral_l in H1. subst h2.
   exists H [] Q []. splits; rew_heap~.
 Qed. 
 
@@ -1327,7 +1223,7 @@ Lemma local_intro_exists : forall B (F:~~B) H A (J:A->hprop) Q,
   (forall x, F ((J x) \* H) Q) ->
    F (heap_is_pack J \* H) Q.
 Proof.
-  introv L M. rewrite L. introv (h1&h2&?&?&(X&HX)&PH2).
+  introv L M. rewrite L. introv (h1&h2&(X&HX)&PH2&?&?).
   exists (J X \* H) [] Q []. splits.
   rew_heap~. exists~ h1 h2.
   auto.
@@ -1341,10 +1237,8 @@ Lemma local_name_heap : forall B (F:~~B) (H:hprop) Q,
   (forall h, H h -> F (= h) Q) ->
   F H Q.
 Proof.
-  introv L M. rewrite L. introv Hh. exists (= h) [] Q []. splits.
-  exists h heap_empty. skip.
-  apply~ M.
-  auto.
+  introv L M. rewrite L. introv Hh. exists (= h) [] Q []. splits~.
+  exists h heap_empty. splits~.
 Qed.
 
 
@@ -1352,7 +1246,8 @@ Qed.
 (* ** Extraction tactic for local goals *)
 
 Ltac xlocal_core tt :=
-  match goal with |- is_local _ => skip end.
+  first [ assumption | apply local_is_local ].
+  (* match goal with |- is_local _ =>  end. *)
 
 Tactic Notation "xlocal" :=
   xlocal_core tt.
@@ -1379,16 +1274,6 @@ Proof.
   intros. rewrite star_comm_assoc. apply~ local_intro_exists.
   intros. rewrite~ star_comm_assoc.
 Qed. 
-
-(*
-Ltac hclean_on contH contQ :=
-  match goal with
-  | |- _ ?H ?Q => contH H; contQ Q
-  | |- _ _ ?H ?Q => contH H; contQ Q
-  | |- _ _ _ ?H ?Q => contH H; contQ Q
-  | |- _ _ _ _ ?H ?Q => contH H; contQ Q
-  end.
-*)
 
 Ltac hclean_onH cont :=
   match goal with
@@ -1417,7 +1302,7 @@ Ltac hclean_protect tt :=
 
 Ltac hclean_setup tt :=
   hclean_protect tt;
-  apply hclean_start; [ xlocal | ];
+  apply hclean_start; [ try xlocal | ];
   autorewrite with hsimpl_assoc.
 
 Ltac hclean_relinearize tt :=
@@ -1453,7 +1338,8 @@ Tactic Notation "hclean" := hclean_main tt.
 Tactic Notation "hclean" "~" := hclean; auto_tilde.
 Tactic Notation "hclean" "*" := hclean; auto_star.
 
-Lemma hclean_demo_1 : forall H1 H2 H3 B (F:~~B) P Q,
+Lemma hclean_demo_1 : forall H1 H2 H3 B (F:~~B) P Q,  
+   is_local F ->
    F (H1 \* [] \* H2 \* [P] \* H3) Q.
 Proof.
   intros. dup.
