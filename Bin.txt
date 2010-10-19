@@ -2433,3 +2433,109 @@ Proof.
   forwards [? R]: (eval_deterministic HE HE').
   subst. exists (=h2). exists h1 h2. rew_disjoint*.
 Qed.
+
+
+
+Notation "'!!B' x P" := (tag tag_body (Some x) P)
+  (at level 95, x at level 0).
+Notation "'!!M' x n P" := (tag (tag_match n) (Some x) P)
+  (at level 95, x at level 0, n at level 0).
+Notation "'!!A' x P" := (tag tag_apply (Some x) P)  
+  (at level 95, x at level 0).
+Notation "'!!R' x P" := (tag tag_ret (Some x) (local P))  
+  (at level 69, x at level 0).
+Notation "'!!V' x P" := (tag tag_let_val (Some x) (local P))  
+  (at level 95, x at level 0).
+Notation "'!!F' x P" := (tag tag_let_fun (Some x) (local P))  
+  (at level 95, x at level 0).
+Notation "'!!T' x P" := (tag tag_let_trm (Some x) (local P))  
+  (at level 95, x at level 0).
+Notation "'!!C' x P" := (tag tag_case (Some x) (local P))  
+  (at level 95, x at level 0).
+Notation "'!:W' x P" := (tag tag_casewhen (Some x) (local P))  
+  (at level 95, x at level 0).
+Notation "'!!I' x P" := (tag tag_if (Some x) (local P))  
+  (at level 95, x at level 0).
+Notation "'!!E' x P" := (tag tag_fail (Some x) (local P))  
+  (at level 95, x at level 0).
+Notation "'!!S' x P" := (tag tag_alias (Some x) (local P))  
+  (at level 95, x at level 0).
+Notation "'!!D' x P" := (tag tag_done (Some x) (local P))  
+  (at level 95, x at level 0).
+Notation "'!!Seq' x P" := (tag tag_seq (Some x) (local P))  
+  (at level 95, x at level 0).
+Notation "'!!For' x  P" := (tag tag_for (Some x) (local P))  
+  (at level 95, x at level 0).
+Notation "'!!While' x P" := (tag tag_while (Some x) (local P))  
+  (at level 95, x at level 0).
+Notation "'!!TV' x P" := (tag tag_top_val (Some x) (local P))  
+  (at level 95, x at level 0).
+Notation "'!!TF' x P" := (tag tag_top_fun (Some x) (local P))  
+  (at level 95, x at level 0).
+Notation "'!!TT' x P" := (tag tag_top_trm (Some x) (local P))  
+  (at level 95, x at level 0).
+
+  
+(* deprecated 
+
+Notation "'LetVal' : a [ A1 ]  x1 ':=' Q1 'in' Q2" :=
+  (!!L a (fun P => exists P1, (forall A1, Q1 P1)
+                            /\ forall x1,P1 x1 -> Q2 P))
+  (at level 69, a at level 0, x1 ident, A1 ident) : charac.
+
+Notation "'LetVal' : a [ A1 A2 ]  x1 ':=' Q1 'in' Q2" :=
+  (!!L a (fun P => exists P1, (forall A1 A2, Q1 P1)
+                            /\ forall x1,P1 x1 -> Q2 P))
+  (at level 69, a at level 0, x1 ident, A1 ident, A2 ident) : charac.
+*)
+
+
+(* deprecated
+
+Notation "'LetVal' x1 ':=' Q1 'in' Q2" :=
+  (!L (fun P => exists P1, Q1 P1 
+                           /\ forall x1,P1 x1 -> Q2 P))
+  (at level 69, x1 ident) : charac.
+
+Notation "'LetVal' [ A1 ]  x1 ':=' Q1 'in' Q2" :=
+  (!L (fun P => exists P1, (forall A1, Q1 P1)
+                            /\ forall x1,P1 x1 -> Q2 P))
+  (at level 69, x1 ident, A1 ident) : charac.
+
+Notation "'LetVal' [ A1 A2 ]  x1 ':=' Q1 'in' Q2" :=
+  (!L (fun P => exists P1, (forall A1 A2, Q1 P1)
+                            /\ forall x1,P1 x1 -> Q2 P))
+  (at level 69, x1 ident, A1 ident, A2 ident) : charac.
+*)
+
+(*--older while
+Notation "'While' Q1 'Do' Q2 'Done'" :=
+  (!While (fun H Q => exists H', exists A, exists I, exists R,
+       wf R 
+     /\ (exists x, H ==> I x \* H')
+     /\ (forall x, local (fun Hl Ql => exists Q', 
+            Q1 Hl Q'
+         /\ Q2 (Q' true) (# Hexists y, (I y) \* [R y x])
+         /\ (Q' false \* H' ==> Ql tt)) (I x) Q)))
+  (at level 69) : charac.
+*)
+
+(*--old while
+Notation "'While' Q1 'Do' Q2 'Done'" :=
+  (!While (fun H Q => exists H', exists A, exists I, exists J, exists R,
+       wf R 
+     /\ (exists x, H ==> I x \* H')
+     /\ (forall x, 
+            Q1 (I x) (J x)
+         /\ Q2 (J x true) (# Hexists y, (I y) \* [R y x])
+         /\ J x false \* H' ==> Q tt)))
+  (at level 69) : charac.
+*)
+
+Notation "'For' i '=' a 'To' b 'Do' Q1 'Done'" :=
+  (!For (fun H Q => (a > (b)%Z -> H ==> (Q tt)) /\ (a <= (b)%Z -> exists H', exists I,
+       (H ==> I a \* H') 
+    /\ (forall i, a <= i /\ i <= (b)%Z -> Q1 (I i) (# I(i+1))) 
+    /\ (I ((b)%Z+1) \* H' ==> Q tt))))
+  (at level 69, i ident) : charac.
+

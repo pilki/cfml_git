@@ -254,8 +254,8 @@ let rec coq_of_imp_cf cf =
      let f = Coq_app (Coq_var "local", f_core) in
      match label with 
      | None -> coq_tag tag f 
-     | Some x -> coq_tag tag f  (* coq_tag tag ~label:x f *)
-     in (* todo improve tags *)
+     | Some x -> coq_tag tag ~label:x f 
+     in 
 
   match cf with
 
@@ -354,6 +354,28 @@ let rec coq_of_imp_cf cf =
       (* (!S: fun H Q => exists H1, F1 H (#H1) /\ F2 H1 Q *)
 
   | Cf_for (i,v1,v2,cf) -> 
+      let s = Coq_var "S" in
+      let i = Coq_var "i" in
+      let typs = Coq_impl (coq_int,formula_type) in
+      let q' = Coq_var "Q'" in
+      let c1 = coq_apps (coq_of_cf cf1) [h;q'] in
+      let c2 = coq_apps s [ i; Coq_app (q', coq_tt); q] in
+      let body_ge = coq_funs [("H",hprop); ("Q", Coq_impl (coq_unit, hprop))] (coq_exist "Q'" wild_to_hprop (coq_conj c1 c2)) in
+      let cont_ge = coq_apps (Coq_var "local") [body_ge; h; q] in
+      let ple = Coq_impl (coq_le i v1, cont_ge) in 
+      let pgt = Coq_impl (coq_gt i v1, heap_impl_unit h q) in
+      let locals = Coq_app (Coq_var "is_local_1", s) in
+      let bodys = coq_conj ple pgt in
+      let hypr = coq_foralls [("i", coq_int); ("H", hprop); ("Q", Coq_impl (coq_unit, hprop))] (Coq_impl (bodys,(coq_apps s [i;h;q]))) in
+      funhq "tag_for" (Coq_forall (("S",typs), coq_impls [locals; hypr] (coq_apps s [v1;h;q])))
+      (* (!For (fun H Q => forall S:int->~~unit, is_local_1 S ->
+        (forall i H Q,  
+               ((i <= v2 -> (local (fun H Q => exists Q', Q1 H Q' /\ S i (Q' tt) Q) H Q))
+             /\ (i > v2 -> H ==> Q tt) )) 
+           -> S i H Q) ->
+         -> S v1 H Q)  *)
+
+     (* ---todo:deprecated
       let inv = Coq_var "I" in
       let c1 = Coq_impl (coq_gt v1 v2, heap_impl_unit h q) in
       let p1 = heap_impl h (heap_star (Coq_app (inv, v1)) (Coq_var "H'")) in
@@ -369,6 +391,7 @@ let rec coq_of_imp_cf cf =
               exists H', exists I, H ==> I v1 \* H' 
                     /\  forall i, v1 <= i /\ i <= v2 -> F1 (I i) (# I (i+1)) 
                     /\  I (b+1) \* H' ==> Q tt *)
+      *)
       
   | Cf_while (cf1,cf2) -> 
       let r = Coq_var "R" in

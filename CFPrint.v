@@ -1,6 +1,12 @@
 Set Implicit Arguments.
 Require Import CFSpec.
 
+(*todo: move *)
+
+Definition is_local_1 A1 B (S:A1->~~B) :=
+  forall x, is_local (S x).
+
+
 (********************************************************************)
 (* ** Notation for specifications *)
 
@@ -195,104 +201,6 @@ Notation "'Pure' f ( x1 : A1 ) ( x2 : A2 ) ( x3 : A3 ) ( x4 : A4 ) >> P"
 
 
 (********************************************************************)
-(* ** Notation for specifications through [rep] predicate -- TODO?? *)
-
-(*------------------------------------------------------------------*)
-(* ** Printing specifications without effects 
-
-Notation "'RepSpec' f ( X1 ';' A1 )  | R >> H"
-  := (Spec_1 f (fun (x1:A1) R => forall X1, rep x1 X1 -> H))
-     (at level 69, f at level 0, X1 ident, 
-      R ident, H at level 90,
-      A1 at level 0) : func.
-
-Notation "'RepSpec' f ( X1 ';' A1 ) ( X2 ';' A2 )  | R >> H"
-  := (Spec_2 f (fun (x1:A1) (x2:A2) R => 
-       forall X1 X2, rep x1 X1 -> rep x2 X2 -> H))
-     (at level 69, f at level 0, X1 ident, X2 ident, 
-      R ident, H at level 90,
-      A1 at level 0, A2 at level 0) : func.
-
-Notation "'RepSpec' f ( X1 ; A1 ) ( X2 ; A2 ) ( X3 ; A3 )  | R >> H"
-  := (Spec_3 f (fun (x1:A1) (x2:A2) (x3:A3) R => 
-       forall X1 X2 X3, rep x1 X1 -> rep x2 X2 -> rep x3 X3 -> H))
-     (at level 69, f at level 0, X1 ident, X2 ident, X3 ident, 
-      R ident, H at level 90,
-      A1 at level 0, A2 at level 0, A3 at level 0) : func.
-
-Notation "'RepSpec' f ( X1 ; A1 ) ( X2 ; A2 ) ( X3 ; A3 ) ( X4 ; A4 )  | R >> H"
-  := (Spec_4 f (fun (x1:A1) (x2:A2) (x3:A3) (x4:A4) R => 
-        forall X1 X2 X3 X4, rep x1 X1 -> rep x2 X2 -> rep x3 X3 -> rep x4 X4 -> H))
-     (at level 69, f at level 0, X1 ident, X2 ident, X3 ident, X4 ident, 
-      R ident, H at level 90,
-      A1 at level 0, A2 at level 0, A3 at level 0, A4 at level 0) : func.
-*)
-
-(*------------------------------------------------------------------*)
-(* ** Printing specifications without auxiliary variables 
-
-Notation "'RepSpecs' f ( X1 ; A1 ) >> H Q"
-  := (Spec f (x1:A1) | R >> 
-       forall X1, rep x1 X1 -> R H Q)
-     (at level 69, f at level 0, X1 ident, H at level 0, 
-      A1 at level 0) : func.
-
-Notation "'RepSpecs' f ( X1 ; A1 ) ( X2 ; A2 ) >> H Q"
-  := (Spec f (x1:A1) (x2:A2) | R >> 
-       forall X1 X2, rep x1 X1 -> rep x2 X2 -> R H Q)
-     (at level 69, f at level 0, X1 ident, X2 ident, H at level 0,
-      A1 at level 0, A2 at level 0) : func.
-
-Notation "'RepSpecs' f ( X1 ; A1 ) ( X2 ; A2 ) ( X3 ; A3 ) >> H Q"
-  := (Spec f (x1:A1) (x2:A2) (x3:A3) | R >> 
-       forall X1 X2 X3, rep x1 X1 -> rep x2 X2 -> rep x3 X3 -> R H Q)
-     (at level 69, f at level 0, X1 ident, X2 ident, X3 ident, H at level 0,
-      A1 at level 0, A2 at level 0, A3 at level 0) : func.
-
-Notation "'RepSpecs' f ( X1 ; A1 ) ( X2 ; A2 ) ( X3 ; A3 ) ( X4 ; A4 ) >> H Q"
-  := (Spec f (x1:A1) (x2:A2) (x3:A3) (x4:A4) | R >> 
-       forall X1 X2 X3 X4, rep x1 X1 -> rep x2 X2 -> rep x3 X3 -> rep x4 X4 -> R H Q)
-     (at level 69, f at level 0, X1 ident, X2 ident, X3 ident, X4 ident, H at level 0,
-      A1 at level 0, A2 at level 0, A3 at level 0, A4 at level 0) : func.
-*)
-
-(*------------------------------------------------------------------*)
-(* ** Printing general specifications
-
-Notation "'RepPure' f ( X1 ; A1 ) >> P"
-  := (Spec f (x1:A1) | R >> 
-       forall X1, rep x1 X1 -> pure R P)
-     (at level 69, f at level 0, X1 ident, 
-      A1 at level 0) : func.
-
-Notation "'RepPure' f ( X1 ; A1 ) ( X2 ; A2 ) >> P"
-  := (Spec f (x1:A1) (x2:A2) | R >> 
-       forall X1 X2, rep x1 X1 -> rep x2 X2 -> pure R P)
-     (at level 69, f at level 0, X1 ident, X2 ident,
-      A1 at level 0, A2 at level 0) : func.
-
-Notation "'RepPure' f ( X1 ; A1 ) ( X2 ; A2 ) ( X3 ; A3 ) >> P"
-  := (Spec f (x1:A1) (x2:A2) (x3:A3) | R >> 
-       forall X1 X2 X3, rep x1 X1 -> rep x2 X2 -> rep x3 X3 -> pure R P)
-     (at level 69, f at level 0, X1 ident, X2 ident, X3 ident,
-      A1 at level 0, A2 at level 0, A3 at level 0) : func.
-
-Notation "'RepPure' f ( X1 ; A1 ) ( X2 ; A2 ) ( X3 ; A3 ) ( X4 ; A4 ) >> P"
-  := (Spec f (x1:A1) (x2:A2) (x3:A3) (x4:A4) | R >> 
-       forall X1 X2 X3 X4, rep x1 X1 -> rep x2 X2 -> rep x3 X3 -> rep x4 X4 -> pure R P)
-     (at level 69, f at level 0, X1 ident, X2 ident, X3 ident, X4 ident,
-      A1 at level 0, A2 at level 0, A3 at level 0, A4 at level 0) : func.
- *)
-
-
-(*------------------------------------------------------------------*)
-(* ** Specification of output modulo representation *)
-
-Notation "X '.;' T" := (fun (x:T) => rep x X) (at level 68). 
-Notation "P '.:' T" := (fun (x:T) => exists X, rep x X /\ P X) (at level 80). 
-
-
-(********************************************************************)
 (* Implementation of labels *)
 
 Module Export AtomsEff. 
@@ -344,13 +252,21 @@ End AtomsEff.
 
 
 (********************************************************************)
-(* ** Implementation of tags *)
+(* ** Implementation of tags and labels *)
 
-Definition tag_name := atom.
+Class Label := Label_create { Label_get : atom }.
 
 Definition no_name := `0.
 
-Notation "'?'" := (no_name).
+Instance Label_default : Label.
+Proof. constructor. exact no_name. Defined.
+
+(* The core idea of labelling can be summarized as follows:
+      Definition tag `{x:Label} (P:Prop) := P.
+      Notation "# P" := (@tag _ P) (at level 30).
+      Definition test P := (@tag (Label_create 3) P).
+      --> test displays as "fun P => # P" and does not show "3"
+*)
 
 Inductive tag_type : Type :=
   | tag_ret
@@ -374,88 +290,49 @@ Inductive tag_type : Type :=
   | tag_for
   | tag_while.
 
-Definition tag (t:tag_type) (x:option tag_name) (A:Type) (P:A) := P.
+Definition tag (t:tag_type) `{x:Label} (A:Type) (P:A) := P.
 
-Notation "'!B' P" := (tag tag_body None P)  
+Notation "'!B' P" := (tag tag_body _ P)  
   (at level 95).
-Notation "'!M' n P" := (tag (tag_match n) None P)
+Notation "'!M' n P" := (tag (tag_match n) _ P)
   (at level 95, n at level 0).
-Notation "'!A' P" := (tag tag_apply None P)  
+Notation "'!A' P" := (tag tag_apply _ P)  
   (at level 95).
-Notation "'!R' P" := (tag tag_ret None (local P))  
+Notation "'!R' P" := (tag tag_ret _ (local P))  
   (at level 69).
-Notation "'!V' P" := (tag tag_let_val None (local P))  
+Notation "'!V' P" := (tag tag_let_val _ (local P))  
   (at level 95).
-Notation "'!F' P" := (tag tag_let_fun None (local P))  
+Notation "'!F' P" := (tag tag_let_fun _ (local P))  
   (at level 95).
-Notation "'!T' P" := (tag tag_let_trm None (local P))  
+Notation "'!T' P" := (tag tag_let_trm _ (local P))  
   (at level 95).
-Notation "'!C' P" := (tag tag_case None (local P))  
+Notation "'!C' P" := (tag tag_case _ (local P))  
   (at level 95).
-Notation "'!W' P" := (tag tag_casewhen None (local P))  
+Notation "'!W' P" := (tag tag_casewhen _ (local P))  
   (at level 95).
-Notation "'!I' P" := (tag tag_if None (local P))  
+Notation "'!I' P" := (tag tag_if _ (local P))  
   (at level 95).
-Notation "'!E' P" := (tag tag_fail None (local P))  
+Notation "'!E' P" := (tag tag_fail _ (local P))  
   (at level 95).
-Notation "'!S' P" := (tag tag_alias None (local P))  
+Notation "'!S' P" := (tag tag_alias _ (local P))  
   (at level 95).
-Notation "'!D' P" := (tag tag_done None (local P))  
+Notation "'!D' P" := (tag tag_done _ (local P))  
   (at level 95).
-Notation "'!Seq' P" := (tag tag_seq None (local P))  
+Notation "'!Seq' P" := (tag tag_seq _ (local P))  
   (at level 95).
-Notation "'!For' P" := (tag tag_for None (local P))  
+Notation "'!For' P" := (tag tag_for _ (local P))  
   (at level 95).
-Notation "'!While' P" := (tag tag_while None (local P))  
+Notation "'!While' P" := (tag tag_while _ (local P))  
   (at level 95).
-Notation "'!TV' P" := (tag tag_top_val None (local P))  
+Notation "'!TV' P" := (tag tag_top_val _ (local P))  
   (at level 95).
-Notation "'!TF' P" := (tag tag_top_fun None (local P))  
+Notation "'!TF' P" := (tag tag_top_fun _ (local P))  
   (at level 95).
-Notation "'!TT' P" := (tag tag_top_trm None (local P))  
+Notation "'!TT' P" := (tag tag_top_trm _ (local P))  
   (at level 95).
-
-Notation "'!!B' x P" := (tag tag_body (Some x) P)
-  (at level 95, x at level 0).
-Notation "'!!M' x n P" := (tag (tag_match n) (Some x) P)
-  (at level 95, x at level 0, n at level 0).
-Notation "'!!A' x P" := (tag tag_apply (Some x) P)  
-  (at level 95, x at level 0).
-Notation "'!!R' x P" := (tag tag_ret (Some x) (local P))  
-  (at level 69, x at level 0).
-Notation "'!!V' x P" := (tag tag_let_val (Some x) (local P))  
-  (at level 95, x at level 0).
-Notation "'!!F' x P" := (tag tag_let_fun (Some x) (local P))  
-  (at level 95, x at level 0).
-Notation "'!!T' x P" := (tag tag_let_trm (Some x) (local P))  
-  (at level 95, x at level 0).
-Notation "'!!C' x P" := (tag tag_case (Some x) (local P))  
-  (at level 95, x at level 0).
-Notation "'!:W' x P" := (tag tag_casewhen (Some x) (local P))  
-  (at level 95, x at level 0).
-Notation "'!!I' x P" := (tag tag_if (Some x) (local P))  
-  (at level 95, x at level 0).
-Notation "'!!E' x P" := (tag tag_fail (Some x) (local P))  
-  (at level 95, x at level 0).
-Notation "'!!S' x P" := (tag tag_alias (Some x) (local P))  
-  (at level 95, x at level 0).
-Notation "'!!D' x P" := (tag tag_done (Some x) (local P))  
-  (at level 95, x at level 0).
-Notation "'!!Seq' x P" := (tag tag_seq (Some x) (local P))  
-  (at level 95, x at level 0).
-Notation "'!!For' x  P" := (tag tag_for (Some x) (local P))  
-  (at level 95, x at level 0).
-Notation "'!!While' x P" := (tag tag_while (Some x) (local P))  
-  (at level 95, x at level 0).
-Notation "'!!TV' x P" := (tag tag_top_val (Some x) (local P))  
-  (at level 95, x at level 0).
-Notation "'!!TF' x P" := (tag tag_top_fun (Some x) (local P))  
-  (at level 95, x at level 0).
-Notation "'!!TT' x P" := (tag tag_top_trm (Some x) (local P))  
-  (at level 95, x at level 0).
 
 Lemma add_tag : forall (T:Prop->Prop), (T = fun P:Prop => P) -> 
-                forall (G:Prop), (T G) -> G. (* todo: was T'G *)
+                forall (G:Prop), (T G) -> G. 
 Proof. intros. subst. auto. Qed.
 
 Ltac ltac_add_tag T :=
@@ -465,7 +342,7 @@ Ltac ltac_get_tag tt :=
   match goal with |- tag ?t _ _ _ _ => constr:(t) end.  
 
 Ltac ltac_get_label tt :=
-  match goal with |- tag _ (Some ?l) _ _ _ => constr:(l) end.  
+  match goal with |- tag _ (Label_create ?l) _ _ _ => constr:(l) end.  
 
 Tactic Notation "xuntag" constr(t) :=
   match goal with |- tag t _ _ _ _ => unfold tag at 1 end.
@@ -479,6 +356,8 @@ Tactic Notation "xuntags" := unfold tag in *.
 (********************************************************************)
 (* ** Notation for characteristic formulae *)
 
+(** Basic *)
+
 Notation "'Ret' v" :=
   (!R (fun H Q => H ==> Q v))
   (at level 69) : charac.
@@ -490,6 +369,8 @@ Notation "'Fail'" :=
 Notation "'Done'" := 
   (!D (fun _ _ => True))
   (at level 0) : charac.
+
+(** Application *)
 
 Notation "'App' f x1 ;" :=
   (!A (app_1 f x1))
@@ -509,6 +390,8 @@ Notation "'App' f x1 x2 x3 x4 ;" :=
   (!A (app_3 f x1 x2 x3 x4))
   (at level 68, f at level 0, x1 at level 0, x2 at level 0,
    x3 at level 0, x4 at level 0) : charac.
+
+(** Body *)
 
 Notation "'Body' f x1 '=>' Q" :=
   (!B (forall K, is_spec_1 K ->
@@ -545,49 +428,40 @@ Notation "'Body' f [ A1 A2 ]  x1 x2 '=>' Q" :=
                  (forall x1 x2, K x1 x2 Q) -> spec_2 K f))
   (at level 0, f at level 0, x1 ident, x2 ident, A1 ident, A2 ident) : charac.
 
+Notation "'Func' f ':=' Q" := (* todo:needed?*)
+  (!F (fun P => forall f, Q -> P f))
+  (at level 69) : charac.
 
-Notation "'LetVal' : a x ':=' V 'in' F" :=
-  (!!V a (fun H Q => forall x, x = V -> F H Q))
+(** Let *)
+
+Notation "'LetVal' x ':=' V 'in' F" :=
+  (!V (fun H Q => forall x, x = V -> F H Q))
   (at level 69, a at level 0, x ident) : charac.
 
-Notation "'Let' : a x ':=' F1 'in' F2" :=
-  (!!T a (fun H Q => exists Q1, F1 H Q1 /\ forall x, F2 (Q1 x) Q))
+Notation "'Let' x ':=' F1 'in' F2" :=
+  (!T (fun H Q => exists Q1, F1 H Q1 /\ forall x, F2 (Q1 x) Q))
   (at level 69, a at level 0, x ident) : charac.
 
-      (* !L: fun H Q => exists Q1, F1 H Q1 /\ forall (x:T), F2 (Q1 x) Q *)
+Notation "'LetFunc' f1 ':=' Q1 'in' Q" :=
+  (!F fun H Q => forall f1, exists P1,
+     (Q1 -> P1 f1) /\ (P1 f1 -> Q H Q))
+  (at level 69, f1 ident) : charac.
 
-(* deprecated 
+Notation "'LetFunc' f1 ':=' Q1 'and' f2 ':=' Q2 'in' F" :=
+  (!F fun H Q => forall f1 f2, exists P1 P2,
+     (Q1 -> Q2 -> P1 f1 /\ P2 f2) /\ (P1 f1 -> P2 f2 -> F H Q))
+  (at level 69, f1 ident, f2 ident) : charac.
 
-Notation "'LetVal' : a [ A1 ]  x1 ':=' Q1 'in' Q2" :=
-  (!!L a (fun P => exists P1, (forall A1, Q1 P1)
-                            /\ forall x1,P1 x1 -> Q2 P))
-  (at level 69, a at level 0, x1 ident, A1 ident) : charac.
+Notation "'LetFunc' f1 ':=' Q1 'and' f2 ':=' Q2 'and' f3 ':=' Q3 'in' F" :=
+  (!F fun H Q => forall f1 f2 f3, exists P1 P2 P3,
+     (Q1 -> Q2 -> Q3 -> P1 f1 /\ P2 f2 /\ P3 f3) /\ (P1 f1 -> P2 f2 -> P3 f3 -> F H Q))
+  (at level 69, f1 ident, f2 ident, f3 ident) : charac.
 
-Notation "'LetVal' : a [ A1 A2 ]  x1 ':=' Q1 'in' Q2" :=
-  (!!L a (fun P => exists P1, (forall A1 A2, Q1 P1)
-                            /\ forall x1,P1 x1 -> Q2 P))
-  (at level 69, a at level 0, x1 ident, A1 ident, A2 ident) : charac.
-*)
+Notation "Q1 ;; Q2" :=
+  (!Seq fun H Q => exists H', Q1 H (#H') /\ Q2 H' Q)
+  (at level 68, right associativity) : charac.
 
-
-(* deprecated
-
-Notation "'LetVal' x1 ':=' Q1 'in' Q2" :=
-  (!L (fun P => exists P1, Q1 P1 
-                           /\ forall x1,P1 x1 -> Q2 P))
-  (at level 69, x1 ident) : charac.
-
-Notation "'LetVal' [ A1 ]  x1 ':=' Q1 'in' Q2" :=
-  (!L (fun P => exists P1, (forall A1, Q1 P1)
-                            /\ forall x1,P1 x1 -> Q2 P))
-  (at level 69, x1 ident, A1 ident) : charac.
-
-Notation "'LetVal' [ A1 A2 ]  x1 ':=' Q1 'in' Q2" :=
-  (!L (fun P => exists P1, (forall A1 A2, Q1 P1)
-                            /\ forall x1,P1 x1 -> Q2 P))
-  (at level 69, x1 ident, A1 ident, A2 ident) : charac.
-*)
-
+(** Tests *)
 
 Notation "'_If' x 'Then' Q1 'Else' Q2" :=
   (!I (fun H Q => (x = true -> Q1 H Q) /\ (x = false -> Q2 H Q)))
@@ -694,80 +568,28 @@ Notation "'Alias' x ':=' v 'in' Q" :=
   (!S (fun H Q => forall x, x = v -> Q H Q))
   (at level 69, x ident) : charac.
 
-Notation "'For' i '=' a 'To' b 'Do' Q1 'Done'" :=
-  (!For (fun H Q => (a > (b)%Z -> H ==> (Q tt)) /\ (a <= (b)%Z -> exists H', exists I,
-       (H ==> I a \* H') 
-    /\ (forall i, a <= i /\ i <= (b)%Z -> Q1 (I i) (# I(i+1))) 
-    /\ (I ((b)%Z+1) \* H' ==> Q tt))))
-  (at level 69, i ident) : charac.
-
-(*--older while
-Notation "'While' Q1 'Do' Q2 'Done'" :=
-  (!While (fun H Q => exists H', exists A, exists I, exists R,
-       wf R 
-     /\ (exists x, H ==> I x \* H')
-     /\ (forall x, local (fun Hl Ql => exists Q', 
-            Q1 Hl Q'
-         /\ Q2 (Q' true) (# Hexists y, (I y) \* [R y x])
-         /\ (Q' false \* H' ==> Ql tt)) (I x) Q)))
-  (at level 69) : charac.
-*)
-
-(*--old while
-Notation "'While' Q1 'Do' Q2 'Done'" :=
-  (!While (fun H Q => exists H', exists A, exists I, exists J, exists R,
-       wf R 
-     /\ (exists x, H ==> I x \* H')
-     /\ (forall x, 
-            Q1 (I x) (J x)
-         /\ Q2 (J x true) (# Hexists y, (I y) \* [R y x])
-         /\ J x false \* H' ==> Q tt)))
-  (at level 69) : charac.
-*)
+(** Loops *)
 
 Notation "'While' Q1 'Do' Q2 'Done'" :=
   (!While (fun H Q => forall R:~~unit, is_local R ->
         (forall H Q, (exists Q', Q1 H Q' 
-           /\ (local (fun H Q => exists H', Q2 H (# H') /\ R H' Q) (Q' true) Q)
+           /\ (local (fun H Q => exists Q'', Q2 H Q'' /\ R (Q'' tt) Q) (Q' true) Q)
            /\ Q' false ==> Q tt) -> R H Q) 
         -> R H Q))
   (at level 69) : charac.
 
+Notation "'For' i '=' a 'To' b 'Do' Q1 'Done'" :=
+  (!For (fun H Q => forall S:int->~~unit, is_local_1 S ->
+        (forall i H Q,  
+             ((i <= (b)%Z -> (local (fun H Q => exists Q', Q1 H Q' /\ S i (Q' tt) Q) H Q))
+          /\ (i > b%Z -> H ==> Q tt)) 
+          -> S i H Q)
+       -> S a H Q)) 
+  (at level 69) : charac.
+
 Open Scope charac.
 
-Notation "'LetFunc' a f1 ':=' Q1 'in' F" :=
-  (!!F a fun H Q => forall f1, exists P1,
-     (Q1 -> P1 f1) /\ (P1 f1 -> F H Q))
-  (at level 69, a at level 0, f1 ident) : charac.
-
-Notation "'LetFunc' a f1 ':=' Q1 'and' f2 ':=' Q2 'in' F" :=
-  (!!F a fun H Q => forall f1 f2, exists P1 P2,
-     (Q1 -> Q2 -> P1 f1 /\ P2 f2) /\ (P1 f1 -> P2 f2 -> F H Q))
-  (at level 69, a at level 0, f1 ident, f2 ident) : charac.
-
-Notation "'LetFunc' a f1 ':=' Q1 'and' f2 ':=' Q2 'and' f3 ':=' Q3 'in' F" :=
-  (!!F a fun H Q => forall f1 f2 f3, exists P1 P2 P3,
-     (Q1 -> Q2 -> Q3 -> P1 f1 /\ P2 f2 /\ P3 f3) /\ (P1 f1 -> P2 f2 -> P3 f3 -> F H Q))
-  (at level 69, a at level 0, f1 ident, f2 ident, f3 ident) : charac.
-
-Notation "'LetFunc' f1 ':=' Q1 'in' Q" :=
-  (!F fun H Q => forall f1, exists P1,
-     (Q1 -> P1 f1) /\ (P1 f1 -> Q H Q))
-  (at level 69, f1 ident) : charac.
-
-Notation "'LetFunc' f1 ':=' Q1 'and' f2 ':=' Q2 'in' F" :=
-  (!F fun H Q => forall f1 f2, exists P1 P2,
-     (Q1 -> Q2 -> P1 f1 /\ P2 f2) /\ (P1 f1 -> P2 f2 -> F H Q))
-  (at level 69, f1 ident, f2 ident) : charac.
-
-Notation "'LetFunc' f1 ':=' Q1 'and' f2 ':=' Q2 'and' f3 ':=' Q3 'in' F" :=
-  (!F fun H Q => forall f1 f2 f3, exists P1 P2 P3,
-     (Q1 -> Q2 -> Q3 -> P1 f1 /\ P2 f2 /\ P3 f3) /\ (P1 f1 -> P2 f2 -> P3 f3 -> F H Q))
-  (at level 69, f1 ident, f2 ident, f3 ident) : charac.
-
-Notation "Q1 ;; Q2" :=
-  (!Seq fun H Q => exists H', Q1 H (#H') /\ Q2 H' Q)
-  (at level 68, right associativity) : charac.
+(** Top-level *)
 
 Notation "'TopLet' x ':=' Q" :=
   (!TV (forall P, Q P -> P x))
@@ -792,10 +614,6 @@ Notation "'TopLet' [ A1 A2 A3 ]  x ':=' Q" :=
 Notation "'TopLetFunc' ':=' H" :=
   (!TF H)
   (at level 69, H at level 200).
-
-Notation "'Func' f ':=' Q" := (* todo:needed?*)
-  (!F (fun P => forall f, Q -> P f))
-  (at level 69) : charac.
 
 
 (********************************************************************)

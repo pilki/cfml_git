@@ -302,12 +302,11 @@ let rec string_of_coq c =
   | Coq_record lcs -> assert false (* todo: connaitre le constructeur, via une table
                                       sprintf "make_%s" (show_list (fun (l,c) -> sprintf "%s=%s" *)
   | Coq_tag (tag, lab, term) -> 
-       let slab = match lab with
-         | None -> "None"
-         | Some x -> sprintf "(Some '%s)" x
+      let slab = match lab with
+         | None -> "_"
+         | Some x -> sprintf "(Label_create '%s)" x
          in
-        sprintf "(tag %s %s %s)" tag slab (aux term)
-         (* todo: FuncPrint.tag ou CFPrint.tag *)
+        sprintf "(CFPrint.tag %s %s %s)" tag slab (aux term)
 
 (** Print a typed identifier [(x:T)] *)
 
