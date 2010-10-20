@@ -61,39 +61,75 @@ Ltac xchange_debug L :=
     | clear K ].
 
 
+Hint Rewrite
+ isTrue_istrue 
+ istrue_isTrue 
+ isTrue_neg_istrue 
+ istrue_not_isTrue : rew_prop.
+
+Tactic Notation "rew_prop" := 
+  autorewrite with rew_prop.
+Tactic Notation "rew_prop" "in" hyp(H) := 
+  autorewrite with rew_prop in H.
+Tactic Notation "rew_prop" "in" "*" := 
+  autorewrite with rew_prop in *.
+
+Lemma array_index_prove : forall A (t:array A) i,
+  0 <= i < length t -> index t i.
+Proof. intros. rewrite~ array_index_def. Qed.
+Hint Resolve array_index_prove.
+
+Ltac auto_star ::= try solve [intuition eauto]. (* jauto => should splitt iff *)
+Ltac auto_tilde := auto with maths.
+
+
+
 (****************************************************)
 (* Specification of the invariant *)
 
 Definition tab := array int.
 
-Definition L := maxlen.
+Notation "'L'" := maxlen.
 
 Definition SarrayPacked :=
   @Sarray int (array int) (array int) (array int) Id (Array Id) (Array Id) (Array Id).
 Definition SarrayUnpacked :=
   @Sarray int loc loc loc Id Id Id Id.
 
+Definition good_sizes (Val Idx Back : tab) :=
+  length Val = L /\ length Idx = L /\ length Back = L.
+
 Definition SparseArray (T:tab) (s:loc) :=
   Hexists (n:int) (Val:tab) (Idx:tab) (Back:tab),
      s ~> SarrayPacked n Val Idx Back
-  \* [ length Val = L /\ length Idx = L /\ length Back = L 
+  \* [ good_sizes Val Idx Back
        /\ forall k, index n k -> let i := Back\(k) in
           index L i  /\  Idx\(i) = k  /\  T\(k) = Val\(k) ].
 
+Lemma inbound_spec :
+  Specs inbound i >> [] (\[ bool_of (index L i) ]).
+Proof.
+  xcf. intros. xret. hsimpl. apply bool_of_prove.
+  rew_reflect. rew_prop. rewrite* int_index_def. 
+Qed.
 
 Lemma valid_spec :
-  Spec valid i s |R>> forall n Val Idx Back,
+  Spec valid i s |R>> forall n Val Idx Back, 
+    good_sizes Val Idx Back ->
     keep R (s ~> SarrayPacked n Val Idx Back)
            (\[ bool_of (index L i /\ Back\(Idx\(i)) = i) ]).
 Proof.
-  xcf. intros.
+  xcf. introv (SVal&SIdx&SBack).
   unfold SarrayPacked.
   xchange (Sarray_focus s). xextract as n' val idx back.
 (*  xpost.*)
   xif.
   (* case in bound *)
-  xapps.
-  xapps.
+  rew_reflect in C. rew_prop in C. 
+  xapps. xapps. xapps. apply array_index_prove. rewrite~ SIdx.
+  xapps. apply array_index_prove. 
+
+
   (* case not in bound *)
   xchange (Sarray_unfocus s n' val idx back).
   xret. hsimpl. xclean. rew_reflect in *.
