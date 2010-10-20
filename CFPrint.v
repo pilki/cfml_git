@@ -6,8 +6,6 @@ Require Import CFSpec.
 Notation "'Func'" := val.
 Notation "'AppReturns'" := app_1.
 
-Definition is_local_1 A1 B (S:A1->~~B) :=
-  forall x, is_local (S x).
 
 
 (********************************************************************)
@@ -603,7 +601,7 @@ Notation "'While' Q1 'Do' Q2 'Done'" :=
 Notation "'For' i '=' a 'To' b 'Do' Q1 'Done'" :=
   (!For (fun H Q => forall S:int->~~unit, is_local_1 S ->
         (forall i H Q,  
-             ((i <= (b)%Z -> (local (fun H Q => exists Q', Q1 H Q' /\ S i (Q' tt) Q) H Q))
+             ((i <= (b)%Z -> (local (fun H Q => exists Q', Q1 H Q' /\ S (i+1) (Q' tt) Q) H Q))
           /\ (i > b%Z -> H ==> Q tt)) 
           -> S i H Q)
        -> S a H Q)) 

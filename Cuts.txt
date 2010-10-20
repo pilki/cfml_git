@@ -104,3 +104,44 @@ Notation "P '.:' T" := (fun (x:T) => exists X, rep x X /\ P X) (at level 80).
     /\ (I ((b)%Z+1) \* H' ==> Q tt))))
   (at level 69, i ident) : charac.
 *)
+
+
+
+
+
+
+Notation "'While' Q1 'Do' Q2 'Done'" :=
+  (!While (fun H Q => forall R:~~unit, is_local R ->
+        (forall H Q, (exists Q', Q1 H Q' 
+           /\ (local (fun H Q => exists Q'', Q2 H Q'' /\ R (Q'' tt) Q) (Q' true) Q)
+           /\ Q' false ==> Q tt) -> R H Q) 
+        -> R H Q))
+  (at level 69) : charac.
+
+Notation "'For' i '=' a 'To' b 'Do' Q1 'Done'" :=
+  (!For (fun H Q => forall S:int->~~unit, is_local_1 S ->
+        (forall i H Q,  
+             ((i <= (b)%Z -> (local (fun H Q => exists Q', Q1 H Q' /\ S i (Q' tt) Q) H Q))
+          /\ (i > b%Z -> H ==> Q tt)) 
+          -> S i H Q)
+       -> S a H Q)) 
+  (at level 69) : charac.
+
+Notation "'While' Q1 'Do' Q2 'Done'" :=
+  (!While (fun H Q => exists H', exists A, exists I, exists R,
+       wf R 
+     /\ (exists x, H ==> I x \* H')
+     /\ (forall x, local (fun Hl Ql => exists Q', 
+            Q1 Hl Q'
+         /\ Q2 (Q' true) (# Hexists y, (I y) \* [R y x])
+         /\ (Q' false \* H' ==> Ql tt)) (I x) Q)))
+  (at level 69) : charac.
+*)
+
+Notation "'For' i '=' a 'To' b 'Do' Q1 'Done'" :=
+  (!For (fun H Q => (a > (b)%Z -> H ==> (Q tt)) /\ (a <= (b)%Z -> exists H', exists I,
+       (H ==> I a \* H') 
+    /\ (forall i, a <= i /\ i <= (b)%Z -> Q1 (I i) (# I(i+1))) 
+    /\ (I ((b)%Z+1) \* H' ==> Q tt))))
+  (at level 69, i ident) : charac.
+

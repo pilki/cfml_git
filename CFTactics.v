@@ -566,6 +566,12 @@ Tactic Notation "xret" "*" :=
   xret; xauto*.
 
 (*--------------------------------------------------------*)
+(* ** [xpost] *)
+
+Tactic Notation "xpost" :=
+  eapply xpost_lemma; [ try xlocal | | ].
+
+(*--------------------------------------------------------*)
 (* ** [xgc] *)
 
 (* bin

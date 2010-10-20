@@ -2551,3 +2551,60 @@ Notation "'LetFun_' a f x ':=' Q 'in' F" :=
   (LetFuncs a f := (Body f x => Q) in F)
   (at level 69, a at level 0, f ident, x ident) : charac.
 
+
+
+
+(*
+
+Lemma xfor_frame : forall I H' a b H Q (Pof:(int->hprop)->Prop),
+  (forall H', Pof I -> Pof (I \*+ H')) ->
+  (a > (b)%Z -> H ==> (Q tt)) ->
+  ((a <= (b)%Z) -> 
+      (H ==> I a \* H') 
+   /\ (Pof I)
+   /\ (I ((b)%Z+1) \* H' ==> Q tt)) ->
+  local (fun H Q => (a > (b)%Z -> H ==> (Q tt)) /\ (a <= (b)%Z -> exists I,
+     H ==> I a /\ Pof I /\ (I ((b)%Z+1) ==> Q tt))) H Q.
+Proof.
+  introv L M1 M2. apply local_erase. split. auto.
+  introv M3. intuit (M2 M3). exists (I \*+ H'). splits*.
+Qed.
+
+Lemma xfor_frame_le : forall I H' a b H Q (Pof:(int->hprop)->Prop),
+  (a <= (b)%Z) -> 
+  (H ==> I a \* H') ->
+  (Pof I) ->
+  (I ((b)%Z+1) \* H' ==> Q tt) ->
+  local (fun H Q => (a > (b)%Z -> H ==> (Q tt)) /\ (a <= (b)%Z -> exists I, 
+     H ==> I a /\ Pof I /\ (I ((b)%Z+1) ==> Q tt))) H Q.
+Proof.
+  introv M1 M2 M3 M4. apply~ (>>> local_wframe unit __ H' (fun _:unit => I (b+1))).
+  apply local_erase. split. intros. false. math.
+  intros. exists* I. intros t. destruct t. auto.
+Qed.
+
+Lemma xwhile_frame : forall A I (R:binary A) H' H Q Qf (F1:~~bool) (F2:~~unit),
+  is_local F1 -> 
+  is_local F2 -> 
+  wf R ->
+  (exists x, H ==> I x \* H') ->
+  (forall x, local (fun Hl Ql => exists Q', 
+            F1 Hl Q'
+         /\ F2 (Q' true) (# Hexists y, (I y) \* [R y x])
+         /\ (Q' false ==> Ql tt)) (I x) Qf) ->
+  (Qf \*+ H' ===> Q) ->
+  local (fun H Q => exists A, exists I, exists R:binary A,
+       wf R 
+     /\ (exists x, H ==> I x)
+     /\ (forall x, local (fun Hl Ql => exists Q', 
+            F1 Hl Q'
+         /\ F2 (Q' true) (# Hexists y, (I y) \* [R y x])
+         /\ (Q' false ==> Ql tt)) (I x) Q )) H Q.
+Proof.
+  introv L1 L2 M1 (X0,M2) M3 M4. 
+  apply* local_wframe.
+  apply local_erase.
+  exists A I R. splits*.
+Qed.
+
+*)

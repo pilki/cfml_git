@@ -1039,57 +1039,109 @@ Lemma local_frame : forall H' B H Q (F:~~B),
   F (H \* H') (Q \*+ H').
 Proof. intros. apply* local_wframe. Qed.
 
-Lemma xfor_frame : forall I H' a b H Q (Pof:(int->hprop)->Prop),
-  (forall H', Pof I -> Pof (I \*+ H')) ->
-  (a > (b)%Z -> H ==> (Q tt)) ->
-  ((a <= (b)%Z) -> 
-      (H ==> I a \* H') 
-   /\ (Pof I)
-   /\ (I ((b)%Z+1) \* H' ==> Q tt)) ->
-  local (fun H Q => (a > (b)%Z -> H ==> (Q tt)) /\ (a <= (b)%Z -> exists I,
-     H ==> I a /\ Pof I /\ (I ((b)%Z+1) ==> Q tt))) H Q.
+Lemma xpost_lemma : forall B Q' Q (F:~~B) H,
+  is_local F -> 
+  F H Q' -> 
+  Q' ===> Q ->
+  F H Q.
+Proof. intros. applys* local_weaken. Qed.
+
+
+(********************************************************************)
+(* ** Loop invariants for while-loops *)
+
+(* todo: move *)
+
+Lemma local_weaken_body : forall (B:Type) (F F':~~B),
+  (forall H Q, F H Q -> F' H Q) -> 
+  local F ===> local F'.
 Proof.
-  introv L M1 M2. apply local_erase. split. auto.
-  introv M3. intuit (M2 M3). exists (I \*+ H'). splits*.
+  introv M. intros H Q N. introv Hh.
+  destruct (N _ Hh) as (H1&H2&Q1&H'&P1&P2&P3). exists___*.
 Qed.
 
-Lemma xfor_frame_le : forall I H' a b H Q (Pof:(int->hprop)->Prop),
-  (a <= (b)%Z) -> 
-  (H ==> I a \* H') ->
-  (Pof I) ->
-  (I ((b)%Z+1) \* H' ==> Q tt) ->
-  local (fun H Q => (a > (b)%Z -> H ==> (Q tt)) /\ (a <= (b)%Z -> exists I, 
-     H ==> I a /\ Pof I /\ (I ((b)%Z+1) ==> Q tt))) H Q.
+Lemma local_extract_exists : forall B (F:~~B) A (J:A->hprop) Q,
+  is_local F ->
+  (forall x, F (J x) Q) -> 
+  F (heap_is_pack J) Q.
 Proof.
-  introv M1 M2 M3 M4. apply~ (>>> local_wframe unit __ H' (fun _:unit => I (b+1))).
-  apply local_erase. split. intros. false. math.
-  intros. exists* I. intros t. destruct t. auto.
-Qed.
+  introv L M. rewrite L. introv (x&Hx).
+  exists (J x) [] Q []. splits~. rew_heap~.
+Qed. 
+ (* todo: where is local_intro_prop' rebound ? *)
 
-Lemma xwhile_frame : forall A I (R:binary A) H' H Q Qf (F1:~~bool) (F2:~~unit),
-  is_local F1 -> 
-  is_local F2 -> 
-  wf R ->
-  (exists x, H ==> I x \* H') ->
-  (forall x, local (fun Hl Ql => exists Q', 
-            F1 Hl Q'
-         /\ F2 (Q' true) (# Hexists y, (I y) \* [R y x])
-         /\ (Q' false ==> Ql tt)) (I x) Qf) ->
-  (Qf \*+ H' ===> Q) ->
-  local (fun H Q => exists A, exists I, exists R:binary A,
-       wf R 
-     /\ (exists x, H ==> I x)
-     /\ (forall x, local (fun Hl Ql => exists Q', 
-            F1 Hl Q'
-         /\ F2 (Q' true) (# Hexists y, (I y) \* [R y x])
-         /\ (Q' false ==> Ql tt)) (I x) Q )) H Q.
-Proof.
-  introv L1 L2 M1 (X0,M2) M3 M4. 
-  apply* local_wframe.
-  apply local_erase.
-  exists A I R. splits*.
-Qed.
 
+
+Definition while_loop_cf (F1:~~bool) (F2:~~unit) :=
+  local (fun (H:hprop) (Q:unit->hprop) => forall R:~~unit, is_local R ->
+    (forall H Q, (exists Q', F1 H Q' 
+       /\ (local (fun H Q => exists Q', F2 H Q' /\ R (Q' tt) Q) (Q' true) Q)
+       /\ Q' false ==> Q tt) -> R H Q) 
+    -> R H Q).
+
+Definition while_loop_inv (F1:~~bool) (F2:~~unit) :=
+  local (fun (H:hprop) (Q:unit->hprop) => 
+    exists A:Type, exists I:A->hprop, exists J:A->bool->hprop, exists lt:binary A,
+      wf lt 
+   /\ (exists X0, H ==> (I X0))
+   /\ (forall X, F1 (I X) (J X)
+              /\ F2 (J X true) (# Hexists Y, (I Y) \* [lt Y X])
+              /\ J X false ==> Q tt)).
+
+Lemma while_loop_cf_to_inv : forall (F1:~~bool) (F2:~~unit),
+  while_loop_inv F1 F2 ===> while_loop_cf F1 F2.
+Proof. 
+  intros. apply local_weaken_body. intros H Q (A&I&J&lt&W&(X0&I0)&M).
+  introv LR HR. applys* local_weaken I0. clear I0. gen X0. 
+  intros X. induction_wf IH: W X.
+  destruct (M X) as (M1&M2&M3).
+  applys HR. exists (J X). splits~.
+  apply local_erase. esplit. split. apply M2. 
+  apply~ local_extract_exists. intros x.
+   rewrite star_comm. apply~ CFHeaps.local_intro_prop'.
+Qed. 
+
+
+(********************************************************************)
+(* ** Loop invariants for for-loops *)
+
+(* todo: move *)
+Definition is_local_1 A1 B (S:A1->~~B) :=
+  forall x, is_local (S x).
+
+
+Definition for_loop_cf (a:int) (b:int) (F:~~unit) :=
+  local (fun (H:hprop) (Q:unit->hprop) => forall S:int->~~unit, is_local_1 S ->
+     (forall i H Q,  
+          ((i <= (b)%Z -> (local (fun H Q => exists Q', F H Q' /\ S (i+1) (Q' tt) Q) H Q))
+       /\ (i > b%Z -> H ==> Q tt)) 
+       -> S i H Q)
+    -> S a H Q).
+
+Definition for_loop_inv (a:int) (b:int) (F:~~unit) :=
+  local (fun (H:hprop) (Q:unit->hprop) => 
+      (a > (b)%Z -> H ==> (Q tt)) 
+   /\ (a <= (b)%Z -> exists H', exists I,
+          (H ==> I a \* H') 
+       /\ (forall i, a <= i /\ i <= (b)%Z -> F (I i) (# I(i+1))) 
+       /\ (I ((b)%Z+1) \* H' ==> Q tt))).
+
+Lemma for_loop_cf_to_inv : forall (a:int) (b:int) (F:~~unit),
+  for_loop_inv a b F ===> for_loop_cf a b F.
+Proof. 
+  intros. apply local_weaken_body. intros H Q (Mgt&Mle). introv LS HS.
+  tests (a > b) as C. apply HS. split. math. auto.
+  clear Mgt. specializes Mle. math. destruct Mle as (H'&I&M1&M2&M3).
+  applys~ (@local_wframe unit) (# I (b+1)); [| intros u; destruct~ u ]. (*todo*)
+  clear M1. asserts L: (a <= a <= b+1). math. generalize L.
+  set (a' := a) at 1. generalize a as i. unfold a'.
+  intros i. induction_wf IH: (int_upto_wf (b+1)) i. intros Bnd.
+  applys HS. split; intros C'.
+    apply local_erase. esplit. split.
+      apply M2; auto with maths.
+      forwards: IH (i+1); auto with maths.
+    math_rewrite~ (i = b +1).
+Qed. 
 
 
 
