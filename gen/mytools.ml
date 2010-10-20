@@ -127,9 +127,15 @@ let cutlines width s =
    Buffer.contents b
 
 let make_upper s =
-   if String.length s = 0 then s else
+   if String.length s <= 0 then s else
    let s' = String.copy s in
    s'.[0] <- Char.uppercase s.[0];
+   s'
+
+let make_upper_2 s =
+   if String.length s < 2 then s else
+   let s' = String.copy s in
+   s'.[1] <- Char.uppercase s.[1];
    s'
 
 

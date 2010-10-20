@@ -95,6 +95,10 @@ OKA=$(OKAS) $(OKAQ) $(OKAH) $(OKAO)
 #	imper/LambdaByte_ml.v \
 #	imper/LambdaByte_proof.v \
 
+VAC=\
+	vacid/sparse_array_ml.v \
+	vacid/sparse_array_proof.v 
+
 NEW=\
 	imper/CPS_ml.v \
 	imper/CPS_proof.v \
@@ -184,7 +188,7 @@ ALL=$(IMP) $(TEST)
 OLD=$(TOOLS) $(DEMO) $(OKA) $(OKACOD)
 # $(COD) $(DEV) $(TUTO) $(FORM) $(DEV) $(OKA) $(DEV:.v=.vo)
 
-.PHONY: all def clean cleanall dep tools tools demo oka new cod dvpt test gen lib none
+.PHONY: all def clean cleanall dep tools tools demo oka vac new cod dvpt test gen lib none
 .SUFFIXES: .camldep .ml _ml.v _ml.vo _proof.v _proof.vo .v .vo 
 .SECONDARY: *.cmi okasaki/*.cmi demo/*.cmi imper/*.cmi
 .SECONDARY: *_ml.v okasaki/*_ml.v demo/*_ml.v imper/*_ml.v
@@ -196,6 +200,7 @@ all: gen full .camldep
 full: $(ALL:.v=.vo) 
 tools: $(TOOLS:.v=.vo) 
 demo: $(DEMO:.v=.vo)
+vac: $(VAC:.v=.vo)
 imp: $(IMP:.v=.vo)
 imper: $(IMPER:.v=.vo)
 builtin: $(BUILTIN)

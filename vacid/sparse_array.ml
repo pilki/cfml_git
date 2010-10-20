@@ -1,35 +1,40 @@
 
 let maxlen = 1000
 
-let rand_array () =  
-   Array.init maxlen (fun _ -> Random.int max_int)
-
 type sarray = {
-   mutable n : int array;
+   mutable n : int;
    mutable values : int array;
    mutable idx : int array;
    mutable back : int array;
    }
+
+let valid i s =
+   if (0 <= i && i < maxlen)
+     then s.back.(s.idx.(i)) = i
+     else false
+  (* todo: && qui coupe la sémantique *)
+
+let get i s =
+   if valid i s then s.values.(i) else 0
+
+let set i v s =
+   s.values.(i) <- v;
+   if not (valid i s) then begin
+      s.idx.(i) <- s.n;
+      s.back.(i) <- i;
+      s.n <- s.n + 1
+   end
+
+(*
+
+let rand_array () =  
+   Array.init maxlen (fun _ -> Random.int max_int)
 
 let create () =
   { n = 0; 
     values = rand_array();
     idx = rand_array();
     back = rand_array(); }
-
-let valid i s =
-   0 <= i && i < maxlen && s.back.(s.idx.(i)) = i
-
-let get i s =
-   if valid i s then s.val.(i) else 0
-
-let set i v s =
-   s.val.(i) <- v;
-   if not (valid i s) then begin
-      s.idx.(i) <- s.n;
-      s.back.(i) <- i;
-      s.n <- s.n + 1
-   end
 
 let harness () =
    let a = create 10 in
@@ -40,4 +45,4 @@ let harness () =
    set 7 2 b;
    assert (get 0 a = 0);
    assert (get 0 b = 0)
-
+*)

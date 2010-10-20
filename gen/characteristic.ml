@@ -783,7 +783,7 @@ and record_functions record_name record_constr repr_name params fields_names fie
       [ Coqtop_param (nth i get_names, val_type); 
         Coqtop_param (nth i set_names, val_type) ] in
    
-   let logicals = for_indices (fun i -> sprintf "A%d" (i+1)) in
+   let logicals = List.map make_upper_2 fields_names (* for_indices (fun i -> sprintf "A%d" (i+1)) *) in
    let reprs = for_indices (fun i -> sprintf "T%d" (i+1)) in
    let abstracts = for_indices (fun i -> sprintf "X%d" (i+1)) in
    let concretes = for_indices (fun i -> sprintf "x%d" (i+1)) in
