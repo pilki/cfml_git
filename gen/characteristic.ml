@@ -552,10 +552,10 @@ let rec cfg_exp env e =
       Cf_app ([ts;tr], func, [lift arg]) 
 
    | Texp_setfield(arg, lbl, newval) -> 
-      let tr = coq_typ e in 
-      let ts = coq_typ arg in (* todo: check it is always 'loc' *)
+      let ts1 = coq_typ arg in (* todo: check it is always 'loc' *)
+      let ts2 = coq_typ newval in 
       let func = Coq_var (name_for_record_set lbl) in
-      Cf_app ([ts;tr], func, [lift arg; lift newval]) 
+      Cf_app ([ts1;ts2;coq_unit], func, [lift arg; lift newval]) 
 
    | Texp_try(body, pat_expr_list) -> unsupported "try expression"
    | Texp_variant(l, arg) ->  unsupported "variant expression"

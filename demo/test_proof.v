@@ -6,6 +6,43 @@ Require Import test_ml.
 
 Opaque heap_is_empty hdata heap_is_single heap_is_empty_st Ref.
 
+(********************************************************)
+(* records test *)
+
+Lemma x_cf : Specs x () >> [] (fun r => [_recone (_B:=int) r = 6]).
+Proof.
+  xcf. 
+  xfun (fun g:val => Specs g (x:int) >> [] (\=x)). xret~.
+  xret~.
+Qed.
+
+Definition Any {A:Type} (X:unit) (x:A) := [].
+
+Definition Myrecord _A _B A B C (TA:htype A _A) (TB:htype B int) (TC:htype C val) X Y Z (l:loc) :=
+  Hexists (x:_A) (y:int) (z:val), (l ~~> @_myrecord_of _A _B x y z) \* TA X x \* TB Y y \* TC Z z.
+
+Parameter _get_rectwo_spec : forall _A _B (A C:Type),
+  Spec _get_rectwo (l:loc) |R>> forall (TA:htype A _A) (TC:htype C val) X Y Z,
+    keep R (l ~> Myrecord _B TA Id TC X Y Z) (\= Y).
+
+Parameter _set_recone_spec : forall _A _B (B C:Type),
+  Spec _set_recone (l:loc) (X':_A) |R>> forall (TB:htype B int) (TC:htype C val) (X:_A) Y Z,
+    R (l ~> Myrecord _B Id TB TC X Y Z) (# l ~> Myrecord _B Id TB TC X' Y Z).
+
+Hint Extern 1 (RegisterSpec _get_rectwo) => Provide _get_rectwo_spec.
+Hint Extern 1 (RegisterSpec _set_recone) => Provide _set_recone_spec.
+
+Lemma f_spec : Spec f (a:loc) |R>> forall (n m:int),
+  R (a ~> Myrecord int Id Id Any n m tt)
+  (# a ~> Myrecord int Id Id Any (m+1) m tt).
+Proof.
+  apply (@f_cf int). xisspec. (* xcf. => has evars :: xcf should take a list to instantiate *)
+  intros.
+  xlet. xapp.
+  xapp. xsimpl. congruence.
+Qed.
+
+
 
 (********************************************************)
 (* for loops *)
@@ -132,20 +169,7 @@ Admitted.
  *)
 
 
-(********************************************************)
-(* records test
 
-Record
-myrecord (A : Type) (B : Type) : Type := myrecord_of
-{ 
- myrecord_myrecord_one : A;
-myrecord_myrecord_two
-: B }.
-
-Definition test := @myrecord_of _ _ 2 3.
-Print test.
-{ myrecord_myrecord_one := 2; myrecord_myrecord_two := 2 }.
- *)
 
 (********************************************************)
 (* references *)
