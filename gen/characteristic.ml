@@ -10,6 +10,7 @@ open Formula
 open Coq
 open Primitives
 open Path
+open Printf
 
 (*#########################################################################*)
 (* ** Switch for generating formulae for purely-functional programs *)
@@ -737,20 +738,22 @@ and cfg_type_record (name,dec) =
    let x = Ident.name name in
    let name_of_field lbl = 
       "_" ^ lbl in (* "_" ^ x ^ *)
+   let record_name = record_type_name x in
    let fields = match dec.type_kind with Type_record (l,_) -> l | _ -> assert false in
-   let fields_base_names = List.map (fun (lbl,_,_) -> lbl) fields in
+   (* let fields_base_names = List.map (fun (lbl,_,_) -> lbl) fields in *)
    let declared_params = List.map name_of_type dec.type_params in
    let branches, branches_params = List.split (List.map (fun (lbl, mut, typ) -> 
       let btyp = btyp_of_typ_exp typ in 
       ((name_of_field lbl, lift_btyp btyp), fv_btyp ~through_arrow:false btyp)) fields) in
           (* todo: use a function to factorize above work *)
+   let fields_types = List.map snd branches in
    (* let remaining_params = List.concat branches_params in *)
    (* todo: assert remaining_params included in declared_params *)
    (* TODO: enlever le polymorphisme inutile : list_intersect remaining_params declared_params *) 
    let params = declared_params in 
    let fields_names = List.map fst branches in
    let top = { 
-      coqind_name = record_type_name x;
+      coqind_name = record_name;
       coqind_targs = coq_types params;
       coqind_ret = Coq_type;
       coqind_branches = branches } in
@@ -762,40 +765,90 @@ and cfg_type_record (name,dec) =
    let type_abbrev = Coqtop_def ((x,Coq_wild), coq_fun_types params loc_type) in
    [ Coqtop_record top; type_abbrev ] 
    @ (implicit_decl)
-   @ [ Coqtop_hint_constructors ([record_type_name x], "typeclass_instances") ]
-   @ record_functions 
+   @ [ Coqtop_hint_constructors ([record_name], "typeclass_instances") ]
+   @ record_functions record_name (record_name ^ "_of") (make_upper x) params fields_names fields_types
+  (*  todo: move le "_of" *)
 
-and record_functions record_name repr_name params_names fields_names fields_types =
-   let nth = List.nth in
-   let n = List.length fields_names_and_types in
+(** Auxiliary function to generate stuff for records *)
+
+and record_functions record_name record_constr repr_name params fields_names fields_types =
+   let nth i l = List.nth l i in
+   let n = List.length fields_names in
    let indices = list_nat n in
    let for_indices f = List.map f indices in
 
-   let get_names = for_indices (fun i -> "_get_" ^ nth i fields_names) in
-   let set_names = for_indices (fun i -> "_set_" ^ nth i fields_names) in
+   let get_names = for_indices (fun i -> "_get" ^ nth i fields_names) in
+   let set_names = for_indices (fun i -> "_set" ^ nth i fields_names) in
    let get_set_decl i =
       [ Coqtop_param (nth i get_names, val_type); 
         Coqtop_param (nth i set_names, val_type) ] in
    
-   let logicals = for_indices (fun i -> sprintf "A%d" i) in
-   let reprs = for_indices (fun i -> sprintf "T%d" i) in
-   let abstracts = for_indices (fun i -> sprintf "X%d" i) in
-   let concretes = for_indices (fun i -> sprintf "x%d" i) in
+   let logicals = for_indices (fun i -> sprintf "A%d" (i+1)) in
+   let reprs = for_indices (fun i -> sprintf "T%d" (i+1)) in
+   let abstracts = for_indices (fun i -> sprintf "X%d" (i+1)) in
+   let concretes = for_indices (fun i -> sprintf "x%d" (i+1)) in
    let loc = "l" in
 
-   let tparams = coq_types params_names in
+   let vparams = coq_vars params in
+   let vlogicals = coq_vars logicals in
+   let vreprs = coq_vars reprs in
+   let vabstracts = coq_vars abstracts in
+   let vconcretes = coq_vars concretes in
+   let vloc = coq_var "l" in
+
+   let tparams = coq_types params in
    let tlogicals = coq_types logicals in
-   let treprs = List.map (fun i -> nth i reprs, htype (nth i logicals) (nth i fields_types)) indices in
-   let tabstracts = List.map (fun i -> nth i abstracts, nth i logicals) indices in
-   let tconcretes = List.map (fun i -> nth i abstracts, nth i fields_types) indices in
+   let treprs = List.map (fun i -> nth i reprs, htype (nth i vlogicals) (nth i fields_types)) indices in
+   let tabstracts = List.map (fun i -> nth i abstracts, nth i vlogicals) indices in
+   let tconcretes = List.map (fun i -> nth i concretes, nth i fields_types) indices in
    let tloc = (loc, loc_type) in
 
-   let repr_args = tparams @ tlogicals @ treprs @ tabstracts @ tloc in
-   let hcore = hdata loc (coq_apps (coq_var_at record_name) (params @ concretes)) in
-   let helems = heap_stars (for_indices (fun i -> hdata (nth i concretes) (Coq_app (nth i reprs, nth i abstracts)))) in
+   let repr_args = tparams @ tlogicals @ treprs @ tabstracts @ [tloc] in
+   let hcore = heap_is_single vloc (coq_apps (coq_var_at record_constr) (vparams @ vconcretes)) in
+   let helems = heap_stars (for_indices (fun i -> hdata (nth i vconcretes) (Coq_app (nth i vreprs, nth i vabstracts)))) in
    let repr_body = heap_star hcore helems in
    let repr_def = coqtop_def_untyped repr_name (coq_funs repr_args (heap_existss tconcretes repr_body)) in
 
+   let repr_quantif = repr_args in
+   let repr_folded = hdata vloc (coq_apps (coq_var_at repr_name) (vparams @ vlogicals @ vreprs @ vabstracts)) in
+   let repr_unfolded = hdata vloc (coq_apps (coq_var_at repr_name) (vparams @ fields_types @ (list_make n id_repr) @ vconcretes)) in
+   let repr_elems = helems in
+   let repr_focus_body = heap_impl repr_folded (heap_existss tconcretes (heap_star repr_unfolded repr_elems)) in
+   let repr_unfocus_body = heap_impl (heap_star repr_unfolded repr_elems) repr_folded in
+   let repr_focus = Coqtop_param (repr_name ^ "_focus", coq_foralls repr_quantif repr_focus_body) in
+   let repr_unfocus = Coqtop_param (repr_name ^ "_unfocus", coq_foralls (repr_quantif @ tconcretes) repr_unfocus_body) in 
+   
+   let get_set_spec i = 
+      let get_name = nth i get_names in
+      let set_name = nth i set_names in
+      let r = "R" in
+      let vr = coq_var r in
+      let trget = (r, formula_type_of (nth i fields_types)) in
+      let trset = (r, formula_type_of coq_unit) in
+      let x' = sprintf "X%d'" i in
+      let vx' = coq_var x' in
+      let tx' = (x', nth i fields_types) in
+      let selected_tlogicals = list_remove i tlogicals in
+      let replaced_vlogicals = list_replace i (nth i fields_types) vlogicals in
+      let replaced_vreprs = list_replace i id_repr vreprs in
+      let selected_treprs = list_remove i treprs in
+      let replaced_tabstracts = list_replace i (nth i abstracts, nth i fields_types) tabstracts in
+      let update_vabstracts = list_replace i vx' vabstracts in
+      let data_targs = vparams @ replaced_vlogicals @ replaced_vreprs in
+      let data_initial = hdata vloc (coq_apps (coq_var_at repr_name) (data_targs @ vabstracts)) in
+      let data_updated = hdata vloc (coq_apps (coq_var_at repr_name) (data_targs @ update_vabstracts)) in
+      let post_get = coq_funs [("x", Coq_wild)] (heap_star (heap_pred (coq_eq (Coq_var "x") (nth i vabstracts))) data_initial) in
+      let post_set = post_unit data_updated in
+      let body_quantif = replaced_tabstracts @ selected_treprs in
+      let body_get = coq_funs [tloc; trget] (coq_foralls body_quantif (coq_apps vr [data_initial; post_get])) in
+      let body_set = coq_funs [tloc; tx'; trset] (coq_foralls body_quantif (coq_apps vr [data_initial; post_set])) in
+      let spec_get = coq_foralls (tparams @ selected_tlogicals) (coq_apps (Coq_var "spec_1") [body_get; coq_var get_name]) in
+      let spec_set = coq_foralls (tparams @ selected_tlogicals) (coq_apps (Coq_var "spec_2") [body_set; coq_var set_name]) in
+      [ Coqtop_param (get_name ^ "_spec", spec_get); 
+        Coqtop_registerspec get_name; 
+        Coqtop_param (set_name ^ "_spec", spec_set);
+        Coqtop_registerspec set_name; ]
+      in
 
      (List.concat (List.map get_set_decl indices))
    @ [ repr_def; repr_focus; repr_unfocus ]

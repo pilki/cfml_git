@@ -51,6 +51,7 @@ type coqtop =
   | Coqtop_label of var * int
   | Coqtop_implicit of var * (var * implicit) list
   | Coqtop_registercf of var (* todo: generalize to all hints *)
+  | Coqtop_registerspec of var (* todo: generalize to all hints *)
   | Coqtop_hint_constructors of vars * var
   | Coqtop_hint_unfold of vars * var
   | Coqtop_require of string
@@ -260,7 +261,7 @@ let coq_bool =
 (** Toplevel *)
 
 let coqtop_def_untyped x c =
-   Coq_def ((x,Coq_wild, c)
+   Coqtop_def ((x,Coq_wild), c)
 
 
 (*#########################################################################*)
@@ -359,6 +360,8 @@ let rec string_of_coqtop ct =
       sprintf "Implicit Arguments %s [%s]." x (show_list show_implicit " " xs)
   | Coqtop_registercf x ->
       sprintf "Hint Extern 1 (RegisterCf %s) => Provide %s_cf." x x
+  | Coqtop_registerspec x ->
+      sprintf "Hint Extern 1 (RegisterSpec %s) => Provide %s_spec." x x
   | Coqtop_hint_constructors (xs,base) ->
       sprintf "Hint Constructors %s : %s." (show_list show_str " " xs) base
   | Coqtop_hint_unfold (xs,base) ->

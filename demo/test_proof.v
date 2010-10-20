@@ -18,16 +18,15 @@ Qed.
 
 Definition Any {A:Type} (X:unit) (x:A) := [].
 
-Definition Myrecord _A _B A B C (TA:htype A _A) (TB:htype B int) (TC:htype C val) X Y Z (l:loc) :=
-  Hexists (x:_A) (y:int) (z:val), heap_is_single l (@_myrecord_of _A _B x y z) \* TA X x \* TB Y y \* TC Z z.
 
 Lemma Myrecord_focus: forall _A _B A B C (TA:htype A _A) (TB:htype B int) (TC:htype C val) X Y Z (l:loc),
    l ~> Myrecord _B TA TB TC X Y Z ==>
   Hexists (x:_A) (y:int) (z:val),
   l ~> Myrecord _B Id Id Id x y z \* TA X x \* TB Y y \* TC Z z.
 Proof.
-  intros. unfold Myrecord at 1. hdata_simpl. hextract.
-  unfold Myrecord at 1. hsimpl. hdata_simpl. hsimpl~.
+  intros. unfold Myrecord at 1. hdata_simpl. hextract. hsimpl x x0 x1.
+  unfold Myrecord at 1. hsimpl. hdata_simpl. hsimpl.
+  unfold Id. hdata_simpl. hsimpl~.
 Qed.
 
 Lemma Myrecord_unfocus: forall _A _B A B C (TA:htype A _A) (TB:htype B int) (TC:htype C val) X Y Z (l:loc), 
@@ -39,6 +38,11 @@ Proof.
   unfold Myrecord at 1. hdata_simpl. subst. hsimpl~.
 Qed.
 
+(*---
+Definition Myrecord _A _B A B C (TA:htype A _A) (TB:htype B int) (TC:htype C val) X Y Z (l:loc) :=
+  Hexists (x:_A) (y:int) (z:val), heap_is_single l (@_myrecord_of _A _B x y z) \* TA X x \* TB Y y \* TC Z z.
+
+
 Parameter _get_rectwo_spec : forall _A _B (A C:Type),
   Spec _get_rectwo (l:loc) |R>> forall (TA:htype A _A) (TC:htype C val) X Y Z,
     keep R (l ~> Myrecord _B TA Id TC X Y Z) (\= Y).
@@ -49,6 +53,7 @@ Parameter _set_recone_spec : forall _A _B (B C:Type),
 
 Hint Extern 1 (RegisterSpec _get_rectwo) => Provide _get_rectwo_spec.
 Hint Extern 1 (RegisterSpec _set_recone) => Provide _set_recone_spec.
+*)
 
 Lemma f_spec : Spec f (a:loc) |R>> forall (n m:int),
   R (a ~> Myrecord int Id Id Any n m tt)

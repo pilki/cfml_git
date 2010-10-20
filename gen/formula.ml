@@ -92,6 +92,11 @@ let htype c_abstract c_concrete =
    coq_apps (Coq_var "htype") [c_abstract; c_concrete]
    (* todo: prefix htype *)
 
+(** The identity representation predicate *)
+
+let id_repr =
+   Coq_var "Id"  (* todo: prefix *)
+
 (** Representation predicate tag *)
 
 let hdata c_concrete c_abstract =
@@ -108,10 +113,15 @@ let wild_to_prop =
 let wild_to_hprop =
    Coq_impl (Coq_wild, hprop)
 
-(** Type of imperative characteristic formulae *)
+(** Precise type of formulae [hprop->(T->hprop)->Prop] *)
+
+let formula_type_of c =
+   coq_impls [hprop; Coq_impl (c, hprop)] Coq_prop
+
+(** Generic type of formulae [hprop->(_->hprop)->Prop] *)
 
 let formula_type =
-   coq_impls [hprop; wild_to_hprop] Coq_prop
+   formula_type_of Coq_wild
 
 (** Hprop entailment [H1 ==> H2] *)
 
@@ -128,7 +138,7 @@ let heap_impl_unit h1 q2 =
 let post_impl q1 q2 =
   coq_apps (Coq_var "rel_le") [q1;q2]
 
-(** Specialized post-conditions [fun (_:unit) => H] *)
+(** Specialized post-conditions [fun (_:unit) => H], i.e. [# H] *)
 
 let post_unit h =
   Coq_fun (("_",coq_unit), h)
@@ -137,6 +147,11 @@ let post_unit h =
 
 let heap_star h1 h2 = 
   coq_apps (Coq_var "heap_is_star") [h1;h2]
+
+(** Base data [heap_is_single c1 c2] *)
+
+let heap_is_single c1 c2 = 
+  coq_apps (coq_var_at "heap_is_single") [c1;Coq_wild;c2]
 
 (** Empty heap predicate [[]] *)
 
@@ -148,7 +163,7 @@ let heap_empty =
 let heap_stars hs = 
    match hs with
    | [] -> heap_empty
-   | h1::hs' -> fold_right heap_star hs' h1
+   | h1::hs' -> List.fold_right heap_star hs' h1
 
 (** Lifted existentials [Hexists x, H] *)
 
@@ -158,7 +173,7 @@ let heap_exists xname xtype h =
 (** Iteration of lifted existentials [Hexists x1, .. Hexists xn, H] *)
 
 let heap_existss x_names_types h =
-  List.fold_right (fun (xname,xtype) acc -> heap_exists xname xtype acc) cs h
+  List.fold_right (fun (xname,xtype) acc -> heap_exists xname xtype acc) x_names_types h
 
 (** Lifted propositions [ [P] ] *)
 

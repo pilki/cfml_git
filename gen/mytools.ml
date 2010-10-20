@@ -87,6 +87,16 @@ let rec assoc_list_map f = function
   | [] -> []
   | (k,v)::l -> (k, f v)::(assoc_list_map f l)
 
+let rec list_remove i l = (* i >= 0 *)
+   match l with 
+   | [] -> failwith "list_remove invalid index" (* todo: illegal argument *)
+   | x::t -> if i = 0 then t else x::(list_remove (i-1) t)
+
+let rec list_replace i v l = (* i >= 0 *)
+   match l with 
+   | [] -> failwith "list_replace invalid index" (* todo: illegal argument *)
+   | x::t -> if i = 0 then v::t else x::(list_replace (i-1) v t)
+
 
 (**************************************************************)
 (** String manipulation functions *)
@@ -115,6 +125,12 @@ let cutlines width s =
       i_last := !i;
    done;
    Buffer.contents b
+
+let make_upper s =
+   if String.length s = 0 then s else
+   let s' = String.copy s in
+   s'.[0] <- Char.uppercase s.[0];
+   s'
 
 
 (**************************************************************)
