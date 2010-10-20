@@ -709,32 +709,32 @@ Parameter ml_array_set_spec : forall a A `{Inhab A},
     R (l ~> Array T t \* T V v) (# l ~> Array T (t`[i:=V])).
 *)
 
-
+(* deprecated
 Definition Base A (X:A) (x:A) := 
   [ x = X ].
 
 Implicit Arguments Base [[A]].
+*)
 
-Parameter ml_array_make_spec : forall A,
-  Spec ml_array_make (n:int) (v:A) |R>> 
-     R [] (fun l => Hexists t, l ~> Array Base t \* [t = array_make n v]).
+Parameter ml_array_make_spec : forall a,
+  Spec ml_array_make (n:int) (v:a) |R>> 
+     R [] (~> Array Id (array_make n v)).
+     (* (fun l => Hexists t, l ~> Array Id t \* [t = array_make n v]). *)
 
-Parameter ml_array_get_spec : forall `{Inhabited A},
+Parameter ml_array_get_spec : forall `{Inhabited a},
   Spec ml_array_get (l:loc) (i:int) |R>> 
-    forall (t:array A), index t i ->
-    Read (R:~~A) (l ~> Array Base t) (\= t\(i)).
+    forall (t:array a), index t i ->
+    keep R (l ~> Array Id t) (\= t\(i)).
 
-Parameter ml_array_set_spec : forall A,
-  Spec ml_array_set (l:loc) (i:int) (v:A) |R>> 
-    forall (t:array A), index t i -> 
-    R (l ~> Array Base t) (# Hexists t', l ~> Array Base t' \* [t' = t\(i:=v)]).
+Parameter ml_array_set_spec : forall a,
+  Spec ml_array_set (l:loc) (i:int) (v:a) |R>> 
+    forall (t:array a), index t i -> 
+    R (l ~> Array Id t) (# l ~> Array Id (t\(i:=v))).
+      (* (# Hexists t', l ~> Array Id t' \* [t' = t\(i:=v)]).*)
 
-
-Parameter ml_array_length_spec : forall A,
-  Spec ml_array_length (l:loc) |R>> forall (t:array A),
-    Read R (l ~> Array Base t) (\= LibArray.length t).
-
-
+Parameter ml_array_length_spec : forall a,
+  Spec ml_array_length (l:loc) |R>> forall (t:array a),
+    keep R (l ~> Array Id t) (\= LibArray.length t).
 
 Hint Extern 1 (RegisterSpec ml_array_make) => Provide ml_array_make_spec.
 Hint Extern 1 (RegisterSpec ml_array_get) => Provide ml_array_get_spec.

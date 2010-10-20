@@ -56,10 +56,15 @@ let lift_full_path_name p =
 let lift_path_name p =
   Path.name (lift_path p)
 
+(** Convention for naming record types *)
+
+let record_type_name name =
+  "_" ^ name
+
 (** Convention for naming record constructors *)
 
 let record_constructor name =
-  name ^ "_of"
+  "_" ^ name ^ "_of"
 
 
 (*#########################################################################*)
@@ -246,6 +251,12 @@ let prefix_for_label typ =
 let string_of_label_with prefix lbl =
   prefix ^ "_" ^ lbl.lbl_name
 
+let name_for_record_get lbl =
+  "_get_" ^ lbl.lbl_name
+
+let name_for_record_set lbl =
+  "_set_" ^ lbl.lbl_name
+
 let string_of_label typ lbl =
   string_of_label_with (prefix_for_label typ) lbl
 
@@ -308,7 +319,12 @@ let rec lift_val env e =
           Array.iteri (fun i lbli -> if lbl.lbl_name = lbli.lbl_name then args.(i) <- v) labels in
        List.iter (fun (lbl,v) -> register_arg lbl (aux v)) l;
        let constr = record_constructor (prefix_for_label (e.exp_type)) in
-       coq_apps (Coq_var constr) (Array.to_list args)
+       let typ_args = 
+          match btyp_of_typ_exp e.exp_type with
+          | Btyp_constr (id,ts) -> List.map lift_btyp ts
+          | _ -> failwith "record should have a type-constructor as type"
+          in
+       coq_apps (coq_var_at constr) (typ_args @ Array.to_list args)
    | Texp_apply (funct, oargs) when is_inlined_primitive funct oargs ->
       let f = get_inlined_primitive funct oargs in
       let args = simplify_apply_args oargs in
@@ -528,11 +544,19 @@ let rec cfg_exp env e =
       end
 
    | Texp_array expr_list -> unsupported "array expressions" (* later *)
-   | Texp_field (e, lbl) -> unsupported "field expression"
-       (* --later:
-       let typ = e.exp_type in
-       Coq_app (Coq_var (string_of_label typ lbl), aux e)*)
-   | Texp_setfield(arg, lbl, newval) -> unsupported "set-field expression"
+
+   | Texp_field (arg, lbl) -> 
+      let tr = coq_typ e in 
+      let ts = coq_typ arg in (* todo: check it is always 'loc' *)
+      let func = Coq_var (name_for_record_get lbl) in
+      Cf_app ([ts;tr], func, [lift arg]) 
+
+   | Texp_setfield(arg, lbl, newval) -> 
+      let tr = coq_typ e in 
+      let ts = coq_typ arg in (* todo: check it is always 'loc' *)
+      let func = Coq_var (name_for_record_set lbl) in
+      Cf_app ([ts;tr], func, [lift arg; lift newval]) 
+
    | Texp_try(body, pat_expr_list) -> unsupported "try expression"
    | Texp_variant(l, arg) ->  unsupported "variant expression"
    | Texp_ifthenelse(cond, ifso, None) -> unsupported "if-then-without-else expressions should have been normalized"
@@ -711,23 +735,38 @@ and cfg_type_abbrev (name,dec) =
 
 and cfg_type_record (name,dec) =
    let x = Ident.name name in
-   let field lbl = 
-      x ^ "_" ^ lbl in
-   let branches = match dec.type_kind with Type_record (l,_) -> l | _ -> assert false in
-   let params = List.map name_of_type dec.type_params in
+   let name_of_field lbl = 
+      "_" ^ lbl in (* "_" ^ x ^ *)
+   let fields = match dec.type_kind with Type_record (l,_) -> l | _ -> assert false in
+   let fields_base_names = List.map (fun (lbl,_,_) -> lbl) fields in
+   let declared_params = List.map name_of_type dec.type_params in
+   let branches, branches_params = List.split (List.map (fun (lbl, mut, typ) -> 
+      let btyp = btyp_of_typ_exp typ in 
+      ((name_of_field lbl, lift_btyp btyp), fv_btyp ~through_arrow:false btyp)) fields) in
+          (* todo: use a function to factorize above work *)
+   (* let remaining_params = List.concat branches_params in *)
+   (* todo: assert remaining_params included in declared_params *)
+   (* TODO: enlever le polymorphisme inutile : list_intersect remaining_params declared_params *) 
+   let params = declared_params in 
+   let fields_names = List.map fst branches in
    let top = { 
-      coqind_name = x;
+      coqind_name = record_type_name x;
       coqind_targs = coq_types params;
       coqind_ret = Coq_type;
-      coqind_branches = List.map (fun (lbl, mut, typ) -> (field lbl, lift_typ_exp typ)) branches } in
+      coqind_branches = branches } in
    let implicit_decl =
       match params with
       | [] -> []
-      | _ -> List.map (fun (lbl,_,_) -> Coqtop_implicit (field lbl, List.map (fun p -> p, Coqi_maximal) params)) branches 
+      | _ -> List.map (fun field -> Coqtop_implicit (field, List.map (fun p -> p, Coqi_maximal) params)) fields_names 
       in
-   [ Coqtop_record top ] 
+   let type_abbrev = Coqtop_def ((x,Coq_wild), coq_fun_types params loc_type) in
+   let get_set_decl = List.concat (List.map (fun lbl ->  (* todo:common function for prefixes *)
+      [ Coqtop_param ("_get_" ^ lbl, val_type); 
+        Coqtop_param ("_set_" ^ lbl, val_type) ]) fields_base_names) in
+   [ Coqtop_record top; type_abbrev ] 
+   @ get_set_decl 
    @ (implicit_decl)
-   @ [ Coqtop_hint_constructors ([x], "typeclass_instances") ]
+   @ [ Coqtop_hint_constructors ([record_type_name x], "typeclass_instances") ]
 
 (** Generate the top-level Coq declarations associated with 
     a algebraic data type definition. *)

@@ -650,11 +650,14 @@ let rec is_nonexpansive exp =
       List.for_all is_nonexpansive el
   | Texp_variant(_, arg) -> is_nonexpansive_opt arg
   | Texp_record(lbl_exp_list, opt_init_exp) ->
+      (*arthur*) if !Clflags.strict_value_restriction then false else
       List.for_all
         (fun (lbl, exp) -> lbl.lbl_mut = Immutable && is_nonexpansive exp)
         lbl_exp_list
       && is_nonexpansive_opt opt_init_exp
-  | Texp_field(exp, lbl) -> is_nonexpansive exp
+  | Texp_field(exp, lbl) -> 
+      (*arthur*) if !Clflags.strict_value_restriction then false else
+      is_nonexpansive exp
   | Texp_array [] -> true
   | Texp_ifthenelse(cond, ifso, ifnot) ->
       (*arthur*) if !Clflags.strict_value_restriction then false else

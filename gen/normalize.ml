@@ -97,7 +97,7 @@ let rec pattern_variables p =
    | Ppat_tuple l -> list_concat_map aux l
    | Ppat_construct (li, po, b) -> option_app [] aux po
    | Ppat_variant (_,_) -> unsupported "variant patterns"
-   | Ppat_record l -> list_concat_map (fun (li,pi) -> aux pi) l
+   | Ppat_record l -> unsupported "record patterns" (* list_concat_map (fun (li,pi) -> aux pi) l *)
    | Ppat_array pats -> unsupported "array patterns"
    | Ppat_or (p1,p2) -> unsupported "or patterns are only supported at pattern root"
    | Ppat_constraint (p,t) -> aux p

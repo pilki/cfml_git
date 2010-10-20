@@ -1,4 +1,21 @@
 (* ---------------------------------------------------------*)
+(* records *)
+
+type ('a,'b) myrecord = {
+  mutable recone : 'a;
+  mutable rectwo : int;
+  mutable recthree : 'a -> 'b; }
+ 
+let x () : (int,int) myrecord = 
+  { rectwo = 3; recthree = (fun x -> x); recone = 6 }
+
+let f a =
+  a.recone <- a.rectwo + 1
+
+
+
+
+(* ---------------------------------------------------------*)
 (* loops *)
 
 let sum n =
@@ -33,20 +50,6 @@ type 'a erase = 'a -> 'a
 
 *)
 
-
-(* ---------------------------------------------------------*)
-(* records 
-
-type ('a,'b) myrecord = {
-  mutable recone : 'a;
-  mutable rectwo : 'b -> 'b }
- 
-let x () : (int,int) myrecord = 
-  { rectwo = 3; recone = (fun _ -> 2) }
-
-let f a =
-  a.recone <- a.rectwo 1
-*)
 
 
 (* ---------------------------------------------------------*)
