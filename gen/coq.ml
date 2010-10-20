@@ -263,6 +263,9 @@ let coq_bool =
 let coqtop_def_untyped x c =
    Coqtop_def ((x,Coq_wild), c)
 
+let coqtop_noimplicit x =
+   Coqtop_implicit (x,[])
+
 
 (*#########################################################################*)
 (* ** Representation of labels (notation of the form "'x" := `1`0`1`0) *)
@@ -357,7 +360,7 @@ let rec string_of_coqtop ct =
          | Coqi_implicit -> sprintf "%s" x
          | Coqi_explicit -> sprintf "" 
          in
-      sprintf "Implicit Arguments %s [%s]." x (show_list show_implicit " " xs)
+      sprintf "Implicit Arguments %s [ %s]." x (show_list show_implicit " " xs)
   | Coqtop_registercf x ->
       sprintf "Hint Extern 1 (RegisterCf %s) => Provide %s_cf." x x
   | Coqtop_registerspec x ->

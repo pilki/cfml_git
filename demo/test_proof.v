@@ -6,6 +6,16 @@ Require Import test_ml.
 
 Opaque heap_is_empty hdata heap_is_single heap_is_empty_st Ref.
 
+(* todo: move *)
+Ltac xchange_debug L :=
+  let K := fresh "K" in
+  forwards_nounfold K: L; eapply xchange_lemma;
+    [ clear K; try xlocal
+    | apply K
+    | clear K
+    | clear K ].
+
+
 (********************************************************)
 (* records test *)
 
@@ -16,8 +26,10 @@ Proof.
   xret~.
 Qed.
 
-Definition Any {A:Type} (X:unit) (x:A) := [].
+Definition Any {A:Type} (X:unit) (x:A) := 
+  [True]. (* should not be [] otherwise tactics bug *)
 
+(*
 
 Lemma Myrecord_focus: forall _A _B A B C (TA:htype A _A) (TB:htype B int) (TC:htype C val) X Y Z (l:loc),
    l ~> Myrecord _B TA TB TC X Y Z ==>
@@ -38,7 +50,7 @@ Proof.
   unfold Myrecord at 1. hdata_simpl. subst. hsimpl~.
 Qed.
 
-(*---
+
 Definition Myrecord _A _B A B C (TA:htype A _A) (TB:htype B int) (TC:htype C val) X Y Z (l:loc) :=
   Hexists (x:_A) (y:int) (z:val), heap_is_single l (@_myrecord_of _A _B x y z) \* TA X x \* TB Y y \* TC Z z.
 
@@ -55,15 +67,66 @@ Hint Extern 1 (RegisterSpec _get_rectwo) => Provide _get_rectwo_spec.
 Hint Extern 1 (RegisterSpec _set_recone) => Provide _set_recone_spec.
 *)
 
+Opaque Any. (* todo move *)
+
+Definition myint : Type := int.
+Definition my3 : myint := 3.
+
+(* BUG DE SET NOT UNIFIABLE WITH TYPE....
+
+Lemma test : (forall A (x:A), x = x) -> True.
+intros t.
+  let x := fresh "TEMP" in
+  evar (x:Type); 
+  let t' := constr:(t x) in
+  let t'' := (eval unfold x in t') in
+  subst x; pose (M:=t''); clearbody M.
+Show Existentials.
+let H := fresh "TEMP" in
+match type of M with forall _:?P, _ =>
+assert (H : P) end.
+Check (3: (int:Type)).
+apply (my3).
+pose (M 3).
+
+  assert (H : P); [ apply 3 | pose(t H)]
+end.
+  lets: (M 3).
+
+let t := eval unfold x in (H A) in pose t.
+subst x; 
+lets M: (H x 3).
+subst x.
+assert (R: 
+lets N: (M 3).
+instantiate (1:= int) in M.
+lets N: (M 3). 
+subst x.
+
+Ltac app_arg t P v cont := (* not used *)
+  let H := fresh "TEMP" in
+  assert (H : P); [ apply v | cont(t H); try clear H ].
+
+Show Existentials.
+ forwards: H 3. Show Existentials.
+*)
+
 Lemma f_spec : Spec f (a:loc) |R>> forall (n m:int),
   R (a ~> Myrecord int Id Id Any n m tt)
   (# a ~> Myrecord int Id Id Any (m+1) m tt).
 Proof.
   apply (@f_cf int). xisspec. (* xcf. => has evars :: xcf should take a list to instantiate *)
   intros.
+  xchange (Myrecord_focus a). xextract. intros u v w.
+(* le bug de coq
+Show Existentials.
+forwards: (>>> Args Myrecord_unfocus a __ int __ v w int int Func).
+Show Existentials.
+*)
+  xchange (>>> Myrecord_unfocus a u v w). 
   xlet. xapp.
   xapp. xsimpl. congruence.
-Qed.
+Admitted.
 
 
 

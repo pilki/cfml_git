@@ -809,15 +809,19 @@ and record_functions record_name record_constr repr_name params fields_names fie
    let repr_body = heap_star hcore helems in
    let repr_def = coqtop_def_untyped repr_name (coq_funs repr_args (heap_existss tconcretes repr_body)) in
 
-   let repr_quantif = repr_args in
    let repr_folded = hdata vloc (coq_apps (coq_var_at repr_name) (vparams @ vlogicals @ vreprs @ vabstracts)) in
    let repr_unfolded = hdata vloc (coq_apps (coq_var_at repr_name) (vparams @ fields_types @ (list_make n id_repr) @ vconcretes)) in
    let repr_elems = helems in
    let repr_focus_body = heap_impl repr_folded (heap_existss tconcretes (heap_star repr_unfolded repr_elems)) in
    let repr_unfocus_body = heap_impl (heap_star repr_unfolded repr_elems) repr_folded in
-   let repr_focus = Coqtop_param (repr_name ^ "_focus", coq_foralls repr_quantif repr_focus_body) in
-   let repr_unfocus = Coqtop_param (repr_name ^ "_unfocus", coq_foralls (repr_quantif @ tconcretes) repr_unfocus_body) in 
-   
+   let repr_focus_quantif = [tloc] @ tparams @ tlogicals @ treprs @ tabstracts in
+   let repr_unfocus_quantif = [tloc] @ tparams @ tconcretes @ tlogicals @ treprs @ tabstracts in
+   let focus_name = repr_name ^ "_focus" in
+   let unfocus_name = repr_name ^ "_unfocus" in
+   let repr_focus = Coqtop_param (focus_name, coq_foralls repr_focus_quantif repr_focus_body) in
+   let repr_unfocus = Coqtop_param (unfocus_name, coq_foralls repr_unfocus_quantif repr_unfocus_body) in 
+   let repr_focus_and_unfocus = [ repr_focus; repr_unfocus; coqtop_noimplicit focus_name; coqtop_noimplicit unfocus_name ] in
+
    let get_set_spec i = 
       let get_name = nth i get_names in
       let set_name = nth i set_names in
@@ -851,7 +855,8 @@ and record_functions record_name record_constr repr_name params fields_names fie
       in
 
      (List.concat (List.map get_set_decl indices))
-   @ [ repr_def; repr_focus; repr_unfocus ]
+   @ [ repr_def ]
+   @ repr_focus_and_unfocus
    @ (List.concat (List.map get_set_spec indices))
 
 
