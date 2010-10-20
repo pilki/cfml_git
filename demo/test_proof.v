@@ -14,11 +14,37 @@ Lemma sum_spec : Spec sum (n:int) |R>> n > 0 -> R [] (\= 0).
 Proof.
   xcf. intros.
   xapp.
-  (*
-xfor (fun i => (x ~> Ref Id (n+1-i))). math.
-    xapp. hsimpl. math.
+  xseq.
+  apply local_erase. intros S LS HS.
+  cuts: (forall i, i <= n+1 -> S i (x ~> Ref Id (n+1-i)) (# x ~> Ref Id 0)).
+    applys_eq H0 2. math. fequals. fequals. math.
+    intros i. induction_wf IH: (int_upto_wf (n+1)) i.
+    intros Le. apply HS. split; intros; try solve [ false;math ].
+      (*-->todo use tag for let *)
+    apply local_erase. esplit. split. (* use xlet *)
+    xapp.
+    forwards M: IH (i+1); auto with maths. 
+    applys~ local_wframe M.
+    hsimpl. math.
+    hsimpl.
+    hsimpl. math.
   xapp. xsimpl. math.
-Qed.
+Admitted.
+
+Lemma sum_spec' : Spec sum (n:int) |R>> n > 0 -> R [] (\= 0).
+Proof.
+  xcf. intros.
+  xapp.
+  xseq.
+  apply for_loop_cf_to_inv. apply local_erase. split. intros. false. math.
+   (*-->todo only one side! *)
+  intros _. esplit. exists (fun i => (x ~> Ref Id (n+1-i))). splits.
+    hsimpl. math.
+    intros i Le. xapp. hsimpl. math.
+    hsimpl.
+  xapp. xsimpl. math.
+(*
+xfor (fun i => (x ~> Ref Id (n+1-i))). math.
 *)
 Admitted.
 
