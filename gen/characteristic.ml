@@ -760,13 +760,47 @@ and cfg_type_record (name,dec) =
       | _ -> List.map (fun field -> Coqtop_implicit (field, List.map (fun p -> p, Coqi_maximal) params)) fields_names 
       in
    let type_abbrev = Coqtop_def ((x,Coq_wild), coq_fun_types params loc_type) in
-   let get_set_decl = List.concat (List.map (fun lbl ->  (* todo:common function for prefixes *)
-      [ Coqtop_param ("_get_" ^ lbl, val_type); 
-        Coqtop_param ("_set_" ^ lbl, val_type) ]) fields_base_names) in
    [ Coqtop_record top; type_abbrev ] 
-   @ get_set_decl 
    @ (implicit_decl)
    @ [ Coqtop_hint_constructors ([record_type_name x], "typeclass_instances") ]
+   @ record_functions 
+
+and record_functions record_name repr_name params_names fields_names fields_types =
+   let nth = List.nth in
+   let n = List.length fields_names_and_types in
+   let indices = list_nat n in
+   let for_indices f = List.map f indices in
+
+   let get_names = for_indices (fun i -> "_get_" ^ nth i fields_names) in
+   let set_names = for_indices (fun i -> "_set_" ^ nth i fields_names) in
+   let get_set_decl i =
+      [ Coqtop_param (nth i get_names, val_type); 
+        Coqtop_param (nth i set_names, val_type) ] in
+   
+   let logicals = for_indices (fun i -> sprintf "A%d" i) in
+   let reprs = for_indices (fun i -> sprintf "T%d" i) in
+   let abstracts = for_indices (fun i -> sprintf "X%d" i) in
+   let concretes = for_indices (fun i -> sprintf "x%d" i) in
+   let loc = "l" in
+
+   let tparams = coq_types params_names in
+   let tlogicals = coq_types logicals in
+   let treprs = List.map (fun i -> nth i reprs, htype (nth i logicals) (nth i fields_types)) indices in
+   let tabstracts = List.map (fun i -> nth i abstracts, nth i logicals) indices in
+   let tconcretes = List.map (fun i -> nth i abstracts, nth i fields_types) indices in
+   let tloc = (loc, loc_type) in
+
+   let repr_args = tparams @ tlogicals @ treprs @ tabstracts @ tloc in
+   let hcore = hdata loc (coq_apps (coq_var_at record_name) (params @ concretes)) in
+   let helems = heap_stars (for_indices (fun i -> hdata (nth i concretes) (Coq_app (nth i reprs, nth i abstracts)))) in
+   let repr_body = heap_star hcore helems in
+   let repr_def = coqtop_def_untyped repr_name (coq_funs repr_args (heap_existss tconcretes repr_body)) in
+
+
+     (List.concat (List.map get_set_decl indices))
+   @ [ repr_def; repr_focus; repr_unfocus ]
+   @ (List.concat (List.map get_set_spec indices))
+
 
 (** Generate the top-level Coq declarations associated with 
     a algebraic data type definition. *)

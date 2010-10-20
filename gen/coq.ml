@@ -257,6 +257,11 @@ let coq_int =
 let coq_bool =
   Coq_var "bool"
 
+(** Toplevel *)
+
+let coqtop_def_untyped x c =
+   Coq_def ((x,Coq_wild, c)
+
 
 (*#########################################################################*)
 (* ** Representation of labels (notation of the form "'x" := `1`0`1`0) *)

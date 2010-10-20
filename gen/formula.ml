@@ -86,6 +86,18 @@ let heap =
 let hprop =
    Coq_var "CFHeaps.hprop"
 
+(** Type of representation predicates *)
+
+let htype c_abstract c_concrete =
+   coq_apps (Coq_var "htype") [c_abstract; c_concrete]
+   (* todo: prefix htype *)
+
+(** Representation predicate tag *)
+
+let hdata c_concrete c_abstract =
+   coq_apps (Coq_var "hdata") [c_abstract; c_concrete]
+   (* todo: prefix htype *)
+
 (** Type of pure post-conditions [_ -> Prop] *)
 
 let wild_to_prop =
@@ -126,10 +138,27 @@ let post_unit h =
 let heap_star h1 h2 = 
   coq_apps (Coq_var "heap_is_star") [h1;h2]
 
+(** Empty heap predicate [[]] *)
+
+let heap_empty =
+   Coq_var "heap_is_empty"
+
+(** Iterated separating conjunction [H1 * .. * HN] *)
+
+let heap_stars hs = 
+   match hs with
+   | [] -> heap_empty
+   | h1::hs' -> fold_right heap_star hs' h1
+
 (** Lifted existentials [Hexists x, H] *)
 
 let heap_exists xname xtype h =
    Coq_app (Coq_var "heap_is_pack", Coq_fun ((xname, xtype), h))
+
+(** Iteration of lifted existentials [Hexists x1, .. Hexists xn, H] *)
+
+let heap_existss x_names_types h =
+  List.fold_right (fun (xname,xtype) acc -> heap_exists xname xtype acc) cs h
 
 (** Lifted propositions [ [P] ] *)
 
