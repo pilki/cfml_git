@@ -175,13 +175,30 @@ Ltac myunfolds := unfolds good_sizes, Valid.
 Ltac auto_star ::= try solve [myunfolds; intuition eauto]. (* jauto => should splitt iff *)
 Ltac auto_tilde ::= try solve [myunfolds; auto with maths].
 
+Definition BackCorrect n (Idx Back:tab) :=
+  forall k, index n k ->
+  let i := Back\(k) in index L i /\ Idx\(i) = k.
 
 Definition SparseArray (m:map int int) (s:loc) :=
   Hexists (n:int) (Val:tab) (Idx:tab) (Back:tab),
      s ~> SarrayPacked n Val Idx Back
   \* [ good_sizes Val Idx Back
-       /\ (forall i, index m i -> Valid n Idx Back i /\ Val\(i) = m\(i))
-       /\ (forall k, index n k -> index L (Back\(k))) ].
+       /\ BackCorrect n Idx Back
+       /\ (forall i, index m i -> Valid n Idx Back i /\ Val\(i) = m\(i)) ].
+
+Lemma classic_or_elim_l : forall P Q, P \/ Q -> P \/ (~ P /\ Q).
+Proof. intros. destruct (classic P); auto_false*. Qed.
+(*destruct (classic_or_elim_l NVi) as [H|[Ini H]]; apply H; clear H.*)
+
+Lemma not_Valid_to_notin_Back : forall i n Idx Back,
+  ~ (Valid n Idx Back i) -> index L i -> BackCorrect n Idx Back ->
+  (forall k, index n k -> Back\(k) <> i).
+Proof.
+  introv NVi ILi Bok Ink Eq. forwards~ [_ E]: Bok k. 
+  unfolds Valid. rewrite (prop_eq_True_back ILi) in NVi. 
+  rew_logic in NVi. destruct NVi as [H|H]; apply H; clear H; congruence.
+Qed.
+
 
 (*
 Lemma inbound_spec :
@@ -266,9 +283,9 @@ Proof.
 (*
   xcf. introv Imi.
   unfold SparseArray. hdata_simpl.
-  xextract as n Val Idx Back (Siz&Inv&Ins).
-  forwards (Vi&Ei): Inv Imi. lets: (proj31 Vi).
-  xapps~. skip. (* n <= L *)
+  xextract as n Val Idx Back (Siz&Bok&Iok).
+  forwards (Vi&Ei): Iok Imi. 
+  xapps*. skip. (* n <= L *)
   xif.
   xchange (Sarray_focus s) as n' val idx back. (**-todo: focus only on values *)
   xapps. xapp*.
@@ -340,16 +357,24 @@ Lemma set_spec :
 Proof.
   xcf. introv Imi.
   hdata_simpl SparseArray.
-  xextract as n Val Idx Back (Siz&Inv&Ins).
+  xextract as n Val Idx Back (Siz&Bok&Iok).
   xchange (Sarray_focus s) as n' val idx back.
   xapps. xapps*.
-  xchange (Sarray_unfocus s n' val idx back). fold SarrayPacked.
+  xchange (Sarray_unfocus s n' val idx back). fold SarrayPacked. clear n' val idx back.
   xapps*. (* skip. n <= L *) skip.
-  xif.
+  xif; [|skip].
   (* case create back-index *)
-  skip.
+  xchange (Sarray_focus s) as n' val idx back.
+  (* temp *) xchange (Id_extract n'). xextract. intro_subst.
+  lets Nbk: (>>> not_Valid_to_notin_Back Bok); eauto.
+  xapps. xapps. xapps*. xapps. xapps*. xapps*. xapp.
+  intros _. hchange (Id_import (n+1)).
+  hchange (Sarray_unfocus s (n+1) val idx back). hsimpl. splits.
+  
+
+
   (* case nothing to do *)
-  xret. hsimpl. splits~.
+   xret. hsimpl. splits~.
    intros j Imj. tests (j = i).
      rew_map_array*.
      forwards: Inv j; rew_map_array*. 
