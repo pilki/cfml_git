@@ -112,7 +112,6 @@ Lemma valid_spec :
     keep R (s ~> SarrayPacked n Val Idx Back)
            (\= istrue (Valid n Idx Back i)).
 Proof.
-(*
   xcf. introv Siz Ii Le. unfold SarrayPacked.
   xchange (Sarray_focus s) as n' val idx back. 
    xchange (Id_focus n'). xextract. intro_subst.
@@ -126,8 +125,6 @@ Proof.
   xret. hsimpl. fold_bool. fold_prop. unfold Valid.
   cuts*: (~ index n (Idx\(i))). rewrite* int_index_def.
 Qed.
-*)
-Admitted.
 
 Hint Extern 1 (RegisterSpec valid) => Provide valid_spec.
 
@@ -139,7 +136,6 @@ Lemma get_spec :
   Spec get i s |R>> forall m, index m i -> 
     keep R (s ~> SparseArray m) (\= m\(i)).
 Proof.
-(*
   xcf. introv Imi.
   unfold SparseArray. hdata_simpl.
   xextract as n Val Idx Back (Siz&Bok&Iok).
@@ -150,8 +146,6 @@ Proof.
   intros v. hchange (Sarray_unfocus s n' val idx back).
   hextract. subst. hsimpl*.
 Qed. 
-*)
-Admitted.
 
 
 (*--------------------------------------------------*)

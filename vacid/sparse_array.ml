@@ -14,8 +14,6 @@ let valid i s =
     then s.back.(k) = i
     else false
 
-(* todo: faire le vrai && à la place du if *)
-
 let get i s =
    if valid i s then s.values.(i) else 0
 
@@ -27,6 +25,7 @@ let set i v s =
       s.back.(k) <- i;
       s.n <- k + 1
    end
+
 
 (*
 
