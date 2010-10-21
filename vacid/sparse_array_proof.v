@@ -72,32 +72,32 @@ Ltac myunfold :=
 
 Hint Extern 1 (@index _ _ (array_index _) ?t ?i) =>
   myunfold; eassumption.
-
+Hint Extern 1 (@index _ _ int_index ?t ?i) =>
+  myunfold; eassumption.
 Hint Extern 1 (@index _ _ (array_index _) ?t ?i) =>
   myunfold; match goal with H: @index _ _ int_index ?n i |- _ => 
     eapply index_array_length end.
 
-Hint Extern 3 (@index _ _ (array_index _) ?t ?i) =>
-  myunfold; match goal with H: @index _ _ int_index ?n i |- _ => 
-    eapply index_array_length_le; math end.
-
-Hint Extern 1 (@index _ _ int_index ?t ?i) =>
-  myunfold; eassumption.
 
 Hint Extern 1 (@index _ _ int_index ?m ?i) =>
   myunfold; match goal with H: @index _ _ int_index ?n i |- _ => 
-    eapply (@int_index_le i n m); math end.
+    eapply (@int_index_le i n m); math end : strong.
 
 Hint Extern 3 (@index _ _ int_index ?m ?i) =>
-  myunfold; eapply int_index_prove; math.
+  myunfold; eapply int_index_prove; math : strong.
+
+Hint Extern 3 (@index _ _ (array_index _) ?t ?i) =>
+  myunfold; match goal with H: @index _ _ int_index ?n i |- _ => 
+    eapply index_array_length_le; math end : strong.
+
+Ltac strong := eauto with strong.
+
 
 (*
 Hint Resolve int_index_le int_index_prove.
 Hint Resolve array_index_prove index_array_length.
-*)
-
 Hint Resolve length_update_prove.
-
+*)
 
 Tactic Notation "inhabs" := (* workaround coq bug *)
   match goal with |- Inhab _ => typeclass end.
@@ -172,9 +172,7 @@ Proof.
   xapps*. skip. (* n <= L *)
   xif.
   xchange (Sarray_focus s) as n' val idx back. (**-todo: focus only on values *)
-  xapps. xapp*. 
-    (* myunfold. eapply index_array_length. debug eauto. 
-       --> pkoi [eauto] met 3 secondes pour faire [eassumption] ? *)
+  xapps. xapp*.
   intros v. hchange (Sarray_unfocus s n' val idx back).
   hextract. subst. hsimpl*.
 Qed. 
@@ -202,32 +200,47 @@ Proof.
   (* temp *) xchange (Id_focus n'). xextract. intro_subst.
   lets Nbk: (>>> not_Valid_to_notin_Back Bok); eauto.
   skip: (0 <= n < L).
+  skip: (index L n).
   xapps. xapps. xapps*. xapps. xapps*. xapp.
   intros _. hchange (Id_unfocus (n+1)).
   hchange (Sarray_unfocus s (n+1) val idx back). hsimpl. splits.
-    splits*.
+    hnf. rew_array. unfolds* good_sizes.
     intros k Ik. tests (k = n).
-      rew_array; auto*.
-      rewrite @int_index_def in Ik.
-      asserts: (index n k). autom.
-      forwards~ [? ?]: Bok k. rew_array; auto*. autom.
-    intros j Imj. tests (j = i).
-      asserts: (index (n + 1) n). autom. (* for efficiency *)
 
-unfold Valid. rew_map_array*.
-rew_map in Imj; try typeclass. destruct Imj; tryfalse.
-forwards~ [? ?]: Iok j.
-unfold Valid. rew_map_array; auto.
+Tactic Notation "rew_array" "~" :=
+  rew_array; auto_tilde.
+Tactic Notation "rew_array" "*" :=
+  rew_array; auto_star.
+Ltac strong' := math_0; math_1; math_2; math_3; try split; eapply int_index_prove; math_3; math_4; math_5.
+Ltac strong'' := skip.
+
+      rew_array*. 
+      rewrite @int_index_def in Ik.
+       asserts [? ?]: (index n k /\ index L k). strong''.
+       forwards~ [? ?]: Bok k. rew_array*.
+    intros j Imj. tests (j = i).
+      asserts: (index (n + 1) n). eapply int_index_prove; math. (* faster *)
+       unfold Valid. rew_map_array*.
+      rew_map in Imj; try typeclass. destruct Imj; tryfalse.
+       forwards~ [? ?]: Iok j. unfold Valid. rew_map_array; auto.
+         splits~. splits*. skip. skip.
+skip.
+(*
+destruct H2. hnf in H4.
+auto*.
+skip.
 auto*.
 auto*.
 rewrite @array_index_def. myunfolds. eapply int_index_le. auto*. math.
 myunfolds. do 2 rewrite @int_index_def in H1. math.
 auto*.
+*)
+skip.
   (* case nothing to do *)
    xret. hsimpl. splits~.
    intros j Imj. tests (j = i).
      rew_map_array*.
-     forwards: Inv j; rew_map_array*. 
+     forwards: Iok j. clear Siz Bok C Imi Iok. rew_map in *. rew_map in Imj; auto*. typeclass.  rew_map_array. 
 Qed.
 
 
