@@ -60,19 +60,52 @@ Ltac xchange_debug L :=
     | clear K; instantiate 
     | clear K ].
 
+Axiom isTrue_andb : forall b1 b2 : bool,
+  isTrue (b1 && b2) = (isTrue b1 /\ isTrue b2).
+Axiom isTrue_orb : forall b1 b2 : bool,
+  isTrue (b1 || b2) = (isTrue b1 \/ isTrue b2).
+Axiom isTrue_negb : forall b : bool,
+  isTrue (! b) = (~ isTrue b).
 
-Hint Rewrite
- isTrue_istrue 
- istrue_isTrue 
- isTrue_neg_istrue 
- istrue_not_isTrue : rew_prop.
+Hint Rewrite isTrue_istrue isTrue_andb isTrue_orb isTrue_negb : rew_logicb.
 
-Tactic Notation "rew_prop" := 
-  autorewrite with rew_prop.
-Tactic Notation "rew_prop" "in" hyp(H) := 
-  autorewrite with rew_prop in H.
-Tactic Notation "rew_prop" "in" "*" := 
-  autorewrite with rew_prop in *.
+Hint Rewrite not_True not_False not_not not_and not_or : rew_logic.
+
+Tactic Notation "rew_logic" := 
+  autorewrite with rew_logic.
+Tactic Notation "rew_logic" "in" hyp(H) := 
+  autorewrite with rew_logic in H.
+Tactic Notation "rew_logic" "in" "*" := 
+  autorewrite with rew_logic in *.
+
+Tactic Notation "rew_logicb" := 
+  autorewrite with rew_logicb.
+Tactic Notation "rew_logicb" "in" hyp(H) := 
+  autorewrite with rew_logicb in H.
+Tactic Notation "rew_logicb" "in" "*" := 
+  autorewrite with rew_logicb in *.
+
+Tactic Notation "rew_logics" := 
+  rew_logicb; rew_logic.
+Tactic Notation "rew_logic" "in" hyp(H) := 
+  rew_logicb in H; rew_logic in H.
+Tactic Notation "rew_logic" "in" "*" := 
+  rew_logicb in *; rew_logic in *.
+
+Ltac check_noevar_in H :=
+  let T := type of H in
+  match type of H with T => idtac | _ => fail 1 end.
+
+Ltac xif_post H ::=
+   calc_partial_eq tt;
+   try fold_bool; fold_prop;
+   try fix_bool_of_known tt;
+   try solve [ discriminate | false; congruence ];
+   first [ subst_hyp H; try fold_bool; try rewriteb H 
+         | rewriteb H
+         | idtac ];
+   try fix_bool_of_known tt;
+   try (check_noevar_in H; rew_logicb in H; rew_logic in H).
 
 Lemma array_index_prove : forall A (t:array A) i,
   0 <= i < length t -> index t i.
@@ -93,24 +126,46 @@ Notation "'L'" := maxlen.
 
 Definition SarrayPacked :=
   @Sarray int (array int) (array int) (array int) Id (Array Id) (Array Id) (Array Id).
+
 Definition SarrayUnpacked :=
   @Sarray int loc loc loc Id Id Id Id.
+
+(*
+Definition map_read A `{Inhabited B} := @read _ _ _ (@read_inst A B _).
+Coercion map_read : map >-> Funclass.
+*)
+
+Require Import LibSet LibMap.
+
+Instance map_index : forall A B, BagIndex (map A B) A.
+Proof. intros. constructor. exact (fun m k => k \in (dom m : set A)). Defined.
+
+Lemma map_index_def : forall A B (m:map A B) k,
+  index m k = (k \in (dom m : set A)).
+Proof. auto. Qed. 
+
+Opaque map_index_def.
+
 
 Definition good_sizes (Val Idx Back : tab) :=
   length Val = L /\ length Idx = L /\ length Back = L.
 
-Definition SparseArray (T:tab) (s:loc) :=
+Definition Valid n (Idx Back : tab) i :=
+  index L i /\ let k := Idx\(i) in 
+  index n k /\ Back\(k) = i.
+
+Definition SparseArray (m:map int int) (s:loc) :=
   Hexists (n:int) (Val:tab) (Idx:tab) (Back:tab),
      s ~> SarrayPacked n Val Idx Back
   \* [ good_sizes Val Idx Back
-       /\ forall k, index n k -> let i := Back\(k) in
-          index L i  /\  Idx\(i) = k  /\  T\(k) = Val\(k) ].
+       /\ (forall i, index m i -> Valid n Idx Back i /\ Val\(i) = m\(i))
+       /\ (forall k, index n k -> index L (Back\(k))) ].
 
 Lemma inbound_spec :
   Specs inbound i >> [] (\[ bool_of (index L i) ]).
 Proof.
   xcf. intros. xret. hsimpl. apply bool_of_prove.
-  rew_reflect. rew_prop. rewrite* int_index_def. 
+  rew_logicb. rewrite* int_index_def. 
 Qed.
 
 Lemma valid_spec :
