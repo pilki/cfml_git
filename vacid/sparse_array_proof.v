@@ -166,6 +166,10 @@ Opaque map_index_def.
 Definition good_sizes (Val Idx Back : tab) :=
   length Val = L /\ length Idx = L /\ length Back = L.
 
+Ltac auto_star ::= unfolds good_sizes; try solve [intuition eauto]. (* jauto => should splitt iff *)
+Ltac auto_tilde ::= unfolds good_sizes; auto with maths.
+
+
 Definition Valid n (Idx Back : tab) i :=
   index L i /\ let k := Idx\(i) in 
   index n k /\ Back\(k) = i.
@@ -234,10 +238,10 @@ Lemma valid_spec :
            (\= istrue (Valid n Idx Back i)).
 (*
 Proof.
-  xcf. introv (SVal&SIdx&SBack) Ii Le.
-  unfold SarrayPacked. xchange (Sarray_focus s). xextract as n' val idx back.
+  xcf. introv Siz Ii Le.
+  unfold SarrayPacked. xchange (Sarray_focus s) as n' val idx back.
     (* temp *) xchange (Id_extract n'). xextract. intro_subst.
-  xapps. xapps. eauto. xapps. xif. 
+  xapps. xapps. auto*. xapps. xif. 
   (* case inbound *)
   xapps. xapps~.
     (* temp: *) xchange (Id_import n).
@@ -251,15 +255,27 @@ Proof.
 *)
 Admitted.
 
+Hint Extern 1 (RegisterSpec valid) => Provide valid_spec.
 
 Lemma get_spec :
-  Spec get i s |R>> forall T, index T i -> 
-    keep R (s ~> SparseArray T) (\= T\(i)).
+  Spec get i s |R>> forall m, index m i -> 
+    keep R (s ~> SparseArray m) (\= m\(i)).
 Proof.
-  xcf. introv Ii.
-  xlet. 
+(*
+  xcf. introv Imi.
+  unfold SparseArray. hdata_simpl.
+  xextract as n Val Idx Back (Siz&Inv&Ins).
+  forwards (Vi&Ei): Inv Imi. lets: (proj31 Vi).
+  xapps~. skip. (* n <= L *)
+  xif.
+  xchange (Sarray_focus s) as n' val idx back.
+  xapps. xapp*.
+  intros v. hchange (Sarray_unfocus s n' val idx back).
+  hextract. subst. hsimpl~.
+Qed. 
+*)
+Admitted.
 
-Qed.
 
     
 (*
