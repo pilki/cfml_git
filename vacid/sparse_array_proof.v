@@ -117,15 +117,27 @@ Proof. intros. rewrite~ array_index_def. Qed.
 Hint Resolve array_index_prove.
 
 Ltac auto_star ::= try solve [intuition eauto]. (* jauto => should splitt iff *)
-Ltac auto_tilde := auto with maths.
+Ltac auto_tilde ::= auto with maths.
 
+Tactic Notation "xapps" "~" := xapps; auto_tilde.
+Tactic Notation "xapps" "*" := xapps; auto_star.
 
 
 (****************************************************)
 (* Specification of the invariant *)
 
-Definition tab := array int.
+Lemma test_omega : forall x,
+  let y := x in
+  2 + x = y + 2.
+Proof. intros. try omega. unfold y. omega. Qed.
 
+Definition y := 3.
+Lemma test_omega' : y + 2 = 5.
+Proof. intros. try omega. unfold y. omega. Qed.
+
+
+(* todo: omega should match up to conversion *)
+Notation "'tab'" := (array int).
 Notation "'L'" := maxlen.
 
 Definition SarrayPacked :=
@@ -176,6 +188,8 @@ Qed.
 Hint Extern 1 (RegisterSpec inbound) => Provide inbound_spec.
 *)
 
+(* why not Axiom in middle of proofs ? --> coqbug *)
+
 
 Lemma index_le : forall i n m : int,
   n <= m -> index n i -> index m i.
@@ -200,64 +214,42 @@ Hint Rewrite istrue_eq : rew_logicb.
 Lemma Id_extract : forall A (x n : A),
   x ~> Id n ==> [x = n].
 Proof. intros. unfold Id. hdata_simpl. xsimpl~. Qed.
+Implicit Arguments Id_extract [A].
+
+Lemma Id_import : forall A (x : A),
+  [] ==> x ~> Id x.
+Proof. intros. unfold Id. hdata_simpl. xsimpl~. Qed.
+Implicit Arguments Id_import [A].
+
+Lemma int_index_prove : forall (n i : int),
+  0 <= i -> i < n -> index n i.
+Proof. intros. rewrite~ int_index_def. Qed.
+Hint Resolve int_index_prove. 
+
 
 Lemma valid_spec :
   Spec valid i s |R>> forall n Val Idx Back, 
     good_sizes Val Idx Back -> index L i -> n <= L ->
     keep R (s ~> SarrayPacked n Val Idx Back)
            (\= istrue (Valid n Idx Back i)).
+(*
 Proof.
   xcf. introv (SVal&SIdx&SBack) Ii Le.
   unfold SarrayPacked. xchange (Sarray_focus s). xextract as n' val idx back.
-Implicit Arguments Id_extract [A].
     (* temp *) xchange (Id_extract n'). xextract. intro_subst.
   xapps. xapps. eauto. xapps. xif. 
   (* case inbound *)
-Ltac auto_tilde ::= auto with maths.
-Tactic Notation "xapps" "~" := xapps; auto_tilde.
-Tactic Notation "xapps" "*" := xapps; auto_star.
-Lemma Id_import : forall A (x : A),
-  [] ==> x ~> Id x.
-Proof. intros. unfold Id. hdata_simpl. xsimpl~. Qed.
-(* why not Axiom ? --> coqbug *)
   xapps. xapps~.
-Implicit Arguments Id_import [A].
     (* temp: *) xchange (Id_import n).
   xchange (Sarray_unfocus s n val idx back). xret. 
-    hsimpl. rew_logics. unfold Valid. intuition. 
-    rewrite int_index_def. unfolds tab. math. (* todo: tab as notation -- omega should match up to conversion *)
+    hsimpl. rew_logics. unfolds* Valid.
   (* case outof bound *)
     (* temp *) xchange (Id_import n).
   xchange (Sarray_unfocus s n val idx back). xret. 
-   hsimpl. rew_logics. fold_bool. fold_prop. unfold Valid.
-   
-  xapps. xapps. eauto. 
-  xchange (Sarray_unfocus s n' val idx back). xret. 
-   hsimpl. rew_logics. unfold Valid. intuition.
-  (* ~ index L Idx[i] *)
-  xchange (Sarray_unfocus s n' val idx back). xret. 
-   hsimpl. asserts_rewrite (index L i = False).
-rewrite (prop_eq_False_back C').
-
-(*  xpost.*)
-  xif.
-  (* case in bound *)
-  rew_reflect in C. rew_prop in C. 
-  xapps. xapps. xapps. apply array_index_prove. rewrite~ SIdx.
-  xapps. apply array_index_prove. 
-
-
-  (* case not in bound *)
-  xchange (Sarray_unfocus s n' val idx back).
-  xret. hsimpl. xclean. rew_reflect in *.
-    intros [H _]. apply C. rewrite int_index_def in H. 
-    split; fold_prop; unfolds L; try math.
-
- (*--todo :sortir le n' ~> Id n *)
-Qed.
-
-let valid i s =
-   0 <= i && i < maxlen && s.back.(s.idx.(i)) = i
+   hsimpl. fold_bool. fold_prop. unfold Valid.
+  cuts*: (~ index n (Idx\(i))). rewrite* int_index_def.
+*)
+Admitted.
 
 
 Lemma get_spec :
