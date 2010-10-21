@@ -166,13 +166,15 @@ Opaque map_index_def.
 Definition good_sizes (Val Idx Back : tab) :=
   length Val = L /\ length Idx = L /\ length Back = L.
 
-Ltac auto_star ::= unfolds good_sizes; try solve [intuition eauto]. (* jauto => should splitt iff *)
-Ltac auto_tilde ::= unfolds good_sizes; auto with maths.
-
 
 Definition Valid n (Idx Back : tab) i :=
   index L i /\ let k := Idx\(i) in 
   index n k /\ Back\(k) = i.
+
+Ltac myunfolds := unfolds good_sizes, Valid.
+Ltac auto_star ::= try solve [myunfolds; intuition eauto]. (* jauto => should splitt iff *)
+Ltac auto_tilde ::= try solve [myunfolds; auto with maths].
+
 
 Definition SparseArray (m:map int int) (s:loc) :=
   Hexists (n:int) (Val:tab) (Idx:tab) (Back:tab),
@@ -268,13 +270,93 @@ Proof.
   forwards (Vi&Ei): Inv Imi. lets: (proj31 Vi).
   xapps~. skip. (* n <= L *)
   xif.
-  xchange (Sarray_focus s) as n' val idx back.
+  xchange (Sarray_focus s) as n' val idx back. (**-todo: focus only on values *)
   xapps. xapp*.
   intros v. hchange (Sarray_unfocus s n' val idx back).
   hextract. subst. hsimpl~.
 Qed. 
 *)
 Admitted.
+
+Import sparse_array_ml.
+
+Tactic Notation "hdata_simpl" := 
+  hdata_simpl.
+Tactic Notation "hdata_simpl" constr(E) := 
+  unfold E; hdata_simpl.
+
+Axiom length_update_prove : forall A (t:array A) i v n,
+  length t = n -> length (t\(i:=v)) = n.
+Hint Resolve length_update_prove.
+
+Opaque LibMap.dom_inst.
+
+
+   Lemma array_update_read_eq : forall `{Inhab A} (t:array A) (i:int) (v:A),
+     index t i -> (t\(i:=v))\(i) = v.
+  Admitted.
+   Lemma array_update_read_neq : forall `{Inhab A} (t:array A) (i j:int) (v:A),
+     index t j -> i<>j -> (t\(i:=v))\(j) = t\(j).
+  Admitted.
+  Hint Rewrite @array_update_read_neq @array_update_read_eq : rew_array.
+Tactic Notation "rew_array" := 
+  autorewrite with rew_array.
+Tactic Notation "rew_array" "in" hyp(H) := 
+  autorewrite with rew_array in H.
+Tactic Notation "rew_array" "in" "*" := 
+  autorewrite with rew_array in *.
+
+   Lemma map_update_read_eq : forall A `{Inhab B} (m:map A B) (i:A) (v:B),
+     (m\(i:=v))\(i) = v.
+  Admitted.
+   Lemma map_update_read_neq : forall A `{Inhab B} (m:map A B) (i j:A) (v:B),
+     i<>j -> (m\(i:=v))\(j) = m\(j).
+  Admitted.
+  Hint Rewrite @map_update_read_neq @map_update_read_eq : rew_map.
+Tactic Notation "rew_map" := 
+  autorewrite with rew_map.
+Tactic Notation "rew_map" "in" hyp(H) := 
+  autorewrite with rew_map in H.
+Tactic Notation "rew_map" "in" "*" := 
+  autorewrite with rew_map in *.
+
+Lemma map_indom_update : forall A `{Inhab B} (m:map A B) (i j:A) (v:B),
+  j \in (dom (m\(i:=v)) : LibSet.set _) = (j = i \/ j \in (dom m : LibSet.set _)).
+Admitted.
+
+Hint Rewrite @map_indom_update : rew_map.
+Tactic Notation "inhabs" :=
+  match goal with |- Inhab _ => typeclass end.
+Tactic Notation "rew_map_array" :=
+  rew_map in *; rew_array in *.
+Tactic Notation "rew_map_array" "~" :=
+  rew_map_array; auto~; inhabs.
+Tactic Notation "rew_map_array" "*" :=
+  rew_map_array; auto*; inhabs.
+
+Lemma set_spec :
+  Spec set i v l |R>> forall m, index L i ->
+    R (l ~> SparseArray m) (# l ~> SparseArray (m\(i:=v))).
+Proof.
+  xcf. introv Imi.
+  hdata_simpl SparseArray.
+  xextract as n Val Idx Back (Siz&Inv&Ins).
+  xchange (Sarray_focus s) as n' val idx back.
+  xapps. xapps*.
+  xchange (Sarray_unfocus s n' val idx back). fold SarrayPacked.
+  xapps*. (* skip. n <= L *) skip.
+  xif.
+  (* case create back-index *)
+  skip.
+  (* case nothing to do *)
+  xret. hsimpl. splits~.
+   intros j Imj. tests (j = i).
+     rew_map_array*.
+     forwards: Inv j; rew_map_array*. 
+Qed.
+
+
+
 
 
     
