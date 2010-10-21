@@ -2608,3 +2608,32 @@ Proof.
 Qed.
 
 *)
+
+
+
+
+    
+(*
+
+lets M : @ml_array_get_spec.
+eapply spec_elim_2_2.
+
+evar (a:Type); let t := constr:(Inhab a) in
+ let t' := eval unfold a in t in 
+assert (x:t'); subst a; [  | pose (M _ x) ].
+skip. apply s0.
+
+forwards: M.
+lets: (M Z _). apply H.
+evar (a:Type); let t := constr:(Inhab a) in
+ let t' := eval unfold a in t in 
+evar (x:t');
+eapply (M _ x).
+evar (a:Type);
+evar (x:Inhab a);
+lets: (H a x); subst a x. 
+Show Existentials.
+ lets: (>>> Args H __ a).
+*)
+
+

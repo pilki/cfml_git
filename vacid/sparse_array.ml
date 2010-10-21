@@ -22,9 +22,10 @@ let get i s =
 let set i v s =
    s.values.(i) <- v;
    if not (valid i s) then begin
-      s.idx.(i) <- s.n;
-      s.back.(i) <- i;
-      s.n <- s.n + 1
+      let k = s.n in
+      s.idx.(i) <- k;
+      s.back.(k) <- i;
+      s.n <- k + 1
    end
 
 (*
