@@ -5,8 +5,6 @@ Require Export LibInt LibArray CFSpec CFPrint.
 (* todo: move *)
 Implicit Arguments list_sub [[A]].
 
-
-
 Hint Resolve (0%nat) : typeclass_instances.
 Hint Resolve (0%Z) : typeclass_instances.
 Hint Resolve @nil : typeclass_instances.
@@ -23,6 +21,10 @@ Ltac inhab :=
 
 Instance inhabited_Z : Inhabited Z.
 Admitted. (* todo --trivial *)
+
+
+Global Opaque heap_is_empty hdata heap_is_single heap_is_empty_st.
+Global Opaque Zplus.
 
 
 (********************************************************************)
@@ -89,19 +91,36 @@ Parameter ml_is_null : val.
 (********************************************************************)
 (** Imperative Representation for base types *)
 
-(*------------------------------------------------------------------*)
-(* ** Basics *)
-
 Definition htype A a := A -> a -> hprop.
 
-(** For pure values *)
+
+(*------------------------------------------------------------------*)
+(* ** Id *)
 
 Definition Id {A:Type} (X:A) (x:A) := 
   [ X = x ].
 
-(** Void *)
+Lemma Id_extract : forall A (x n : A),
+  x ~> Id n ==> [x = n].
+Proof. intros. unfold Id. hdata_simpl. xsimpl~. Qed.
 
-Definition Void {a A} (v:a) (V:A) := [].
+Lemma Id_unfocus : forall A (x : A),
+  [] ==> x ~> Id x.
+Proof. intros. unfold Id. hdata_simpl. xsimpl~. Qed.
+
+Implicit Arguments Id_focus [A].
+Implicit Arguments Id_unfocus [A].
+
+
+(*------------------------------------------------------------------*)
+(* ** Void and Any *)
+
+Definition Void {a A} (v:a) (V:A) := 
+  []. (* todo: used? *)
+
+Definition Any {A:Type} (X:unit) (x:A) := 
+  [True]. (* should not be [] otherwise tactics bug *)
+
 
 (*------------------------------------------------------------------*)
 (* ** References *)
@@ -675,55 +694,20 @@ Definition ArrayOn A (v:array A) (l:loc) : hprop.
 
 Axiom array_make : forall A (n:int) (v:A), array A.
 
-Class Dup a A (T:htype A a) : Prop := { 
-  dup : forall X x, T X x ==> [] }.
+
 
 Parameter Array : forall a A (T:htype A a) (M:array A) (l:loc), hprop.
 
 Require Import LibBag.
-
-Definition Read B (R:~~B) := 
-  fun H Q => R H (Q \*+ H).
-
-Notation "m \( x )" := (LibBag.read m x)
-  (at level 29, format "m \( x )") : container_scope.
-Notation "m \( x := v )" := (update m x v)
-  (at level 29, format "m \( x := v )") : container_scope.
-
-Open Scope container_scope.
-
-(* BIN
-Parameter ml_array_make_spec : forall a A,
-  Spec ml_array_make (n:int) (v:a) |R>> 
-    forall (V:A) (T:htype A a) (t:array A), Dup T ->
-    R (T V v) (fun l => l ~> Array T (array_make n V)).
-
-Parameter ml_array_get_spec : forall a A `{Inhab A},
-  Spec ml_array_get (l:loc) (i:int) |R>> 
-    forall (T:htype A a) (t:array A), Dup T -> index t i ->
-    Read (R:~~a) (l ~> Array T t) (T (t`[i])).
-
-Parameter ml_array_set_spec : forall a A `{Inhab A},
-  Spec ml_array_set (l:loc) (i:int) (v:a) |R>> 
-    forall (V:A) (T:htype A a) (t:array A), Dup T -> index t i -> 
-    R (l ~> Array T t \* T V v) (# l ~> Array T (t`[i:=V])).
-*)
-
-(* deprecated
-Definition Base A (X:A) (x:A) := 
-  [ x = X ].
-
-Implicit Arguments Base [[A]].
-*)
 
 Parameter ml_array_make_spec : forall a,
   Spec ml_array_make (n:int) (v:a) |R>> 
      R [] (~> Array Id (array_make n v)).
      (* (fun l => Hexists t, l ~> Array Id t \* [t = array_make n v]). *)
 
-Parameter ml_array_get_spec : forall `{Inhabited a},
+Parameter ml_array_get_spec : forall a,
   Spec ml_array_get (l:loc) (i:int) |R>> 
-    forall (t:array a), index t i ->
+    forall `{Inhab a} (t:array a), index t i ->
     keep R (l ~> Array Id t) (\= t\(i)).
 
 Parameter ml_array_set_spec : forall a,
@@ -741,30 +725,14 @@ Hint Extern 1 (RegisterSpec ml_array_get) => Provide ml_array_get_spec.
 Hint Extern 1 (RegisterSpec ml_array_set) => Provide ml_array_set_spec.
 Hint Extern 1 (RegisterSpec ml_array_length) => Provide ml_array_length_spec.
 
-
-
 (*
 
-Parameter ml_array_make_spec : forall a,
-  Spec ml_array_make (n:int) (v:a) |R>> 
-    R [] (_~> ArrayOn (Array.make n V)).
-
-Parameter ml_array_get_spec : forall a A,
-  Spec ml_array_get (l:loc) (i:int) |R>> 
-    index t i -> read R (l ~> ArrayOn t) (= t\[i]).
-
-Parameter ml_array_set_spec : forall a,
-  Spec ml_array_set (l:loc) (i:int) (v:a) |R>> 
-    index t i -> R (l ~> ArrayOn t) (# l ~> ArrayOn t'[i:=v]).
-
+Class Dup a A (T:htype A a) : Prop := { 
+  dup : forall X x, T X x ==> [] }.
 *)
 
 
-
-
-
-Opaque Zplus.
-Opaque Ref.
+Global Opaque Ref.
 
 
 (*

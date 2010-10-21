@@ -337,6 +337,12 @@ Notation "'Hexists' x1 x2 x3 , H" := (Hexists x1, Hexists x2, Hexists x3, H)
   (at level 39, x1 ident, x2 ident, x3 ident, H at level 50) : heap_scope.
 Notation "'Hexists' x1 x2 x3 , H" := (Hexists x1, Hexists x2, Hexists x3, Hexists x4, H)
   (at level 39, x1 ident, x2 ident, x3 ident, x4 ident, H at level 50) : heap_scope.
+Notation "'Hexists' x1 x2 x3 x4 , H" := 
+  (Hexists x1, Hexists x2, Hexists x3, Hexists x4, H)
+  (at level 39, x1 ident, x2 ident, x3 ident, x4 ident, H at level 50) : heap_scope.
+Notation "'Hexists' x1 x2 x3 x4 x5 , H" := 
+  (Hexists x1, Hexists x2, Hexists x3, Hexists x4, Hexists x5, H)
+  (at level 39, x1 ident, x2 ident, x3 ident, x4 ident, x5 ident, H at level 50) : heap_scope.
 
 Notation "'Hexists' x1 : T1 , H" := (heap_is_pack (fun x1:T1 => H))
   (at level 39, x1 ident, H at level 50, only parsing) : heap_scope.
@@ -535,8 +541,13 @@ Lemma hdata_fun : forall a (S:a->hprop) x,
   (x ~> (fun y => S y)) = (S x).
 Proof. auto. Qed.
 
-Ltac hdata_simpl :=
+Ltac hdata_simpl_core :=
   repeat rewrite hdata_fun.
+
+Tactic Notation "hdata_simpl" := 
+  hdata_simpl_core.
+Tactic Notation "hdata_simpl" constr(E) := 
+  unfold E; hdata_simpl.
 
 
 (********************************************************************)
@@ -1374,4 +1385,5 @@ Proof.
   hclean.
   skip.
 Qed.  
+
 

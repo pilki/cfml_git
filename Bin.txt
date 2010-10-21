@@ -2637,3 +2637,91 @@ Show Existentials.
 *)
 
 
+
+
+
+Parameter ml_array_get_spec : forall `{Inhabited a},
+  Spec ml_array_get (l:loc) (i:int) |R>> 
+    forall (t:array a), index t i ->
+    keep R (l ~> Array Id t) (\= t\(i)).
+
+Parameter ml_array_set_spec : forall a,
+  Spec ml_array_set (l:loc) (i:int) (v:a) |R>> 
+    forall (t:array a), index t i -> 
+    R (l ~> Array Id t) (# l ~> Array Id (t\(i:=v))).
+      (* (# Hexists t', l ~> Array Id t' \* [t' = t\(i:=v)]).*)
+
+(* BIN
+Parameter ml_array_make_spec : forall a A,
+  Spec ml_array_make (n:int) (v:a) |R>> 
+    forall (V:A) (T:htype A a) (t:array A), Dup T ->
+    R (T V v) (fun l => l ~> Array T (array_make n V)).
+
+Parameter ml_array_get_spec : forall a A `{Inhab A},
+  Spec ml_array_get (l:loc) (i:int) |R>> 
+    forall (T:htype A a) (t:array A), Dup T -> index t i ->
+    Read (R:~~a) (l ~> Array T t) (T (t`[i])).
+
+Parameter ml_array_set_spec : forall a A `{Inhab A},
+  Spec ml_array_set (l:loc) (i:int) (v:a) |R>> 
+    forall (V:A) (T:htype A a) (t:array A), Dup T -> index t i -> 
+    R (l ~> Array T t \* T V v) (# l ~> Array T (t`[i:=V])).
+*)
+
+(* deprecated
+Definition Base A (X:A) (x:A) := 
+  [ x = X ].
+
+Implicit Arguments Base [[A]].
+*)
+Definition Read B (R:~~B) := 
+  fun H Q => R H (Q \*+ H).
+
+
+(*
+
+Parameter ml_array_make_spec : forall a,
+  Spec ml_array_make (n:int) (v:a) |R>> 
+    R [] (_~> ArrayOn (Array.make n V)).
+
+Parameter ml_array_get_spec : forall a A,
+  Spec ml_array_get (l:loc) (i:int) |R>> 
+    index t i -> read R (l ~> ArrayOn t) (= t\[i]).
+
+Parameter ml_array_set_spec : forall a,
+  Spec ml_array_set (l:loc) (i:int) (v:a) |R>> 
+    index t i -> R (l ~> ArrayOn t) (# l ~> ArrayOn t'[i:=v]).
+
+*)
+
+
+
+Lemma test_omega : forall x,
+  let y := x in
+  2 + x = y + 2.
+Proof. intros. try omega. unfold y. omega. Qed.
+
+   Lemma array_update_length : forall `{Inhab A} (t:array A) (i:int) (v:A),
+     index t i -> (t\(i:=v))\(i) = v.
+  Admitted.
+
+
+
+Definition y := 3.
+Lemma test_omega' : y + 2 = 5.
+Proof. intros. try omega. unfold y. omega. Qed.
+
+
+
+(*
+Lemma inbound_spec :
+  Specs inbound i >> [] (\= istrue (index L i)).
+Proof.
+  xcf. intros. xret. hsimpl.
+  extens. rew_logicb. rewrite* int_index_def.
+Qed.
+
+Hint Extern 1 (RegisterSpec inbound) => Provide inbound_spec.
+*)
+
+

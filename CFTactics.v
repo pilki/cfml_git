@@ -639,6 +639,14 @@ Tactic Notation "xframe" "-" constr(H) :=
 (*--------------------------------------------------------*)
 (* ** [xchange] *)
 
+Ltac xchange_debug L :=
+  let K := fresh "K" in
+  forwards_nounfold K: L; eapply xchange_lemma;
+    [ clear K; try xlocal
+    | apply K
+    | clear K
+    | clear K ].
+
 Ltac xchange_lemma_core L :=
   let K := fresh "TEMP" in
   forwards_nounfold K: L; eapply xchange_lemma; 
@@ -872,6 +880,14 @@ Tactic Notation "xapps" constr(E1) constr(E2) constr(E3) constr(E4) :=
 Tactic Notation "xapps" constr(E1) constr(E2) constr(E3) constr(E4) constr(E5) := 
   xapps_core (>>> E1 E2 E3 E4 E5).
 
+Tactic Notation "xapps" "~" := 
+  xapps; auto_tilde.
+Tactic Notation "xapps" "*" := 
+  xapps; auto_star.
+Tactic Notation "xapps" "~" constr(E) := 
+  xapps E; auto_tilde.
+Tactic Notation "xapps" "*" constr(E) := 
+  xapps E; auto_star.
 
 (* todo: when hypothesis in an app instance *)
 
@@ -1653,7 +1669,8 @@ Ltac xif_post H :=
    first [ subst_hyp H; try fold_bool; try rewriteb H 
          | rewriteb H
          | idtac ];
-   try fix_bool_of_known tt. 
+   try fix_bool_of_known tt;
+   try (check_noevar_hyp H; rew_logicb in H; rew_logic in H).
 
 Ltac xif_core_nometa H cont :=
   xuntag tag_if; apply local_erase; split; intros H; cont tt.

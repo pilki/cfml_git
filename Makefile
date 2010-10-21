@@ -120,7 +120,8 @@ IMP=\
 	CFSpec.v \
 	CFPrint.v \
 	CFTactics.v \
-	CFPrim.v 
+	CFPrim.v \
+	CFLib.v 
 
 IMPER=\
 	imper/Counter_ml.v \

@@ -6,15 +6,6 @@ Require Import test_ml.
 
 Opaque heap_is_empty hdata heap_is_single heap_is_empty_st Ref.
 
-(* todo: move *)
-Ltac xchange_debug L :=
-  let K := fresh "K" in
-  forwards_nounfold K: L; eapply xchange_lemma;
-    [ clear K; try xlocal
-    | apply K
-    | clear K
-    | clear K ].
-
 
 (********************************************************)
 (* records test *)
@@ -26,8 +17,6 @@ Proof.
   xret~.
 Qed.
 
-Definition Any {A:Type} (X:unit) (x:A) := 
-  [True]. (* should not be [] otherwise tactics bug *)
 
 (*
 

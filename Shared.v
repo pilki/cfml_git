@@ -107,7 +107,52 @@ Tactic Notation "old_cases" "*" :=
 
 
 (************************************************************)
+(* * TODO: move *)
+
+Axiom isTrue_andb : forall b1 b2 : bool,
+  isTrue (b1 && b2) = (isTrue b1 /\ isTrue b2).
+Axiom isTrue_orb : forall b1 b2 : bool,
+  isTrue (b1 || b2) = (isTrue b1 \/ isTrue b2).
+Axiom isTrue_negb : forall b : bool,
+  isTrue (! b) = (~ isTrue b).
+
+Lemma istrue_eq : forall (P Q : Prop),
+  ((istrue P) = (istrue Q)) = (P <-> Q).
+Proof.
+  intros. extens. iff H.
+  unfolds istrue. case_if; case_if; tryfalse; intuition.
+  asserts_rewrite~ (P = Q). extens~.
+Qed.
+
+Hint Rewrite istrue_eq isTrue_istrue isTrue_andb isTrue_orb isTrue_negb : rew_logicb.
+
+Hint Rewrite not_True not_False not_not not_and not_or : rew_logic.
+
+Tactic Notation "rew_logic" := 
+  autorewrite with rew_logic.
+Tactic Notation "rew_logic" "in" hyp(H) := 
+  autorewrite with rew_logic in H.
+Tactic Notation "rew_logic" "in" "*" := 
+  autorewrite with rew_logic in *.
+
+Tactic Notation "rew_logicb" := 
+  autorewrite with rew_logicb.
+Tactic Notation "rew_logicb" "in" hyp(H) := 
+  autorewrite with rew_logicb in H.
+Tactic Notation "rew_logicb" "in" "*" := 
+  autorewrite with rew_logicb in *.
+
+Tactic Notation "rew_logics" := 
+  rew_logicb; rew_logic.
+Tactic Notation "rew_logic" "in" hyp(H) := 
+  rew_logicb in H; rew_logic in H.
+Tactic Notation "rew_logic" "in" "*" := 
+  rew_logicb in *; rew_logic in *.
+
+
+(************************************************************)
 (* * Predicate for post-conditions on boolean values *)
+(* --> todo: remove *)
 
 Definition bool_of (P:Prop) :=
    fun b => (isTrue b = P).
