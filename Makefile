@@ -286,15 +286,15 @@ imper/NullPointers.cmi: imper/NullPointers.mli
 	@echo "MAKING CMI: $@"
 	@$(GENERATOR) -rectypes -onlycmi $(INCLUDES) $<
 
-%_ml.vo: %_ml.v %_ml.d CFPrim.vo #FuncPrim.vo  LibCore.vo 
+%_ml.vo: %_ml.v %_ml.d CFPrim.vo
 	@echo "COQC $<"
 	@$(COQC) $< 
 
-%_proof.vo: %_proof.v %_ml.vo %_proof.d CFTactics.vo #FuncTactics.vo LibCore.vo 
+%_proof.vo: %_proof.v %_ml.vo %_proof.d CFLib.vo
 	@echo "COQC $<"
 	@$(COQC) $<
 
-%.vo: %.v %.d #LibCore.vo
+%.vo: %.v %.d 
 	@echo "COQC $<"
 	@$(COQC) $< 
 

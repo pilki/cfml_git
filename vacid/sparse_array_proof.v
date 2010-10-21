@@ -1,7 +1,5 @@
 Set Implicit Arguments.
-Require Import LibSet LibMap.
-Require Import CF sparse_array_ml.
-
+Require Import CFLib LibSet LibMap LibArray sparse_array_ml.
 
 (****************************************************)
 (** Shorthand *)
@@ -50,19 +48,56 @@ Definition SparseArray (m:map int int) (s:loc) :=
 (****************************************************)
 (** Automation *)
 
+
+
+
 (* todo: paufiner avec les hint extern *)
 Ltac myunfolds := unfolds good_sizes, Valid.
-Ltac auto_star ::= try solve [myunfolds; intuition eauto]. (* jauto => should splitt iff *)
-Ltac auto_tilde ::= try solve [myunfolds; auto].
+Ltac auto_star ::= try solve [intuition eauto]. (* jauto => should splitt iff *)
+Ltac auto_tilde ::= try solve [auto].
 Ltac autom := myunfolds; auto with maths.
 
+Lemma index_array_length_le : forall A (t : array A) n i,
+  index n i -> n <= length t -> index t i.
+Proof.
+  intros. subst. rewrite array_index_def.
+  rewrite @int_index_def in *. math.
+Qed.
+
+Ltac myunfold := 
+  repeat match goal with 
+  | H: Valid _ _ _ _ |- _ => hnf in H 
+  | H: good_sizes _ _ _ |- _ => hnf in H 
+  end; jauto_set.
+
+Hint Extern 1 (@index _ _ (array_index _) ?t ?i) =>
+  myunfold; eassumption.
+
+Hint Extern 1 (@index _ _ (array_index _) ?t ?i) =>
+  myunfold; match goal with H: @index _ _ int_index ?n i |- _ => 
+    eapply index_array_length end.
+
+Hint Extern 3 (@index _ _ (array_index _) ?t ?i) =>
+  myunfold; match goal with H: @index _ _ int_index ?n i |- _ => 
+    eapply index_array_length_le; math end.
+
+Hint Extern 1 (@index _ _ int_index ?t ?i) =>
+  myunfold; eassumption.
+
+Hint Extern 1 (@index _ _ int_index ?m ?i) =>
+  myunfold; match goal with H: @index _ _ int_index ?n i |- _ => 
+    eapply (@int_index_le i n m); math end.
+
+Hint Extern 3 (@index _ _ int_index ?m ?i) =>
+  myunfold; eapply int_index_prove; math.
+
+(*
 Hint Resolve int_index_le int_index_prove.
 Hint Resolve array_index_prove index_array_length.
+*)
+
 Hint Resolve length_update_prove.
 
-Lemma le_succ : forall n, n <= n +1.
-Proof. math. Qed.
-Hint Resolve le_succ.
 
 Tactic Notation "inhabs" := (* workaround coq bug *)
   match goal with |- Inhab _ => typeclass end.
@@ -137,7 +172,9 @@ Proof.
   xapps*. skip. (* n <= L *)
   xif.
   xchange (Sarray_focus s) as n' val idx back. (**-todo: focus only on values *)
-  xapps. xapp*.
+  xapps. xapp*. 
+    (* myunfold. eapply index_array_length. debug eauto. 
+       --> pkoi [eauto] met 3 secondes pour faire [eassumption] ? *)
   intros v. hchange (Sarray_unfocus s n' val idx back).
   hextract. subst. hsimpl*.
 Qed. 
@@ -159,7 +196,7 @@ Proof.
   xapps. xapps*.
   xchange (Sarray_unfocus s n' val idx back). fold SarrayPacked. clear n' val idx back.
   xapps*. (* skip. n <= L *) skip.
-  xif; [|skip].
+  xif.
   (* case create back-index *)
   xchange (Sarray_focus s) as n' val idx back.
   (* temp *) xchange (Id_focus n'). xextract. intro_subst.

@@ -100,13 +100,13 @@ Definition htype A a := A -> a -> hprop.
 Definition Id {A:Type} (X:A) (x:A) := 
   [ X = x ].
 
-Lemma Id_extract : forall A (x n : A),
+Lemma Id_focus : forall A (x n : A),
   x ~> Id n ==> [x = n].
-Proof. intros. unfold Id. hdata_simpl. xsimpl~. Qed.
+Proof. intros. unfold Id. hdata_simpl. hextract. hsimpl~. Qed.
 
 Lemma Id_unfocus : forall A (x : A),
   [] ==> x ~> Id x.
-Proof. intros. unfold Id. hdata_simpl. xsimpl~. Qed.
+Proof. intros. unfold Id. hdata_simpl. hextract. hsimpl~. Qed.
 
 Implicit Arguments Id_focus [A].
 Implicit Arguments Id_unfocus [A].
@@ -137,7 +137,7 @@ Lemma focus_ref_core : forall (l:loc) a A (T:htype A a) V,
   l ~> Ref T V ==> Hexists v, l> v \* v ~> T V.
 Proof. auto. Qed.
 *)
-
+Transparent hdata.
 Lemma focus_ref : forall (l:loc) a A (T:htype A a) V,
   l ~> Ref T V ==> Hexists v, l ~~> v \* v ~> T V.
 Proof. intros. unfold Ref, hdata. unfold Id. hextract.

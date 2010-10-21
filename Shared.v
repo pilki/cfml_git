@@ -3,9 +3,7 @@ Set Implicit Arguments.
 (********************************************************************)
 (** Treatment of partially-applied equality *)
 
-Require Import LibTactics. 
-
-Require Import LibCore.
+Require Import LibTactics LibCore LibEpsilon.
 
 Global Opaque LibInt.eqb_inst.
 Global Opaque LibNat.eqb_inst. 

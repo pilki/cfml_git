@@ -2725,3 +2725,9 @@ Hint Extern 1 (RegisterSpec inbound) => Provide inbound_spec.
 *)
 
 
+
+
+
+Lemma le_succ : forall n, n <= n +1.
+Proof. math. Qed.
+Hint Resolve le_succ.
