@@ -8,18 +8,13 @@ type sarray = {
    mutable back : int array;
    }
 
-let inbound i =
-  0 <= i && i < maxlen
-
 let valid i s =
-  if inbound i then
-    let k = s.idx.(i) in
-    if inbound k 
-      then s.back.(k) = i
-      else false
-  else false
+  let k = s.idx.(i) in
+  if 0 <= k && k < s.n 
+    then s.back.(k) = i
+    else false
 
-(* todo: faire le vrai && à la volée *)
+(* todo: faire le vrai && à la place du if *)
 
 let get i s =
    if valid i s then s.values.(i) else 0

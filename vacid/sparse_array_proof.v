@@ -26,6 +26,10 @@ Instance array_index : forall A, BagIndex (array A) int.
 Proof. intros. constructor. exact (fun t i => index (length t) i). Defined.
 
 Lemma array_index_def : forall A (t:array A) i,
+  index t i = index (length t) i.
+Proof. auto. Qed. 
+
+Lemma array_index_bounds : forall A (t:array A) i,
   index t i = (0 <= i < length t).
 Proof. auto. Qed. 
 
@@ -37,9 +41,9 @@ Notation "m \( x := v )" := (update m x v)
   (at level 29, format "m \( x := v )") : container_scope.
 
 
-Parameter ml_array_get_spec : forall `{Inhabited a},
+Parameter ml_array_get_spec : forall a,
   Spec ml_array_get (l:loc) (i:int) |R>> 
-    forall (t:array a), index t i ->
+    forall `{Inhab a} (t:array a), index t i ->
     keep R (l ~> Array Id t) (\= t\(i)).
 
 Parameter ml_array_set_spec : forall a,
@@ -48,8 +52,8 @@ Parameter ml_array_set_spec : forall a,
     R (l ~> Array Id t) (# l ~> Array Id (t\(i:=v))).
       (* (# Hexists t', l ~> Array Id t' \* [t' = t\(i:=v)]).*)
 
-Hint Extern 1 (RegisterSpec ml_array_get) => Provide ml_array_get_spec.
-Hint Extern 1 (RegisterSpec ml_array_set) => Provide ml_array_set_spec.
+Hint Extern 1 (RegisterSpec ml_array_get) => Provide @ml_array_get_spec.
+Hint Extern 1 (RegisterSpec ml_array_set) => Provide @ml_array_set_spec.
 
 
 Ltac xchange_debug L :=
@@ -161,22 +165,80 @@ Definition SparseArray (m:map int int) (s:loc) :=
        /\ (forall i, index m i -> Valid n Idx Back i /\ Val\(i) = m\(i))
        /\ (forall k, index n k -> index L (Back\(k))) ].
 
+(*
 Lemma inbound_spec :
-  Specs inbound i >> [] (\[ bool_of (index L i) ]).
+  Specs inbound i >> [] (\= istrue (index L i)).
 Proof.
-  xcf. intros. xret. hsimpl. apply bool_of_prove.
-  rew_logicb. rewrite* int_index_def. 
+  xcf. intros. xret. hsimpl.
+  extens. rew_logicb. rewrite* int_index_def.
 Qed.
+
+Hint Extern 1 (RegisterSpec inbound) => Provide inbound_spec.
+*)
+
+
+Lemma index_le : forall i n m : int,
+  n <= m -> index n i -> index m i.
+Proof. introv M. do 2 rewrite int_index_def. math. Qed.
+Hint Resolve index_le.
+
+Lemma index_array_length : forall A (t : array A) n i,
+  index n i -> n = length t -> index t i.
+Proof. intros. subst. rewrite~ array_index_def. Qed.
+Hint Resolve index_array_length.
+
+Lemma istrue_eq : forall (P Q : Prop),
+  ((istrue P) = (istrue Q)) = (P <-> Q).
+Proof.
+  intros. extens. iff H.
+  unfolds istrue. case_if; case_if; tryfalse; intuition.
+  asserts_rewrite~ (P = Q). extens~.
+Qed.
+
+Hint Rewrite istrue_eq : rew_logicb.
+
+Lemma Id_extract : forall A (x n : A),
+  x ~> Id n ==> [x = n].
+Proof. intros. unfold Id. hdata_simpl. xsimpl~. Qed.
 
 Lemma valid_spec :
   Spec valid i s |R>> forall n Val Idx Back, 
-    good_sizes Val Idx Back ->
+    good_sizes Val Idx Back -> index L i -> n <= L ->
     keep R (s ~> SarrayPacked n Val Idx Back)
-           (\[ bool_of (index L i /\ Back\(Idx\(i)) = i) ]).
+           (\= istrue (Valid n Idx Back i)).
 Proof.
-  xcf. introv (SVal&SIdx&SBack).
-  unfold SarrayPacked.
-  xchange (Sarray_focus s). xextract as n' val idx back.
+  xcf. introv (SVal&SIdx&SBack) Ii Le.
+  unfold SarrayPacked. xchange (Sarray_focus s). xextract as n' val idx back.
+Implicit Arguments Id_extract [A].
+    (* temp *) xchange (Id_extract n'). xextract. intro_subst.
+  xapps. xapps. eauto. xapps. xif. 
+  (* case inbound *)
+Ltac auto_tilde ::= auto with maths.
+Tactic Notation "xapps" "~" := xapps; auto_tilde.
+Tactic Notation "xapps" "*" := xapps; auto_star.
+Lemma Id_import : forall A (x : A),
+  [] ==> x ~> Id x.
+Proof. intros. unfold Id. hdata_simpl. xsimpl~. Qed.
+(* why not Axiom ? --> coqbug *)
+  xapps. xapps~.
+Implicit Arguments Id_import [A].
+    (* temp: *) xchange (Id_import n).
+  xchange (Sarray_unfocus s n val idx back). xret. 
+    hsimpl. rew_logics. unfold Valid. intuition. 
+    rewrite int_index_def. unfolds tab. math. (* todo: tab as notation -- omega should match up to conversion *)
+  (* case outof bound *)
+    (* temp *) xchange (Id_import n).
+  xchange (Sarray_unfocus s n val idx back). xret. 
+   hsimpl. rew_logics. fold_bool. fold_prop. unfold Valid.
+   
+  xapps. xapps. eauto. 
+  xchange (Sarray_unfocus s n' val idx back). xret. 
+   hsimpl. rew_logics. unfold Valid. intuition.
+  (* ~ index L Idx[i] *)
+  xchange (Sarray_unfocus s n' val idx back). xret. 
+   hsimpl. asserts_rewrite (index L i = False).
+rewrite (prop_eq_False_back C').
+
 (*  xpost.*)
   xif.
   (* case in bound *)
@@ -208,7 +270,28 @@ Proof.
 Qed.
 
     
+(*
 
+lets M : @ml_array_get_spec.
+eapply spec_elim_2_2.
+
+evar (a:Type); let t := constr:(Inhab a) in
+ let t' := eval unfold a in t in 
+assert (x:t'); subst a; [  | pose (M _ x) ].
+skip. apply s0.
+
+forwards: M.
+lets: (M Z _). apply H.
+evar (a:Type); let t := constr:(Inhab a) in
+ let t' := eval unfold a in t in 
+evar (x:t');
+eapply (M _ x).
+evar (a:Type);
+evar (x:Inhab a);
+lets: (H a x); subst a x. 
+Show Existentials.
+ lets: (>>> Args H __ a).
+*)
 
 
 
