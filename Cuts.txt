@@ -145,3 +145,249 @@ Notation "'For' i '=' a 'To' b 'Do' Q1 'Done'" :=
     /\ (I ((b)%Z+1) \* H' ==> Q tt))))
   (at level 69, i ident) : charac.
 
+
+
+(*------------------------------------------------------------------*)
+(* ** Ref-Tuple 3  -- todo ?
+
+Definition RefTup3 A1 A2 A3 a1 a2 a3 (T1:A1->a1->hprop) (T2:A2->a2->hprop) (T3:A3->a3->hprop) P l :=
+  l ~> Ref (Tup3 T1 T2 T3) P.
+
+Lemma focus_reftup3 : forall (l:loc) a1 a2 a3 A1 A2 A3 (T1:htype A1 a1) (T2:htype A2 a2) (T3:A3->a3->hprop) V1 V2 V3,
+  l ~> RefTup3 T1 T2 T3 (V1,V2,V3) ==> Hexists (x1:a1) (x2:a2) (x3:a3),
+  l ~> Ref Id (x1,x2,x3) \* x1 ~> T1 V1 \* x2 ~> T2 V2 \* x3 ~> T3 V3.
+Proof.
+  intros. unfold RefTup3. hdata_simpl. hchange (@focus_ref l). hextract as. 
+  intros p [[x1 x2] x3] H. hchange (focus_tup3 p). destruct p as [[y1 y2] y3].
+  inversions H. hsimpl~. 
+Qed.
+
+Lemma unfocus_reftup3 : forall (l:loc) a1 (x1:a1) a2 (x2:a2) a3 (x3:a3) A1 A2 A3 (T1:htype A1 a1) (T2:htype A2 a2) (T3:A3->a3->hprop) V1 V2 V3,
+  l ~> Ref Id (x1,x2,x3) \* x1 ~> T1 V1 \* x2 ~> T2 V2 \* x3 ~> T3 V3 ==>
+  l ~> RefTup3 T1 T2 T3 (V1,V2,V3).
+Proof.
+  intros. unfold RefTup3. hdata_simpl. hchange (unfocus_tup3 x1 x2 x3). 
+  hchange (@unfocus_ref l _ (x1,x2,x3)). hsimpl.
+Qed.
+
+Opaque RefTup3.
+*)
+
+(*------------------------------------------------------------------*)
+(* ** Record 2 *)
+
+Definition Ref2 A1 A2 a1 a2 (T1:A1->a1->hprop) (T2:A2->a2->hprop) (V1:A1) (V2:A2) l :=
+  l ~> Ref (Tup2 T1 T2) (V1,V2).
+
+Lemma focus_ref2 : forall (l:loc) a1 a2 A1 A2 (T1:htype A1 a1) (T2:htype A2 a2) V1 V2,
+  l ~> Ref2 T1 T2 V1 V2 ==> Hexists (x1:a1) (x2:a2),
+  l ~> Ref Id (x1,x2) \* x1 ~> T1 V1 \* x2 ~> T2 V2 .
+Proof.
+  intros. unfold Ref2. hdata_simpl. hchange (@focus_ref l).
+  hextract as [x1 x2]. hchange (focus_tup2 (x1,x2)). hsimpl.
+Qed.
+
+Lemma unfocus_ref2 : forall (l:loc) a1 (x1:a1) a2 (x2:a2) A1 A2 (T1:htype A1 a1) (T2:htype A2 a2) V1 V2,
+  l ~> Ref Id (x1,x2) \* x1 ~> T1 V1 \* x2 ~> T2 V2 ==>
+  l ~> Ref2 T1 T2 V1 V2.
+Proof.
+  intros. unfold Ref2. hdata_simpl. hchange (unfocus_tup2 x1 x2). 
+  hchange (@unfocus_ref l _ (x1,x2)). hsimpl.
+Qed.
+
+Lemma focus_ref2_null : forall a1 a2 A1 A2 (T1:htype A1 a1) (T2:htype A2 a2) V1 V2,
+  null ~> Ref2 T1 T2 V1 V2 ==> [False]. 
+Proof.
+  intros. unfold hdata, Ref2. hchange focus_ref_null. hsimpl. 
+Qed.
+
+Opaque Ref2.
+
+(*------------------------------------------------------------------*)
+(* ** Record 3 *)
+
+Definition Ref3 A1 A2 A3 a1 a2 a3 (T1:A1->a1->hprop) (T2:A2->a2->hprop) (T3:A3->a3->hprop) (V1:A1) (V2:A2) (V3:A3) l :=
+  l ~> Ref (Tup3 T1 T2 T3) (V1,V2,V3).
+
+Lemma focus_ref3 : forall (l:loc) a1 a2 a3 A1 A2 A3 (T1:htype A1 a1) (T2:htype A2 a2) (T3:A3->a3->hprop) V1 V2 V3,
+  l ~> Ref3 T1 T2 T3 V1 V2 V3 ==> Hexists (x1:a1) (x2:a2) (x3:a3),
+  l ~> Ref Id (x1,x2,x3) \* x1 ~> T1 V1 \* x2 ~> T2 V2 \* x3 ~> T3 V3.
+Proof.
+  intros. unfold Ref3. hdata_simpl. hchange (@focus_ref l).
+  hextract as [[x1 x2] x3]. hchange (focus_tup3 (x1,x2,x3)). hsimpl.
+Qed.
+
+Lemma unfocus_ref3 : forall (l:loc) a1 (x1:a1) a2 (x2:a2) a3 (x3:a3) A1 A2 A3 (T1:htype A1 a1) (T2:htype A2 a2) (T3:A3->a3->hprop) V1 V2 V3,
+  l ~> Ref Id (x1,x2,x3) \* x1 ~> T1 V1 \* x2 ~> T2 V2 \* x3 ~> T3 V3 ==>
+  l ~> Ref3 T1 T2 T3 V1 V2 V3.
+Proof.
+  intros. unfold Ref3. hdata_simpl. hchange (unfocus_tup3 x1 x2 x3). 
+  hchange (@unfocus_ref l _ (x1,x2,x3)). hsimpl.
+Qed.
+
+Lemma focus_ref3_null : forall a1 a2 a3 A1 A2 A3 (T1:htype A1 a1) (T2:htype A2 a2) (T3:htype A3 a3) V1 V2 V3,
+  null ~> Ref3 T1 T2 T3 V1 V2 V3 ==> [False]. 
+Proof.
+  intros. unfold hdata, Ref3. hchange focus_ref_null. hsimpl. 
+Qed.
+
+Opaque Ref3.
+
+
+
+
+(********************************************************************)
+(** Pure Representation for data structures *)
+
+Class Rep a A := 
+  { rep : a -> A -> Prop;
+    rep_unique : forall x X Y, rep x X -> rep x Y -> X = Y }.
+
+Hint Extern 1 (@rep _ _ _ _ _) => simpl.
+
+Hint Resolve @rep_unique : rep.
+
+Ltac prove_rep := 
+  fequals_rec; 
+  try match goal with |- @eq (?T ?A) _ _ => let U := fresh in sets U:(T A) end;
+  intuition eauto with rep.
+  (* todo : appliquer directement rep_unique sur les buts ? *)
+
+Instance int_rep : Rep int int.
+Proof. apply (Build_Rep eq). congruence. Defined.
+
+Instance bool_rep : Rep bool bool.
+Proof. apply (Build_Rep eq). congruence. Defined.
+
+Instance list_rep : forall `{Rep a A}, Rep (list a) (list A).
+Proof.
+  intros. apply (Build_Rep (fun l L => Forall2 rep l L)).
+  induction x; introv H1 H2; inverts H1; inverts H2; prove_rep. 
+Defined.
+
+Lemma list_rep_cons : forall `{Rep a A} l L x X,
+  rep l L -> rep x X -> rep (x::l) (X::L).
+Proof. intros. constructors~. Qed.
+
+Hint Resolve @list_rep_cons.
+
+Instance prod_rep : forall `{Rep a1 A1} `{Rep a2 A2},
+  Rep (a1 * a2) (A1 * A2).
+Proof.
+  intros. apply (Build_Rep (fun p P => match p,P with 
+   (x,y),(X,Y) => rep x X /\ rep y Y end)).
+  intros [x1 x2] [X1 X2] [Y1 Y2] H1 H2; prove_rep.
+Defined.
+
+Instance option_rep : forall `{Rep a A},
+  Rep (option a) (option A).
+Proof.
+  intros. apply (Build_Rep (fun o O => match o,O with 
+    | None, None => True
+    | Some x, Some X => rep x X
+    | _,_ => False end)).
+  intros [x|] [X|] [Y|] H1 H2; prove_rep.
+Defined.
+
+Hint Extern 1 (@rep (list _) _ _ _ _) => simpl.
+Hint Extern 1 (@rep (prod _ _) _ _ _ _) => simpl.
+Hint Extern 1 (@rep (option _) _ _ _ _) => simpl.
+
+
+
+
+
+---------
+
+(* todo?
+Parameter ml_is_null_spec : 
+  Spec ml_is_null l |R>> R [] (\[ bool_of (l = null)]).
+
+Hint Extern 1 (RegisterSpec ml_is_null) => Provide ml_is_null_spec.
+ *)
+
+
+Parameter ml_is_null : func.
+(* todo: spec *)
+
+
+
+(*------------------------------------------------------------------*)
+(* ** Void and Any *)
+
+Definition Void {a A} (v:a) (V:A) := 
+  []. (* todo: is it used? *)
+
+Definition Any {A:Type} (X:unit) (x:A) := 
+  [True]. (* should not be [] otherwise tactics bug *)
+
+
+
+(*
+let incr r = 
+   r := !r + 1
+
+let not b =
+  if b then false else true
+
+let fst (x,y) = x
+let snd (x,y) = y
+*)
+
+
+
+
+
+(*
+
+Lemma focus_mcons : forall (l:loc) A (X:A) (L':list A),
+  (l ~> Mlist (X::L')) ==>
+  Hexists l', (l ~~> (X,l')) \* (l' ~> Mlist L').
+Proof.
+  intros. simpl. hdata_simpl. auto. 
+Qed.
+*)(*
+
+Class Dup a A (T:htype A a) : Prop := { 
+  dup : forall X x, T X x ==> [] }.
+*)
+
+
+(** Derived specifications for references *)
+
+Lemma ml_ref_spec_linear : forall A a,
+  Spec ml_ref (v:a) |R>> forall (V:A) (T:htype A a),
+    R (v ~> T V) (~> Ref T V).
+Proof.
+  intros. applys spec_weaken_1 ml_ref_spec.
+  intros_all. unfolds rel_le, pred_le. auto*. (* xisspec *)
+  introv L M. intros.
+  applys local_wframe. auto. eauto.
+  hsimpl. intros l.
+  hchange~ (@unfocus_ref l _ x1). hsimpl.
+Qed.
+
+(*
+Lemma ml_get_spec_linear : forall A a,
+  Spec ml_get (l:loc) |R>> 
+    forall (V:A) (T:htype A a), 
+    R (l ~> Ref T V) (fun v => l ~> RefOn v \* T V v).
+Proof.
+  intros. applys spec_weaken_1 ml_get_spec.
+  intros_all. unfolds rel_le, pred_le. auto*. (* xisspec *)
+  introv L M. intros. unfold hdata.
+  unfold Ref. hclean. intros v.
+  specializes M v.
+  applys local_wframe. auto. eauto. hsimpl.
+  intros l. (* unfold starpost. todo: as notation *) 
+  simpl. unfold hdata.
+  (* todo: tactic hsimpl_left should do it *)
+  hsimpl. apply heap_extract_prop. intro_subst. auto.
+Qed.
+*)
+
+(*
+Definition ArrayOn A (v:array A) (l:loc) : hprop.
+ (* := l ~~> v.*)
+*)
+

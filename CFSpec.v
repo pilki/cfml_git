@@ -8,16 +8,16 @@ Require Export CFHeaps.
 
 (** The type Func *)
 
-Axiom val : Type. 
+Axiom func : Type. 
 
 (** The type Func is inhabited *)
 
-Axiom val_inhab : Inhab val. 
-Existing Instance val_inhab.
+Axiom func_inhab : Inhab func. 
+Existing Instance func_inhab.
 
 (** The evaluation predicate for functions: [eval f v h v' h'] *)
 
-Axiom eval : forall A B, val -> A -> heap -> B -> heap -> Prop.
+Axiom eval : forall A B, func -> A -> heap -> B -> heap -> Prop.
 
 (** Evaluation is deterministic *)
 
@@ -30,12 +30,12 @@ Axiom eval_deterministic : forall A B f (v:A) h (v1' v2':B) h1' h2',
 
 (** The predicate AppPure *)
 
-Definition pureapp A B (f:val) (x:A) (P:B->Prop) := 
+Definition pureapp A B (f:func) (x:A) (P:B->Prop) := 
   exists v, forall h, eval f x h v h /\ P v.
 
 (** AppPure satisfies the witness property *)
 
-Lemma pureapp_concrete : forall A B (F:val) (V:A) (P:B->Prop),
+Lemma pureapp_concrete : forall A B (F:func) (V:A) (P:B->Prop),
   pureapp F V P <-> exists V', P V' /\ pureapp F V (= V').
 Proof.
   iff H.
@@ -47,17 +47,17 @@ Qed.
 
 (** Corrolaries of the previous equivalence *)
 
-Lemma pureapp_witness : forall A B (F:val) (V:A) (P:B->Prop),
+Lemma pureapp_witness : forall A B (F:func) (V:A) (P:B->Prop),
   pureapp F V P -> exists V', P V' /\ pureapp F V (= V').
 Proof. intros. apply* pureapp_concrete. Qed.
 
-Lemma pureapp_abstract : forall A B (F:val) (V:A) (V':B) (P:B->Prop),
+Lemma pureapp_abstract : forall A B (F:func) (V:A) (V':B) (P:B->Prop),
   pureapp F V (= V') -> P V' -> pureapp F V P.
 Proof. intros. apply* pureapp_concrete. Qed.
 
 (** AppPure satisfies the determinacy property *)
 
-Lemma pureapp_deterministic : forall A B (F:val) (V:A) (V1' V2':B),
+Lemma pureapp_deterministic : forall A B (F:func) (V:A) (V1' V2':B),
   pureapp F V (= V1') -> pureapp F V (= V2') -> V1' = V2'.
 Proof.
   introv (V1&N1) (V2&N2).
@@ -67,7 +67,7 @@ Qed.
 
 (** Corroloary of the witness and determinacy properties *)
 
-Lemma pureapp_join : forall A B (F:val) (V:A) (V':B) (P:B->Prop),
+Lemma pureapp_join : forall A B (F:func) (V:A) (V':B) (P:B->Prop),
   pureapp F V (= V') -> pureapp F V P -> P V'.    
 Proof.
   introv HE1 H. lets [V'' [HP HE2]]: (pureapp_witness H). subst.
@@ -76,7 +76,7 @@ Qed.
 
 (** AppPure is compatible with weakening *)
 
-Lemma pureapp_weaken : forall A B (F:val) (V:A) (P P':B->Prop),
+Lemma pureapp_weaken : forall A B (F:func) (V:A) (P P':B->Prop),
   pureapp F V P -> P ==> P' -> pureapp F V P'.
 Proof.
   introv M W. lets [x [Px Hx]]: (pureapp_witness M). 
@@ -89,7 +89,7 @@ Qed.
 
 (** The predicate AppReturns *)
 
-Definition app_1 A B (f:val) (x:A) (H:hprop) (Q:B->hprop) :=  
+Definition app_1 A B (f:func) (x:A) (H:hprop) (Q:B->hprop) :=  
   forall h i, \# h i -> H h -> 
     exists v' h' g, \# h' g i /\ Q v' h' /\
       eval f x (h \+ i) v' (h' \+ g \+ i).
@@ -142,7 +142,7 @@ Proof. intros. applys* local_wframe. Qed.
 
 (** From AppPure to AppReturns *)
 
-Lemma pureapp_to_app : forall A B (F:val) (V:A) (P:B->Prop),
+Lemma pureapp_to_app : forall A B (F:func) (V:A) (P:B->Prop),
   pureapp F V P -> app_1 F V [] \[P].
 Proof.
   introv (v'&N). introv Dhi Hh. exists v' heap_empty heap_empty. splits.
@@ -153,7 +153,7 @@ Qed.
 
 (** Corrolary with the frame rule integrated *)
 
-Lemma pureapp_app_1 : forall  A B (F:val) (V:A) (P:B->Prop) (H:hprop) (Q:B->hprop),
+Lemma pureapp_app_1 : forall  A B (F:func) (V:A) (P:B->Prop) (H:hprop) (Q:B->hprop),
   pureapp F V P -> (\[P] \*+ H ===> Q) -> app_1 F V H Q.
 Proof.
   intros. apply* local_wframe. apply~ pureapp_to_app. rew_heap~.
@@ -161,7 +161,7 @@ Qed.
 
 (** Overlapping of AppPure and AppReturns *)
 
-Lemma pureapp_and_app_1 : forall A B (F:val) (V:A) (V':B) (H:hprop) (Q:B->hprop),
+Lemma pureapp_and_app_1 : forall A B (F:func) (V:A) (V':B) (H:hprop) (Q:B->hprop),
   pureapp F V (= V') -> app_1 F V H Q -> 
      forall h, H h -> 
        (exists H', (Q V' \* H') h).
@@ -249,7 +249,7 @@ Definition spec_4 A1 A2 A3 A4 B (K: A1 -> A2 -> A3 -> A4 -> ~~B -> Prop) f :=
 (********************************************************************)
 (* ** Curried functions *)
 
-Definition curried_1 (A1 B:Type) (f:val) := 
+Definition curried_1 (A1 B:Type) (f:func) := 
   spec_1 (fun (x1:A1) (R:~~B) => True) f.
 
 Definition curried_2 (A1 A2 B:Type) f := 
@@ -303,7 +303,7 @@ Qed.
 
 Section AppIntro.
 Variables (Q':val->hprop).
-Variables (A1 A2 A3 A4 B : Type) (f : val).
+Variables (A1 A2 A3 A4 B : Type) (f : func).
 Variables (x1:A1) (x2:A2) (x3:A3) (x4:A4).
 Variables (H:hprop) (Q:B->hprop).
 
@@ -422,7 +422,7 @@ Proof.
   intros H Q M. rewrite app_local_1. introv Hh.
   destruct (M _ Hh) as (H1&H2&Q1&H'&(h1&h2&?&?&?&?)&(Q'&Ap1&Ap2)&Po). clear M.
   specializes Ap2 g1.
-  forwards* (H''&Ro): (>>> (@pureapp_and_app_1 A1 val) f x1).
+  forwards* (H''&Ro): (>>> (@pureapp_and_app_1 A1 func) f x1).
   exists (Q' g1 \* H'') H2 __ (H' \* H''). splits.
     subst. exists___*.
     apply* local_wframe.
@@ -444,9 +444,9 @@ Proof.
   intros H Q M. rewrite app_local_1. introv Hh.
   destruct (M _ Hh) as (H1&H2&Q1&H'&(h1&h2&?&?&?&?)&(Q'&Ap1&Ap2)&Po). clear M.
   specializes Ap2 g1. 
-  forwards* (H''&(h3&h4&PH3&PH4&?&?)): (>>> (@pureapp_and_app_1 A1 val) f x1).
+  forwards* (H''&(h3&h4&PH3&PH4&?&?)): (>>> (@pureapp_and_app_1 A1 func) f x1).
   destruct (Ap2 _ PH3) as (H1'&H2'&Q1'&H'''&(h1'&h2'&?&?&?&?)&(Q''&Ap1'&Ap2')&Po'). 
-  forwards* (Hf&(h3'&h4'&PH3'&PH4'&?&?)): (>>> (@pureapp_and_app_1 A2 val) g1 x2).
+  forwards* (Hf&(h3'&h4'&PH3'&PH4'&?&?)): (>>> (@pureapp_and_app_1 A2 func) g1 x2).
   specializes Ap2' g2.
   exists (Q'' g2 \* H'') (H2 \* H2' \* Hf) __ (H' \* H'' \* H''' \* Hf). splits.
     exists (h3' \+ h4) (h2 \+ h2' \+ h4'). splits.
@@ -978,7 +978,7 @@ Proof.
     forwards N: M (fun (x':A1) (y':A2) (R:~~B) => x' = x -> y' = y -> R H' Q').
        intros_all. subst. applys* H0. 
        intros_all. subst~.
-    lets Ag': (proj2 N x). lets Sg: (>>> (@pureapp_join A1 val) Ag Ag').
+    lets Ag': (proj2 N x). lets Sg: (>>> (@pureapp_join A1 func) Ag Ag').
     apply~ (proj2 Sg y).
   introv Is S. split~. intros x. apply M. intros g N.
    split~. intros y. applys Is. apply S. intros H Q L. apply~ N.

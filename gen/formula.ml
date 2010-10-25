@@ -69,7 +69,7 @@ and cftops = cftop list
 
 (** Abstract datatype for functions *)
 
-let val_type = Coq_var "val"   (**--todo: change to Func: --todo: add Coq module *)
+let val_type = Coq_var "CFSpec.func"   
 
 (** Abstract data type for locations *)
 
@@ -89,19 +89,17 @@ let hprop =
 (** Type of representation predicates *)
 
 let htype c_abstract c_concrete =
-   coq_apps (Coq_var "htype") [c_abstract; c_concrete]
-   (* todo: prefix htype *)
+   coq_apps (Coq_var "CFHeaps.htype") [c_abstract; c_concrete]
 
 (** The identity representation predicate *)
 
 let id_repr =
-   Coq_var "Id"  (* todo: prefix *)
+   Coq_var "CFPrim.Id" 
 
 (** Representation predicate tag *)
 
 let hdata c_concrete c_abstract =
-   coq_apps (Coq_var "hdata") [c_abstract; c_concrete]
-   (* todo: prefix htype *)
+   coq_apps (Coq_var "CFHeaps.hdata") [c_abstract; c_concrete]
 
 (** Type of pure post-conditions [_ -> Prop] *)
 

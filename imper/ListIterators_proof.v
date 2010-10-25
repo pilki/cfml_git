@@ -9,12 +9,12 @@ Opaque List.
 
 
 Lemma append_spec : forall A B,
-  Spec LI.append (x:list A) (y:list A) (k:val) |R>>  (*todo R:~~B*)
+  Spec LI.append (x:list A) (y:list A) (k:func) |R>>  (*todo R:~~B*)
      App k (x++y); ===> (R:~~B).
      (* @app_1 (list A) B k (x++y) ===> R. *)
      (* forall H Q, @app_1 (list A) B k (x++y) H Q -> R H Q. *)
 Proof.
-  intros. xinduction (unproj31 (list A) val (@list_sub A)).
+  intros. xinduction (unproj31 (list A) func (@list_sub A)).
   xcf. introv IH. intros H Q Ak. xmatch.
   apply Ak.
   xfun (fun k' => Spec k' z |R>> 
@@ -33,7 +33,7 @@ Lemma append_spec' : forall A B,
      (forall R', is_local R' -> K (x++y) R' -> R' H Q) ->
      R H Q.
 Proof.
-  intros. xinduction (unproj31 (list A) val (@list_sub A)).
+  intros. xinduction (unproj31 (list A) func (@list_sub A)).
   xcf. introv IH Sk Rk. xmatch.
   apply Rk. xlocal. rew_list. applys (spec_elim_1 Sk).
   xfun (fun k' => Spec k' z |R>> 
@@ -52,7 +52,7 @@ Lemma append_spec : forall A B,
   Spec LI.append x y k |R>> forall (K:list A->~~B->Prop),
      Spec_1 k K -> K (x++y) R.
 Proof.
-  intros. xinduction (unproj31 (list A) val (@list_sub A)).
+  intros. xinduction (unproj31 (list A) func (@list_sub A)).
   xcf. intros_all. applys (proj1 H2) H0. apply~ H. (* todo: auto *)
   introv IH Sk. applys (proj1 Sk). apply (proj2 Sk). (* todo: tactic *) 
   intros H Q App1. xmatch.
@@ -73,11 +73,11 @@ Qed.
 Hint Constructors Forall2.
 
 Lemma map_spec : forall a b,
-  Spec LI.map (f:val) (l:list a) |R>> forall A B L (T:htype A a) (U:htype B b) (I:A->B->Prop),
+  Spec LI.map (f:func) (l:list a) |R>> forall A B L (T:htype A a) (U:htype B b) (I:A->B->Prop),
     (Spec f x |R'>> forall X, In X L -> keep R' (x ~> T X) (fun y => Hexists Y, (y ~> U Y) \* [I X Y])) ->
     keep R (l ~> List T L) (fun m => Hexists M, m ~> List U M \* [Forall2 I L M]).
 Proof.
-  intros. xinduction (unproj22 val (@list_sub a)).
+  intros. xinduction (unproj22 func (@list_sub a)).
   xcf. intros f l IH. introv Hf. (* todo: avec xintros ? *)
   xmatch.
   (* base case *)

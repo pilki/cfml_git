@@ -6,7 +6,7 @@ Require Import CFPrim Compose_ml.
 (* ** A naive statement for Compose *)
 
 Lemma compose_spec_direct : forall A B C,
-  Spec compose (g:val) (f:val) (x:A) |R>>
+  Spec compose (g:func) (f:func) (x:A) |R>>
      forall H (Q:B->hprop) (Q':C->hprop),
      app_1 f x H Q ->
      (forall y, app_1 g y (Q y) Q') ->

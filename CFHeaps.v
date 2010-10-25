@@ -118,6 +118,10 @@ Qed.
 
 Definition loc : Type := nat.
 
+(** The null location *)
+
+Definition null : loc := 0.
+
 (** Representation of heaps *)
 
 Inductive heap : Type := heap_of {
@@ -282,19 +286,22 @@ Definition hprop := heap -> Prop.
 (** Empty heap *)
 
 Definition heap_is_empty : hprop := 
-  = heap_empty.
+  fun h => h = heap_empty.
 
 (** Singleton heap *)
 
 Definition heap_is_single (l:loc) A (v:A) : hprop := 
-  = heap_single l v.
+  fun h => h = heap_single l v /\ l <> null.
 
 (** Heap union *)
 
 Definition heap_is_star (H1 H2 : hprop) : hprop := 
-  fun h => exists h1 h2, H1 h1 /\ H2 h2 /\ \# h1 h2 /\ h = heap_union h1 h2.
+  fun h => exists h1 h2, H1 h1 
+                      /\ H2 h2 
+                      /\ heap_disjoint h1 h2 
+                      /\ h = heap_union h1 h2.
 
-(** Pack in heaps *)
+(** Lifting of existentials *)
 
 Definition heap_is_pack A (Hof : A -> hprop) : hprop := 
   fun h => exists x, Hof x h.
@@ -493,7 +500,11 @@ Tactic Notation "rew_heap" "*" "in" hyp(H) :=
 Notation "'~~' B" := (hprop->(B->hprop)->Prop) 
   (at level 8, only parsing) : type_scope.
 
-(** Label for data structures *)
+(** Type for imperative data structures *)
+
+Definition htype A a := A -> a -> hprop.
+
+(** Label for imperative data structures *)
 
 Definition hdata (A:Type) (S:A->hprop) (x:A) : hprop :=
   S x.
@@ -503,18 +514,6 @@ Notation "'~>' S" := (hdata S)
 
 Notation "x '~>' S" := (hdata S x)
   (at level 33, no associativity) : heap_scope.
-
-(** Representation predicate for pure data types *)
-
-Class Rep a A := 
-  { rep : a -> A -> Prop;
-    rep_unique : forall x X Y, rep x X -> rep x Y -> X = Y }.
-
-(** Heap representation for pure data types *)
-
-Definition Pure `{Rep a A} (X:A) (x:a) := 
-  [ rep x X ].
-
 
 (** Specification of pure functions: 
     [pure F P] is equivalent to [F [] \[P]] *)
@@ -528,10 +527,8 @@ Definition pure B (R:~~B) :=
 Notation "'keep' R H Q" :=
   (R H (Q \*+ H)) (at level 25, R at level 0, H at level 0, Q at level 0).
 
-(* Tactics need to be updated if a definition is used 
-Definition keep B (R:~~B) := 
-  fun H Q => R H (Q \*+ H).
-*)
+(* Note: tactics need to be updated if a definition is used instead of notation
+   Definition keep B (R:~~B) := fun H Q => R H (Q \*+ H). *)
 
 
 (********************************************************************)

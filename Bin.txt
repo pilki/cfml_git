@@ -2766,3 +2766,9 @@ Ltac strong := eauto with strong.
 
 
 Ltac strong' := skip.
+
+
+(** Heap representation for pure data types *)
+
+Definition Pure `{Rep a A} (X:A) (x:a) := 
+  [ rep x X ].

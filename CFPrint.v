@@ -3,7 +3,6 @@ Require Import CFSpec.
 
 (*todo: move *)
 
-Notation "'Func'" := val.
 Notation "'AppReturns'" := app_1.
 
 

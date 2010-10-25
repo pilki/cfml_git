@@ -19,7 +19,7 @@ let gensym () =
 Definition counter_spec I f :=
   Spec f () |R>> forall n, R (I n) (\=n \*+ (I (n+1))).
 
-Definition Counter (n:int) (f:val) :=
+Definition Counter (n:int) (f:func) :=
   Hexists I:int->hprop, (I n) \* [counter_spec I f].
 
 Lemma gensym_spec : Spec gensym () |R>>
@@ -50,7 +50,7 @@ Proof. introv S. forwards~ K : (spec_elim_2 S). Qed.
 
 
 Lemma iter_spec' : forall A,
-  Spec iter (f:val) (l:list A) | R>>
+  Spec iter (f:func) (l:list A) | R>>
     forall H (Q:unit->hprop),
     (forall (S:list A -> _ -> _ -> Prop),
        (forall l, is_local (S l)) ->
@@ -90,7 +90,7 @@ Qed.
 
 
 Lemma iter_spec : forall A,
-  Spec iter (f:val) (l:list A) | R>>
+  Spec iter (f:func) (l:list A) | R>>
     forall H (Q:unit->hprop),
     (forall (S:list A -> _ -> _ -> Prop),
        (forall l, is_local (S l)) ->
@@ -132,7 +132,7 @@ Proof. intros. subst. auto. Qed.
 Hint Resolve hsimpl_to_qunit'.
 
 Lemma test_spec : 
-  Spec test (l:list val) |R>>
+  Spec test (l:list func) |R>>
     forall L, 
     R (l ~> List Counter L) (# l ~> List Counter (LibList.map (fun i => i+1) L)).
 Proof.
@@ -144,7 +144,7 @@ Proof.
      R H Q).
      intros M W. xlet. apply M. xret~.
    renames _f0 to g, S_f0 to Sg.
-  xuntag. apply ( spec_elim_2 (@iter_spec val)).
+  xuntag. apply ( spec_elim_2 (@iter_spec func)).
   intros S LS Jn Jc.
   gen L. induction l as [|f l]; intros L.
   apply Jn. clear Jn Jc.
@@ -264,7 +264,7 @@ apply H0.
 Qed.
 
 Lemma test_spec : 
-  Spec test (l:list val) |R>>
+  Spec test (l:list func) |R>>
     forall L, 
     R (l ~> List Counter L) (l ~> List Counter (map S L)).
 
@@ -337,7 +337,7 @@ hsimpl_step tt.
 
 
 Lemma iter_spec : forall A,
-  Spec iter (f:val) (l:list A) | R>>
+  Spec iter (f:func) (l:list A) | R>>
     forall H (Q:unit->hprop),
     (forall (S:list A -> _ -> _ -> Prop),
        (forall H Q, H ==> Q tt -> S nil H Q) ->
@@ -371,7 +371,7 @@ Qed.
 
 
 Lemma iter_spec : forall A,
-  Spec iter (f:val) (l:list A) | R>>
+  Spec iter (f:func) (l:list A) | R>>
     forall H (Q:unit->hprop),
     (forall (S:list A -> _ -> _ -> Prop),
        (forall, H ==> Q tt -> S nil H Q) ->
