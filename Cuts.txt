@@ -173,35 +173,6 @@ Qed.
 Opaque RefTup3.
 *)
 
-(*------------------------------------------------------------------*)
-(* ** Record 2 *)
-
-Definition Ref2 A1 A2 a1 a2 (T1:A1->a1->hprop) (T2:A2->a2->hprop) (V1:A1) (V2:A2) l :=
-  l ~> Ref (Tup2 T1 T2) (V1,V2).
-
-Lemma focus_ref2 : forall (l:loc) a1 a2 A1 A2 (T1:htype A1 a1) (T2:htype A2 a2) V1 V2,
-  l ~> Ref2 T1 T2 V1 V2 ==> Hexists (x1:a1) (x2:a2),
-  l ~> Ref Id (x1,x2) \* x1 ~> T1 V1 \* x2 ~> T2 V2 .
-Proof.
-  intros. unfold Ref2. hdata_simpl. hchange (@focus_ref l).
-  hextract as [x1 x2]. hchange (focus_tup2 (x1,x2)). hsimpl.
-Qed.
-
-Lemma unfocus_ref2 : forall (l:loc) a1 (x1:a1) a2 (x2:a2) A1 A2 (T1:htype A1 a1) (T2:htype A2 a2) V1 V2,
-  l ~> Ref Id (x1,x2) \* x1 ~> T1 V1 \* x2 ~> T2 V2 ==>
-  l ~> Ref2 T1 T2 V1 V2.
-Proof.
-  intros. unfold Ref2. hdata_simpl. hchange (unfocus_tup2 x1 x2). 
-  hchange (@unfocus_ref l _ (x1,x2)). hsimpl.
-Qed.
-
-Lemma focus_ref2_null : forall a1 a2 A1 A2 (T1:htype A1 a1) (T2:htype A2 a2) V1 V2,
-  null ~> Ref2 T1 T2 V1 V2 ==> [False]. 
-Proof.
-  intros. unfold hdata, Ref2. hchange focus_ref_null. hsimpl. 
-Qed.
-
-Opaque Ref2.
 
 (*------------------------------------------------------------------*)
 (* ** Record 3 *)
@@ -391,3 +362,46 @@ Definition ArrayOn A (v:array A) (l:loc) : hprop.
  (* := l ~~> v.*)
 *)
 
+
+
+
+(*------------------------------------------------------------------*)
+(* ** Mutable lists 
+
+(* Definition of [l ~> Mlist L], same as [Mlist L l] *)
+ 
+Fixpoint Mlist A (L:list A) (l:loc) : hprop :=
+  match L with
+  | nil => [l = null]
+  | X::L' => Hexists l', l ~~> (X,l') \* l' ~> Mlist L'
+  end.
+
+Lemma unfocus_mnil : forall A (L:list A),
+  null ~> @Mlist A L ==> [L = nil].
+Proof.
+  intros. destruct L; simpl.
+  xsimpl~.
+  hdata_simpl. hextract. hchange focus_ref_null. hextract. false.
+Qed.
+
+Lemma focus_mcons : forall (l:loc) A (L:list A),
+  [l <> null] \* (l ~> Mlist L) ==> Hexists (X:A) (l':loc) (L':_),
+    [L = X::L'] \*  (l ~~> (X,l')) \* (l' ~> Mlist L').
+Proof.
+  intros. destruct L. 
+  hextract. false~.
+  simpl. hdata_simpl. hextract as E l'. hsimpl~.
+Qed.
+
+Lemma unfocus_mcons : forall (l:loc) A (X:A) (l':loc) (L':list A),
+  (l ~~> (X,l')) \* (l' ~> Mlist L') ==> (l ~> Mlist (X::L')).
+Proof.
+  intros. simpl. hdata_simpl. hsimpl. 
+Qed.
+
+Opaque Mlist.
+Implicit Arguments unfocus_mnil [ A].
+Implicit Arguments unfocus_mcons [ A ].
+Implicit Arguments focus_mcons [ A ].
+
+*)

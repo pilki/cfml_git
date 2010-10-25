@@ -88,8 +88,18 @@ Lemma unfocus_ref : forall (l:loc) a (v:a) A (T:htype A a) V,
   l ~~> v \* v ~> T V ==> l ~> Ref T V.
 Proof. intros. unfold Ref. hdata_simpl. hextract. hsimpl. subst~. Qed.
 
-Axiom focus_ref_null : forall a A (T:htype A a) V,
-  null ~> Ref T V ==> [False]. (* todo *)
+Lemma heap_is_single_impl_null : forall (l:loc) A (v:A),
+  heap_is_single l v ==> heap_is_single l v \* [l <> null].
+Proof.
+  intros. intros h Hh. forwards*: heap_is_single_null. exists___*.
+Qed.
+
+Lemma focus_ref_null : forall a A (T:htype A a) V,
+  null ~> Ref T V ==> [False].
+Proof.
+  intros. unfold Ref, hdata. hextract as v.
+  hchange (@heap_is_single_impl_null null). hextract. false.
+Qed.
 
 Global Opaque Ref.
 
@@ -179,6 +189,36 @@ Proof.
 Qed.
 
 Global Opaque List.
+
+(*------------------------------------------------------------------*)
+(* ** Record 2 *)
+
+Definition Ref2 A1 A2 a1 a2 (T1:A1->a1->hprop) (T2:A2->a2->hprop) (V1:A1) (V2:A2) l :=
+  l ~> Ref (Tup2 T1 T2) (V1,V2).
+
+Lemma focus_ref2 : forall (l:loc) a1 a2 A1 A2 (T1:htype A1 a1) (T2:htype A2 a2) V1 V2,
+  l ~> Ref2 T1 T2 V1 V2 ==> Hexists (x1:a1) (x2:a2),
+  l ~> Ref Id (x1,x2) \* x1 ~> T1 V1 \* x2 ~> T2 V2 .
+Proof.
+  intros. unfold Ref2. hdata_simpl. hchange (@focus_ref l).
+  hextract as [x1 x2]. hchange (focus_tup2 (x1,x2)). hsimpl.
+Qed.
+
+Lemma unfocus_ref2 : forall (l:loc) a1 (x1:a1) a2 (x2:a2) A1 A2 (T1:htype A1 a1) (T2:htype A2 a2) V1 V2,
+  l ~> Ref Id (x1,x2) \* x1 ~> T1 V1 \* x2 ~> T2 V2 ==>
+  l ~> Ref2 T1 T2 V1 V2.
+Proof.
+  intros. unfold Ref2. hdata_simpl. hchange (unfocus_tup2 x1 x2). 
+  hchange (@unfocus_ref l _ (x1,x2)). hsimpl.
+Qed.
+
+Lemma focus_ref2_null : forall a1 a2 A1 A2 (T1:htype A1 a1) (T2:htype A2 a2) V1 V2,
+  null ~> Ref2 T1 T2 V1 V2 ==> [False]. 
+Proof.
+  intros. unfold hdata, Ref2. hchange focus_ref_null. hsimpl. 
+Qed.
+
+Opaque Ref2.
 
 
 (*------------------------------------------------------------------*)

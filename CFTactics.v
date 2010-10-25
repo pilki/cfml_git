@@ -145,7 +145,6 @@ Ltac get_spec_weaken_x x :=
      | 4%nat => constr:(spec_weaken_4)
   end.
 
-
 (** Returns the lemma [get_app_intro_n_m] *)
 
 Lemma id_proof : forall (P:Prop), P -> P.
@@ -258,8 +257,6 @@ Tactic Notation "xauto" "~" := xauto_tilde.
 Tactic Notation "xauto" "*" := xauto_star.
 Tactic Notation "xauto" := xauto~.
 
-
-
 Tactic Notation "hsimpl" "~" constr(L) :=
   hsimpl L; xauto~.
 Tactic Notation "hsimpl" "~" constr(X1) constr(X2) :=
@@ -288,7 +285,7 @@ Tactic Notation "xisspec" :=
 (*--------------------------------------------------------*)
 (* ** [xlocal] *)
 
-Ltac xlocal_core :=
+Ltac xlocal_core tt ::=
   first [ assumption
  	| apply local_is_local 
         | apply app_local_1
@@ -298,7 +295,7 @@ Ltac xlocal_core :=
         | apply app_local_4 *) ].
 
 Tactic Notation "xlocal" :=
-  xlocal_core.
+  xlocal_core tt.
 
 
 (*--------------------------------------------------------*)
@@ -307,7 +304,6 @@ Tactic Notation "xlocal" :=
 (** [xcf] applies to a goal of the form [Spec_n f K]
     and uses the characteristic formula known for [f]
     in order to get started proving the goal. *)
-
 
 Ltac remove_head_unit tt :=
   repeat match goal with 
@@ -362,7 +358,6 @@ Tactic Notation "xcf_app" := xcf_app_core.
 
 (*--------------------------------------------------------*)
 (* ** [xfind] *)
-(*todo*)
 
 Ltac xfind_db f :=
   ltac_database_get database_spec f.
@@ -432,7 +427,6 @@ Tactic Notation "xextract" "as" simple_intropattern(I1) simple_intropattern(I2)
 Tactic Notation "xsimpl" := try hextract; try hsimpl.
 Tactic Notation "xsimpl" "~" := xsimpl; xauto~.
 Tactic Notation "xsimpl" "*" := xsimpl; xauto*.
-
 
 
 (*--------------------------------------------------------*)
@@ -548,13 +542,12 @@ Ltac xret_core :=
 Ltac xret_pre cont := 
   cont tt.
 
-(* deprecated
+(* todo: special treatment of xlet/xret
 Ltac xret_pre cont := 
   match ltac_get_tag tt with
   | tag_ret => cont tt
   | tag_let_pure => xlet; [ cont tt | instantiate ]
-  end.  
-*)
+  end. *)
 
 Tactic Notation "xret_noclean" := 
   xret_pre ltac:(fun _ => xret_core).
@@ -609,7 +602,6 @@ Tactic Notation "xgc" :=
 
 Tactic Notation "xgc_all" := 
   eapply local_gc_pre_all; [ try xlocal | ].
-
 
 
 (*--------------------------------------------------------*)
@@ -720,9 +712,7 @@ Tactic Notation "ximpl" "~" :=
 Tactic Notation "ximpl" "*" :=
   ximpl; xauto_star.
 
-
  *)
-
 
 
 (*--------------------------------------------------------*)
@@ -999,7 +989,6 @@ Tactic Notation "xweaks" :=
 
 *)
 
-
 (*--------------------------------------------------------*)
 (* ** [xinduction] *)
 
@@ -1259,8 +1248,6 @@ Tactic Notation "xfun_induction_heap" constr(S) constr(I) :=
 Tactic Notation "xfun_induction_heap_nointro" constr(S) constr(I) :=
   xfun_core S ltac:(fun _ => 
     intro; unfolds_to_spec tt; xinduction_heap I; xbody_nointro).
-
-
 
 
 

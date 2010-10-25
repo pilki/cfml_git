@@ -449,9 +449,9 @@ Notation "'Body' f [ A1 A2 ]  x1 x2 '=>' Q" :=
 
 (** Functions *)
 
-Notation "'LetFunc' f1 ':=' Q1 'in' Q" :=
-  (!F fun H Q => forall f1, exists P1,
-     (Q1 -> P1 f1) /\ (P1 f1 -> Q H Q))
+Notation "'LetFunc' f1 ':=' Q1 'in' Q2" :=
+  (!F (fun H Q => forall f1, exists P1,
+     (Q1 -> P1 f1) /\ (P1 f1 -> Q2 H Q)))
   (at level 69, f1 ident, only parsing) : charac.
 
 Notation "'LetFun' f x1 ':=' Q 'in' F" :=

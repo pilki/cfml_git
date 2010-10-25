@@ -302,7 +302,7 @@ Qed.
 (* ** Change of arities in applications *)
 
 Section AppIntro.
-Variables (Q':val->hprop).
+Variables (Q':func->hprop).
 Variables (A1 A2 A3 A4 B : Type) (f : func).
 Variables (x1:A1) (x2:A2) (x3:A3) (x4:A4).
 Variables (H:hprop) (Q:B->hprop).
@@ -518,22 +518,22 @@ Lemma spec_elim_1_1 : forall A1 B (K: A1 -> ~~B -> Prop) f,
   app_1 f x1 H Q.
 Proof. introv S W. apply (W _). auto. apply S. Qed.
 
-Lemma spec_elim_1_2 : forall A1 A2 (K: A1 -> ~~val -> Prop) f,
-  spec_1 K f -> forall x1 (x2:A2) (H : hprop) (Q Q' : val->hprop),
+Lemma spec_elim_1_2 : forall A1 A2 (K: A1 -> ~~func -> Prop) f,
+  spec_1 K f -> forall x1 (x2:A2) (H : hprop) (Q Q' : func->hprop),
   (forall R, is_local R -> K x1 R -> R H Q') -> 
   (forall g, app_1 g x2 (Q' g) Q) ->
   app_2 f x1 x2 H Q.
 Proof. intros. apply* app_intro_1_2. apply* spec_elim_1_1. Qed.
 
-Lemma spec_elim_1_3 : forall A1 A2 A3 (K: A1 -> ~~val -> Prop) f,
-  spec_1 K f -> forall x1 (x2:A2) (x3:A3) (H : hprop) (Q Q' : val->hprop),
+Lemma spec_elim_1_3 : forall A1 A2 A3 (K: A1 -> ~~func -> Prop) f,
+  spec_1 K f -> forall x1 (x2:A2) (x3:A3) (H : hprop) (Q Q' : func->hprop),
   (forall R, is_local R -> K x1 R -> R H Q') -> 
   (forall g, app_2 g x2 x3 (Q' g) Q) ->
   app_3 f x1 x2 x3 H Q.
 Proof. intros. apply* app_intro_1_3. apply* spec_elim_1_1. Qed.
 
-Lemma spec_elim_1_4 : forall A1 A2 A3 A4 (K: A1 -> ~~val -> Prop) f,
-  spec_1 K f -> forall x1 (x2:A2) (x3:A3) (x4:A4) (H : hprop) (Q Q' : val->hprop),
+Lemma spec_elim_1_4 : forall A1 A2 A3 A4 (K: A1 -> ~~func -> Prop) f,
+  spec_1 K f -> forall x1 (x2:A2) (x3:A3) (x4:A4) (H : hprop) (Q Q' : func->hprop),
   (forall R, is_local R -> K x1 R -> R H Q') -> 
   (forall g, app_3 g x2 x3 x4 (Q' g) Q) ->
   app_4 f x1 x2 x3 x4 H Q.
@@ -552,15 +552,15 @@ Lemma spec_elim_2_2 : forall A1 A2 B (K: A1 -> A2 -> ~~B -> Prop) f,
   app_2 f x1 x2 H Q.
 Proof. introv S W. apply (W _). auto. apply* spec_elim_2. Qed.
 
-Lemma spec_elim_2_3 : forall A1 A2 A3 (K: A1 -> A2 -> ~~val -> Prop) f,
-  spec_2 K f -> forall x1 x2 (x3:A3) (H : hprop) (Q Q' : val->hprop),
+Lemma spec_elim_2_3 : forall A1 A2 A3 (K: A1 -> A2 -> ~~func -> Prop) f,
+  spec_2 K f -> forall x1 x2 (x3:A3) (H : hprop) (Q Q' : func->hprop),
   (forall R, is_local R -> K x1 x2 R -> R H Q') ->
   (forall g, app_1 g x3 (Q' g) Q) ->
   app_3 f x1 x2 x3 H Q.
 Proof. intros. apply* app_intro_2_3. apply* spec_elim_2_2. Qed.
 
-Lemma spec_elim_2_4 : forall A1 A2 A3 A4 (K: A1 -> A2 -> ~~val -> Prop) f,
-  spec_2 K f -> forall x1 x2 (x3:A3) (x4:A4) (H : hprop) (Q Q' : val->hprop),
+Lemma spec_elim_2_4 : forall A1 A2 A3 A4 (K: A1 -> A2 -> ~~func -> Prop) f,
+  spec_2 K f -> forall x1 x2 (x3:A3) (x4:A4) (H : hprop) (Q Q' : func->hprop),
   (forall R, is_local R -> K x1 x2 R -> R H Q') ->
   (forall g, app_2 g x3 x4 (Q' g) Q) ->
   app_4 f x1 x2 x3 x4 H Q.
@@ -600,8 +600,8 @@ Lemma spec_elim_3_3 : forall A1 A2 A3 B (K: A1 -> A2 -> A3 -> ~~B -> Prop) f,
   app_3 f x1 x2 x3 H Q.
 Proof. introv S W. apply (W _). auto. apply* spec_elim_3. Qed.
 
-Lemma spec_elim_3_4 : forall A1 A2 A3 A4 (K: A1 -> A2 -> A3 -> ~~val -> Prop) f,
-  spec_3 K f -> forall x1 x2 x3 (x4:A4) (H : hprop) (Q Q' : val->hprop),
+Lemma spec_elim_3_4 : forall A1 A2 A3 A4 (K: A1 -> A2 -> A3 -> ~~func -> Prop) f,
+  spec_3 K f -> forall x1 x2 x3 (x4:A4) (H : hprop) (Q Q' : func->hprop),
   (forall R, is_local R -> K x1 x2 x3 R -> R H Q') ->
   (forall g, app_1 g x4 (Q' g) Q) ->
   app_4 f x1 x2 x3 x4 H Q.
@@ -610,7 +610,7 @@ Proof. intros. apply* app_intro_3_4. apply* spec_elim_3_3. Qed.
 (*-- spec_elim_4 --*)
 
 Lemma spec_elim_4_1 : forall A1 A2 A3 A4 B (K: A1 -> A2 -> A3 -> A4 -> ~~B -> Prop) f,
-  spec_4 K f -> forall x1 (P : val->Prop),
+  spec_4 K f -> forall x1 (P : func->Prop),
   app_1 f x1 [] \[spec_3 (K x1)].
 Proof. intros. destruct H as [I Ap1]. apply~ pureapp_to_app. Qed.
 
@@ -626,7 +626,7 @@ Proof.
 Qed.
 
 Lemma spec_elim_4_3 : forall A1 A2 A3 A4 B (K: A1 -> A2 -> A3 -> A4 -> ~~B -> Prop) f,
-  spec_4 K f -> forall x1 x2 x3 (P : val->Prop),
+  spec_4 K f -> forall x1 x2 x3 (P : func->Prop),
   app_3 f x1 x2 x3 [] \[spec_1 (K x1 x2 x3)].
 Proof. 
   intros. destruct H as [I Ap1]. specializes Ap1 x1.
@@ -965,7 +965,7 @@ Qed.
 
 Lemma spec_iff_app_2 : forall A1 A2 B f (G:A1->A2->~~B),
   (forall K, is_spec_2 K -> (forall x y, K x y (G x y)) -> spec_2 K f) <->
-  (forall x (P:val->Prop), 
+  (forall x (P:func->Prop), 
      (forall g, (forall y H' Q', G x y H' Q' -> app_1 g y H' Q') -> P g) ->
      pureapp f x P).
 Proof.

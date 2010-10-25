@@ -1,6 +1,8 @@
 Set Implicit Arguments.
 Require Export LibCore LibEpsilon Shared LibMap.
 
+(* todo: move *)
+
 Inductive Mem (A:Type) (x:A) : list A -> Prop :=
   | Mem_here : forall l, 
       Mem x (x::l)
@@ -120,7 +122,7 @@ Definition loc : Type := nat.
 
 (** The null location *)
 
-Definition null : loc := 0.
+Definition null : loc := 0%nat.
 
 (** Representation of heaps *)
 
@@ -389,6 +391,10 @@ Proof. intros. hnfs~. Qed.
 
 Hint Resolve heap_is_empty_prove heap_is_empty_st_prove.
 
+Lemma heap_is_single_null : forall (l:loc) A (v:A) h,
+  heap_is_single l v h -> l <> null.
+Proof. unfolds* heap_is_single. Qed.
+
 
 (*------------------------------------------------------------------*)
 (* ** Properties of [star] *)
@@ -489,7 +495,6 @@ Tactic Notation "rew_heap" "*" "in" "*" :=
   rew_heap in *; auto_star.
 Tactic Notation "rew_heap" "*" "in" hyp(H) :=
   rew_heap in H; auto_star.
-
 
 
 (********************************************************************)
@@ -1340,8 +1345,8 @@ Ltac hclean_relinearize tt :=
 Ltac hclean_step tt :=
   let go H :=
     match H with ?HA \* ?HX \* ?HR => match HX with
-    | [?P] => apply hclean_prop; [ xlocal | intro ]
-    | heap_is_pack ?J => apply hclean_exists; [ xlocal | intro; hclean_relinearize tt ]
+    | [?P] => apply hclean_prop; [ try xlocal | intro ]
+    | heap_is_pack ?J => apply hclean_exists; [ try xlocal | intro; hclean_relinearize tt ]
     | _ => apply hclean_step
     end end in
   hclean_onH ltac:(go).

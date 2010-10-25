@@ -1,18 +1,14 @@
 Set Implicit Arguments.
-Require Import LibCore CFPrim CPS_ml LibList.
+Require Import LibCore CFLib CPS_ml LibList.
 Opaque Ref.
-
-(* temporary *)
-Notation "'Let' x ':=' F1 'in' F2" :=
-  (!T (fun H Q => exists Q1, F1 H Q1 /\ forall x, F2 (Q1 x) Q))
-  (at level 69, x ident) : charac.
-
 
 (*------------------------------------------------------------------*)
 (* ** Mutable lists *)
 
 (* Definition of [l ~> Mlist L], same as [Mlist L l] *)
  
+Transparent hdata.
+
 Fixpoint Mlist A (L:list A) (l:loc) : hprop :=
   match L with
   | nil => [l = null]
@@ -48,7 +44,6 @@ Implicit Arguments unfocus_mcons [ A ].
 Implicit Arguments focus_mcons [ A ].
 
 
-
 (*------------------------------------------------------------------*)
 (* ** tail and set_tail *)
 
@@ -74,12 +69,12 @@ Hint Extern 1 (RegisterSpec CPS_ml.set_tail) => Provide set_tail_spec.
 (* ** CPS append *)
 
 Lemma append_spec : forall A B,
-  Spec CPS_ml.append (x:loc) (y:loc) (k:Func) |R>> 
+  Spec CPS_ml.append (x:loc) (y:loc) (k:func) |R>> 
      forall (L M:list A) H (Q:B->hprop),
      (forall z, AppReturns k z (z ~> Mlist (L++M) \* H) Q) ->
      R (x ~> Mlist L \* y ~> Mlist M \* H) Q.
 Proof.
-  intros. xinduct (unproj41 loc loc Func (@list_sub A)).
+  intros. xinduct (unproj41 loc loc func (@list_sub A)).
   xcf. intros x y k L IH. introv Sk.
   xapps. xif. xchange (unfocus_mnil L) as. intro_subst. apply Sk.
   xchange~ (focus_mcons x) as v l' L' E. subst L.
@@ -90,5 +85,7 @@ Proof.
 Qed.
 
 
-
-
+(*------------------------------------------------------------------*)
+(** LATER: Representation predicate for lists of base values 
+    Definition Mlist (A:Type) := MList (@Id A).
+    --> requires a treatment of [Id] in tactics *)
