@@ -34,15 +34,15 @@ Definition BackCorrect n (Idx Back:tab) :=
   forall k, index n k ->
   let i := Back\(k) in index L i /\ Idx\(i) = k.
 
-(** [s ~> SparseArray m] indicates that [s] is a record 
-    describing a sparse array whose model is the map [m] *)
+(** [s ~> SparseArray f] indicates that [s] is a record 
+    describing a sparse array whose model is the function [f] *)
 
-Definition SparseArray (m:map int int) (s:loc) :=
+Definition SparseArray (f:int->int) (s:loc) :=
   Hexists (n:int) (Val:tab) (Idx:tab) (Back:tab),
      s ~> SarrayPacked n Val Idx Back
   \* [ good_sizes n Val Idx Back
        /\ BackCorrect n Idx Back
-       /\ (forall i, index m i -> Valid n Idx Back i /\ Val\(i) = m\(i)) ].
+       /\ (forall i, f i = If Valid n Idx Back i then Val\(i) else 0) ].
 
 
 (****************************************************)
@@ -132,28 +132,33 @@ Hint Extern 1 (RegisterSpec valid) => Provide valid_spec.
 (*--------------------------------------------------*)
 (** Function [get] *)
 
-Lemma get_spec :
-  Spec get i s |R>> forall m, index m i -> 
-    keep R (s ~> SparseArray m) (\= m\(i)).
+Lemma get_spec' :
+  Spec get i s |R>> forall f, index L i -> 
+    keep R (s ~> SparseArray f) (\= f i).
 Proof.
-  xcf. introv Imi.
+  xcf. introv ILi.
   unfold SparseArray. hdata_simpl.
   xextract as n Val Idx Back (Siz&Bok&Iok).
-  forwards (Vi&Ei): Iok Imi. 
-  xapps*. hnf in Siz; math. xif.
-  xchange (Sarray_focus s) as n' val idx back.
-  xapps. xapp*.
-  intros v. hchange (Sarray_unfocus s n' val idx back).
+  xapps*. hnf in Siz; math.
+  lets M: Iok i. xif; case_if in M as C; tryfalse; clear C.
+  (* case is an index *)
+  xchange (Sarray_focus s) as n' val idx back. xapps. xapp*.
+  intros r. hchange (Sarray_unfocus s n' val idx back).
   hextract. subst. hsimpl*.
+  (* case not an index *)
+  xret. hsimpl*.
 Qed. 
 
 
 (*--------------------------------------------------*)
 (** Function [set] *)
 
+Definition update_fun A B (f:A->B) i v :=
+  fun j => If i '= j then v else f j.
+
 Lemma set_spec :
-  Spec set i v l |R>> forall m, index L i ->
-    R (l ~> SparseArray m) (# l ~> SparseArray (m\(i:=v))).
+  Spec set i v l |R>> forall f, index L i ->
+    R (l ~> SparseArray f) (# l ~> SparseArray (update_fun f i v)).
 Proof.
   xcf. introv Imi. hdata_simpl SparseArray.
   xextract as n Val Idx Back (Siz&Bok&Iok).
@@ -167,7 +172,7 @@ Proof.
   xchange (Sarray_focus s) as n' val idx back.
   xchange (Id_focus n'). xextract. intro_subst.
   lets Nbk: (>>> not_Valid_to_notin_Back Bok); eauto.
-  skip: (n < L). (* pigeon-holes *)
+  skip: (n < L). (* pigeon-holes, see task description *)
   asserts: (0 <= n < L). hnf in Siz; math.
   asserts: (index L n). rewrite~ int_index_def. (* faster *)
   xapps. xapps. xapps*. xapps. xapps*. xapp.
@@ -179,19 +184,49 @@ Proof.
       rewrite @int_index_def in Ik.
        asserts [? ?]: (index n k /\ index L k). strong. (* faster *)
        forwards~ [? ?]: Bok k. rew_array*.
-    intros j Imj. tests (j = i).
-      asserts: (index (n + 1) n). eapply int_index_prove; math. (* faster *)
-       unfold Valid. rew_map_array*.
+    intros j. unfold update_fun. specializes Iok j. case_if.
+      subst. asserts: (index (n + 1) n). eapply int_index_prove; math. (* faster *)
+       unfold Valid. rew_map_array*. case_if; tryfalse*; auto.
+      rewrite Iok. case_if as N. (*todo: name*) renames v0 to N.
+        rewrite If_l.
+          rew_array~.
+          unfold Valid in N|-*. destruct N as (N1&N2&N3). splits.
+            auto.
+            rew_array. rewrite int_index_def in N2 |- *. math.
+            apply* index_array_length_le. myunfold. math.
+            auto.
+          rew_array~. rew_array~. apply* index_array_length_le. myunfold. math.
+          rew_array. rewrite int_index_def in N2. math.
+          apply* index_array_length_le. myunfold. math.
+          auto.
+        unfold Valid in n1|-*. case_if; auto. rew_logic in n1.
+         false. destruct a as (N1&N2&N3). branches n1.
+           false.
+(*
+           rew_array in N2; auto. rewrite int_index_def in N2,H2. math.
+
+        
+ rew_array.
+      apply* index_array_length_le. myunfold. math. (* faster *) eauto. auto. unfold Valid. . fequals.
+      unfold Valid. case_if.
+   case_if; case_if; tryfalse; auto.
+*)
+skip.
+rew_array in N3; auto. skip. skip.
+(*
       rew_map in Imj; try typeclass. destruct Imj; tryfalse.
        forwards~ [(M1&M2&M3) E]: Iok j. unfold Valid. rew_map_array; auto.
          splits~. splits*. rewrite int_index_def in M2 |- *. math. (* faster *)
          apply* index_array_length_le. myunfold. math. (* faster *)
          rewrite @int_index_def in M2. math. (* faster *)
+*)
+
   (* case nothing to do *)
-   xret. hsimpl. splits~.
-   intros j Imj. tests (j = i).
+   xret. hsimpl. splits~. 
+   intros j. specializes Iok j. unfold update_fun. 
+   case_if; case_if; tryfalse; auto.
+     subst. rew_map_array*.
      rew_map_array*.
-     rew_map in Imj; inhabs. forwards: Iok j; rew_map_array*.
 Qed.
 
 

@@ -1,6 +1,9 @@
 Set Implicit Arguments.
-Require Import CFPrim Landin_ml.
+Require Import CFLib Landin_ml.
 
+
+(********************************************************************)
+(* ** Tool: frame for specifications *)
 
 Definition sframe (I:hprop) A B (K:A->~~B->Prop) :=
   fun x R => K x (fun H Q => R (H \* I) (Q \*+ I)). 
@@ -19,6 +22,9 @@ Ltac xisspec_core ::=
     lets K: sframe_is_spec_1; unfold is_spec_1, is_spec_0 in *;
     intros_all; unfolds rel_le, pred_le; auto; auto* ].
 
+
+(********************************************************************)
+(* ** The code of Landin's knot *)
 (*
 let landin bigf =
    let r = sref () in
@@ -65,30 +71,4 @@ Proof.
   (* prove the spec of the result by induction *)
   xinduction_heap W. xweaken~.
 Qed.
-
-
-(*
-
-  (* verification of f *)
-  xfun (fun f => Spec f x |R>> forall y f',
-     let I := (r ~> Ref Id f') in
-     (Spec f' x' |R'>> forall y', lt (y',x') (y,x) -> sframe I (L y') x' R') ->
-     sframe I (L y) x R).
-    intros I Sf'. applys Is.
-      apply (spec_elim_2 (Hbigf I) g x y). xweaken.
-       simpl. intros x' R LR SK. unfold sframe in SK|-*.
-       apply SK; [ xisspec | apply Sf' ].
-      intros H Q Happ. apply Happ.
-  (* tie the knot *)
-  xapp. xret. hsimpl (r ~> Ref Id f).
-  (* prove the spec of the result by induction *)
-  xinduction_heap W. xweaken~.*)
-
-
-(*bin*)
- (* intros_all. applys~ sframe_is_spec_1.*)
- (*ntros_all. applys sframe_is_spec_1. auto. apply H. auto.*)
-(*intros_all. applys sframe_is_spec_1. auto. apply H. auto. auto.*)
-
-
 

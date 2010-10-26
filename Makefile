@@ -124,13 +124,14 @@ IMP=\
 	CFLib.v 
 
 IMPER=\
+	imper/Landin_ml.v \
+	imper/Landin_proof.v \
 	imper/Counter_ml.v \
 	imper/Facto_ml.v \
 	imper/MutableList_ml.v \
 	imper/TreeCopy_ml.v \
 	imper/Loops_ml.v \
 	imper/StrongUpdate_ml.v \
-	imper/Landin_ml.v \
 	imper/InOut_ml.v \
 	imper/Counter_proof.v \
 	imper/Facto_proof.v \
@@ -138,7 +139,6 @@ IMPER=\
 	imper/TreeCopy_proof.v \
 	imper/Loops_proof.v \
 	imper/StrongUpdate_proof.v \
-	imper/Landin_proof.v \
 	imper/InOut_proof.v \
 	imper/Dijkstra_ml.v \
 	imper/Dijkstra_proof.v 
@@ -185,16 +185,16 @@ BUILTIN=\
 	imper/StrongPointers.cmi
 
 
-ALL=$(IMP) $(TEST) 
+ALL=$(IMP) $(TEST) $(VAC)
 OLD=$(TOOLS) $(DEMO) $(OKA) $(OKACOD)
 # $(COD) $(DEV) $(TUTO) $(FORM) $(DEV) $(OKA) $(DEV:.v=.vo)
 
 .PHONY: all def clean cleanall dep tools tools demo oka vac new cod dvpt test gen lib none
 .SUFFIXES: .camldep .ml _ml.v _ml.vo _proof.v _proof.vo .v .vo 
-.SECONDARY: *.cmi okasaki/*.cmi demo/*.cmi imper/*.cmi
-.SECONDARY: *_ml.v okasaki/*_ml.v demo/*_ml.v imper/*_ml.v
-.SECONDARY: *_ml.vo okasaki/*_ml.vo demo/*_ml.vo imper/*_ml.vo
-.SECONDARY: *.d okasaki/*.d demo/*.d imper/*.d
+.SECONDARY: *.cmi okasaki/*.cmi demo/*.cmi imper/*.cmi vacid/*.cmi
+.SECONDARY: *_ml.v okasaki/*_ml.v demo/*_ml.v imper/*_ml.v vacid/*_ml.v
+.SECONDARY: *_ml.vo okasaki/*_ml.vo demo/*_ml.vo imper/*_ml.vo vacid/*_ml.vo
+.SECONDARY: *.d okasaki/*.d demo/*.d imper/*.d vacid/*.d
 
 def: all
 all: gen full .camldep 
@@ -309,7 +309,7 @@ imper/NullPointers.cmi: imper/NullPointers.mli
  
 .camldep: demo/*.ml okasaki/*.ml $(MYOCAMLDEP) 
 	@echo "OCAMLDEP"
-	$(MYOCAMLDEP) $(INCLUDES) demo/*.ml okasaki/*.ml > .camldeptemp
+	$(MYOCAMLDEP) $(INCLUDES) demo/*.ml okasaki/*.ml vacid/*.ml > .camldeptemp
 	sed 's/.cmo/.cmi/g' .camldeptemp > .camldep
 	rm .camldeptemp
 
@@ -354,6 +354,7 @@ clean:
 	@rm -f imper/*.d imper/*_ml.v imper/*.vo imper/*.glob imper/*.cmo imper/*.cmi || echo clean_imper
 	@rm -f .camldep || echo ok
 	@echo "CLEANED UP"
+# todo: add vacid
 
 cleanall: clean
 	@rm -Rf gen/_build gen/main.byte || echo clean_gen
