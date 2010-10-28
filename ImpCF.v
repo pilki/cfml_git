@@ -2,7 +2,14 @@ Set Implicit Arguments.
 Require Import LibTactics.
 
 (*****************************************************************************)
-(** Maths *)
+(*****************************************************************************)
+(*****************************************************************************)
+(** * Definition of the IMP language (as in the Software Foundation course) *)
+
+(*****************************************************************************)
+(** Tools *)
+
+(** Comparison *)
 
 Require Export Arith.EqNat.
 
@@ -16,22 +23,39 @@ Fixpoint ble_nat (n m : nat) : bool :=
       end
   end.
 
+(** Partial application of equality *)
+Notation "= x" := (fun y => y = x) (at level 69).
 
-(*****************************************************************************)
 (** Identifiers *)
 
-Module Id.
 Inductive id : Type := 
   Id : nat -> id.
+
+Definition X : id := Id 0.
+Definition Y : id := Id 1.
+Definition Z : id := Id 2.
+
+(** Comparison of identifiers *)
+
 Definition beq_id id1 id2 :=
   match (id1, id2) with
     (Id n1, Id n2) => beq_nat n1 n2
   end.
-Definition X : id := Id 0.
-Definition Y : id := Id 1.
-Definition Z : id := Id 2.
-End Id.
-Import Id.
+
+Lemma beq_id_refl : forall x, beq_id x x = true.
+Proof. intros [n]. unfold beq_id. rewrite~ <- beq_nat_refl. Qed.
+
+Lemma beq_id_neq : forall x y, x <> y -> beq_id x y = false.
+Proof.
+  intros [n] [m]. gen m. unfold beq_id.
+  induction n; destruct m; introv H; tryfalse; auto.
+  unfold beq_nat. rewrite~ IHn. congruence.
+Qed.
+
+Lemma Y_not_Z : Y <> Z.
+Proof. auto_false. Qed.
+
+Hint Resolve Y_not_Z.
 
 
 (*****************************************************************************)
@@ -62,9 +86,6 @@ Inductive com : Type :=
 Definition state := id -> nat.
 
 Definition empty_state : state := fun _ => 0.
-
-Definition update (st : state) (V:id) (n : nat) : state :=
-  fun V' => if beq_id V V' then n else st V'.
 
 
 (*****************************************************************************)
@@ -104,6 +125,9 @@ Fixpoint beval (st : state) (e : bexp) : bool :=
   | BAnd b1 b2 => andb (beval st b1) (beval st b2)
   end.
 
+Definition update (st : state) (V:id) (n : nat) : state :=
+  fun V' => if beq_id V V' then n else st V'.
+
 Reserved Notation "c1 '/' st '==>' st'" (at level 40, st at level 39).
 
 Inductive ceval : com -> state -> state -> Prop :=
@@ -135,9 +159,24 @@ Inductive ceval : com -> state -> state -> Prop :=
 
   where "c1 '/' st '==>' st'" := (ceval c1 st st').
 
+(** Lemmas to reason on udpates *)
+
+Lemma ass_eq : forall st V a,
+  update st V a V = a.
+Proof. intros. unfold aeval, update. rewrite~ beq_id_refl. Qed.
+
+Lemma ass_neq : forall st V V' a,
+  V <> V' -> update st V a V' = st V'.
+Proof. intros. unfold aeval, update. rewrite~ beq_id_neq. Qed.
+
 
 (*****************************************************************************)
-(** Reasoning *)
+(*****************************************************************************)
+(*****************************************************************************)
+(** * Characteristic formulae *)
+
+(*****************************************************************************)
+(** Assertions and order on assertions *)
 
 Definition Assertion := state -> Prop.
 
@@ -150,57 +189,80 @@ Lemma assertion_impl_refl : forall P,
   P ===> P.
 Proof. intros. unfolds~. Qed.
 
-Hint Resolve assertion_impl_refl.
+Lemma assertion_impl_trans : forall H2 H1 H3,
+  H1 ===> H2 -> H2 ===> H3 -> H1 ===> H3.
+Proof. intros_all~. Qed.
 
-Definition bassn b : Assertion :=
-  fun st => beval st b = true.
+Hint Resolve assertion_impl_refl.
 
 
 (*****************************************************************************)
-(** Weakenable formulae *)
+(** The [local] modifier for formulae *)
 
 Definition Formula := Assertion -> Assertion -> Prop.
 
-Definition weaken (R:Formula) :=
+Definition local (R:Formula) :=
   fun H Q => forall st, H st -> exists H' Q', 
                H' st /\ R H' Q' /\ Q' ===> Q.
 
-Lemma weaken_elim : forall (R:Formula) H Q,
-  R H Q -> weaken R H Q.
+(** [local] can be eliminated *)
+
+Lemma local_elim : forall (R:Formula) H Q,
+  R H Q -> local R H Q.
 Proof. intros_all*. Qed.
 
-Notation "= x" := (fun y => y = x) (at level 69).
+(** Heap can be named *)
 
-Lemma weaken_name : forall (R:Formula) H Q,
-  (forall st, H st -> R (= st) Q) -> weaken R H Q.
+Lemma local_name : forall (R:Formula) H Q,
+  (forall st, H st -> R (= st) Q) -> local R H Q.
 Proof. introv M Pre. exists* (= st). Qed.
+
+(** [local] is idempotent *)
+
+Lemma local_idem : forall (R:Formula) H Q,
+  local (local R) H Q -> local R H Q.
+Proof.
+  introv M Pre. destruct~ (M st) as (H'&Q'&?&?&I1).
+  destruct~ (H1 st) as (H''&Q''&?&?&I2).
+  lets*: (>>> assertion_impl_trans I2 I1).
+Qed.
+
+(** [local] supports the rule of consequence *)
+
+Lemma local_conseq : forall (F : Formula) (H' Q' H Q : Assertion),
+  local F H' Q' -> (H ===> H') -> (Q' ===> Q) -> local F H Q.
+Proof. 
+  unfold local. introv M WH WQ Hs.
+  forwards* (H''&Q''&?&?&?): M st.
+  exists H'' Q''. splits*. applys~ assertion_impl_trans WQ.
+Qed.
 
 
 (*****************************************************************************)
 (** Characteristic formula generation *)
 
+(** Auxiliary definitions *)
+
 Definition cf_skip : Formula :=
-  weaken (fun H Q => H ===> Q).
+  local (fun H Q => H ===> Q).
 
 Definition cf_ass (V : id) (a : aexp) : Formula :=
-  weaken (fun H Q => H ===> (fun st => Q (update st V (aeval st a)))).
+  local (fun H Q => H ===> (fun st => Q (update st V (aeval st a)))).
 
 Definition cf_seq (F1 F2 : Formula) : Formula :=
-  weaken (fun H Q => exists H', F1 H H' /\ F2 H' Q).
+  local (fun H Q => exists H', F1 H H' /\ F2 H' Q).
 
 Definition cf_if (b : bexp) (F1 F2 : Formula) : Formula :=
-  weaken (fun H Q => F1 (fun st => H st /\ beval st b = true) Q
+  local (fun H Q => F1 (fun st => H st /\ beval st b = true) Q
                   /\ F2 (fun st => H st /\ beval st b = false) Q).
 
-(*Definition cf_if (b : bexp) (F1 F2 : Formula) : Formula :=
-  weaken (fun H Q => F1 (fun st => H st /\ bassn b st) Q
-                  /\ F2 (fun st => H st /\ ~ bassn b st) Q).*)
-
 Definition cf_while (b : bexp) (F1 : Formula) : Formula :=
-  weaken (fun H Q => forall (R:Formula),
+  local (fun H Q => forall (R:Formula),
     (forall H' Q',
       (cf_if b (cf_seq F1 R) cf_skip) H' Q' -> R H' Q') ->
     R H Q).
+
+(** Notation for printing characteristic formulae *)
 
 Notation "'\SKIP'" := 
   cf_skip.
@@ -213,6 +275,7 @@ Notation "'\WHILE' b 'DO' c 'END'" :=
 Notation "'\IFB' e1 'THEN' e2 'ELSE' e3 'FI'" := 
   (cf_if e1 e2 e3) (at level 80, right associativity).
 
+(** Characteristic formula generator *)
 
 Fixpoint cf (c : com) : Formula :=
   match c with 
@@ -224,14 +287,107 @@ Fixpoint cf (c : com) : Formula :=
   end.
 
 
+(*****************************************************************************)
+(** Properties of characteristic formulae *)
+
+(** Characteristic formulae are [local] *)
+
+Lemma cf_local : forall (c:com) (H Q : Assertion),
+  local (cf c) H Q -> cf c H Q.
+Proof. intros. destruct c; apply~ local_idem. Qed.
+
+(** In particular, the heap can be named explicitly *)
+
+Lemma cf_name : forall (c:com) (H Q : Assertion),
+  (forall st, H st -> cf c (= st) Q) -> cf c H Q. 
+Proof. intros. apply cf_local. apply~ local_name. Qed.
+
+(** In particular, the rule of consequence is supported *)
+
+Lemma cf_conseq : forall (G F : Formula) (H' Q' H Q : Assertion),
+  G = local F -> G H' Q' -> (H ===> H') -> (Q' ===> Q) -> G H Q.
+Proof. intros. subst. applys~ local_conseq H' Q'. Qed.
+
+Lemma cf_conseq' : forall (c:com) (H' Q' H Q : Assertion),
+  cf c H' Q' -> (H ===> H') -> (Q' ===> Q) -> cf c H Q.
+Proof.
+  intros. apply cf_local.
+  lets: local_elim. applys* cf_conseq (local (cf c)).
+Qed.
+
+(** In particular, one can extract facts from preconditions *)
+
+Lemma cf_extract : forall (G F : Formula) (H Q : Assertion),
+  G = local F -> (forall st, H st -> G H Q) -> G H Q. 
+Proof.
+  introv E M. subst. apply local_idem.
+  apply local_name. intros. applys* local_conseq. 
+  intros_all. subst~.
+Qed.
 
 
 (*****************************************************************************)
-(** Alternative semantics *)
+(*****************************************************************************)
+(*****************************************************************************)
+(** * Proofs of soundness and completeness *)
+
+(*****************************************************************************)
+(** Soundness proof *)
+
+Hint Constructors ceval.
+
+(** Auxiliary definition to state soundness *)
+
+Definition sound (c:com) (R:Formula) :=
+  forall P Q, R P Q -> forall st, P st ->
+    exists st', c / st ==> st' /\ Q st'.
+
+(** Elimination of [local] *)
+
+Lemma sound_local : forall c R,
+  sound c R -> sound c (local R).
+Proof.
+  introv M Wea Pre.
+  destruct (Wea _ Pre) as (P'&Q'&Pre'&Main&Post').
+  forwards* (st'&?&?): M. 
+Qed.
+
+(** Core proof of soundness *)
+
+Lemma cf_sound : forall (c:com), sound c (cf c).
+Proof.
+  induction c; simpl; apply sound_local; intros H Q F st Hst.
+  eauto.
+  eauto. 
+  destruct F as (H'&H1&H2).
+   forwards* (st1&Red1&Post1): (>>> IHc1 H1).
+   forwards* (st2&Red2&Post2): (>>> IHc2 H2).
+  destruct F as (H1&H2). case_eq (beval st b); intro B.
+   forwards* (st1&Red1&Post1): (>>> IHc1 H1).
+   forwards* (st2&Red2&Post2): (>>> IHc2 H2).
+  gen st. apply F. clear F H Q. intros H Q M st Hst.
+   destruct (M _ Hst) as (H'&Q'&Pre'&(M1&M2)&Post'). clear M.
+   case_eq (beval st b); intro B.
+     forwards~ (P''&Q''&?&(H''&M11&M12)&?): (M1 st). clear M1 M2.
+      forwards* (st1&Red1&Post1): (>>> IHc M11).
+      forwards* (st2&Red2&Post2): M12.
+      esplit. split. apply* E_WhileLoop. eauto.
+     forwards* (?&?&?&?&?): (M2 st). eauto 8.
+Qed.
+
+(** Reformulation of the soundness theorem *)
+
+Lemma cf_sound' : forall (c:com) (P Q:Assertion) (st:state), 
+  cf c P Q -> P st -> exists st', c / st ==> st' /\ Q st'.
+Proof. intros. apply* cf_sound. Qed.
+
+
+(*****************************************************************************)
+(** Alternative semantics, used to prove completeness *)
 
 Require Import List.
 
-(** Auxiliary definitions *)
+(** Auxiliary definitions to describe sequences of states *)
 
 Inductive seq (A:Type) : A->A->list A->Prop :=
   | seq_init : forall x, 
@@ -255,7 +411,7 @@ Proof. introv H. inverts~ H. Qed.
 
 Hint Resolve conseq_cons_seq.
 
-(** Alternative semantics *)
+(** Alternative semantics: loops specified with a sequence of states *)
 
 Reserved Notation "c1 '//' st '==>' st'" (at level 40, st at level 39).
 
@@ -284,14 +440,11 @@ Inductive deval : com -> state -> state -> Prop :=
       beval sn b1 = false ->
       (WHILE b1 DO c1 END) // s1 ==> sn
 
-(* Note: a conjunction in D_While looks better unfortunately
-   Coq doesn't give us the induction hypothesis that we want. *)
-
   where "c1 '//' st '==>' st'" := (deval c1 st st').
 
-(** Semantic equivalence *)
+Hint Constructors deval.
 
-Hint Constructors ceval deval.
+(** Proof of equivalence between the old and the new semantics *)
 
 Lemma deval_to_ceval : forall c s s',
   (c // s ==> s') -> (c / s ==> s').
@@ -325,149 +478,106 @@ Qed.
 (*****************************************************************************)
 (** Completeness proof *)
 
-Ltac introeq := 
-  let x := fresh in intros x; intro; subst x.
-
-Lemma assertion_impl_trans : forall H2 H1 H3,
-  H1 ===> H2 -> H2 ===> H3 -> H1 ===> H3.
-Proof. intros_all~. Qed.
-
-Lemma weaken_idem : forall (R:Formula) H Q,
-  weaken (weaken R) H Q -> weaken R H Q.
-Proof.
-  introv M Pre. destruct~ (M st) as (H'&Q'&?&?&I1).
-  destruct~ (H1 st) as (H''&Q''&?&?&I2).
-  lets*: (>>> assertion_impl_trans I2 I1).
-Qed.
-
-Lemma weaken_cf : forall (c:com) (H Q : Assertion),
-  weaken (cf c) H Q -> cf c H Q.
-Proof. intros. destruct c; apply~ weaken_idem. Qed.
- 
-Lemma cf_name : forall (c:com) (H Q : Assertion),
-  (forall st, H st -> cf c (= st) Q) -> cf c H Q. 
-Proof. intros. apply weaken_cf. apply~ weaken_name. Qed.
-
-
-Lemma cf_complete' : forall (c:com) (st st':state), 
+Lemma cf_complete : forall (c:com) (st st':state), 
   c // st ==> st'  ->  cf c (= st) (= st'). 
 Proof.
   introv H. induction H; simpl.
-  apply~ weaken_elim.
-  apply~ weaken_elim. introeq. subst~.
-  apply~ weaken_elim. exists~ (=st').
-  apply~ weaken_elim. split.
+  apply~ local_elim.
+  apply~ local_elim. intros_all. subst~.
+  apply~ local_elim. exists~ (=st').
+  apply~ local_elim. split.
     eapply cf_name. intros st2 [? ?]. subst~.
     eapply cf_name. intros st2 [? G]. subst. false*.
-  apply~ weaken_elim. split.
+  apply~ local_elim. split.
     eapply cf_name. intros st2 [? G]. subst. false*.
     eapply cf_name. intros st2 [? ?]. subst~.
-  apply~ weaken_elim. intros R M.
+  apply~ local_elim. intros R M.
    renames H0 to Hcond, H2 to Hcfc. induction H as [|stj sti stn L].
    (* base case for loops *)
-   apply M. clear M. apply weaken_elim. split.
-     eapply weaken_name. intros st2 [? ?]. subst. false*.
-     eapply weaken_name. intros st2 [? ?]. subst~.
+   apply M. clear M. apply local_elim. split.
+     eapply local_name. intros st2 [? ?]. subst. false*.
+     eapply local_name. intros st2 [? ?]. subst~.
    (* step case for loops *)
-   apply M. clear M. apply weaken_elim. split.
-     eapply weaken_name. intros st2 [? ?]. subst.
+   apply M. clear M. apply local_elim. split.
+     eapply local_name. intros st2 [? ?]. subst.
       exists (=stj). split. 
         apply* Hcfc.
         apply* IHseq.
-     eapply weaken_name. intros st2 [? ?]. subst~. 
+     eapply local_name. intros st2 [? ?]. subst~. 
       forwards: Hcond sti stj. eauto. false.
 Qed.
 
-Lemma cf_complete : forall (c:com) (st st':state), 
+Lemma cf_complete' : forall (c:com) (st st':state), 
   c / st ==> st'  ->  cf c (= st) (= st'). 
 Proof.
-  intros. apply cf_complete'. apply~ ceval_to_deval.
+  intros. apply cf_complete. apply~ ceval_to_deval.
 Qed.
 
 
-(********************************************************************)
-(* ** Lemmas for tactics *)
+(*****************************************************************************)
+(*****************************************************************************)
+(*****************************************************************************)
+(** * Reasoning on a concrete program: example of the factorial function *)
 
-(* find elsewhre *)
-Axiom beq_id_refl : forall x, beq_id x x = true.
-
-Lemma assignement : forall st V X,
-  update st V (aeval st (AId X)) V = st X.
-Proof.
-  intros. unfold aeval, update. rewrite~ beq_id_refl.
-Qed.
-
-Lemma ass_eq : forall st V a,
-  update st V a V = a.
-Proof.
-  intros. unfold aeval, update. rewrite~ beq_id_refl.
-Qed.
-
-Lemma ass_neq : forall st V V' a,
-  V <> V' ->
-  update st V a V' = st V'.
-Proof.
-  intros. unfold aeval, update. skip. (* todo *)
-Qed.
-
-
-(********************************************************************)
-(* ** Tactics *)
+(*****************************************************************************)
+(* ** Tactics to manipulate characteristic formulae *)
 
 Tactic Notation "xseq" :=
-  hnf; eapply weaken_elim; esplit; split.
+  hnf; eapply local_elim; esplit; split.
 
 Tactic Notation "xseq" constr(H) :=
-  hnf; eapply weaken_elim; exists H; split.
+  hnf; eapply local_elim; exists H; split.
 
 Tactic Notation "xass" :=
   let st := fresh "st" in let Pst := fresh "Pst" in
-  hnf; eapply weaken_elim; intros st Pst; 
+  hnf; eapply local_elim; intros st Pst; 
   repeat rewrite ass_eq; repeat rewrite ass_neq;
   simpl aeval.
 
 Tactic Notation "xif" :=
-  hnf; eapply weaken_elim; split.
+  hnf; eapply local_elim; split.
 
 Tactic Notation "xskip" :=
   let st := fresh "st" in let Pst := fresh "Pst" in
-  hnf; eapply weaken_elim; intros st Pst.
+  hnf; eapply local_elim; intros st Pst.
 
 Tactic Notation "xwhile" :=
   let R := fresh "R" in let HR := fresh "H" R in
-  hnf; eapply weaken_elim; intros R HR.
+  hnf; eapply local_elim; intros R HR.
 
 
-(********************************************************************)
-(* ** Mathematics *)
+(*****************************************************************************)
+(* ** Mathematics for factorial *)
 
 Require Arith Omega.
 
-Lemma mult_one : forall x, x = 1 * x.
-Proof. intros. simpl. apply plus_n_O. Qed.
-
-(* find elsewhere *)
-Axiom peano_induction : forall P : nat -> Prop,
-   (forall n : nat, (forall m : nat, lt m n -> P m) -> P n) ->
- forall n : nat, P n.
-
-(* find elsewhere *)
-Hint Extern 1 (Y <> Z) => skip.
-Hint Extern 1 (Z <> Y) => skip.
-
-
-(********************************************************************)
-(* ** Facto *)
-
-Module Factorial.
-
-(** Mathematical factorial *)
+(** Definition of factorial *)
 
 Fixpoint real_fact (n:nat) : nat :=
   match n with
   | O => 1
   | S n' => n * (real_fact n')
   end.
+
+(** Arithmetic lemmas *)
+
+Lemma mult_one : forall x, x = 1 * x.
+Proof. intros. simpl. apply plus_n_O. Qed.
+
+Lemma peano_induction : forall P : nat -> Prop,
+   (forall n : nat, (forall m : nat, lt m n -> P m) -> P n) ->
+ forall n : nat, P n.
+Proof.
+  introv H. cuts* K: (forall n m, m < n -> P m).
+  induction n; introv Le. inversion Le. apply H.
+  intros. apply IHn. omega.
+Qed.
+
+
+(*****************************************************************************)
+(* ** Facto *)
+
+(** Program computing a factorial *)
 
 Definition fact_body : com :=
   Y ::= AMult (AId Y) (AId Z);
@@ -483,12 +593,7 @@ Definition fact_com : com :=
   Y ::= ANum 1;
   fact_loop.
 
-Lemma end_loop : forall Z st,
-  ~ bassn (BNot (BEq (AId Z) (ANum 0))) st -> st Z = 0.
-Proof.
-  intros. simpls. unfolds bassn, beval. simpls.
-  destruct (st Z0); simpls. auto. false. 
-Qed.
+(** Verification of the factorial function *)
 
 Theorem fact_com_correct : forall x,
   cf fact_com (fun st => st X = x)
@@ -503,101 +608,24 @@ Proof.
     rewrite (mult_one (real_fact x)). apply M.
    induction n using peano_induction; intros k.
    apply HR. xif.
-     asserts: (n <> 0). skip. destruct n as [|n']. false.
-     xseq (fun st => st Z = n' /\ st Y = k * (S n')).     
-       xseq (fun st => st Z = S n' /\ st Y = k * (S n')).
-         xass; auto*.
-         xass; auto. destruct Pst. omega.
-       unfold real_fact. fold (real_fact n').
-        rewrite Mult.mult_assoc. apply~ H.
-     xskip. destruct Pst as [[I J] K]. rewrite J.
-      lets: (end_loop K). asserts_rewrite (n = 0). omega.
-      simpl. omega.
-Qed.
-
-End Factorial.
-
-
-
-(*****************************************************************************)
-(** Soundness proof *)
-
-Hint Constructors ceval.
-
-Lemma E_Ass' : forall st a1 l,
-      (l ::= a1) / st ==> (update st l (aeval st a1)).
-Proof. intros. apply E_Ass. auto. Qed.
-Hint Resolve E_Ass'.
-
-Lemma beval_false : forall st b,
- beval st b = false -> ~ bassn b st.
-Proof. intros. unfold bassn. rewrite~ H. Qed. 
-Hint Resolve beval_false.
-
-Definition sound (c:com) (R:Formula) :=
-  forall P Q, R P Q -> forall st, P st ->
-    exists st', c / st ==> st' /\ Q st'.
-
-Lemma sound_weaken : forall c R,
-  sound c R -> sound c (weaken R).
-Proof.
-  introv M Wea Pre.
-  destruct (Wea _ Pre) as (P'&Q'&Pre'&Main&Post').
-  forwards* (st'&?&?): M. 
-Qed.
-
-Lemma cf_sound : forall (c:com), sound c (cf c).
-Proof.
-  induction c; simpl; apply sound_weaken; intros H Q F st Hst.
-  eauto.
-  eauto. 
-  destruct F as (H'&H1&H2).
-   forwards* (st1&Red1&Post1): (>>> IHc1 H1).
-   forwards* (st2&Red2&Post2): (>>> IHc2 H2).
-  destruct F as (H1&H2). case_eq (beval st b); intro B.
-   forwards* (st1&Red1&Post1): (>>> IHc1 H1).
-   forwards* (st2&Red2&Post2): (>>> IHc2 H2).
-  gen st. apply F. clear F H Q. intros H Q M st Hst.
-   destruct (M _ Hst) as (H'&Q'&Pre'&(M1&M2)&Post'). clear M.
-   case_eq (beval st b); intro B.
-     forwards~ (P''&Q''&?&(H''&M11&M12)&?): (M1 st). clear M1 M2.
-      forwards* (st1&Red1&Post1): (>>> IHc M11).
-      forwards* (st2&Red2&Post2): M12.
-      esplit. split. apply* E_WhileLoop. eauto.
-     forwards* (?&?&?&?&?): (M2 st). eauto 8.
+   (* case not zero *)
+   apply* cf_extract. intros st ((E1&E2)&Hst).
+   asserts: (n <> 0). simpls. destruct (st Z); tryfalse. omega.
+   clears st. destruct n as [|n']. false.
+   xseq (fun st => st Z = n' /\ st Y = k * (S n')).     
+     xseq (fun st => st Z = S n' /\ st Y = k * (S n')).
+       xass; auto*.
+       xass; auto. destruct Pst. omega.
+     unfold real_fact. fold (real_fact n').
+      rewrite Mult.mult_assoc. apply~ H.
+   (* case zero *)
+   xskip. destruct Pst as [[I J] K]. rewrite J.
+    simpl in K. destruct (st Z); tryfalse.
+    asserts_rewrite (n = 0). omega. simpl. omega.
 Qed.
 
 
-Lemma cf_sound' : forall (c:com) (P Q:Assertion) (st:state), 
-  cf c P Q -> P st -> exists st', c / st ==> st' /\ Q st'.
-Proof. intros. apply* cf_sound. Qed.
 
 
 
 
-(*****************************************************************************)
-(** Hoare *)
-
-Definition hoare_triple (P:Assertion) (c:com) (Q:Assertion) : Prop :=
-  forall st st', 
-       c / st ==> st' ->
-       P st ->
-       Q st'.
-
-Notation "{{ P }} c {{ Q }}" := (hoare_triple P c Q) (at level 90) : hoare_spec_scope.
-Open Scope hoare_spec_scope.
-
-(* to get somewhere else *)
-Axiom deterministic : forall c st st' st'',
-  c / st ==> st' -> 
-  c / st ==> st'' ->
-  st' = st''.
-
-Lemma cf_to_hoare : forall (c:com) (P Q:Assertion), 
-  cf c P Q  ->  {{P}} c {{Q}}. 
-Proof.
-  introv Hcf Red Pre.
-  forwards* [st'' [Red' Post]]: (>>> cf_sound Hcf).
-  forwards* E: (>>> deterministic Red Red').
-  rewrite~ E.
-Qed.

@@ -1,13 +1,12 @@
-
 let magic = Obj.magic
 
 module type NullSig = sig 
-   val null : 'a ref
-   val is_null : 'a ref -> bool
+   val null : 'a 
+   val is_null : 'a -> bool
 end
 
 module NullImpl : NullSig = struct
-   let null = magic (ref ())
+   let null = magic ()
    let is_null p = ((magic null) == p)
 end
 

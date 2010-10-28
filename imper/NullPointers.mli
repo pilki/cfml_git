@@ -1,4 +1,4 @@
 
-val null : 'a ref
-val is_null : 'a ref -> bool
+val null : 'a 
+val is_null : 'a -> bool
 

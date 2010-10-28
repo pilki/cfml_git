@@ -763,7 +763,7 @@ and cfg_type_record (name,dec) =
       | _ -> List.map (fun field -> Coqtop_implicit (field, List.map (fun p -> p, Coqi_maximal) params)) fields_names 
       in
    let type_abbrev = Coqtop_def ((x,Coq_wild), coq_fun_types params loc_type) in
-   [ Coqtop_record top; type_abbrev ] 
+   [ type_abbrev; Coqtop_record top ] 
    @ (implicit_decl)
    @ [ Coqtop_hint_constructors ([record_name], "typeclass_instances") ]
    @ record_functions record_name (record_name ^ "_of") (make_upper x) params fields_names fields_types
@@ -812,15 +812,20 @@ and record_functions record_name record_constr repr_name params fields_names fie
    let repr_folded = hdata vloc (coq_apps (coq_var_at repr_name) (vparams @ vlogicals @ vreprs @ vabstracts)) in
    let repr_unfolded = hdata vloc (coq_apps (coq_var_at repr_name) (vparams @ fields_types @ (list_make n id_repr) @ vconcretes)) in
    let repr_elems = helems in
+   let repr_convert_body = coq_eq repr_folded (heap_existss tconcretes (heap_star repr_unfolded repr_elems)) in
    let repr_focus_body = heap_impl repr_folded (heap_existss tconcretes (heap_star repr_unfolded repr_elems)) in
    let repr_unfocus_body = heap_impl (heap_star repr_unfolded repr_elems) repr_folded in
-   let repr_focus_quantif = [tloc] @ tparams @ tlogicals @ treprs @ tabstracts in
+   let repr_convert_quantif = [tloc] @ tparams @ tlogicals @ treprs @ tabstracts in
+   let repr_focus_quantif = repr_convert_quantif in
    let repr_unfocus_quantif = [tloc] @ tparams @ tconcretes @ tlogicals @ treprs @ tabstracts in
+   let convert_name = repr_name ^ "_convert" in
    let focus_name = repr_name ^ "_focus" in
    let unfocus_name = repr_name ^ "_unfocus" in
+   let repr_convert = Coqtop_param (convert_name, coq_foralls repr_convert_quantif repr_convert_body) in
    let repr_focus = Coqtop_param (focus_name, coq_foralls repr_focus_quantif repr_focus_body) in
    let repr_unfocus = Coqtop_param (unfocus_name, coq_foralls repr_unfocus_quantif repr_unfocus_body) in 
-   let repr_focus_and_unfocus = [ repr_focus; repr_unfocus; coqtop_noimplicit focus_name; coqtop_noimplicit unfocus_name ] in
+   let repr_convert_focus_unfocus = [ repr_convert; repr_focus; repr_unfocus;
+      coqtop_noimplicit convert_name; coqtop_noimplicit focus_name; coqtop_noimplicit unfocus_name ] in
 
    let get_set_spec i = 
       let get_name = nth i get_names in
@@ -856,7 +861,7 @@ and record_functions record_name record_constr repr_name params fields_names fie
 
      (List.concat (List.map get_set_decl indices))
    @ [ repr_def ]
-   @ repr_focus_and_unfocus
+   @ repr_convert_focus_unfocus
    @ (List.concat (List.map get_set_spec indices))
 
 

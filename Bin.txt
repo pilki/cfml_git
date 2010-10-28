@@ -2772,6 +2772,69 @@ Ltac strong' := skip.
 
 Definition Pure `{Rep a A} (X:A) (x:a) := 
   [ rep x X ].
+<<<<<<< .mine
+
+
+
+
+---------
+(*
+Lemma E_Ass' : forall st a1 l,
+      (l ::= a1) / st ==> (update st l (aeval st a1)).
+Proof. intros. apply E_Ass. auto. Qed.
+Hint Resolve E_Ass'.
+
+Lemma beval_false : forall st b,
+ beval st b = false -> ~ bassn b st.
+Proof. intros. unfold bassn. rewrite~ H. Qed. 
+Hint Resolve beval_false.
+*)
+
+(
+Ltac introeq := 
+  let x := fresh in intros x; intro; subst x.
+
+Definition bassn b : Assertion :=
+  fun st => beval st b = true.
+
+
+
+
+(*****************************************************************************)
+(** From characteristic formulae to Hoare triples *)
+
+(** Definition of Hoare triples *)
+
+Definition hoare_triple (P:Assertion) (c:com) (Q:Assertion) : Prop :=
+  forall st st', 
+       c / st ==> st' ->
+       P st ->
+       Q st'.
+
+Notation "{{ P }} c {{ Q }}" := (hoare_triple P c Q) (at level 90).
+
+
+(* to get somewhere else *)
+Axiom deterministic : forall c st st' st'',
+  c / st ==> st' -> 
+  c / st ==> st'' ->
+  st' = st''.
+
+Lemma cf_to_hoare : forall (c:com) (P Q:Assertion), 
+  cf c P Q  ->  {{P}} c {{Q}}. 
+Proof.
+  introv Hcf Red Pre.
+  forwards* [st'' [Red' Post]]: (>>> cf_sound Hcf).
+  forwards* E: (>>> deterministic Red Red').
+  rewrite~ E.
+Qed.
+
+
+Lemma assignement : forall st V X,
+  update st V (aeval st (AId X)) V = st X.
+Proof.
+  intros. unfold aeval, update. rewrite~ beq_id_refl.
+Qed.
 
 
 
@@ -2801,3 +2864,20 @@ Definition Pure `{Rep a A} (X:A) (x:a) :=
 
 
 
+
+Ltac unfold_id_in H :=
+  match H with context[?x ~> Id ?X] =>
+     change (x ~> Id X) with ([X = x]) end.
+
+Ltac unfold_id_left tt :=
+  repeat match goal with |- ?H ==> _ => unfold_id_in H end.
+
+Ltac unfold_id_right tt :=
+  repeat match goal with |- _ ==> ?H => unfold_id_in H end.
+
+(* Lemma test_unfold_id_left : forall A (x y:A), x ~> Id y ==> []. 
+intros. unfold_id_left tt. *)
+
+Ltac unfold_id_pre tt :=
+  repeat hclean_onH ltac:(fun H => unfold_id_in H).
+v  unfold_id_pre tt;

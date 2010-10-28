@@ -35,34 +35,6 @@ Global Opaque Zplus.
 Transparent hdata. (* TODO: use hdata_simpl instead *)
 
 
-(*------------------------------------------------------------------*)
-(* ** Id *)
-
-Definition Id {A:Type} (X:A) (x:A) := 
-  [ X = x ].
-
-Lemma Id_focus : forall A (x n : A),
-  x ~> Id n ==> [x = n].
-Proof. intros. unfold Id. hdata_simpl. hextract. hsimpl~. Qed.
-
-Lemma Id_unfocus : forall A (x : A),
-  [] ==> x ~> Id x.
-Proof. intros. unfold Id. hdata_simpl. hextract. hsimpl~. Qed.
-
-Implicit Arguments Id_focus [A].
-Implicit Arguments Id_unfocus [A].
-
-
-(*------------------------------------------------------------------*)
-(* ** Any *)
-
-(** [x ~> Any tt] describes the fact that x points towards something
-    whose value is not relevant. In other words, the model is unit.
-    Note: [[True]] is used in place of [[]] to avoid confusing tactics. *)
-
-Definition Any {A:Type} (X:unit) (x:A) := 
-  [True].
- 
 
 (*------------------------------------------------------------------*)
 (* ** References *)

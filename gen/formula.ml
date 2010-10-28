@@ -159,9 +159,9 @@ let heap_empty =
 (** Iterated separating conjunction [H1 * .. * HN] *)
 
 let heap_stars hs = 
-   match hs with
+   match (List.rev hs) with
    | [] -> heap_empty
-   | h1::hs' -> List.fold_right heap_star hs' h1
+   | hn::hs' -> List.fold_left (fun acc x -> heap_star x acc) hn hs' 
 
 (** Lifted existentials [Hexists x, H] *)
 

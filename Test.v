@@ -1,4 +1,16 @@
 
+
+Parameter t : Type.
+Definition t' := t.
+Inductive u : Type := | u_intro : t -> u.
+Definition u_intro' : t' -> u := u_intro.
+Coercion u_intro : t >-> u.
+Coercion u_intro' : t' >-> u.
+
+
+
+
+
 Set Implicit Arguments.
 
 Class Label := lab { label : nat }.

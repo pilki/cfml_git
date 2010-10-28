@@ -553,6 +553,40 @@ Tactic Notation "hdata_simpl" constr(E) :=
 
 
 (********************************************************************)
+(* ** Special cases for hdata *)
+
+(*------------------------------------------------------------------*)
+(* ** Id *)
+
+Definition Id {A:Type} (X:A) (x:A) := 
+  [ X = x ].
+ 
+(* TEMP
+Lemma Id_focus : forall A (x n : A),
+  x ~> Id n ==> [x = n].
+Proof. intros. unfold Id. hdata_simpl. hextract. hsimpl~. Qed.
+
+Lemma Id_unfocus : forall A (x : A),
+  [] ==> x ~> Id x.
+Proof. intros. unfold Id. hdata_simpl. hextract. hsimpl~. Qed.
+
+Implicit Arguments Id_focus [A].
+Implicit Arguments Id_unfocus [A].
+*)
+
+
+(*------------------------------------------------------------------*)
+(* ** Any *)
+
+(** [x ~> Any tt] describes the fact that x points towards something
+    whose value is not relevant. In other words, the model is unit.
+    Note: [[True]] is used in place of [[]] to avoid confusing tactics. *)
+
+Definition Any {A:Type} (X:unit) (x:A) := 
+  [True].
+
+
+(********************************************************************)
 (* ** Simplification and unification tactics for star *)
 
 Ltac check_goal_himpl tt :=
@@ -998,13 +1032,13 @@ Admitted.
 
 Lemma hsimpl_demo_4 : forall n m J H2 H3 H4,
   n = m + m ->
-  H2 \* J m \* H3 \* H4 ==> H4 \* (Hexists y, [y = 2]) \* (Hexists x, [n = x + x] \* J x \* H2) \* H3.
+  H2 \* J m \* H3 \* H4 ==> H4 \* (Hexists y, y ~> Id 2) \* (Hexists x, [n = x + x] \* J x \* H2) \* H3.
 Proof.
   intros. dup.
   (* details *)
   hsimpl_setup tt.
   hsimpl_step tt.
-  hsimpl_step tt.
+  hsimpl_step tt. 
   hsimpl_step tt.
   hsimpl_step tt.
   hsimpl_step tt.
@@ -1366,9 +1400,9 @@ Tactic Notation "hclean" := hclean_main tt.
 Tactic Notation "hclean" "~" := hclean; auto_tilde.
 Tactic Notation "hclean" "*" := hclean; auto_star.
 
-Lemma hclean_demo_1 : forall H1 H2 H3 B (F:~~B) P Q,  
+Lemma hclean_demo_1 : forall A (x X:A) H1 H2 H3 B (F:~~B) P Q,  
    is_local F ->
-   F (H1 \* [] \* H2 \* [P] \* H3) Q.
+   F (H1 \* [] \* H2 \* [P] \* x ~> Id X \* H3) Q.
 Proof.
   intros. dup.
   (* details *)
