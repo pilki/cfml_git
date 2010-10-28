@@ -1080,7 +1080,7 @@ Proof.
   intros. apply local_weaken_body. intros H Q (Mgt&Mle). introv LS HS.
   tests (a > b) as C. apply HS. split. math. auto.
   clear Mgt. specializes Mle. math. destruct Mle as (H'&I&M1&M2&M3).
-  applys~ (@local_wframe unit) (# I (b+1)); [| intros u; destruct~ u ]. (*todo*)
+  applys~ (@local_wframe unit) (# I (b+1)); [| intros u; destruct~ u ]. 
   clear M1. asserts L: (a <= a <= b+1). math. generalize L.
   set (a' := a) at 1. generalize a as i. unfold a'.
   intros i. induction_wf IH: (int_upto_wf (b+1)) i. intros Bnd.
