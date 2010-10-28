@@ -451,6 +451,11 @@ Notation "'Body' f [ A1 A2 ]  x1 x2 '=>' Q" :=
 
 (** Functions *)
 
+Notation "'LetFuncs' f1 ':=' Q1 'in' Q2" := (* todo *)
+  (!F (fun H Q => forall f1, exists P1,
+     (Q1 -> P1 f1) /\ (P1 f1 -> Q2 H Q)))
+  (at level 69, f1 ident) : charac.
+
 Notation "'LetFunc' f1 ':=' Q1 'in' Q2" :=
   (!F (fun H Q => forall f1, exists P1,
      (Q1 -> P1 f1) /\ (P1 f1 -> Q2 H Q)))
@@ -467,6 +472,10 @@ Notation "'LetFun' f x1 x2 ':=' Q 'in' F" :=
 Notation "'LetFun' f x1 x2 x3 ':=' Q 'in' F" :=
   (LetFunc f := (Body f x1 x2 x3 => Q) in F)
   (at level 69, f ident, x1 ident, x2 ident, x3 ident) : charac.
+
+Notation "'LetFun' f [ A1 ] x1 ':=' Q 'in' F" :=
+  (LetFunc f := (Body f [ A1 ] x1 => Q) in F)
+  (at level 69, f ident, x1 ident) : charac.
 
   (* todo: LetFun for local polymorphic functions *)
 

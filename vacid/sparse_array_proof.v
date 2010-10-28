@@ -113,15 +113,15 @@ Lemma valid_spec :
            (\= istrue (Valid n Idx Back i)).
 Proof.
   xcf. introv Siz Ii Le. unfold SarrayPacked.
-  xchange (Sarray_focus s) as n' val idx back. 
-   xchange (Id_focus n'). xextract. intro_subst.
-  xapps. xapps*. xapps. xif. 
+  xchange (Sarray_focus s) as n' val idx back E. subst n'.
+  xapps. xapps*. xapps. xif. xret. 
   (* case inbound *)
-  xapps. xapps. hnf in Siz. eapply array_index_prove. math.
-  xchange (Id_unfocus n). xchange (Sarray_unfocus s n val idx back). 
+  xif_after. xapps. xapps. hnf in Siz. eapply array_index_prove. math.
+  xchange (Id_unfocus n). 
+  xchange (Sarray_unfocus s n val idx back). 
   xret. hsimpl. rew_logics. unfolds Valid. splits*.
   (* case outof bound *)
-  xchange (Id_unfocus n). xchange (Sarray_unfocus s n val idx back). 
+  xif_after. xchange (Id_unfocus n). xchange (Sarray_unfocus s n val idx back). 
   xret. hsimpl. fold_bool. fold_prop. unfold Valid.
   cuts*: (~ index n (Idx\(i))). rewrite* int_index_def.
 Qed.

@@ -2,16 +2,6 @@ Set Implicit Arguments.
 Require Import CFLib Counter_ml.
 
 
-Notation "'LetFuncs' f1 ':=' Q1 'in' Q2" :=
-  (!F (fun H Q => forall f1, exists P1,
-     (Q1 -> P1 f1) /\ (P1 f1 -> Q2 H Q)))
-  (at level 69, f1 ident) : charac.
-
-Notation "'LetFun' f [ A1 ] x1 ':=' Q 'in' F" :=
-  (LetFunc f := (Body f [ A1 ] x1 => Q) in F)
-  (at level 69, f ident, x1 ident) : charac.
-  (* todo : other arities *)
-
 
 (********************************************************************)
 (* ** Counter function *)
