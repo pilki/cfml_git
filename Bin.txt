@@ -2885,3 +2885,107 @@ v  unfold_id_pre tt;
 Notation "'If__' x 'Then' Q1 'Else' Q2" :=
   (!I (fun H Q => (x = true -> Q1 H Q) /\ (x = false -> Q2 H Q)))
   (at level 69, x at level 0) : charac.
+
+
+
+Notation "'While' Q1 'Do' Q2 'Done'" :=
+  (!While (fun H Q => forall R:~~unit, is_local R ->
+        (forall H Q, (exists Q', Q1 H Q' 
+           /\ (local (fun H Q => exists Q'', Q2 H Q'' /\ R (Q'' tt) Q) (Q' true) Q)
+           /\ Q' false ==> Q tt) -> R H Q) 
+        -> R H Q))
+  (at level 69) : charac.
+
+Notation "'For' i '=' a 'To' b 'Do' Q1 'Done'" :=
+  (!For (fun H Q => forall S:int->~~unit, is_local_1 S ->
+        (forall i H Q,  
+             ((i <= (b)%Z -> (local (fun H Q => exists Q', Q1 H Q' /\ S (i+1) (Q' tt) Q) H Q))
+          /\ (i > b%Z -> (Ret tt) H Q)) 
+          -> S i H Q)
+       -> S a H Q)) 
+  (at level 69) : charac.
+
+
+
+
+
+Ltac asserts_apply_core E cont := 
+  let H := fresh "TEMP" in asserts H: E; [ | applys H; cont tt ].
+
+Tactic Notation "asserts_apply" constr(E) :=
+  asserts_apply_core E idcont.
+
+Tactic Notation "asserts_apply" "~" constr(E) :=
+  asserts_apply_core E ltac:(fun _ => auto_tilde).
+Tactic Notation "asserts_apply" "*" constr(E) :=
+  asserts_apply_core E ltac:(fun _ => auto_star).
+
+
+(*
+Lemma himpl_id : forall H1 H2 : hprop,
+  H1 ==> H2 -> H1 ==> H2.
+Proof. auto. Qed.
+Implicit Arguments himpl_id [H1 H2].
+*)
+
+
+
+Ltac hchange_debug H :=
+  let K := fresh "TEMP" in
+  forwards_nounfold K: H; eapply hchange_lemma; 
+    [ apply K
+    | clear K
+    | clear K ].
+
+Ltac hchange_core H :=
+  let K := fresh "TEMP" in
+  forwards_nounfold K: H; eapply hchange_lemma; 
+    [ apply K
+    | clear K; instantiate; try hsimpl
+    | clear K; instantiate ].
+
+Tactic Notation "hchange" constr(H) :=
+  hchange_core H.
+Tactic Notation "hchange" "~" constr(H) :=
+  hchange_core H; auto_tilde.
+Tactic Notation "hchange" "*" constr(H) :=
+  hchange_core H; auto_star.
+
+
+
+
+
+
+Ltac xchange_debug L :=
+  let K := fresh "K" in
+  forwards_nounfold K: L; eapply xchange_lemma;
+    [ clear K; try xlocal
+    | apply K
+    | clear K
+    | clear K ].
+
+Ltac xchange_lemma_core L :=
+  let K := fresh "TEMP" in
+  forwards_nounfold K: L; eapply xchange_lemma; 
+    [ clear K; try xlocal
+    | apply K
+    | clear K; instantiate; hsimpl
+    | clear K ].
+
+Ltac xchange_with_core H H' :=
+  eapply xchange_lemma with (H1:=H) (H1':=H'); 
+    [ try xlocal
+    | 
+    | hsimpl
+    | ].
+
+Ltac xchange_core E :=
+  match E with
+  | ?H ==> ?H' => xchange_with_core H H'
+  | _ => xchange_lemma_core E
+  end.
+
+Tactic Notation "xchange" constr(E) :=
+  xchange_core E.
+Tactic Notation "xchange" "~" constr(E) :=
+  xchange E; auto~.

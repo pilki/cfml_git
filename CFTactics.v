@@ -631,39 +631,83 @@ Tactic Notation "xframe" "-" constr(H) :=
 (*--------------------------------------------------------*)
 (* ** [xchange] *)
 
-Ltac xchange_debug L :=
-  let K := fresh "K" in
-  forwards_nounfold K: L; eapply xchange_lemma;
-    [ clear K; try xlocal
-    | apply K
-    | clear K
-    | clear K ].
 
-Ltac xchange_lemma_core L :=
-  let K := fresh "TEMP" in
-  forwards_nounfold K: L; eapply xchange_lemma; 
-    [ clear K; try xlocal
-    | apply K
-    | clear K; instantiate; hsimpl
-    | clear K ].
+Ltac xchange_apply L cont :=
+   eapply xchange_lemma; 
+     [ try xlocal | applys L | cont tt | ].
+
+(* note: modif should be himpl_proj1 or himpl_proj2 *)
+Ltac xchange_forwards L modif cont :=
+  forwards_nounfold_then L ltac:(fun K =>
+  match modif with
+  | __ => 
+     match type of K with
+     | _ = _ => xchange_apply (@pred_le_proj1 _ _ _ K) cont
+     | _ => xchange_apply K cont
+     end
+  | _ => xchange_apply (@modif _ _ _ K) cont
+  end).
 
 Ltac xchange_with_core H H' :=
   eapply xchange_lemma with (H1:=H) (H1':=H'); 
-    [ try xlocal
-    | 
-    | hsimpl
-    | ].
+    [ try xlocal | | hsimpl | ].
 
-Ltac xchange_core E :=
+Ltac xchange_core E modif :=
   match E with
   | ?H ==> ?H' => xchange_with_core H H'
-  | _ => xchange_lemma_core E
+  | _ => xchange_forwards E modif ltac:(fun _ => instantiate; hsimpl)
   end.
 
+Tactic Notation "xchange_debug" constr(E) :=
+  xchange_forwards E __ ltac:(idcont).
+Tactic Notation "xchange_debug" "->" constr(E) :=
+  xchange_forwards E pred_le_proj1 ltac:(idcont).
+Tactic Notation "xchange_debug" "<-" constr(E) :=
+  xchange_forwards pred_le_proj2 ltac:(idcont).
+
 Tactic Notation "xchange" constr(E) :=
-  xchange_core E.
+  xchange_core E __.
+Tactic Notation "xchange" "->" constr(E) :=
+  xchange_core E pred_le_proj1.
+Tactic Notation "xchange" "<-" constr(E) :=
+  xchange_core E pred_le_proj2.
+
+
+
+Tactic Notation "xchange" constr(E) "as" := 
+  xchange E; try xextract.
+Tactic Notation "xchange" constr(E) "as" simple_intropattern(I1) := 
+  xchange E; try xextract as I1.
+Tactic Notation "xchange" constr(E) "as" simple_intropattern(I1) simple_intropattern(I2) := 
+  xchange E; try xextract as I1 I2.
+Tactic Notation "xchange" constr(E) "as" simple_intropattern(I1) simple_intropattern(I2)
+ simple_intropattern(I3) := 
+  xchange E; try xextract as I1 I2 I3.
+Tactic Notation "xchange" constr(E) "as" simple_intropattern(I1) simple_intropattern(I2)
+ simple_intropattern(I3) simple_intropattern(I4) := 
+  xchange E; try xextract as I1 I2 I3 I4. 
+Tactic Notation "xchange" constr(E) "as" simple_intropattern(I1) simple_intropattern(I2)
+ simple_intropattern(I3) simple_intropattern(I4) simple_intropattern(I5) := 
+  xchange E; try xextract as I1 I2 I3 I4 I5. 
+
 Tactic Notation "xchange" "~" constr(E) :=
-  xchange E; auto~.
+  xchange E; auto_tilde.
+Tactic Notation "xchange" "~" constr(E) "as" := 
+  xchange~ E; try xextract.
+Tactic Notation "xchange" "~" constr(E) "as" simple_intropattern(I1) := 
+  xchange~ E; try xextract as I1.
+Tactic Notation "xchange" "~" constr(E) "as" simple_intropattern(I1) simple_intropattern(I2) := 
+  xchange~ E; try xextract as I1 I2.
+Tactic Notation "xchange" "~" constr(E) "as" simple_intropattern(I1) simple_intropattern(I2)
+ simple_intropattern(I3) := 
+  xchange~ E; try xextract as I1 I2 I3.
+Tactic Notation "xchange" "~" constr(E) "as" simple_intropattern(I1) simple_intropattern(I2)
+ simple_intropattern(I3) simple_intropattern(I4) := 
+  xchange~ E; try xextract as I1 I2 I3 I4. 
+Tactic Notation "xchange" "~" constr(E) "as" simple_intropattern(I1) simple_intropattern(I2)
+ simple_intropattern(I3) simple_intropattern(I4) simple_intropattern(I5) := 
+  xchange~ E; try xextract as I1 I2 I3 I4 I5. 
+
 
 
 (*--------------------------------------------------------*)
@@ -1331,7 +1375,7 @@ Tactic Notation "xfor_general_manual" constr(I) :=
 
 
 (*--------------------------------------------------------*)
-(* ** [xwhile] *)
+(* ** [xwhile] --old
 
 Ltac xwhile_core_inner I J R X0 cont1 cont2 cont3 :=
   apply local_erase; esplit; esplit; exists I; exists J;
@@ -1388,6 +1432,7 @@ Tactic Notation "xwhile_manual" constr(I) constr(J) constr(R) constr(X0) :=
 Tactic Notation "xwhile_manual" constr(I) constr(J) constr(R) := 
   xwhile_manual I J R __.
 
+*)
 
 (*--------------------------------------------------------*)
 (* ** [xwhile] --old while
@@ -1437,6 +1482,57 @@ Tactic Notation "xcond" :=
   xcond_base __.
 
 *)
+
+
+Tactic Notation "xgeneralize" constr(E) "as" ident(H) :=
+  cuts H: E; [ eapply local_weaken_pre; [xlocal | | ] | ].
+
+Tactic Notation "xgeneralize" constr(E) :=
+  let H := fresh "Inv" in xgeneralize E as H.
+
+Ltac xwhile_intros tt :=
+  let R := fresh "R" in let LR := fresh "L" R in
+  let HR := fresh "H" R in 
+  apply local_erase; intros R LR HR.
+
+Ltac xwhile_pre cont :=
+  match ltac_get_tag tt with
+  | tag_seq => xseq; [ cont tt | ]
+  | tag_while => cont tt
+  end.
+
+Tactic Notation "xwhile" :=
+  xwhile_pre ltac:(fun _ => xwhile_intros tt).
+Tactic Notation "xwhile" constr(E) :=
+  xwhile_pre ltac:(fun _ => xwhile_intros tt; xgeneralize E).
+
+
+(*--------------------------------------------------------*)
+(* ** [xfor] *)
+
+
+Ltac xfor_intros tt :=
+  let S := fresh "S" in let LS := fresh "L" S in
+  let HS := fresh "H" S in 
+  apply local_erase; intros S LS HS.
+
+Ltac xfor_pre cont :=
+  match ltac_get_tag tt with
+  | tag_seq => xseq; [ cont tt | ]
+  | tag_for => cont tt
+  end.
+
+Tactic Notation "xfor" :=
+  xfor_pre ltac:(fun _ => xfor_intros tt).
+Tactic Notation "xfor" constr(E) :=
+  xfor_pre ltac:(fun _ => xfor_intros tt; xgeneralize E).
+
+Ltac xlocal_core tt ::=
+  first [ assumption
+ 	| apply local_is_local 
+        | apply app_local_1 
+        | match goal with H: is_local_1 ?S |- is_local (?S _) => apply H end ].
+
 
 
 (*--------------------------------------------------------*)
@@ -1544,6 +1640,23 @@ Tactic Notation "xweaken" "~" := xweaken; auto~.
 Tactic Notation "xweaken" "*" := xweaken; auto*.
 Tactic Notation "xweaken" "~" constr(S) := xweaken S; auto~.
 Tactic Notation "xweaken" "*" constr(S) := xweaken S; auto*.
+
+
+(*--------------------------------------------------------*)
+(* ** [xapply] *)
+
+Tactic Notation "xapply_local" constr(E) :=
+  forwards_nounfold_then E ltac:(fun K => 
+    eapply local_wframe; [xlocal | sapply K | | ]).
+
+Tactic Notation "xapply_local" "~" constr(E) :=
+  xapply_local E; auto_tilde.
+Tactic Notation "xapply_local" "*" constr(E) :=
+  xapply_local E; auto_star.
+
+(*todo*)
+Tactic Notation "xapply_local_pre" constr(E) :=
+  eapply local_weaken_pre; [xlocal | sapply E | ].
 
 
 
@@ -1662,8 +1775,15 @@ Ltac xif_post H :=
 Ltac xif_core :=
   xuntag tag_if; apply local_erase; esplit; splits 3%nat.
 
-Ltac xif_after H :=
+Ltac xif_after_core H :=
   xextract as H; xif_post H.
+
+Tactic Notation "xif_after" ident(H) :=
+  xif_after_core H.
+
+Tactic Notation "xif_after" :=
+  let H := fresh "H" in xif_after H.
+
 
 (* _nometa
 Ltac xif_core_meta H cont :=
@@ -2102,32 +2222,7 @@ Ltac xapps_core spec args solver ::=
 
 Ltac xinduct E := xinduction_heap E.
 
-Tactic Notation "xchange" constr(E) "as" := 
-  xchange E; xextract.
-Tactic Notation "xchange" constr(E) "as" simple_intropattern(I1) := 
-  xchange E; xextract as I1.
-Tactic Notation "xchange" constr(E) "as" simple_intropattern(I1) simple_intropattern(I2) := 
-  xchange E; xextract as I1 I2.
-Tactic Notation "xchange" constr(E) "as" simple_intropattern(I1) simple_intropattern(I2)
- simple_intropattern(I3) := 
-  xchange E; xextract as I1 I2 I3.
-Tactic Notation "xchange" constr(E) "as" simple_intropattern(I1) simple_intropattern(I2)
- simple_intropattern(I3) simple_intropattern(I4) := 
-  xchange E; xextract as I1 I2 I3 I4. 
-
-Tactic Notation "xchange" "~" constr(E) "as" := 
-  xchange~ E; xextract.
-Tactic Notation "xchange" "~" constr(E) "as" simple_intropattern(I1) := 
-  xchange~ E; xextract as I1.
-Tactic Notation "xchange" "~" constr(E) "as" simple_intropattern(I1) simple_intropattern(I2) := 
-  xchange~ E; xextract as I1 I2.
-Tactic Notation "xchange" "~" constr(E) "as" simple_intropattern(I1) simple_intropattern(I2)
- simple_intropattern(I3) := 
-  xchange~ E; xextract as I1 I2 I3.
-Tactic Notation "xchange" "~" constr(E) "as" simple_intropattern(I1) simple_intropattern(I2)
- simple_intropattern(I3) simple_intropattern(I4) := 
-  xchange~ E; xextract as I1 I2 I3 I4. 
-
+(* todo: remove*)
 Tactic Notation "xapp_hyp" :=
   eapply local_weaken; 
     [ xlocal

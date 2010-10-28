@@ -424,38 +424,20 @@ let rec coq_of_imp_cf cf =
       let q' = Coq_var "Q'" in
       let c1 = coq_apps (coq_of_cf cf) [h;q'] in
       let c2 = coq_apps s [ coq_plus i (Coq_var "1"); Coq_app (q', coq_tt); q] in
-      let body_ge = coq_funs [("H",hprop); ("Q", Coq_impl (coq_unit, hprop))] (coq_exist "Q'" wild_to_hprop (coq_conj c1 c2)) in
-      let cont_ge = coq_apps (Coq_var "local") [body_ge; h; q] in
-      let ple = Coq_impl (coq_le i v2, cont_ge) in 
-      let pgt = Coq_impl (coq_gt i v2, heap_impl_unit h q) in
+      let body_le = funhq "tag_seq" ~rettype:coq_unit (coq_exist "Q'" wild_to_hprop (coq_conj c1 c2)) in
+      let ple = Coq_impl (coq_le i v2, coq_apps body_le [h; q]) in 
+      let body_gt = funhq "tag_ret" ~rettype:coq_unit (heap_impl_unit h q) in     
+      let pgt = Coq_impl (coq_gt i v2, coq_apps body_gt [h; q]) in
       let locals = Coq_app (Coq_var "is_local_1", s) in
       let bodys = coq_conj ple pgt in
       let hypr = coq_foralls [("i", coq_int); ("H", hprop); ("Q", Coq_impl (coq_unit, hprop))] (Coq_impl (bodys,(coq_apps s [i;h;q]))) in
       funhq "tag_for" (Coq_forall (("S",typs), coq_impls [locals; hypr] (coq_apps s [v1;h;q])))
       (* (!For (fun H Q => forall S:int->~~unit, is_local_1 S ->
         (forall i H Q,  
-               ((i <= v2 -> (local (fun H Q => exists Q', Q1 H Q' /\ S (i+1) (Q' tt) Q) H Q))
-             /\ (i > v2 -> H ==> Q tt) )) 
+               ((i <= v2 -> !Seq (fun H Q => exists Q', Q1 H Q' /\ S (i+1) (Q' tt) Q) H Q))
+             /\ (i > v2 -> !Ret: (fun H Q => H ==> Q tt) H Q) )) 
            -> S i H Q) 
          -> S v1 H Q)  *)
-
-     (* ---todo:deprecated
-      let inv = Coq_var "I" in
-      let c1 = Coq_impl (coq_gt v1 v2, heap_impl_unit h q) in
-      let p1 = heap_impl h (heap_star (Coq_app (inv, v1)) (Coq_var "H'")) in
-      let i_var = Coq_var i in
-      let i_hyp = coq_conj (coq_le v1 i_var) (coq_le i_var v2) in
-      let body = Coq_app (Coq_fun ((i,Coq_wild), coq_of_cf cf), i_var) in
-      let step = coq_apps body [ Coq_app (inv, i_var); post_unit (Coq_app (inv, coq_plus i_var (Coq_var "1"))) ] in
-      let p2 = Coq_forall ((i,coq_int), Coq_impl (i_hyp, step)) in
-      let p3 = heap_impl (heap_star (Coq_app (inv, coq_plus v2 (Coq_var "1"))) (Coq_var "H'")) (Coq_app (q, coq_tt)) in
-      let c2 = Coq_impl (coq_le v1 v2, coq_exist "H'" hprop (coq_exist "I" (Coq_impl (coq_int, hprop)) (coq_conjs [p1;p2;p3]))) in
-      funhq "tag_for" (coq_conj c1 c2)
-      (* (!For: (fun H Q => (v1 > v2 -> H ==> Q tt) /\ (v1 <= v2 ->
-              exists H', exists I, H ==> I v1 \* H' 
-                    /\  forall i, v1 <= i /\ i <= v2 -> F1 (I i) (# I (i+1)) 
-                    /\  I (b+1) \* H' ==> Q tt *)
-      *)
       
   | Cf_while (cf1,cf2) -> 
       let r = Coq_var "R" in

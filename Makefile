@@ -101,6 +101,8 @@ VAC=\
 
 NEW=\
 	imper/MutableList_ml.v \
+	imper/Facto_ml.v \
+	imper/Facto_proof.v \
 	imper/MutableList_proof.v 
 
 IMP=\
@@ -115,7 +117,6 @@ IMPER=\
 	imper/Landin_ml.v \
 	imper/Landin_proof.v \
 	imper/Counter_ml.v \
-	imper/Facto_ml.v \
 	imper/TreeCopy_ml.v \
 	imper/Loops_ml.v \
 	imper/StrongUpdate_ml.v \

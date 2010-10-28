@@ -405,11 +405,12 @@ Notation "'LetVal' x ':=' V 'in' F" :=
 Notation "'Let' x ':=' F1 'in' F2" :=
   (!T (fun H Q => exists Q1, F1 H Q1 /\ forall x, F2 (Q1 x) Q))
   (at level 69, a at level 0, x ident, right associativity,
-  format "'Let'  x  ':='  F1  'in'  F2") : charac.
+  format "'[v' '[' 'Let'  x  ':='  F1  'in' ']'  '/'  '[' F2 ']' ']'") : charac.
 
 Notation "Q1 ;; Q2" :=
   (!Seq (fun H Q => exists Q', Q1 H Q' /\ Q2 (Q' tt) Q))
-  (at level 68, right associativity) : charac.
+  (at level 68, right associativity,
+   format "'[v' '[' Q1 ']'  ;;  '/'  '[' Q2 ']' ']'") : charac.
 
 (** Body *)
 
@@ -593,19 +594,17 @@ Notation "'Alias' x ':=' v 'in' Q" :=
 
 Notation "'While' Q1 'Do' Q2 'Done'" :=
   (!While (fun H Q => forall R:~~unit, is_local R ->
-        (forall H Q, (exists Q', Q1 H Q' 
-           /\ (local (fun H Q => exists Q'', Q2 H Q'' /\ R (Q'' tt) Q) (Q' true) Q)
-           /\ Q' false ==> Q tt) -> R H Q) 
+        (forall H Q, (If_ Q1 Then (Q2 ;; R) Else (Ret tt)) H Q -> R H Q)
         -> R H Q))
   (at level 69) : charac.
 
 Notation "'For' i '=' a 'To' b 'Do' Q1 'Done'" :=
   (!For (fun H Q => forall S:int->~~unit, is_local_1 S ->
         (forall i H Q,  
-             ((i <= (b)%Z -> (local (fun H Q => exists Q', Q1 H Q' /\ S (i+1) (Q' tt) Q) H Q))
-          /\ (i > b%Z -> H ==> Q tt)) 
+             (i <= (b)%Z -> (Q1 ;; S (i+1)) H Q)
+          /\ (i > b%Z -> (Ret tt) H Q) 
           -> S i H Q)
-       -> S a H Q)) 
+       -> S a H Q))
   (at level 69) : charac.
 
 (** Top-level *)

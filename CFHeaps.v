@@ -120,6 +120,8 @@ Qed.
 
 Definition loc : Type := nat.
 
+Global Opaque loc.
+
 (** The null location *)
 
 Definition null : loc := 0%nat.
@@ -394,6 +396,19 @@ Hint Resolve heap_is_empty_prove heap_is_empty_st_prove.
 Lemma heap_is_single_null : forall (l:loc) A (v:A) h,
   heap_is_single l v h -> l <> null.
 Proof. unfolds* heap_is_single. Qed.
+
+Lemma heap_is_single_null_eq_false : forall A (v:A),
+  heap_is_single null v = [False].
+Proof.
+  intros. unfold heap_is_single.
+  unfold hprop. extens. intros. unfold heap_is_empty_st. auto*.
+Qed.
+
+Lemma heap_is_single_null_to_false : forall A (v:A),
+  heap_is_single null v ==> [False].
+Proof. introv Hh. forwards*: heap_is_single_null. Qed. 
+
+Global Opaque heap_is_empty_st heap_is_single. 
 
 
 (*------------------------------------------------------------------*)
@@ -1104,26 +1119,48 @@ Proof.
   applys* (@pred_le_trans heap) (H1' \* H2). hsimpl~. 
 Qed.
 
-Ltac hchange_debug H :=
-  let K := fresh "TEMP" in
-  forwards_nounfold K: H; eapply hchange_lemma; 
-    [ apply K
-    | clear K
-    | clear K ].
 
-Ltac hchange_core H :=
-  let K := fresh "TEMP" in
-  forwards_nounfold K: H; eapply hchange_lemma; 
-    [ apply K
-    | clear K; instantiate; try hsimpl
-    | clear K; instantiate ].
 
-Tactic Notation "hchange" constr(H) :=
-  hchange_core H.
-Tactic Notation "hchange" "~" constr(H) :=
-  hchange_core H; auto_tilde.
-Tactic Notation "hchange" "*" constr(H) :=
-  hchange_core H; auto_star.
+Ltac hchange_apply L cont :=
+  eapply hchange_lemma; 
+    [ applys L | cont tt | ].
+
+Ltac hchange_forwards L modif cont :=
+  forwards_nounfold_then L ltac:(fun K =>
+  match modif with
+  | __ => 
+     match type of K with
+     | _ = _ => hchange_apply (@pred_le_proj1 _ _ _ K) cont
+     | _ => hchange_apply K cont
+     end
+  | _ => hchange_apply (@modif _ _ _ K) cont
+  end).
+
+Ltac hchange_core E modif :=
+  match E with
+(*  | ?H ==> ?H' => hchange_with_core H H' *)
+  | _ => hchange_forwards E modif ltac:(fun _ => instantiate; hsimpl)
+  end.
+
+Tactic Notation "hchange_debug" constr(E) :=
+  hchange_forwards E __ ltac:(idcont).
+Tactic Notation "hchange_debug" "->" constr(E) :=
+  hchange_forwards E pred_le_proj1 ltac:(idcont).
+Tactic Notation "hchange_debug" "<-" constr(E) :=
+  hchange_forwards pred_le_proj2 ltac:(idcont).
+
+Tactic Notation "hchange" constr(E) :=
+  hchange_core E __.
+Tactic Notation "hchange" "->" constr(E) :=
+  hchange_core E pred_le_proj1.
+Tactic Notation "hchange" "<-" constr(E) :=
+  hchange_core E pred_le_proj2.
+
+Tactic Notation "hchange" "~" constr(E) :=
+  hchange E; auto~.
+Tactic Notation "hchange" "*" constr(E) :=
+  hchange E; auto*.
+
 
 
 (********************************************************************)

@@ -1,3 +1,6 @@
+(* todo: coqbug: pas de warning si un autre format existe déjà *)
+
+
 *) exists ___ ne doit pas ouvrir les /\
 
 *) rew_list doit checker les evars avant

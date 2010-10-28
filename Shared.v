@@ -297,3 +297,19 @@ Notation "P ===> Q" := (rel_le P Q)
 Open Scope func.
 
 
+Lemma pred_le_extens : forall A (H1 H2 : A->Prop),
+  H1 ==> H2 -> H2 ==> H1 -> H1 = H2.
+Proof. intros. extens*. Qed.
+
+Lemma pred_le_proj1 : forall A (H1 H2 : A->Prop),
+  H1 = H2 -> H1 ==> H2.
+Proof. intros. subst~. Qed.
+
+Lemma pred_le_proj2 : forall A (H1 H2 : A->Prop),
+  H1 = H2 -> H2 ==> H1.
+Proof. intros. subst~. Qed.
+
+Implicit Arguments pred_le_proj1 [H1 H2].
+Implicit Arguments pred_le_proj2 [H1 H2].
+Implicit Arguments pred_le_extens [H1 H2].
+
