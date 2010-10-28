@@ -13,15 +13,6 @@ let mlength (l:'a mlist) =
    done;
    !n
 
-let mappend (l1 : 'a mlist) (l2 : 'a mlist) =
-   if l1 == null then l2 else
-   let h = ref l1 in
-   while !h.tl != null do
-      h := !h.tl;
-   done;
-   !h.tl <- l2;
-   l1
-
 let inplace_rev (l:'a mlist) =
   let f = ref l in
   let r = ref (null:'a mlist) in

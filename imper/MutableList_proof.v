@@ -257,8 +257,6 @@ Implicit Arguments MList_not_null [A a].
 
 
 
-(********************************************************************)
-(* ** Length *)
 
 Notation "l '~~>' v" := (l ~> Ref Id v)
   (at level 32, no associativity) : heap_scope.
@@ -287,35 +285,65 @@ Tactic Notation "xapply_local" "*" constr(E) :=
 Tactic Notation "xapply_local_pre" constr(E) :=
   eapply local_weaken_pre; [xlocal | sapply E | ].
 
-Tactic Notation "xgeneralize" constr(E) :=
-  let H := fresh "TEMP" in asserts H: E; [ | xapply_local_pre H ].
-
 Tactic Notation "xgeneralize" constr(E) "as" ident(H) :=
   cuts H: E; [ eapply local_weaken_pre; [xlocal | | ] | ].
 
-Ltac xwhile_pre :=
+Tactic Notation "xgeneralize" constr(E) :=
+  let H := fresh "Inv" in xgeneralize E as H.
+
+
+Ltac xwhile_intros tt :=
   let R := fresh "R" in let LR := fresh "L" R in
   let HR := fresh "H" R in 
   apply local_erase; intros R LR HR.
 
+Ltac xwhile_pre cont :=
+  match ltac_get_tag tt with
+  | tag_seq => xseq; [ cont tt | ]
+  | tag_while => cont tt
+  end.
+
 Tactic Notation "xwhile" :=
-  xwhile_pre.
+  xwhile_pre ltac:(fun _ => xwhile_intros tt).
 Tactic Notation "xwhile" constr(E) :=
-  xwhile_pre; xgeneralize E.
+  xwhile_pre ltac:(fun _ => xwhile_intros tt; xgeneralize E).
 
 Global Opaque loc.
+
+
+
+Notation "'Lets' x ':=' F1 'in' F2" :=
+  (!T (fun H Q => exists Q1, F1 H Q1 /\ forall x, F2 (Q1 x) Q))
+  (at level 69, a at level 0, x ident, right associativity,
+  format "'[v' '[' 'Lets'  x  ':='  F1  'in' ']'  '/'  '[' F2 ']' ']'") : charac.
+(* todo: coqbug: pas de warning si un autre format existe déjà *)
+
+
+Notation "'While' Q1 'Do' Q2 'Done'" :=
+  (!While (fun H Q => forall R:~~unit, is_local R ->
+        (forall H Q, (If_ Q1 Then (Q2 ;; R) Else (Ret tt)) H Q -> R H Q)
+        -> R H Q))
+  (at level 69) : charac.
+
+Tactic Notation "xif_after" ident(H) :=
+  xif_after H.
+
+Tactic Notation "xif_after" :=
+  let H := fresh "H" in xif_after H.
+
+ 
+(********************************************************************)
+(* ** Length *)
 
 Lemma mlength_spec : forall a,
   Spec mlength (l:mlist a) |R>> forall A (T:A->a->hprop) (L:list A),
      R (l ~> MList T L) (\= (length L : int)).
 Proof.
-  xcf. intros.
-  xapp. xapp.
-  xseq.
+  xcf. intros. xapp. xapp. 
   xwhile. xgeneralize (forall L (k:int) l,
     R (n ~~> k \* h ~~> l \* l ~> MList T L) 
-      (# n ~~> (k + length L) \* h ~~> null \* l ~> MList T L)) as H.
-   applys (>>> H l). hsimpl.
+      (# n ~~> (k + length L) \* h ~~> null \* l ~> MList T L)).
+   applys (>>> Inv l). hsimpl.
    clear l L. intros L. induction_wf IH: (@list_sub_wf A) L; intros.
    apply HR. clear HR. xif. xapps. xapp.
    (* case cons *)
@@ -327,57 +355,6 @@ Proof.
     xret. xsimpl. rew_length. math.
   xapp. hsimpl.
 Qed.
-
-
-
-(********************************************************************)
-(* ** Destructive append *)
-
-Lemma append_spec : forall a,
-  Spec ML.append (l1:mlist a) (l2:mlist a) |R>> forall A (T:A->a->hprop) (L1 L2:list A),
-     R (l1 ~> MList T L1 \* l2 ~> MList T L2) (~> MList T (L1 ++ L2)).
-Proof.
-  xcf. intros. xapps. xif.
-  xret. hchange unfocus_mnil'. hextract. subst. auto.
-  xchange (unfocus_mnil'' l1). xextract as N. asserts* NL1: (L1 <> nil). clear N. 
-  xapp.
-  xseq (Hexists (e:loc), Hexists X LX, l1 ~> MListSeg e T LX 
-     \* l2 ~> MList T L2 \* e ~> MList T (X::nil) \* h ~> Ref Id e \* [L1 = LX&X]).
-  xwhile_manual (fun L12 => Hexists (L11:list A) (e:loc),
-    l1 ~> MListSeg e T L11 \* h ~> Ref Id e \* e ~> MList T L12 \* [L1 = L11 ++ L12] \* [L12 <> nil])
-    (fun L12 => forall X:A, L12 <> X::nil) (@list_sub A) L1 as L12.
-   hchange (focus_msnil l1 T). hsimpl~ (@nil A) l1.
-   xextract as L11 e E NL12. xapps. 
-    sets_eq R:L12; destruct R as [|X L12']. false.
-    xchange (focus_mcons e). xextract as x t.
-    xapps. xapps. intros Hb. xret.
-    hchange (unfocus_mcons e x t X L12'). hsimpl~.
-      applys bool_of_impl_neg Hb. iff M.
-        intros Y EY. inversions EY. false.
-        intros EY. subst. false.
-   xextract as L11 e E NL12 TL12. 
-    xapps. 
-    sets_eq R:L12; destruct R as [|X L12']. false.
-    xchange (focus_mcons e). xextract as x t.
-    xapps. xapp. intros _.
-    hchange (focus_msnil t T).
-    hchange (unfocus_mscons e x t t X nil).
-    hchange (focus_msapp l1 e). hsimpl.
-      auto.
-      intros Y. subst. false.
-      rew_app~.
-   hextract as L11 e E1 N2 E2. xclean. 
-    rew_classic in E2. destruct E2 as [x E2]. rew_classic in E2.
-    subst L12. subst L1. hsimpl~.
-  intros e X LX E. subst L1. xapps. hdata_simpl.
-  xchange (focus_mcons e). xextract as x t.
-   xapp. xret_gc. 
-   hchange (unfocus_mcons e x l2 X L2 T).
-   hchange (mlist_to_mlistseg e).   
-   hchange (focus_msapp l1 e).
-   hchange (mlistseg_to_mlist l1). rew_app. hsimpl.  
-Admitted.
-(*save time of Qed.*)
 
 
 

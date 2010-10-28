@@ -1,6 +1,96 @@
 Set Implicit Arguments.
 Require Import CFPrim Loops_ml.
 
+
+
+
+(********************************************************************)
+(* ** Destructive append *)
+
+
+(* TODO: s'écrit mieux avec un DO 
+Lemma mappend_spec : forall a,
+  Spec mappend (l1:mlist a) (l2:mlist a) |R>> forall A (T:A->a->hprop) (L1 L2:list A),
+     R (l1 ~> MList T L1 \* l2 ~> MList T L2) (~> MList T (L1 ++ L2)).
+Proof.
+  xcf. intros. xif. xapp.
+  (* if nil *)
+  xif_after. xret. hchange MList_null. xsimpl. subst~.
+  (* otherwise *)
+  xif_after. xapps. xwhile. xgeneralize (forall L1 l1,
+    R (h ~~> l1 \* l1 ~> MList T L1) 
+      (# h ~~> null \* l1 ~> MList T (L1++L2))).
+    applys Inv l1. hsimpl.
+    skip.
+  xapps. xapp. hsimpl.
+Qed.
+
+
+let mappend (l1 : 'a mlist) (l2 : 'a mlist) =
+   if l1 == null then l2 else
+   let h = ref l1 in
+   while !h.tl != null do
+      h := !h.tl;
+   done;
+   !h.tl <- l2;
+   l1
+
+
+*)
+
+(********************************************************************)
+(* ** Destructive append *)
+
+Lemma append_spec : forall a,
+  Spec ML.append (l1:mlist a) (l2:mlist a) |R>> forall A (T:A->a->hprop) (L1 L2:list A),
+     R (l1 ~> MList T L1 \* l2 ~> MList T L2) (~> MList T (L1 ++ L2)).
+Proof.
+  xcf. intros. xapps. xif.
+  xret. hchange unfocus_mnil'. hextract. subst. auto.
+  xchange (unfocus_mnil'' l1). xextract as N. asserts* NL1: (L1 <> nil). clear N. 
+  xapp.
+  xseq (Hexists (e:loc), Hexists X LX, l1 ~> MListSeg e T LX 
+     \* l2 ~> MList T L2 \* e ~> MList T (X::nil) \* h ~> Ref Id e \* [L1 = LX&X]).
+  xwhile_manual (fun L12 => Hexists (L11:list A) (e:loc),
+    l1 ~> MListSeg e T L11 \* h ~> Ref Id e \* e ~> MList T L12 \* [L1 = L11 ++ L12] \* [L12 <> nil])
+    (fun L12 => forall X:A, L12 <> X::nil) (@list_sub A) L1 as L12.
+   hchange (focus_msnil l1 T). hsimpl~ (@nil A) l1.
+   xextract as L11 e E NL12. xapps. 
+    sets_eq R:L12; destruct R as [|X L12']. false.
+    xchange (focus_mcons e). xextract as x t.
+    xapps. xapps. intros Hb. xret.
+    hchange (unfocus_mcons e x t X L12'). hsimpl~.
+      applys bool_of_impl_neg Hb. iff M.
+        intros Y EY. inversions EY. false.
+        intros EY. subst. false.
+   xextract as L11 e E NL12 TL12. 
+    xapps. 
+    sets_eq R:L12; destruct R as [|X L12']. false.
+    xchange (focus_mcons e). xextract as x t.
+    xapps. xapp. intros _.
+    hchange (focus_msnil t T).
+    hchange (unfocus_mscons e x t t X nil).
+    hchange (focus_msapp l1 e). hsimpl.
+      auto.
+      intros Y. subst. false.
+      rew_app~.
+   hextract as L11 e E1 N2 E2. xclean. 
+    rew_classic in E2. destruct E2 as [x E2]. rew_classic in E2.
+    subst L12. subst L1. hsimpl~.
+  intros e X LX E. subst L1. xapps. hdata_simpl.
+  xchange (focus_mcons e). xextract as x t.
+   xapp. xret_gc. 
+   hchange (unfocus_mcons e x l2 X L2 T).
+   hchange (mlist_to_mlistseg e).   
+   hchange (focus_msapp l1 e).
+   hchange (mlistseg_to_mlist l1). rew_app. hsimpl.  
+Admitted.
+(*save time of Qed.*)
+
+
+
+
+
 Lemma myincr_spec : 
   Spec myincr (l:loc) |R>> 
     forall n, R (l ~~> n) (# l ~~> (n+1)).
