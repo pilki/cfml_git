@@ -1,4 +1,4 @@
-Set Implicit Arguments.
+ Set Implicit Arguments.
 Require Export LibInt CFSpec CFPrint.
 
 
@@ -150,28 +150,6 @@ Ltac get_spec_weaken_x x :=
 Lemma id_proof : forall (P:Prop), P -> P.
 Proof. auto. Qed.
 
-(*TODO
-
-Ltac get_app_intro_x_y x y :=
-  match constr:(x,y) with
-  | (1%nat,1%nat) => constr:(id_proof)
-  | (1%nat,2%nat) => constr:(app_intro_1_2)
-  | (1%nat,3%nat) => constr:(app_intro_1_3)
-  | (1%nat,4%nat) => constr:(app_intro_1_4)
-  | (2%nat,1%nat) => constr:(app_intro_2_1)
-  | (2%nat,2%nat) => constr:(id_proof)
-  | (2%nat,3%nat) => constr:(app_intro_2_3)
-  | (2%nat,4%nat) => constr:(app_intro_2_4)
-  | (3%nat,1%nat) => constr:(app_intro_3_1)
-  | (3%nat,2%nat) => constr:(app_intro_3_2)
-  | (3%nat,3%nat) => constr:(id_proof)
-  | (3%nat,4%nat) => constr:(app_intro_3_4)
-  | (4%nat,1%nat) => constr:(app_intro_4_1)
-  | (4%nat,2%nat) => constr:(app_intro_4_2)
-  | (4%nat,3%nat) => constr:(app_intro_4_3)
-  | (4%nat,4%nat) => constr:(id_proof)
-  end.
-*)
 
 (*--------------------------------------------------------*)
 (* ** tools for post-conditions *)
@@ -238,14 +216,6 @@ Ltac xauto_common cont :=
             | solve [ apply refl_equal ]
             | xok_core ltac:(fun _ => solve [ cont tt | substs; cont tt ] ) 
             | substs; if_eq; solve [ cont tt | apply refl_equal ]  ].
-
-(* --old
-Ltac xauto_common cont :=
-  check_not_a_tag tt;  
-  try solve [ cont tt 
-            | solve [ apply refl_equal ]
-            | substs; if_eq; solve [ cont tt | apply refl_equal ] ].
-*)
 
 Ltac xauto_tilde_default cont := xauto_common cont.
 Ltac xauto_star_default cont := xauto_common cont.
@@ -567,14 +537,6 @@ Tactic Notation "xpost" :=
 (*--------------------------------------------------------*)
 (* ** [xgc] *)
 
-(* bin
-Ltac xgc_if_post_meta tt :=
-  match post_is_meta tt with
-  | false => xgc
-  | true => idtac
-  end.
-*)
-
 Ltac xgc_core :=
   eapply local_gc_post; 
   [ xlocal | | ].
@@ -672,8 +634,6 @@ Tactic Notation "xchange" "->" constr(E) :=
 Tactic Notation "xchange" "<-" constr(E) :=
   xchange_core E pred_le_proj2.
 
-
-
 Tactic Notation "xchange" constr(E) "as" := 
   xchange E; try xextract.
 Tactic Notation "xchange" constr(E) "as" simple_intropattern(I1) := 
@@ -707,56 +667,6 @@ Tactic Notation "xchange" "~" constr(E) "as" simple_intropattern(I1) simple_intr
 Tactic Notation "xchange" "~" constr(E) "as" simple_intropattern(I1) simple_intropattern(I2)
  simple_intropattern(I3) simple_intropattern(I4) simple_intropattern(I5) := 
   xchange~ E; try xextract as I1 I2 I3 I4 I5. 
-
-
-
-(*--------------------------------------------------------*)
-(* ** [ximpl] --- TODO
-
-(** Defines an alias of [pred_le] to prevent [auto]
-    from solving goals [P ==> Q] when both sides are
-    not yet fully instantiated. *)
-
-Definition post_le := pred_le.
-
-Notation "P ==>' Q" := (@post_le _ P Q) (at level 69).
-
-Lemma post_le_intro : forall A (P Q : A -> Prop),
-  (P ==>' Q) -> (P ==> Q).
-Proof. introv H. apply H. Qed.
-
-(** [ximpl] simplifies a goal of the form [P ==>' Q] *)
-
-Ltac ximpl_base tt :=
-  first [ match goal with |- bool_of ?P ==>' bool_of ?Q =>
-             apply pred_le_bool_of end 
-        | apply pred_le_refl
-        | unfold post_le ].
-
-Tactic Notation "ximpl_nointros" :=
-  ximpl_base tt.
-
-Ltac check_post_le_no_meta_left tt :=
-  match goal with |- ?P ==>' _ =>
-    match goal with |- P ==>' _ => idtac end end.
-
-Tactic Notation "ximpl" "as" simple_intropattern(x) :=
-  let H := fresh "H" x in intros x Hx.
-Tactic Notation "ximpl" "~" "as" simple_intropattern(x) :=
-  ximpl as x; xauto_tilde.
-Tactic Notation "ximpl" "*" "as" simple_intropattern(x) :=
-  ximpl as x; xauto_star.
-Tactic Notation "ximpl" "as" simple_intropattern(x) simple_intropattern(Hx) :=
-  intros x Hx.
-
-Tactic Notation "ximpl" :=
-  let x := fresh "x" in ximpl as x.
-Tactic Notation "ximpl" "~" :=
-  ximpl; xauto_tilde.
-Tactic Notation "ximpl" "*" :=
-  ximpl; xauto_star.
-
- *)
 
 
 (*--------------------------------------------------------*)
@@ -893,12 +803,14 @@ Tactic Notation "xapp_spec_manual" constr(H) "as" :=
 Tactic Notation "xapp" "as" simple_intropattern(x) :=
   xlet as x; [ xapp | instantiate; xextract ].
 
-Ltac xapps_core spec args solver :=
-  let cont tt := 
-    xapp_inst args solver in
+Ltac xapps_core spec args solver := 
+  let cont1 tt :=
+    xapp_with spec args solver in
+  let cont2 tt :=
+    instantiate; xextract; try intro_subst in    
   match ltac_get_tag tt with
-  | tag_let_trm => xlet; [ xuntag tag_apply; cont tt | instantiate; xextract; intro_subst ]
-  | tag_seq =>     xseq; [ xuntag tag_apply; cont tt | instantiate; xextract; intro_subst ]
+  | tag_let_trm => xlet; [ cont1 tt | cont2 tt ]
+  | tag_seq =>     xseq; [ cont1 tt | cont2 tt ]
   end.
 
 Tactic Notation "xapps" := 
@@ -925,113 +837,16 @@ Tactic Notation "xapps" "*" constr(E) :=
 
 (* todo: when hypothesis in an app instance *)
 
-(*
-Ltac xapp_spec_core H cont_r cont_w :=
-   let arity_goal := spec_goal_arity tt in
-   let arity_hyp := spec_term_arity H in
-   let lemma := get_spec_elim_x_y arity_hyp arity_goal in
-   first [ eapply lemma; [ apply H 
-                         | apply post_le_intro; instantiate; cont_w tt ]
-         | eapply lemma; [ apply H 
-                         | instantiate; cont_r tt 
-                         | apply post_le_intro; instantiate; cont_w tt ] ].
 
-Ltac xapp_core cont_r cont_w :=
-  let f := spec_goal_fun tt in
-  first [ let H := get_spec_hyp f in 
-          first [ xapp_spec_core H cont_r cont_w | fail 2 ]
-        | let H := get_app_hyp f in 
-          let n := spec_term_arity H in
-          let m := spec_goal_arity tt in
-          let W := get_app_weaken_x n in
-          let L := get_app_intro_x_y n m in
-          first [ apply L; first [ sapply H
-                                 | substs; sapply H  
-                (* todo: apply H modulo equality on arguments *)
-                                 | eapply W; [ sapply H | ] ] (* todo: cont ? *)
-                | fail 2 ]
-          (* limitation: continuation applied on premises of H *)
-        | xfind f; let H := fresh in 
-          intro H; xapp_spec_core H cont_r cont_w; clear H
-        | fail 1 "cannot find a specification" ].
+(* todo: remove*)
+Tactic Notation "xapp_hyp" :=
+  eapply local_weaken; 
+    [ xlocal
+    | let f := spec_goal_fun tt in let H := get_spec_hyp f in 
+      apply (proj2 H) (* todo generalize to arities*)
+    | hsimpl
+    | hsimpl ].
 
-Ltac xapp_cont_w_auto tt :=
-  first [ check_post_le_no_meta_left tt; ximpl_nointros | idtac ].
-
-Ltac xapp_cont_w_manual x :=
-  let Hx := fresh "H" x in intros x Hx.
-
-Ltac xapp_cont_r_no_apply tt :=
-  let R := fresh "R" in let HR := fresh "HR" in 
-  intros R HR; cbv beta in HR.
-
-Ltac xapp_cont_r E :=
-  let R := fresh "R" in let HR := fresh "HR" in intros R HR;
-  instantiate; cbv beta in HR;    (*needs instantiate?*)
-  match list_boxer_of E with
-  | (>>>) => sapply HR; clear R HR
-  | ?E' => applys (boxer HR :: E'); try clear R HR
-  | _ => idtac
-  end.
-
-Ltac xapp_cont_r_with E solver := (* todo factorize with above *)
-  let R := fresh "R" in let HR := fresh "HR" in intros R HR;
-  instantiate; cbv beta in HR;    (*needs instantiate?*)
-  match list_boxer_of E with
-  | (>>>) => sapply HR; clear R HR; solver tt
-  | ?E' => applys (boxer HR :: E'); try clear R HR; solver tt
-  | ?E' => fapplys (boxer HR :: E'); try clear R HR; solver tt 
-  | _ => idtac
-  end.
-*)
-
-
-
-
-(*--------------------------------------------------------*)
-(* ** [xweak] --TODO
-
-Ltac xweak_partial cont := 
-  cont tt.
-
-Ltac xweak_normal cont :=
-   let R := fresh "R" in let WR := fresh "WR" in let HR := fresh "HR" in
-   intros R WR HR; instantiate; cbv beta in HR;
-   first [ sapply HR; clear HR WR R
-         | eapply WR; clear WR; 
-            [ try (sapply HR; try clear HR R)
-            | (try clear HR R); cont tt ] ]. (* no need to clear? *)
-
-Ltac xweak_base cont :=
-  match goal with
-  | |- (_ ==> _) => xweak_partial cont
-  | |- _ => xweak_normal cont
-  end.
-
-Ltac xweak_weaken_solve :=     
-  solve [ 
-  try fold_bool; calc_partial_eq tt; repeat substs_core; repeat injects_core;
-  sapply pred_le_refl ].
-
-Tactic Notation "xweak" "as" :=
-   xweak_base ltac:(fun _ => idtac).
-Tactic Notation "xweak" "as" ident(x) ident(Hx) :=
-   xweak_base ltac:(fun _ => intros x Hx; instantiate; cbv beta in Hx).
-Tactic Notation "xweak" "as" ident(x) :=
-   let Hx := fresh "P" x in xweak as x Hx.
-Tactic Notation "xweak" :=
-   xweak_base ltac:(fun _ => first 
-     [ xweak_weaken_solve
-     | let x := fresh "x" in let Hx := fresh "P" x in 
-       intros x Hx; instantiate; cbv beta in Hx ] ).
-Tactic Notation "xweaks" := 
-   xweak_base ltac:(fun _ => first 
-     [ xweak_weaken_solve
-     | let x := fresh "x" in let Hx := fresh "P" x in 
-       intros x Hx; instantiate; cbv beta in Hx; try if_eq in Hx;
-       try substs x ]).
-
-*)
 
 (*--------------------------------------------------------*)
 (* ** [xinduction] *)
@@ -1131,19 +946,8 @@ Tactic Notation "xinduction" constr(arg) :=
         | xinduction_noheap_base_wf arg
         | xinduction_noheap_base_measure arg ].
 
-
-(** Lemmas to set up induction for two mutually-recursive functions. 
-
-Lemma mutual_update_2 : forall (P' Q' P Q : Prop),
-  (P' -> P) -> (Q' -> Q) -> (P' /\ Q') -> (P /\ Q).
-Proof. auto*. Qed.
-
-Lemma mutual_quantif_2 : forall T (P Q : T -> Prop),
-  (forall n, P n /\ Q n) -> (forall n, P n) /\ (forall n, Q n).
-Proof. introv H. split; intros; eapply H. Qed.
-
-*)
-
+Tactic Notation "xinduct" constr(E) :=
+  xinduction_heap E.
 
 (*--------------------------------------------------------*)
 (* ** [xname_spec] *)
@@ -1275,8 +1079,6 @@ Ltac unfolds_to_spec tt :=
   | _ => progress(unfolds); unfolds_to_spec tt
   end. 
 
-(* -- TODO *)
-
 Tactic Notation "xfun_induction" constr(S) constr(I) :=
   xfun_core S ltac:(fun _ => 
     intro; unfolds_to_spec tt; xinduction I; xbody).
@@ -1294,196 +1096,8 @@ Tactic Notation "xfun_induction_heap_nointro" constr(S) constr(I) :=
     intro; unfolds_to_spec tt; xinduction_heap I; xbody_nointro).
 
 
-
 (*--------------------------------------------------------*)
-(* ** [xfor]--old
-
-Ltac xfor_bounds_intro tt :=
-  intro; let i := get_last_hyp tt in
-  let Hli := fresh "Hl" i in
-  let Hui := fresh "Hu" i in
-  intros [Hli Hui].
-
-Ltac xfor_base I cont1 cont2 := 
-  apply local_erase; split; 
-    [ cont1 tt 
-    | cont2 tt; esplit; exists I; splits 3%nat; 
-       [ hsimpl 
-       | xfor_bounds_intro tt
-       | instantiate; hsimpl ]
-    ].
-
-Ltac xfor_core_gen I H :=
-  xfor_base I ltac:(fun _ => intros H)
-              ltac:(fun _ => intros H).
-
-Lemma xfor_contradict_lemma : forall (a b : int),
-  (a > b) -> (a <= b) -> False.
-Proof. math. Qed.
-
-Ltac xfor_contradict tt :=
-  let H := fresh "TEMP" in
-  intros H; false;
-  apply (xfor_contradict_lemma H); clear H.
-
-Ltac xfor_core_le I := 
-  xfor_base I ltac:(fun _ => xfor_contradict tt; try math)
-              ltac:(fun _ => intros _).
-
-Ltac xfor_pre cont :=
-  match ltac_get_tag tt with
-  | tag_seq => xseq; [ cont tt | ]
-  | tag_for => cont tt
-  end.
-
-Ltac xfor_base_gen I H :=
-  xfor_pre ltac:(fun _ => xfor_core_gen I H).
-
-Ltac xfor_base_le I :=
-  xfor_pre ltac:(fun _ => xfor_core_le I).
-
-Tactic Notation "xfor" constr(I) := 
-  xfor_base_le I.
-Tactic Notation "xfor_general" constr(I) "as" ident(H) := 
-  xfor_base_gen I H.
-Tactic Notation "xfor_general" constr(I) := 
-  let H := fresh "Hfor" in xfor_general I as H.
-
-
-(* todo: improve *)
-
-Ltac xfor_base_manual I cont1 cont2 := 
-  apply local_erase; split; 
-    [ cont1 tt 
-    | cont2 tt; esplit; exists I; splits 3%nat; 
-       [  
-       | xfor_bounds_intro tt
-       | ]
-    ].
-
-Ltac xfor_core_gen_manual I H :=
-  xfor_base_manual I ltac:(fun _ => intros H)
-                     ltac:(fun _ => intros H).
-
-Ltac xfor_base_gen_manual I H :=
-  xfor_pre ltac:(fun _ => xfor_core_gen_manual I H).
-
-Tactic Notation "xfor_general_manual" constr(I) "as" ident(H) := 
-  xfor_base_gen_manual I H.
-Tactic Notation "xfor_general_manual" constr(I) := 
-  let H := fresh "Hfor" in xfor_general_manual I as H.
-
-*)
-
-(*--------------------------------------------------------*)
-(* ** [xwhile] --old
-
-Ltac xwhile_core_inner I J R X0 cont1 cont2 cont3 :=
-  apply local_erase; esplit; esplit; exists I; exists J;
-  first [ exists R | exists (measure R) ]; splits 3%nat;
-  [ cont1 tt 
-  | match X0 with __ => esplit | _ => exists X0 end; cont2 tt 
-  | cont3 tt ].
-
-Ltac xwhile_fixj I J :=
-  match type of J with
-  | _ -> bool => constr:(fun X B => I X \* [B = J X])
-  | _ -> Prop => constr:(fun X B => I X \* [bool_of (J X) B])
-  end.
-
-Ltac xextract_post_clean tt :=
-  try ( pose ltac_mark; intros; xclean; gen_until_mark ).
-(* todo: hextract with clean in it ! *)
-
-Ltac xwhile_core I J R X0 X cont2 cont31 cont32 cont33 :=
-  let J' := xwhile_fixj I J in
-  xwhile_core_inner I J' R X0 
-    ltac:(fun _ => prove_wf)
-    ltac:(cont2)
-    ltac:(fun _ => intros X; splits 3%nat; [ cont31 tt | cont32 tt | cont33 tt ]).
-    
-Ltac xwhile_pre cont :=
-  match ltac_get_tag tt with
-  | tag_seq => xseq; [ cont tt | ]
-  | tag_while => cont tt
-  end.
-
-Ltac xwhile_base I J R X0 X :=
-  xwhile_pre ltac:(fun _ => xwhile_core I J R X0 X
-    ltac:(fun _ => hsimpl)
-    ltac:(fun _ => try xextract)
-    ltac:(fun _ => try xextract; xextract_post_clean tt)
-    ltac:(fun _ => idtac)).
-
-Ltac xwhile_base_manual I J R X0 X :=
-  xwhile_pre ltac:(fun _ => xwhile_core I J R X0 X
-    ltac:(idcont) ltac:(idcont) ltac:(idcont) ltac:(idcont)).
-
-Tactic Notation "xwhile" constr(I) constr(J) constr(R) constr(X0) "as" simple_intropattern(X) := 
-  xwhile_base I J R X0 X.
-Tactic Notation "xwhile" constr(I) constr(J) constr(R) constr(X0) := 
-  let X := fresh "X" in xwhile I J R X0 as X.
-Tactic Notation "xwhile" constr(I) constr(J) constr(R) := 
-  xwhile I J R __.
-
-Tactic Notation "xwhile_manual" constr(I) constr(J) constr(R) constr(X0) "as" simple_intropattern(X) := 
-  xwhile_base_manual I J R X0 X.
-Tactic Notation "xwhile_manual" constr(I) constr(J) constr(R) constr(X0) := 
-  let X := fresh "X" in xwhile_manual I J R X0 as X.
-Tactic Notation "xwhile_manual" constr(I) constr(J) constr(R) := 
-  xwhile_manual I J R __.
-
-*)
-
-(*--------------------------------------------------------*)
-(* ** [xwhile] --old while
-
-Ltac xwhile_core I R X0 :=
-  apply local_erase; esplit; esplit; exists I; 
-  first [ exists R | exists (measure R) ]; splits 3%nat;
-    [ prove_wf
-    | instantiate; match X0 with __ => esplit | _ => exists X0 end; hsimpl
-    | instantiate; intro; let X := get_last_hyp tt in xextract; revert X ].
-
-Ltac xwhile_core_debug I R X0 :=
-  apply local_erase; esplit; esplit; exists I; 
-  first [ exists R | exists (measure R) ]; splits 3%nat.
-
-Ltac xwhile_pre cont :=
-  match ltac_get_tag tt with
-  | tag_seq => xseq; [ cont tt | ]
-  | tag_while => cont tt
-  end.
-
-Ltac xwhile_base I R X0 :=
-  xwhile_pre ltac:(fun _ => xwhile_core I R X0).
-
-Tactic Notation "xwhile" constr(I) constr(R) constr(X0) := 
-  xwhile_base I R X0.
-Tactic Notation "xwhile" constr(I) constr(R) := 
-  xwhile_base I R __.
-
-Ltac xcond_core P :=
-   match goal with |- local _ ?H _ => 
-     match P with 
-     | __ => let R := fresh in evar (R:Prop); 
-             apply local_erase; 
-             exists (\[ bool_of R ] \*+ H);
-             subst R
-     | _ => apply local_erase; exists (\[ bool_of P ] \*+ H)
-   end end; splits 3%nat.
-
-Ltac xcond_base P :=
-  xcond_core P; [ | try xextract | try xextract ].
-
-
-Tactic Notation "xcond" constr(P) :=
-  xcond_base P.
-Tactic Notation "xcond" :=
-  xcond_base __.
-
-*)
-
+(* ** [xwhile] *)
 
 Tactic Notation "xgeneralize" constr(E) "as" ident(H) :=
   cuts H: E; [ eapply local_weaken_pre; [xlocal | | ] | ].
@@ -1660,7 +1274,6 @@ Tactic Notation "xapply_local_pre" constr(E) :=
   eapply local_weaken_pre; [xlocal | sapply E | ].
 
 
-
 (*--------------------------------------------------------*)
 (* ** [xcase] *)
 
@@ -1683,81 +1296,6 @@ Tactic Notation "xcleanpat" :=
 
 (**--todo clean up *)
 
-(* --deprecated
-
-Tactic Notation "xif_core" ident(H) tactic(cont) :=
-  xuntag tag_if; split; intros H; fold_bool; [ | cont tt ].
-
-Tactic Notation "xpat_core" ident(H) tactic(cont) :=
-  xuntag tag_case;
-  match goal with 
-  | |- ?P /\ ?Q => split; [ introv H | introv H; xtag_negpat H; cont tt ]
-  | |- forall _, _ => introv H
-  end.
-
-Tactic Notation "xif_core_anonymous" tactic(cont) :=
-  let H := fresh "C" in xif_core H cont.
-
-Tactic Notation "xpat_core_anonymous" tactic(cont) :=
-  let H := fresh "C" in xpat_core H cont.
-
-Tactic Notation "xcase_one" "as" ident(H) :=
-  match ltac_get_tag tt with
-  | tag_case => xpat_core H (fun _ => idtac)
-  | tag_if => xif_core H (fun _ => idtac)
-  end.
-  
-Tactic Notation "xcase_one" :=
-  match ltac_get_tag tt with
-  | tag_case => xpat_core_anonymous (fun _ => idtac)
-  | tag_if => xif_core_anonymous (fun _ => idtac)
-  end.
-  
-Ltac xpats_core :=
-  xpat_core_anonymous (fun _ => try xpats_core).
-
-Ltac xifs_core :=
-  xif_core_anonymous (fun _ => try xifs_core).
-
-Tactic Notation "xcases" :=
-  match ltac_get_tag tt with
-  | tag_case => xpats_core
-  | tag_if => xifs_core
-  end; try fold_bool; fold_prop.
-
-Tactic Notation "xcases_subst" := 
-  xcases; try invert_first_hyp.
-
-Tactic Notation "xcase_one_real" := 
-   xcase_one; try solve [ discriminate | false; congruence ];
-  (* TODO: simulate total coverage *)
-  try match ltac_get_tag tt with tag_done => split end;
-  try invert_first_hyp; 
-  try fold_bool; fold_prop.
-
-Tactic Notation "xcases_real" := 
-   xcases; try solve [ discriminate | false; congruence ];
-  (* TODO: simulate total coverage *)
-  try match ltac_get_tag tt with tag_done => split end;
-  try invert_first_hyp; 
-  try fold_bool; fold_prop.
-
-Tactic Notation "xcase" := xcases_real.
-*)
-
-
-(* xcases avec nommage *) 
-    
-(* todo: avec substitution 
-Ltac xpats_core :=
-  let E := fresh "M" in
-  match goal with 
-  | |- ?P /\ ?Q => 
-    split; [ introv E; hnf in E; try subst_eq E
-           | introv E; xpats_core ]
-  | |- forall _, _ => introv E; hnf in E; try subst_eq E
-  end.
-*)
 
 (************************************************************)
 (* ** [xif] -- todo : cleanup *)
@@ -1784,104 +1322,6 @@ Tactic Notation "xif_after" ident(H) :=
 
 Tactic Notation "xif_after" :=
   let H := fresh "H" in xif_after H.
-
-
-(* _nometa
-Ltac xif_core_meta H cont :=
-  xif_core_nometa H cont.
-
-Ltac xif_base H cont :=
-  match post_is_meta tt with
-  | false => xif_core_nometa H cont
-  | true => xif_core_meta H cont
-  end. 
-*)
-(*
-Ltac xif_base H cont :=
-  xif_core H; cont tt.
-
-Ltac xif_base_with_post H :=
-  xif_base H ltac:(fun _ => xif_post H).
-
-Tactic Notation "xif_manual" ident(H) :=
-  xif_base H ltac:(fun _ => idtac).
-Tactic Notation "xif_manual" :=
-  let H := fresh "C" in xif_manual H.
-Tactic Notation "xif" ident(H) :=
-  xif_base_with_post H.
-Tactic Notation "xif" :=
-  let H := fresh "C" in xif H.
-*)
-
-Tactic Notation "xif" :=
-  xif_core.
-Tactic Notation "xcond" ident(H) :=
-  xif_post H.
-
-
-(*---deprecated
-Ltac post_is_meta tt :=
-  match goal with
-  | |- ?F ?P => match P with P => constr:(false) end 
-  | |- _ => constr:(true)
-  end.
-
-Ltac arg_of_if tt :=
-  match goal with |- (?x = _ -> _) /\ (?x = _ -> _) => x end.
-
-(*TODO
-Lemma analysis_for_if : forall (B: Type) x t1 l1 t2 l2,
-  forall (P1 P2:(B->Prop)) (Q1 Q2:~~B),
-  (x = true -> ((tag t1 l1 Q1) P1)) -> 
-  (x = false -> ((tag t2 l2 Q2) P2)) ->
-     (x = true -> (tag t1 l1 Q1) (if x then P1 else P2))
-  /\ (x = false -> (tag t2 l2 Q2) (if x then P1 else P2)).
-Proof. intros. case_if; split; intros; auto; tryfalse. Qed.
-
-Lemma analysis_for_if_eq : forall (B: Type) x t1 l1 t2 l2,
-  forall (V1 V2:B) (Q1 Q2:~~B),
-  (x = true -> ((tag t1 l1 Q1) (= V1))) -> 
-  (x = false -> ((tag t2 l2 Q2) (= V2))) ->
-     (x = true -> (tag t1 l1 Q1) (= if x then V1 else V2))
-  /\ (x = false -> (tag t2 l2 Q2) (= if x then V1 else V2)).
-Proof. intros. case_if; split; intros; auto; tryfalse. Qed.
-*)
-
-Ltac xif_post H :=
-   calc_partial_eq tt;
-   try fold_bool; fold_prop;
-   try fix_bool_of_known tt;
-   try solve [ discriminate | false; congruence ];
-   first [ subst_hyp H; try fold_bool; try rewriteb H 
-         | rewriteb H
-         | idtac ];
-   try fix_bool_of_known tt.  
-
-Ltac xif_core_nometa H :=
-  xuntag tag_if; split; intros H; xif_post H.
-
-Ltac xif_core_meta H :=
- fail.
-(* TODO
-  xuntag tag_if; let x := arg_of_if tt in
-  calc_partial_eq tt; try subst x; 
-  (* sapply analysis_for_if;*)
-  first [ let K := fresh in forwards K: analysis_for_if; [ | | apply K ]
-        | let K := fresh in forwards K: analysis_for_if_eq; [ | | apply K ] ];
-  intros H; xif_post H.
-*)
-
-Tactic Notation "xif" ident(H) :=
-  match post_is_meta tt with
-  | false => xif_core_nometa H
-  | true => xif_core_meta H
-  end. 
-
-Tactic Notation "xif" :=
-  let H := fresh "C" in xif H.
-*)
-
-
 
 
 (*--useless?--*)
@@ -1928,7 +1368,6 @@ Tactic Notation "xcases_real" :=
 
 Tactic Notation "xcase" := 
   xcases_real.
-
 
 
 
@@ -2040,8 +1479,6 @@ Tactic Notation "xmatch_simple_subst_alias" :=
 (************************************************************)
 (* ** [xgo] *)
 
-(**)
-
 Inductive Xhint_cmd :=
   | Xstop : Xhint_cmd
   | XstopNoclear : Xhint_cmd
@@ -2132,13 +1569,6 @@ Ltac run_hint h cont :=
      | tag_let_trm => xlet S; cont tt
      | tag_let_fun => xfun_noxbody S
      end
-(*
-   | Xlets ?S =>
-     match tag with
-     | tag_let_trm => xlets S; cont tt
-     | tag_let_fun => xfun S
-     end
-*)
   | Xsimple => xmatch_simple; cont tt 
       (* todo : generalize
         | tag_case => xcases_real
@@ -2206,28 +1636,3 @@ Tactic Notation "xgo" "~" constr(a1) constr(h1) "," constr(a2) constr(h2) ","
 Tactic Notation "xgo" "~" constr(a1) constr(h1) "," constr(a2) constr(h2) ","
   constr(a3) constr(h3) "," constr(a4) constr(h4) := 
   add_hint a1 h1; add_hint a2 h2; add_hint a3 h3; add_hint a4 h4; xgo~.
-
-
-
-(*todo:remove*)
-Ltac xapps_core spec args solver ::=
-  let cont1 tt :=
-    xapp_with spec args solver in
-  let cont2 tt :=
-    instantiate; xextract; try intro_subst in    
-  match ltac_get_tag tt with
-  | tag_let_trm => xlet; [ cont1 tt | cont2 tt ]
-  | tag_seq =>     xseq; [ cont1 tt | cont2 tt ]
-  end.
-
-
-Ltac xinduct E := xinduction_heap E.
-
-(* todo: remove*)
-Tactic Notation "xapp_hyp" :=
-  eapply local_weaken; 
-    [ xlocal
-    | let f := spec_goal_fun tt in let H := get_spec_hyp f in 
-      apply (proj2 H) (* todo generalize to arities*)
-    | hsimpl
-    | hsimpl ].

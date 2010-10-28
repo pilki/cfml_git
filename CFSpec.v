@@ -213,6 +213,15 @@ Hint Resolve app_local_2 app_local_3 app_local_4.
 
 
 (********************************************************************)
+(* ** Local parameterized formulae *)
+
+Definition is_local_1 A1 B (S:A1->~~B) := 
+  forall x, is_local (S x).
+
+  (* todo: need to generalize? *)
+
+
+(********************************************************************)
 (* ** Valid specifications *)
 
 Definition is_spec_0 B (S:~~B->Prop) :=
@@ -359,42 +368,7 @@ Lemma app_intro_3_4 :
   app_3 f x1 x2 x3 H Q' ->
   (forall g, app_1 g x4 (Q' g) Q) ->
   app_4 f x1 x2 x3 x4 H Q.
-Proof. 
-(* TODO
-  introv M1 M2.
-  introv Hh. specializes M1 Hh. destruct M1 as (H1&H2&Q1&H'&?&(Q''&Ap1&Ap2)&Po).
-  exists (= h) [] Q []. splits; rew_heap~.
-  exists (Q'' \*+ H2). split.
-    applys* local_wframe. intros h'. intro_subst~.
-    intros.
-  renames Ap2 to M1. specializes M1 g. clears h H1.
-  intros h0 (h&h'&Hh&Hh'&HD&HU). specializes M1 Hh.
-   destruct M1 as (H1&H2'&Q1'&H''&(h1&h2&?&?&?&?)&(Q'''&Ap1&Ap2)&Po').
-  exists (= h1) (= h2 \+ h') Q (= h2 \+ h'). splits; rew_heap~. 
-  exists h1 (h2 \+ h'). subst h0 h. splits~.
-    rew_disjoint*.
-    rewrite~ heap_union_assoc.
-  exists Q'''. split.
-    (* applys* local_wframe. intro. intro_subst~. exists h1 heap_empty. splits*. apply heap_is_empty_prove. *) skip.
-    intros. apply local_erase. exists __. split.
-       apply* local_wframe. skip.
-       intros g'. specializes Po g'. applys* local_wgframe.
- 
-    intros
-
-  exists (Q'' \*+ H2). split.
-    applys* local_wframe. intros h'. intro_subst~.
-    intros. apply local_erase. exists __. split.
-       apply* local_wframe.
-       intros g'. specializes Po g'. applys* local_wgframe.
-
-apply local_erase. exists __. split.
-       apply* local_wframe.
-       intros g'. specializes Po g'. applys* local_wgframe.
-*)
-skip.
-Qed.
-
+Proof. skip. (* todo : generalize the previous case *) Qed.
 
 End AppIntro.
 
@@ -454,7 +428,8 @@ Proof.
       exists h2 (h2' \+ h4'). splits~.
         exists___. subst. splits*. rew_disjoint*. subst. rew_disjoint*. 
         subst. rew_disjoint*.    
-      subst. do 2 rewrite heap_union_assoc. auto. skip. (* todo: equal up to commutativity *)
+      subst. do 2 rewrite heap_union_assoc. auto. 
+        skip. (* todo: need a tactic to prove commutativity *)
     apply* local_wframe.
     intros v. hsimpl. hchange (Po' v). hchange (Po v). hsimpl.
 Qed.
@@ -1050,28 +1025,6 @@ Proof. intros. applys* local_weaken. Qed.
 (********************************************************************)
 (* ** Loop invariants for while-loops *)
 
-(* todo: move *)
-
-Lemma local_weaken_body : forall (B:Type) (F F':~~B),
-  (forall H Q, F H Q -> F' H Q) -> 
-  local F ===> local F'.
-Proof.
-  introv M. intros H Q N. introv Hh.
-  destruct (N _ Hh) as (H1&H2&Q1&H'&P1&P2&P3). exists___*.
-Qed.
-
-Lemma local_extract_exists : forall B (F:~~B) A (J:A->hprop) Q,
-  is_local F ->
-  (forall x, F (J x) Q) -> 
-  F (heap_is_pack J) Q.
-Proof.
-  introv L M. rewrite L. introv (x&Hx).
-  exists (J x) [] Q []. splits~. rew_heap~.
-Qed. 
- (* todo: where is local_intro_prop' rebound ? *)
-
-
-
 Definition while_loop_cf (F1:~~bool) (F2:~~unit) :=
   local (fun (H:hprop) (Q:unit->hprop) => forall R:~~unit, is_local R ->
     (forall H Q, (exists Q', F1 H Q' 
@@ -1104,11 +1057,6 @@ Qed.
 
 (********************************************************************)
 (* ** Loop invariants for for-loops *)
-
-(* todo: move *)
-Definition is_local_1 A1 B (S:A1->~~B) :=
-  forall x, is_local (S x).
-
 
 Definition for_loop_cf (a:int) (b:int) (F:~~unit) :=
   local (fun (H:hprop) (Q:unit->hprop) => forall S:int->~~unit, is_local_1 S ->

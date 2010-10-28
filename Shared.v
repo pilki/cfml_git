@@ -313,3 +313,57 @@ Implicit Arguments pred_le_proj1 [H1 H2].
 Implicit Arguments pred_le_proj2 [H1 H2].
 Implicit Arguments pred_le_extens [H1 H2].
 
+
+
+(********************************************************************)
+(* todo: move *)
+
+Inductive Mem (A:Type) (x:A) : list A -> Prop :=
+  | Mem_here : forall l, 
+      Mem x (x::l)
+  | Mem_next : forall l, 
+      Mem x l -> 
+      Mem x (x::l).
+
+Axiom Mem_app_or : forall (A:Type) (l1 l2 : list A) x,
+  Mem x l1 \/ Mem x l2 -> Mem x (l1 ++ l2).
+  (* todo: prove *)
+
+Hint Constructors Mem.
+
+Lemma If_l : forall (A:Type) (P:Prop) (x y : A), 
+  P -> (If P then x else y) = x.
+Proof. intros. case_if*. Qed.
+
+Lemma If_r : forall (A:Type) (P:Prop) (x y : A), 
+  ~ P -> (If P then x else y) = y.
+Proof. intros. case_if*. Qed.
+
+Lemma rel_le_refl : forall A B (P:A->B->Prop),
+  rel_le P P.
+Proof. intros_all~. Qed.
+Hint Resolve rel_le_refl.
+
+(********************************************************************)
+
+(* todo: move *)
+Implicit Arguments list_sub [[A]].
+
+(* todo: move *)
+
+Hint Resolve (0%nat) : typeclass_instances.
+Hint Resolve (0%Z) : typeclass_instances.
+Hint Resolve @nil : typeclass_instances.
+Hint Resolve true : typeclass_instances.
+Hint Resolve @None : typeclass_instances.
+Hint Resolve @pair : typeclass_instances.
+
+Ltac inhab :=
+  constructor; intros; try solve 
+    [ eauto 10 with typeclass_instances 
+    | constructor; eauto 10 with typeclass_instances 
+    | apply arbitrary 
+    | apply @arbitrary; eauto 10 with typeclass_instances ].
+
+Instance inhabited_Z : Inhabited Z.
+Admitted. (* todo -- trivial, use 0%Z *)

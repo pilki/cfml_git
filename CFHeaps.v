@@ -1,33 +1,6 @@
 Set Implicit Arguments.
 Require Export LibCore LibEpsilon Shared LibMap.
 
-(* todo: move *)
-
-Inductive Mem (A:Type) (x:A) : list A -> Prop :=
-  | Mem_here : forall l, 
-      Mem x (x::l)
-  | Mem_next : forall l, 
-      Mem x l -> 
-      Mem x (x::l).
-
-Axiom Mem_app_or : forall (A:Type) (l1 l2 : list A) x,
-  Mem x l1 \/ Mem x l2 -> Mem x (l1 ++ l2).
-
-Hint Constructors Mem.
-
-Lemma If_l : forall (A:Type) (P:Prop) (x y : A), 
-  P -> (If P then x else y) = x.
-Proof. intros. case_if*. Qed.
-
-Lemma If_r : forall (A:Type) (P:Prop) (x y : A), 
-  ~ P -> (If P then x else y) = y.
-Proof. intros. case_if*. Qed.
-
-Lemma rel_le_refl : forall A B (P:A->B->Prop),
-  rel_le P P.
-Proof. intros_all~. Qed.
-Hint Resolve rel_le_refl.
-
 
 (********************************************************************)
 (* ** Heaps *)
@@ -1089,23 +1062,16 @@ Proof.
   hsimpl 2. subst~. math.
 Qed.
 
-
-(* todo: move *)
-
-
-
 Lemma heap_weaken_star : forall H1' H1 H2 H3,
   (H1 ==> H1') -> (H1' \* H2 ==> H3) -> (H1 \* H2 ==> H3).
 Proof.
   introv W M (h1&h2&N). intuit N. apply M. exists~ h1 h2.
-Qed.
+Qed. (* todo: move *)
 
-
-(* todo *)
 Lemma hsimpl_to_qunit : forall (H:hprop) (Q:unit->hprop),
   Q = (fun _ => H) ->
   H ==> Q tt.
-Proof. intros. subst. auto. Qed.
+Proof. intros. subst. auto. Qed. (* todo: needed? *)
 Hint Resolve hsimpl_to_qunit.
 
 
@@ -1118,8 +1084,6 @@ Proof.
   intros. applys* (@pred_le_trans heap) (H1 \* H2). 
   applys* (@pred_le_trans heap) (H1' \* H2). hsimpl~. 
 Qed.
-
-
 
 Ltac hchange_apply L cont :=
   eapply hchange_lemma; 
@@ -1138,7 +1102,7 @@ Ltac hchange_forwards L modif cont :=
 
 Ltac hchange_core E modif :=
   match E with
-(*  | ?H ==> ?H' => hchange_with_core H H' *)
+  (*  | ?H ==> ?H' => hchange_with_core H H' *)
   | _ => hchange_forwards E modif ltac:(fun _ => instantiate; hsimpl)
   end.
 
@@ -1325,7 +1289,18 @@ Proof.
 Qed.  
   (* todo: use only one lemma? *)
 
-(** Extraction of existential from [local] *)
+(** Extraction of existentials from [local] *)
+
+Lemma local_extract_exists : forall B (F:~~B) A (J:A->hprop) Q,
+  is_local F ->
+  (forall x, F (J x) Q) -> 
+  F (heap_is_pack J) Q.
+Proof.
+  introv L M. rewrite L. introv (x&Hx).
+  exists (J x) [] Q []. splits~. rew_heap~.
+Qed. 
+
+(** Extraction of existentials below a star from [local] *)
 
 Lemma local_intro_exists : forall B (F:~~B) H A (J:A->hprop) Q,
   is_local F -> 
@@ -1348,6 +1323,16 @@ Lemma local_name_heap : forall B (F:~~B) (H:hprop) Q,
 Proof.
   introv L M. rewrite L. introv Hh. exists (= h) [] Q []. splits~.
   exists h heap_empty. splits~.
+Qed.
+
+(** Weakening under a [local] modifier *)
+
+Lemma local_weaken_body : forall (B:Type) (F F':~~B),
+  (forall H Q, F H Q -> F' H Q) -> 
+  local F ===> local F'.
+Proof.
+  introv M. intros H Q N. introv Hh.
+  destruct (N _ Hh) as (H1&H2&Q1&H'&P1&P2&P3). exists___*.
 Qed.
 
 

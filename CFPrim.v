@@ -2,38 +2,15 @@ Set Implicit Arguments.
 Require Export LibInt LibArray CFSpec CFPrint.
 
 
-(* todo: move *)
-Implicit Arguments list_sub [[A]].
-
-(* todo: move *)
-
-Hint Resolve (0%nat) : typeclass_instances.
-Hint Resolve (0%Z) : typeclass_instances.
-Hint Resolve @nil : typeclass_instances.
-Hint Resolve true : typeclass_instances.
-Hint Resolve @None : typeclass_instances.
-Hint Resolve @pair : typeclass_instances.
-
-Ltac inhab :=
-  constructor; intros; try solve 
-    [ eauto 10 with typeclass_instances 
-    | constructor; eauto 10 with typeclass_instances 
-    | apply arbitrary 
-    | apply @arbitrary; eauto 10 with typeclass_instances ].
-
-Instance inhabited_Z : Inhabited Z.
-Admitted. (* todo -- trivial, use 0%Z *)
-
-(* todo: move *)
-Global Opaque heap_is_empty hdata heap_is_single heap_is_empty_st.
-Global Opaque Zplus.
-
-
 (********************************************************************)
 (** Imperative Representation for base types *)
 
-Transparent hdata. (* TODO: use hdata_simpl instead *)
+Global Opaque heap_is_empty hdata heap_is_single heap_is_empty_st. 
+  (* todo: check needed *)
 
+Global Opaque Zplus. (* todo: move *)
+
+Transparent hdata. (* todo: should use hdata_simpl instead *)
 
 
 (*------------------------------------------------------------------*)
@@ -162,170 +139,6 @@ Qed.
 
 Global Opaque List.
 
-(*------------------------------------------------------------------*)
-(* ** Record 2 *)
-
-Definition Ref2 A1 A2 a1 a2 (T1:A1->a1->hprop) (T2:A2->a2->hprop) (V1:A1) (V2:A2) l :=
-  l ~> Ref (Tup2 T1 T2) (V1,V2).
-
-Lemma focus_ref2 : forall (l:loc) a1 a2 A1 A2 (T1:htype A1 a1) (T2:htype A2 a2) V1 V2,
-  l ~> Ref2 T1 T2 V1 V2 ==> Hexists (x1:a1) (x2:a2),
-  l ~> Ref Id (x1,x2) \* x1 ~> T1 V1 \* x2 ~> T2 V2 .
-Proof.
-  intros. unfold Ref2. hdata_simpl. hchange (@focus_ref l).
-  hextract as [x1 x2]. hchange (focus_tup2 (x1,x2)). hsimpl.
-Qed.
-
-Lemma unfocus_ref2 : forall (l:loc) a1 (x1:a1) a2 (x2:a2) A1 A2 (T1:htype A1 a1) (T2:htype A2 a2) V1 V2,
-  l ~> Ref Id (x1,x2) \* x1 ~> T1 V1 \* x2 ~> T2 V2 ==>
-  l ~> Ref2 T1 T2 V1 V2.
-Proof.
-  intros. unfold Ref2. hdata_simpl. hchange (unfocus_tup2 x1 x2). 
-  hchange (@unfocus_ref l _ (x1,x2)). hsimpl.
-Qed.
-
-Lemma focus_ref2_null : forall a1 a2 A1 A2 (T1:htype A1 a1) (T2:htype A2 a2) V1 V2,
-  null ~> Ref2 T1 T2 V1 V2 ==> [False]. 
-Proof.
-  intros. unfold hdata, Ref2. hchange focus_ref_null. hsimpl. 
-Qed.
-
-Opaque Ref2.
-
-
-(*------------------------------------------------------------------*)
-(* ** MLists *)
-
-Fixpoint MList A a (T:A->a->hprop) (L:list A) (l:loc) : hprop :=
-  match L with
-  | nil => [l = null]
-  | X::L' => l ~> Ref2 T (MList T) X L'
-  end.
-
-Lemma focus_mnil : forall A a (T:A->a->hprop),
-  [] ==> null ~> MList T nil.
-Proof. intros. simpl. hdata_simpl. hsimpl~. Qed.
-
-Lemma unfocus_mnil : forall (l:loc) A a (T:A->a->hprop),
-  l ~> MList T nil ==> [l = null].
-Proof. intros. simpl. hdata_simpl. hsimpl~. Qed.
-
-Lemma unfocus_mnil' : forall A (L:list A) a (T:A->a->hprop),
-  null ~> MList T L ==> [L = nil].
-Proof.
-  intros. destruct L.
-  simpl. unfold hdata. hextract. hsimpl~. 
-  unfold hdata, MList. hchange focus_ref2_null. hextract. false.
-Qed.
-
-Lemma unfocus_mnil'' : forall (l:loc) A (L:list A) a (T:A->a->hprop),
-  l ~> MList T L ==> [l = null <-> L = nil] \* l ~> MList T L.
-Proof. skip. (*todo*) Qed.
-
-Lemma focus_mcons : forall (l:loc) a A (X:A) (L':list A) (T:A->a->hprop),
-  (l ~> MList T (X::L')) ==>
-  Hexists x l', (x ~> T X) \* (l' ~> MList T L') \* (l ~> Ref Id (x,l')).
-Proof.
-  intros. simpl. hdata_simpl. hchange (@focus_ref2 l). hextract. hsimpl.
-Qed.
-
-Lemma focus_mcons' : forall (l:loc) a A (L:list A) (T:A->a->hprop),
-  [l <> null] \* (l ~> MList T L) ==> 
-  Hexists x l', Hexists X L', 
-    [L = X::L'] \*  (l ~> Ref Id (x,l')) \* (x ~> T X) \* (l' ~> MList T L').
-Proof.
-  intros. destruct L. lets: (@unfocus_mnil l _ _ T). (* Show Existentials. *)
-  hextract. false~.
-  hchange (@focus_mcons l). hextract as x l' E. hsimpl~.  
-Qed.
-
-Lemma unfocus_mcons : forall (l:loc) a (x:a) (l':loc) A (X:A) (L':list A) (T:A->a->hprop),
-  (l ~> Ref Id (x,l')) \* (x ~> T X) \* (l' ~> MList T L') ==> 
-  (l ~> MList T (X::L')).
-Proof.
-  intros. simpl. hdata_simpl. hchange (@unfocus_ref2 l _ x _ l'). hsimpl.
-Qed.
-
-Global Opaque MList.
-
-Implicit Arguments unfocus_mnil [ ].
-Implicit Arguments unfocus_mcons [ a A ].
-Implicit Arguments focus_mcons [ a A ].
-
-
-(*------------------------------------------------------------------*)
-(* ** MListsSeg *)
-
-(* TODO: define MList as MListSeg null *)
-
-Fixpoint MListSeg (e:loc) A a (T:A->a->hprop) (L:list A) (l:loc) : hprop :=
-  match L with
-  | nil => [l = e]
-  | X::L' => l ~> Ref2 T (MListSeg e T) X L'
-  end.
-
-Lemma focus_msnil : forall (e:loc) A a (T:A->a->hprop),
-  [] ==> e ~> MListSeg e T nil.
-Proof. intros. simpl. hdata_simpl. hsimpl~. Qed.
-
-Lemma unfocus_msnil : forall (l e:loc) A a (T:A->a->hprop),
-  l ~> MListSeg e T nil ==> [l = e].
-Proof. intros. simpl. hdata_simpl. hsimpl~. Qed.
-
-Lemma unfocus_msnil' : forall A (L:list A) (e:loc) a (T:A->a->hprop),
-  null ~> MListSeg e T L ==> [L = nil] \* [e = null].
-Proof.
-  intros. destruct L.
-  simpl. unfold hdata. hextract. hsimpl~. 
-  unfold hdata, MListSeg. hchange focus_ref2_null. hextract. false.
-Qed.
-
-Lemma focus_mscons : forall (l e:loc) a A (X:A) (L':list A) (T:A->a->hprop),
-  (l ~> MListSeg e T (X::L')) ==>
-  Hexists x l', (x ~> T X) \* (l' ~> MListSeg e T L') \* (l ~> Ref Id (x,l')).
-Proof.
-  intros. simpl. hdata_simpl. hchange (@focus_ref2 l). hextract. hsimpl.
-Qed.
-
-Lemma focus_mscons' : forall (l e:loc) a A (L:list A) (T:A->a->hprop),
-  [l <> e] \* (l ~> MListSeg e T L) ==> 
-  Hexists x l', Hexists X L', 
-    [L = X::L'] \*  (l ~> Ref Id (x,l')) \* (x ~> T X) \* (l' ~> MListSeg e T L').
-Proof.
-  intros. destruct L. lets: (@unfocus_msnil l e _ _ T). (* Show Existentials. *)
-  hextract. false~.
-  hchange (@focus_mscons l e). hextract as x l' E. hsimpl~.  
-Qed.
-
-Lemma unfocus_mscons : forall (l:loc) a (x:a) (l' e:loc) A (X:A) (L':list A) (T:A->a->hprop),
-  (l ~> Ref Id (x,l')) \* (x ~> T X) \* (l' ~> MListSeg e T L') ==> 
-  (l ~> MListSeg e T (X::L')).
-Proof.
-  intros. simpl. hdata_simpl. hchange (@unfocus_ref2 l _ x _ l'). hsimpl.
-Qed.
-
-Implicit Arguments unfocus_msnil [ ].
-Implicit Arguments focus_mscons [ a A ].
-Implicit Arguments unfocus_mscons [ a A ].
-
-Lemma focus_msapp : forall (l l' e:loc) a A (L L':list A) (T:A->a->hprop),
-  l ~> MListSeg l' T L \* l' ~> MListSeg e T L' ==> l ~> MListSeg e T (L++L').
-Proof.
-  intros l l' e a A L L' T. gen l. induction L as [|X R]; intros.
-  hchange (unfocus_msnil l). hextract. subst. auto.
-  rew_app. hchange (focus_mscons l). hextract as x r. hchange (IHR r).
-   hchange (unfocus_mscons l x r e X (R++L')). hsimpl.
-Qed.
-
-Axiom mlistseg_to_mlist : forall (l:loc) a A (T:htype A a) L,
-   l ~> MListSeg null T L ==> l ~> MList T L.
-Axiom mlist_to_mlistseg : forall (l:loc) a A (T:htype A a) L,
-   l ~> MList T L ==> l ~> MListSeg null T L.
-(* --todo-- *)
-
-Global Opaque MListSeg.
-
-
 
 (************************************************************)
 (** Axiomatic specification of the primitive functions *)
@@ -377,11 +190,6 @@ Hint Extern 1 (RegisterSpec ml_and) => Provide ml_and_spec.
 Parameter ml_or : func.
 Parameter ml_or_spec : Pure ml_or x y >> = (x || y).
 Hint Extern 1 (RegisterSpec ml_and) => Provide ml_or_spec.
- 
-  (*todo:*)
-  Parameter ml_min_int : int.
-  Parameter ml_max_int : int.
-  Parameter ml_rand_int : func.
 
 (** Pairs *)
 
@@ -431,19 +239,13 @@ Hint Extern 1 (RegisterSpec ml_set) => Provide ml_set_spec.
 Hint Extern 1 (RegisterSpec ml_incr) => Provide ml_incr_spec.
 Hint Extern 1 (RegisterSpec ml_decr) => Provide ml_decr_spec.
 
-(** Strong References *) (* TODO: unify with normal ref? *)
+(** Strong References *) (* todo: unify with normal ref? *)
 
 Parameter ml_sset : func.
 Parameter ml_sset_spec : forall a a',
   Spec ml_sset (l:loc) (v:a) |R>> 
     forall (v':a'), R (l ~~> v') (# l ~~> v).
 Hint Extern 1 (RegisterSpec ml_sset) => Provide ml_sset_spec.
-
-(** List *) 
-
-Parameter ml_list_iter : func.
-
-  (* TODO *)
 
 (** Arrays *)
 
@@ -460,7 +262,6 @@ Require Import LibBag.
 Parameter ml_array_make_spec : forall a,
   Spec ml_array_make (n:int) (v:a) |R>> 
      R [] (~> Array Id (LibArray.make n v)).
-     (* (fun l => Hexists t, l ~> Array Id t \* [t = array_make n v]). *)
 
 Parameter ml_array_get_spec : forall a,
   Spec ml_array_get (l:loc) (i:int) |R>> 
@@ -471,7 +272,6 @@ Parameter ml_array_set_spec : forall a,
   Spec ml_array_set (l:loc) (i:int) (v:a) |R>> 
     forall (t:array a), index t i -> 
     R (l ~> Array Id t) (# l ~> Array Id (t\(i:=v))).
-      (* (# Hexists t', l ~> Array Id t' \* [t' = t\(i:=v)]).*)
 
 Parameter ml_array_length_spec : forall a,
   Spec ml_array_length (l:loc) |R>> forall (t:array a),

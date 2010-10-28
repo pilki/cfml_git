@@ -1,11 +1,6 @@
 Set Implicit Arguments.
 Require Import CFSpec.
 
-(*todo: move *)
-
-Notation "'AppReturns'" := app_1.
-
-
 
 (********************************************************************)
 (* ** Notation for specifications *)
@@ -396,6 +391,8 @@ Notation "'App' f x1 x2 x3 x4 ;" :=
   (at level 68, f at level 0, x1 at level 0, x2 at level 0,
    x3 at level 0, x4 at level 0) : charac.
 
+Notation "'AppReturns'" := app_1. (*todo: move *)
+
 (** Let *)
 
 Notation "'LetVal' x ':=' V 'in' F" :=
@@ -642,8 +639,7 @@ Notation "'TopLetFunc' ':=' H" :=
   (!TF H)
   (at level 69, H at level 200).
 
-(* todo:needed?*)
-Notation "'Func' f ':=' Q" := 
+Notation "'Func' f ':=' Q" :=  (* todo:needed?*)
   (!F (fun P => forall f, Q -> P f))
   (at level 69) : charac.
 

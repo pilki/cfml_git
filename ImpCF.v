@@ -24,7 +24,8 @@ Fixpoint ble_nat (n m : nat) : bool :=
   end.
 
 (** Partial application of equality *)
-Notation "= x" := (fun y => y = x) (at level 69).
+
+Notation "= x" := (fun y => y = x) (at level 69).
 
 (** Identifiers *)
 
