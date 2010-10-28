@@ -404,10 +404,11 @@ Notation "'LetVal' x ':=' V 'in' F" :=
 
 Notation "'Let' x ':=' F1 'in' F2" :=
   (!T (fun H Q => exists Q1, F1 H Q1 /\ forall x, F2 (Q1 x) Q))
-  (at level 69, a at level 0, x ident) : charac.
+  (at level 69, a at level 0, x ident, right associativity,
+  format "'Let'  x  ':='  F1  'in'  F2") : charac.
 
 Notation "Q1 ;; Q2" :=
-  (!Seq fun H Q => exists H', Q1 H (#H') /\ Q2 H' Q)
+  (!Seq (fun H Q => exists Q', Q1 H Q' /\ Q2 (Q' tt) Q))
   (at level 68, right associativity) : charac.
 
 (** Body *)
@@ -482,8 +483,9 @@ Notation "'LetFuns' f1 ':=' Q1 'and' f2 ':=' Q2 'and' f3 ':=' Q3 'in' F" :=
 
 (** Tests *)
 
-Notation "'_If' x 'Then' Q1 'Else' Q2" :=
-  (!I (fun H Q => (x = true -> Q1 H Q) /\ (x = false -> Q2 H Q)))
+Notation "'If_' Q0 'Then' Q1 'Else' Q2" :=
+  (!I (fun H Q => exists Q', 
+         Q0 H Q' /\ Q1 (Q' true) Q /\ Q2 (Q' false) Q))
   (at level 69, x at level 0) : charac.
 
 Notation "'Case' x '=' p 'Then' Q1 'Else' Q2" :=

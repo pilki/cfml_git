@@ -4,7 +4,7 @@ type 'a mlist = { mutable hd : 'a ;
                   mutable tl : 'a mlist }
 
    
-let length (l:'a mlist) =
+let mlength (l:'a mlist) =
    let h = ref l in
    let n = ref 0 in
    while !h != null do
@@ -13,7 +13,7 @@ let length (l:'a mlist) =
    done;
    !n
 
-let append (l1 : 'a mlist) (l2 : 'a mlist) =
+let mappend (l1 : 'a mlist) (l2 : 'a mlist) =
    if l1 == null then l2 else
    let h = ref l1 in
    while !h.tl != null do
@@ -34,8 +34,8 @@ let inplace_rev (l:'a mlist) =
   done;
   !r
 
-let rec cps_append (x:'a mlist) (y:'a mlist) (k:'a mlist->'b) : 'b =
+let rec cps_mappend (x:'a mlist) (y:'a mlist) (k:'a mlist->'b) : 'b =
   if x == null then k y else
     let f z = (x.tl <- z; k x) in 
-    cps_append x.tl y f
+    cps_mappend x.tl y f
 

@@ -47,7 +47,7 @@ Definition Ref a A (T:htype A a) (V:A) (l:loc) :=
   Hexists v, heap_is_single l v \* v ~> T V.
 
 Notation "l '~~>' v" := (l ~> Ref Id v)
-  (at level 32, no associativity).
+  (at level 32, no associativity) : heap_scope.
 Notation "'~~>' v" := (~> Ref Id v)
   (at level 32, no associativity) : heap_scope.
 

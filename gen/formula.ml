@@ -30,8 +30,12 @@ type cf =
     (* Let x [Ai,Bi] := v in Q2  // where x : forall Ai.T *)
   | Cf_letfunc of (var * cf) list * cf 
     (* Let fi := Qi in Q *)
+  | Cf_caseif of cf * cf * cf 
+    (* If Q0 Then Q1 else Q2 *)
+(* old
   | Cf_caseif of coq * cf * cf 
     (* If v Then Q1 else Q2 *)
+*)
   | Cf_case of coq * typed_vars * coq * coq option * (typed_var*coq) list * cf * cf 
     (* Case v [xi] p [When c] Then (Alias yk = vk in Q1) else Q2 *)
   | Cf_match of var * int * cf
@@ -94,7 +98,7 @@ let htype c_abstract c_concrete =
 (** The identity representation predicate *)
 
 let id_repr =
-   Coq_var "CFPrim.Id" 
+   Coq_var "CFHeaps.Id" 
 
 (** Representation predicate tag *)
 
@@ -251,10 +255,13 @@ let rec coq_of_pure_cf cf =
               (Q1 -> Q2 -> P1 f1 /\ P2 f2) /\ (P1 f1 -> P2 f2 -> Q P)) *)            
 
   | Cf_caseif (v,cf1,cf2) ->
+   assert false
+   (* todo: update with cf0
       let c1 = Coq_impl (coq_eq v (Coq_var "true"),  Coq_app (coq_of_cf cf1, p)) in
       let c2 = Coq_impl (coq_eq v (Coq_var "false"), Coq_app (coq_of_cf cf2, p)) in
       funp "tag_if" (coq_conj c1 c2)
       (* (!I a: (fun P => (x = true -> Q1 P) /\ (x = false -> Q2 P))) *)
+   *)
 
   | Cf_case (v,tps,pat,vwhenopt,aliases,cf1,cf2) ->
       let add_alias ((name,typ),exp) cf : coq =
@@ -291,8 +298,12 @@ let rec coq_of_imp_cf cf =
   let coq_of_cf = coq_of_imp_cf in
   let h = Coq_var "H" in
   let q = Coq_var "Q" in
-  let funhq tag ?label c = 
-     let f_core = coq_funs [("H", hprop);("Q", wild_to_hprop)] c in
+  let funhq tag ?label ?rettype c = 
+       let typ = match rettype with
+       | None -> Coq_wild
+       | Some t -> t
+       in
+     let f_core = coq_funs [("H", hprop);("Q", Coq_impl(typ,hprop))] c in
      let f = Coq_app (Coq_var "local", f_core) in
      match label with 
      | None -> coq_tag tag f 
@@ -362,11 +373,21 @@ let rec coq_of_imp_cf cf =
       (* (!F a: fun H Q => forall f1 f2, exists P1 P2,
               (B1 -> B2 -> P1 f1 /\ P2 f2) /\ (P1 f1 -> P2 f2 -> F H Q)) *)            
 
+   | Cf_caseif (cf0,cf1,cf2) ->
+      let q' = Coq_var "Q'" in
+      let c0 = coq_apps (coq_of_cf cf0) [h;q'] in
+      let c1 = coq_apps (coq_of_cf cf1) [ Coq_app (q',coq_bool_true); q] in
+      let c2 = coq_apps (coq_of_cf cf2) [ Coq_app (q',coq_bool_false); q] in
+      funhq "tag_if" (coq_exist "Q'" (Coq_impl (coq_bool,hprop)) (coq_conjs [c0;c1;c2]))
+      (* (!I a: (fun H Q => exists Q', Q0 H Q' /\ Q1 (Q' true) Q /\ Q2 (Q' false) Q)) *)
+
+ (* old
   | Cf_caseif (v,cf1,cf2) ->
       let c1 = Coq_impl (coq_eq v (Coq_var "true"),  coq_apps (coq_of_cf cf1) [h;q]) in
       let c2 = Coq_impl (coq_eq v (Coq_var "false"), coq_apps (coq_of_cf cf2) [h;q]) in
       funhq "tag_if" (coq_conj c1 c2)
       (* (!I a: (fun H Q => (x = true -> Q1 H Q) /\ (x = false -> Q2 H Q))) *)
+   *)
 
   | Cf_case (v,tps,pat,vwhenopt,aliases,cf1,cf2) ->
       let add_alias ((name,typ),exp) cf : coq =
@@ -390,10 +411,11 @@ let rec coq_of_imp_cf cf =
      coq_tag (Printf.sprintf "(tag_match %d%snat)" n "%") (*~label:label*) (coq_of_cf cf1)
 
   | Cf_seq (cf1,cf2) -> 
-      let c1 = coq_apps (coq_of_cf cf1) [h; post_unit (Coq_var "H1")] in
-      let c2 = coq_apps (coq_of_cf cf2) [Coq_var "H1"; Coq_var "Q"]  in
-      funhq "tag_seq" (coq_exist "H1" hprop (coq_conj c1 c2))
-      (* (!S: fun H Q => exists H1, F1 H (#H1) /\ F2 H1 Q *)
+      let q' = Coq_var "Q'" in
+      let c1 = coq_apps (coq_of_cf cf1) [h;q'] in
+      let c2 = coq_apps (coq_of_cf cf2) [Coq_app (q', coq_tt); Coq_var "Q"]  in
+      funhq "tag_seq" (coq_exist "Q'" wild_to_hprop (coq_conj c1 c2))
+      (* (!S: fun H Q => exists Q', F1 H Q /\ F2 (Q' tt) Q *)
 
   | Cf_for (i,v1,v2,cf) -> 
       let s = Coq_var "S" in
@@ -442,18 +464,25 @@ let rec coq_of_imp_cf cf =
       let p1 = coq_apps (coq_of_cf cf1) [h;q'] in
       let c1 = coq_apps (coq_of_cf cf2) [h;q'] in
       let c2 = coq_apps r [ Coq_app (q', coq_tt); q] in
-      let bodyl = coq_funs [("H",hprop); ("Q", Coq_impl (coq_unit, hprop))] (coq_exist "Q'" wild_to_hprop (coq_conj c1 c2)) in
-      let p2 = coq_apps (Coq_var "local") [bodyl; Coq_app(q',coq_bool_true); q] in
-      let p3 = heap_impl (Coq_app (q', coq_bool_false)) (Coq_app (q, coq_tt)) in
+      let body2 = funhq "tag_seq" ~rettype:coq_unit (coq_exist "Q'" wild_to_hprop (coq_conj c1 c2)) in
+      let p2 = coq_apps body2 [Coq_app(q',coq_bool_true); q] in
+      let body3 = funhq "tag_ret" ~rettype:coq_unit (heap_impl_unit h q) in     
+      let p3 = coq_apps body3 [Coq_app(q',coq_bool_false); q] in    
       let localr = Coq_app (Coq_var "is_local", r) in
-      let bodyr = coq_exist "Q'" (Coq_impl (coq_bool, hprop)) (coq_conjs [p1;p2;p3]) in
+      let bodyif = coq_exist "Q'" (Coq_impl (coq_bool, hprop)) (coq_conjs [p1;p2;p3]) in
+      let bodyr = coq_apps (funhq "tag_if" bodyif) [h;q] in
       let hypr = coq_foralls [("H", hprop); ("Q", Coq_impl (coq_unit, hprop))] (Coq_impl (bodyr,(coq_apps r [h;q]))) in
       funhq "tag_while" (Coq_forall (("R",typr), coq_impls [localr; hypr] (coq_apps r [h;q])))
       (* (!While: (fun H Q => forall R:~~unit, is_local R ->
-          (forall H Q, (exists Q', F1 H Q' 
-             /\ (local (fun H Q => exists Q', F2 H Q' /\ R (Q' tt) Q) (Q' true) Q)
-             /\ Q' false ==> Q tt) -> R H Q) 
+          (forall H Q,
+             !If: (fun H Q => exists Q', 
+                  F1 H Q' 
+               /\ (!Seq: (fun H Q => exists Q', F2 H Q' /\ R (Q' tt) Q) (Q' true) Q)
+               /\ (!Ret: (fun H Q => H ==> Q tt) (Q' false) Q) 
+               H Q
+             -> R H Q) 
           -> R H Q). *)
+     (* *)
 
   | Cf_letpure _ -> unsupported "letpure-expression in imperative mode"
 

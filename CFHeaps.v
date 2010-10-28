@@ -657,6 +657,10 @@ Proof.
   splits~. rewrite~ heap_union_neutral_l.
 Qed.
 
+Lemma hextract_id : forall A (x X : A) H1 H2 H',
+  (x = X -> H1 \* H2 ==> H') -> H1 \* (x ~> Id X \* H2) ==> H'.
+Proof. intros. unfold Id. apply~ hextract_prop. Qed.
+
 Lemma hextract_exists : forall A H1 H2 H' (J:A->hprop),
   (forall x, H1 \* J x \* H2 ==> H') -> H1 \* (heap_is_pack J \* H2) ==> H'.
 Proof.  
@@ -689,6 +693,7 @@ Ltac hextract_relinearize tt :=
 Ltac hextract_step tt :=
   match goal with |- ?HA \* (?H \* ?HR) ==> ?H' =>
   first [ apply hextract_prop; intros
+        | apply hextract_id; intros
         | apply hextract_exists; intros; hextract_relinearize tt
         | apply hextract_keep ]
   end.
@@ -823,6 +828,10 @@ Proof.
   exists h1 h2. splits~. exists heap_empty h2. splits~.
 Qed.
 
+Lemma hsimpl_extract_id : forall A (x X : A) H1 H2 H3,
+  H1 ==> H2 \* H3 -> x = X -> H1 ==> H2 \* (x ~> Id X \* H3).
+Proof. intros. unfold Id. apply~ hsimpl_extract_prop. Qed.
+
 Lemma hsimpl_extract_exists : forall A (x:A) H1 H2 H3 (J:A->hprop),
   H1 ==> H2 \* J x \* H3 -> H1 ==> H2 \* (heap_is_pack J \* H3).
 Proof.
@@ -939,6 +948,7 @@ Ltac hsimpl_step tt :=
             [ first [ eassumption | symmetry; eassumption | idtac ]
             | ]
           | apply hsimpl_extract_prop
+          | apply hsimpl_extract_id
           | hsimpl_extract_exists_step tt
           | apply hsimpl_keep ]
   end.
@@ -1328,6 +1338,10 @@ Proof.
   intros. rewrite star_comm_assoc. apply~ local_intro_prop'. 
 Qed. 
 
+Lemma hclean_id : forall A (x X : A) B (F:~~B) H1 H2 Q,
+  is_local F -> (x = X -> F (H1 \* H2) Q) -> F (H1 \* x ~> Id X \* H2) Q.
+Proof. intros. unfold Id. apply~ hclean_prop. Qed.
+
 Lemma hclean_exists : forall B (F:~~B) H1 H2 A (J:A->hprop) Q,
   is_local F -> 
   (forall x, F (H1 \* (J x) \* H2) Q) ->
@@ -1380,6 +1394,7 @@ Ltac hclean_step tt :=
   let go H :=
     match H with ?HA \* ?HX \* ?HR => match HX with
     | [?P] => apply hclean_prop; [ try xlocal | intro ]
+    | ?x ~> Id ?X => apply hclean_id; [ try xlocal | intro ]
     | heap_is_pack ?J => apply hclean_exists; [ try xlocal | intro; hclean_relinearize tt ]
     | _ => apply hclean_step
     end end in
@@ -1413,6 +1428,8 @@ Proof.
   hclean_step tt.
   hclean_step tt.
   hclean_step tt.
+  hclean_step tt.
+  try hclean_step tt.
   autorewrite with hsimpl_neutral.
   unprotect_evars tt.
   gen_until_mark.

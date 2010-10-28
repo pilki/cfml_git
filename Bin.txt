@@ -2772,7 +2772,7 @@ Ltac strong' := skip.
 
 Definition Pure `{Rep a A} (X:A) (x:a) := 
   [ rep x X ].
-<<<<<<< .mine
+
 
 
 
@@ -2881,3 +2881,7 @@ intros. unfold_id_left tt. *)
 Ltac unfold_id_pre tt :=
   repeat hclean_onH ltac:(fun H => unfold_id_in H).
 v  unfold_id_pre tt;
+
+Notation "'If__' x 'Then' Q1 'Else' Q2" :=
+  (!I (fun H Q => (x = true -> Q1 H Q) /\ (x = false -> Q2 H Q)))
+  (at level 69, x at level 0) : charac.

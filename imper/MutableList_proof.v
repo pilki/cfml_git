@@ -47,7 +47,11 @@ Ltac hchange_forwards L modif cont :=
   let K := fresh "TEMP" in
   forwards_nounfold K: L; 
   match modif with
-  | __ => hchange_apply K cont
+  | __ => 
+     match type of K with
+     | _ = _ => hchange_apply (@himpl_proj1 _ _ K) cont
+     | _ => hchange_apply K cont
+     end
   | _ => hchange_apply (@modif _ _ K) cont
   end; clear K.
 
@@ -92,7 +96,11 @@ Ltac xchange_forwards L modif cont :=
   let K := fresh "TEMP" in
   forwards_nounfold K: L; 
   match modif with
-  | __ => xchange_apply K cont
+  | __ => 
+     match type of K with
+     | _ = _ => xchange_apply (@himpl_proj1 _ _ K) cont
+     | _ => xchange_apply K cont
+     end
   | _ => xchange_apply (@modif _ _ K) cont
   end; clear K.
 
@@ -178,62 +186,64 @@ Proof.
   hsimpl. auto_false.
 Qed.
 
+End MListProp.
 
 
+(********************************************************************)
+(* ** Length *)
 
-(*------------------------------------------------------------------*)
-(* ** MLists *)
+Notation "l '~~>' v" := (l ~> Ref Id v)
+  (at level 32, no associativity) : heap_scope.
 
+Ltac asserts_apply_core E cont := 
+  let H := fresh "TEMP" in asserts H: E; [ | applys H; cont tt ].
 
-Lemma focus_mnil : forall A a (T:A->a->hprop),
-  [] ==> null ~> MList T nil.
-Proof. intros. simpl. hdata_simpl. hsimpl~. Qed.
+Tactic Notation "asserts_apply" constr(E) :=
+  asserts_apply_core E idcont.
 
-Lemma unfocus_mnil : forall (l:loc) A a (T:A->a->hprop),
-  l ~> MList T nil ==> [l = null].
-Proof. intros. simpl. hdata_simpl. hsimpl~. Qed.
+Tactic Notation "asserts_apply" "~" constr(E) :=
+  asserts_apply_core E ltac:(fun _ => auto_tilde).
+Tactic Notation "asserts_apply" "*" constr(E) :=
+  asserts_apply_core E ltac:(fun _ => auto_star).
 
-Lemma unfocus_mnil' : forall A (L:list A) a (T:A->a->hprop),
-  null ~> MList T L ==> [L = nil].
+Tactic Notation "xapply_local" constr(E) :=
+  eapply local_weaken_pre; [xlocal | sapply E | try hsimpl ].
+
+Tactic Notation "xgeneralize" constr(E) :=
+  let H := fresh "TEMP" in asserts H: E; [ | xapply_local H ].
+
+Ltac xwhile_pre :=
+  let R := fresh "R" in let LR := fresh "L" R in
+  let HR := fresh "H" R in 
+  apply local_erase; intros R LR HR.
+
+Tactic Notation "xwhile" :=
+  xwhile_pre.
+Tactic Notation "xwhile" constr(E) :=
+  xwhile_pre; xgeneralize E.
+
+Lemma mlength_spec : forall a,
+  Spec mlength (l:mlist a) |R>> forall A (T:A->a->hprop) (L:list A),
+     R (l ~> MList T L) (\= (length L : int)).
 Proof.
-  intros. destruct L.
-  simpl. unfold hdata. hextract. hsimpl~. 
-  unfold hdata, MList. hchange focus_ref2_null. hextract. false.
-Qed.
+  xcf. intros.
+  xapp. xapp.
+  xseq.
+  xwhile. xgeneralize (forall L (k:int),
+    R (n ~~> k \* h ~~> l \* l ~> MList T L) 
+      (# n ~~> (k + length L) \* h ~~> null \* l ~> MList T L)).
+   clear L. induction L; intros.
+    xchange 
+ 
+  xseq (Hexists l', n ~> length L) \* p ~> RefOn l' \* l' ~> List T nil).
+    (* todo : xseq automatic if xwhile *)
+  xuntag. apply local_erase. exists (list A) (fun L' => Hexists k:int, Hexists l',
+     n ~> RefOn k \* p ~> RefOn l' \* l' ~> List T L' \* [k + length L' = length L]) (@list_sub A).
+  splits. prove_wf. exists L. hsimpl. math.
+  intros L'. xextract. intros k l' E. apply local_erase. 
+  skip.
+  intros l'. xgc. xapp. xsimpl. auto. 
 
-Lemma unfocus_mnil'' : forall (l:loc) A (L:list A) a (T:A->a->hprop),
-  l ~> MList T L ==> [l = null <-> L = nil] \* l ~> MList T L.
-Proof. skip. (*todo*) Qed.
-
-Lemma focus_mcons : forall (l:loc) a A (X:A) (L':list A) (T:A->a->hprop),
-  (l ~> MList T (X::L')) ==>
-  Hexists x l', (x ~> T X) \* (l' ~> MList T L') \* (l ~> Ref Id (x,l')).
-Proof.
-  intros. simpl. hdata_simpl. hchange (@focus_ref2 l). hextract. hsimpl.
-Qed.
-
-Lemma focus_mcons' : forall (l:loc) a A (L:list A) (T:A->a->hprop),
-  [l <> null] \* (l ~> MList T L) ==> 
-  Hexists x l', Hexists X L', 
-    [L = X::L'] \*  (l ~> Ref Id (x,l')) \* (x ~> T X) \* (l' ~> MList T L').
-Proof.
-  intros. destruct L. lets: (@unfocus_mnil l _ _ T). (* Show Existentials. *)
-  hextract. false~.
-  hchange (@focus_mcons l). hextract as x l' E. hsimpl~.  
-Qed.
-
-Lemma unfocus_mcons : forall (l:loc) a (x:a) (l':loc) A (X:A) (L':list A) (T:A->a->hprop),
-  (l ~> Ref Id (x,l')) \* (x ~> T X) \* (l' ~> MList T L') ==> 
-  (l ~> MList T (X::L')).
-Proof.
-  intros. simpl. hdata_simpl. hchange (@unfocus_ref2 l _ x _ l'). hsimpl.
-Qed.
-
-Global Opaque MList.
-
-Implicit Arguments unfocus_mnil [ ].
-Implicit Arguments unfocus_mcons [ a A ].
-Implicit Arguments focus_mcons [ a A ].
 
 
 
