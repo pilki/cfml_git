@@ -198,6 +198,12 @@ Lemma MList_nil : forall l (A a : Type) (T:A->a->hprop),
   l ~> MList T nil = [l = null].
 Proof. intros. hdata_simpl Mlist. auto. Qed.
 
+Lemma MList_unnil : forall (A a : Type) (T:A->a->hprop),
+  [] ==> null ~> MList T nil.
+Proof. intros. rewrite MList_nil. hsimpl~. Qed.
+
+
+
 Lemma MList_cons : forall l (A a : Type) (T:A->a->hprop) X L',
   l ~> MList T (X::L') = 
   Hexists x l', l ~> Mlist Id Id x l' \* x ~> T X \* l' ~> MList T L'.
@@ -331,7 +337,48 @@ Tactic Notation "xif_after" ident(H) :=
 Tactic Notation "xif_after" :=
   let H := fresh "H" in xif_after H.
 
- 
+Global Opaque MList.
+
+(********************************************************************)
+(* ** In place reversal *)
+
+Lemma rev_spec : forall a,
+  Spec inplace_rev (l:mlist a) |R>> forall A (T:A->a->hprop) (L:list A),
+     R (l ~> MList T L) (~> MList T (LibList.rev L)).
+Proof.
+  xcf. intros. xapps. xapps.
+  xwhile. xgeneralize (forall Lf Lr lf lr,
+    R (f ~~> lf \* lf ~> MList T Lf \* r ~~> lr \* lr ~> MList T Lr) 
+      (# Hexists l', f ~~> null \* r ~~> l' \* l' ~> MList T (rev Lf ++ Lr))).
+    applys Inv L (@nil A) l null. hchange (MList_unnil T). hsimpl.
+    intros Lf. induction_wf IH: (@list_sub_wf A) Lf.
+    intros. apply HR. clear HR. xif. xapps. xapp.
+    (* case cons *)
+    xif_after. xchange (MList_not_null lf) as x lf' X Lf' EL. auto.
+    xseq. xapps. xapps. xapps. xapp. xapp. xapp.
+    xchange (MList_uncons lf x lr T). subst Lf.
+    xapply_local~ (>>> IH Lf' (X::Lr) lf' lf). hsimpl. xsimpl. rew_list.
+    (*case nil *)
+    xif_after. xret. hchange MList_null. xsimpl. subst~. 
+  xextract as l'. xgc. xapp. rew_app. hextract. subst. hsimpl.
+Qed.
+
+
+
+let inplace_rev (l:'a mlist) =
+  let f = ref l in
+  let r = ref (null:'a mlist) in
+  while !f != null do
+    let c = !f in
+    let n = c.tl in
+    c.tl <- !r;
+    r := c;
+    f := n;
+  done;
+  !r
+
+
+
 (********************************************************************)
 (* ** Length *)
 
@@ -359,28 +406,11 @@ Qed.
 
 
 
-(********************************************************************)
-(* ** Length *)
-(*
-Lemma mlength_spec : forall a,
-  Spec mlength (l:mlist a) |R>> forall A (T:A->a->hprop) (L:list A),
-     R (l ~> List T L) (\= (length L : int)).
-Proof.
-  xcf. unfold mlist. intros.
-  xapp. xapp. xseq (Hexists l', n ~> @RefOn int (length L) \* p ~> RefOn l' \* l' ~> List T nil).
-    (* todo : xseq automatic if xwhile *)
-  xuntag. apply local_erase. exists (list A) (fun L' => Hexists k:int, Hexists l',
-     n ~> RefOn k \* p ~> RefOn l' \* l' ~> List T L' \* [k + length L' = length L]) (@list_sub A).
-  splits. prove_wf. exists L. hsimpl. math.
-  intros L'. xextract. intros k l' E. apply local_erase. 
-  skip.
-  intros l'. xgc. xapp. xsimpl. auto. 
-Qed.
-*)
 
 
-(********************************************************************)
-(* ** In place reversal *)
+
+
+
 
 
 (*-------------
