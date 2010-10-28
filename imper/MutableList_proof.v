@@ -339,6 +339,30 @@ Tactic Notation "xif_after" :=
 
 Global Opaque MList.
 
+
+
+(********************************************************************)
+(* ** CPS-append *)
+
+Lemma append_spec : forall a b A,
+  Spec cps_mappend (x:loc) (y:loc) (k:func) |R>>
+     forall (L M:list A) (T:A->a->hprop) H (Q:b->hprop),
+     (forall z, AppReturns k z (z ~> MList T (L++M) \* H) Q) ->
+     R (x ~> MList T L \* y ~> MList T M \* H) Q.
+Proof.
+  intros. xinduct (unproj41 loc loc func (@list_sub A)).
+  xcf. intros x y k L IH M T H Q Sk. xif. xapp.
+  xif_after. xchange MList_null as E. subst. apply Sk.
+  xif_after. xchange (MList_not_null x) as v l' V L' E; auto. subst L.
+   xfun (fun k' => Spec k' z |R>> 
+     R (x ~> Mlist Id Id v l' \* v ~> T V \* z ~> MList T (L'++M) \* H) Q).
+     xapp. xchange (MList_uncons x v z T). rew_app in Sk. apply Sk.
+   xapps. xapp~ (x ~> Mlist Id Id v l' \* v ~> T V \* H). intros. xapp_hyp. hsimpl.
+Qed.
+
+
+
+
 (********************************************************************)
 (* ** In place reversal *)
 
@@ -357,26 +381,11 @@ Proof.
     xif_after. xchange (MList_not_null lf) as x lf' X Lf' EL. auto.
     xseq. xapps. xapps. xapps. xapp. xapp. xapp.
     xchange (MList_uncons lf x lr T). subst Lf.
-    xapply_local~ (>>> IH Lf' (X::Lr) lf' lf). hsimpl. xsimpl. rew_list.
+    xapply_local~ (>>> IH Lf' (X::Lr) lf' lf). hsimpl. xsimpl. rew_rev~.
     (*case nil *)
     xif_after. xret. hchange MList_null. xsimpl. subst~. 
   xextract as l'. xgc. xapp. rew_app. hextract. subst. hsimpl.
 Qed.
-
-
-
-let inplace_rev (l:'a mlist) =
-  let f = ref l in
-  let r = ref (null:'a mlist) in
-  while !f != null do
-    let c = !f in
-    let n = c.tl in
-    c.tl <- !r;
-    r := c;
-    f := n;
-  done;
-  !r
-
 
 
 (********************************************************************)
@@ -407,67 +416,6 @@ Qed.
 
 
 
-
-
-
-
-
-
-(*-------------
-
-Lemma rev_spec : forall a,
-  Spec ListRev_ml.rev (l:mlist a) |R>> forall A (T:A->a->hprop) (L:list A),
-     R (l ~> List T L) (~> List T (LibList.rev L)).
-Proof.
-  xcf. intros.
-  xapp. 
-  xapp. xchange (focus_nil T). xchange (@unfocus_ref r _ null).
-  xseq.
-  (* todo: xwhile loops *)
-  xwhile_core_debug (fun L1 => Hexists L2, 
-     f ~> Ref (List T) L1 \* r ~> Ref (List T) L2 \* [L = rev L2 ++ L1]) (@list_sub A) L.
-    prove_wf.
-    exists L. hchange (@unfocus_ref f _ l). hsimpl. rew_list~.
-    intros L1. xextract as L2 E. xchange (@focus_ref f). xextract as fl. xcond.
-      xapp. intro_subst. xapp. intros b. hextract as Eb. subst b. hsimpl. xclean.
-      intros Eb. xclean. xchange~ (@focus_cons' fl). xextract as x fl' X L'. intro_subst.
-      xapp. intro_subst. 
-      xapp. intro_subst.
-      xmatch.
-      xchange (@focus_ref r). xextract as b. 
-      xapp. intro_subst.
-      xlet as rl'. xapp. simpl.
-      xapp. 
-      xapp. intros _.
-      hchange (@unfocus_cons rl' _ x b A).
-      hchange (@unfocus_ref r _ rl').
-      hchange (@unfocus_ref f _ fl').
-      hsimpl. auto. rew_list~. 
-     hextract as F. xclean. subst fl.
-     hchange (unfocus_nil'). hextract. subst L1. rew_list in E. 
-      rewrite <- (@rev_rev _ L2). rewrite <- E. hsimpl.
-  xchange (@focus_ref r). xlocal. (* todo: why? *)
-  xextract as x. xapp. intros z. hextract. subst. hsimpl.
-Qed.
-
-
-
-
-
-
-
-  (*
-   eapply (@xwhile_frame _ (fun L' => Hexists k l',
-     n ~> RefOn k \* p ~> RefOn l' \* l' ~> List T L' \* [k + length L' = length L]) (@list_sub _)).
-
-  xwhile_manual (fun L' => Hexists k l',
-     n ~> RefOn k \* p ~> RefOn l' \* l' ~> List T L' \* [k + length L' = length L])
-     (@list_sub A). L
-  *)
-
-
-
--------------*)
 
 
 
