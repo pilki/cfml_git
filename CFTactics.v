@@ -1296,7 +1296,7 @@ Tactic Notation "xfun_induction_heap_nointro" constr(S) constr(I) :=
 
 
 (*--------------------------------------------------------*)
-(* ** [xfor] *)
+(* ** [xfor]--old
 
 Ltac xfor_bounds_intro tt :=
   intro; let i := get_last_hyp tt in
@@ -1373,6 +1373,7 @@ Tactic Notation "xfor_general_manual" constr(I) "as" ident(H) :=
 Tactic Notation "xfor_general_manual" constr(I) := 
   let H := fresh "Hfor" in xfor_general_manual I as H.
 
+*)
 
 (*--------------------------------------------------------*)
 (* ** [xwhile] --old
