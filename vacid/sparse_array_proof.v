@@ -1,6 +1,13 @@
 Set Implicit Arguments.
 Require Import CFLib LibSet LibMap LibArray sparse_array_ml.
 
+Lemma If_eq : forall (A:Type) (P P':Prop) (x x' y y' : A), 
+  (P <-> P') -> (x = x') -> (y = y') ->
+  (If P then x else y) = (If P' then x' else y').
+Proof. intros. subst. asserts_rewrite (P = P'). extens~. auto. Qed.
+
+
+
 (****************************************************)
 (** Shorthand *)
 
@@ -103,8 +110,46 @@ Qed.
 (****************************************************)
 (** Verification *)
 
+
+Lemma Id_focus : forall A (x n : A),
+  x ~> Id n ==> [x = n].
+Proof. intros. unfold Id. hdata_simpl. hextract. hsimpl~. Qed.
+
+Lemma Id_unfocus : forall A (x : A),
+  [] ==> x ~> Id x.
+Proof. intros. unfold Id. hdata_simpl. hextract. hsimpl~. Qed.
+
+Implicit Arguments Id_focus [A].
+Implicit Arguments Id_unfocus [A].
+
 (*--------------------------------------------------*)
 (** Function [valid] *)
+
+Lemma hsimpl_id_unify : forall A (x : A) H' H1 H2,
+  H' ==> H1 \* H2 -> H' ==> H1 \* (x ~> Id x \* H2).
+Proof. intros. apply~ hsimpl_id. Qed.
+
+
+Ltac hsimpl_step tt ::=
+  match goal with |- ?HL ==> ?HA \* ?HN =>
+  match HN with
+  | ?H \* _ =>
+    match H with
+    | [] => apply hsimpl_empty
+    | [_] => apply hsimpl_prop
+    | heap_is_pack _ => hsimpl_extract_exists tt
+    | _ \* _ => apply hsimpl_assoc
+    | heap_is_single _ _ => hsimpl_try_same tt
+    | ?H => hsimpl_find_same H HL 
+    | hdata _ ?l => hsimpl_find_data l HL ltac:(hsimpl_find_data_post)
+    | ?x ~> Id _ => check_noevar x; apply hsimpl_id
+    | ?x ~> _ _ => check_noevar x; apply hsimpl_id_unify
+    | ?H => apply hsimpl_keep
+    end
+  | [] => fail 1
+  | _ => apply hsimpl_starify
+  end end.
+
 
 Lemma valid_spec :
   Spec valid i s |R>> forall n Val Idx Back, 
@@ -114,14 +159,13 @@ Lemma valid_spec :
 Proof.
   xcf. introv Siz Ii Le. unfold SarrayPacked.
   xchange (Sarray_focus s) as n' val idx back E. subst n'.
-  xapps. xapps*. xapps. xif. xret. 
+  xapps. xapps*. xapps. xif. 
   (* case inbound *)
-  xif_after. xapps. xapps. hnf in Siz. eapply array_index_prove. math.
-  xchange (Id_unfocus n). 
-  xchange (Sarray_unfocus s n val idx back). 
+  xapps. xapps. hnf in Siz. eapply array_index_prove. math.
+  xchange (Sarray_unfocus s).
   xret. hsimpl. rew_logics. unfolds Valid. splits*.
   (* case outof bound *)
-  xif_after. xchange (Id_unfocus n). xchange (Sarray_unfocus s n val idx back). 
+  xchange (Sarray_unfocus s). 
   xret. hsimpl. fold_bool. fold_prop. unfold Valid.
   cuts*: (~ index n (Idx\(i))). rewrite* int_index_def.
 Qed.
@@ -132,6 +176,12 @@ Hint Extern 1 (RegisterSpec valid) => Provide valid_spec.
 (*--------------------------------------------------*)
 (** Function [get] *)
 
+Ltac hsimpl_find_data_post tt ::=
+  try solve 
+   [ reflexivity
+   | fequal; fequal; first [ eassumption | symmetry; eassumption ] ].
+
+
 Lemma get_spec' :
   Spec get i s |R>> forall f, index L i -> 
     keep R (s ~> SparseArray f) (\= f i).
@@ -140,13 +190,12 @@ Proof.
   unfold SparseArray. hdata_simpl.
   xextract as n Val Idx Back (Siz&Bok&Iok).
   xapps*. hnf in Siz; math.
-  lets M: Iok i. xif; case_if in M as C; tryfalse; clear C.
+  lets M: Iok i. xif; case_if in M; tryfalse.
   (* case is an index *)
-  xchange (Sarray_focus s) as n' val idx back. xapps. xapp*.
-  intros r. hchange (Sarray_unfocus s n' val idx back).
-  hextract. subst. hsimpl*.
+  xchange (Sarray_focus s) as n' val idx back E. subst n'. xapps. xapp*.
+  intros r. hchanges (Sarray_unfocus s); subst~.
   (* case not an index *)
-  xret. hsimpl*.
+  xrets*.
 Qed. 
 
 
