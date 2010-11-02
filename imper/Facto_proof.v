@@ -16,7 +16,7 @@ Notation "'While' Q1 'Do' Q2 '_Done'" :=
         -> R H Q))
   (at level 69, Q2 at level 68, only parsing) : charac.
 
-Lemma while_loop_cf_to_inv : 
+Lemma while_loop_cf_to_inv' : 
    forall (A:Type) (I:A->hprop) (J:A->bool->hprop) (lt:binary A),
    forall (F1:~~bool) (F2:~~unit) H (Q:unit->hprop),
    wf lt -> 
@@ -35,6 +35,37 @@ Proof.
   xret. destruct x; auto_false.
 Qed.
 
+Ltac applys_base E ::= 
+  match type of E with
+  | list Boxer => applys_build E
+  | _ => first [ rapply E | applys_build E ]
+  end; fast_rm_inside E.
+
+Lemma while_loop_cf_to_inv : 
+   forall (A:Type) (I:A->hprop) (lt:binary A) (W:wf lt),
+   forall (F1:~~bool) (F2:~~unit) H (Q:unit->hprop),
+   (exists X0, H ==> (I X0)) ->
+   (forall X, local (fun H Q => exists Q',
+        F1 H Q' 
+     /\ F2 (Q' true) (# Hexists Y, (I Y) \* [lt Y X])
+     /\ Q' false ==> Q tt) (I X) Q) ->
+  (While F1 Do F2 _Done) H Q.
+(*
+Proof.
+  introv W (X0&I0) M. apply local_erase.
+  introv LR HR. applys* local_weaken (rm I0). gen X0. 
+  intros X. induction_wf IH: W X. 
+  rewrite LR. introv Hh.
+  lets (H1&H2&Q1&H'&?&(Q'&?&?&?)&?): (>>> (rm M) X Hh).
+  exists (H1 \* H2) [] (Q1 \*+ H2) H'. splits~.
+  rew_heap~.
+  applys HR. xextract. xlet (Q' \*+ H2). skip. (* todo: F1 local *)
+  xif. xseq  (#Hexists Y, I Y \* [lt Y X] \* H2). skip. 
+  intros Y L. xapply_local* IH; hsimpl.
+  xret. destruct x; auto_false. hsimpl. 
+Qed.
+*)
+Admitted.
 
 Notation "'For' i '=' a 'To' b 'Do' Q1 '_Done'" :=
   (!For (fun H Q => forall S:int->~~unit, is_local_1 S ->
@@ -68,7 +99,7 @@ Proof.
   xret. math_rewrite~ (i = b +1).  
 Qed.
 
-Lemma for_loop_cf_to_inv_gen : 
+Lemma for_loop_cf_to_inv_gen' : 
    forall I H',
    forall (a:int) (b:int) (F:int->~~unit) H,
    (a <= (b)%Z ->
@@ -78,16 +109,53 @@ Lemma for_loop_cf_to_inv_gen :
   (For i = a To b Do F i _Done) H (# I ((b)%Z+1) \* H').
 Proof. intros. applys* for_loop_cf_to_inv. Qed.
 
+Lemma for_loop_cf_to_inv_gen : 
+   forall I H',
+   forall (a:int) (b:int) (F:int->~~unit) H Q,
+   (a <= (b)%Z -> H ==> I a \* H') ->
+   (forall i, a <= i <= (b)%Z -> F i (I i) (# I(i+1))) ->
+   (a > (b)%Z -> H ==> I ((b)%Z+1) \* H') ->  
+   (# (I ((b)%Z+1) \* H')) ===> Q ->
+  (For i = a To b Do F i _Done) H Q.
+Proof. intros. applys* for_loop_cf_to_inv. intros C. hchange (H2 C). hchange (H3 tt). hsimpl. Qed.
+
+Ltac xfor_inv_gen_base I i C :=
+  eapply (@for_loop_cf_to_inv_gen I); 
+  [ intros C
+  | intros i C
+  | intros C
+  | apply rel_le_refl ].
+
+Tactic Notation "xfor_inv_gen" constr(I) "as" ident(i) ident(C) :=
+  xfor_inv_gen_base I i C.
+Tactic Notation "xfor_inv_gen" constr(I) "as" ident(i) :=
+  let C := fresh "C" i in xfor_inv_gen I as i C.
+Tactic Notation "xfor_inv_gen" constr(I) :=
+  let i := fresh "i" in xfor_inv_gen I as i.
+
 Lemma for_loop_cf_to_inv_up : 
    forall I H',
    forall (a:int) (b:int) (F:int->~~unit) H (Q:unit->hprop),
    (a <= (b)%Z) ->
    (H ==> I a \* H') ->
    (forall i, a <= i /\ i <= (b)%Z -> F i (I i) (# I(i+1))) ->
-   (I ((b)%Z+1) \* H' ==> Q tt) ->
+   ((# I ((b)%Z+1) \* H') ===> Q) ->
    (For i = a To b Do F i _Done) H Q.
 Proof. intros. applys* for_loop_cf_to_inv. intros. math. Qed.
 
+Ltac xfor_inv_base I i C :=
+  eapply (@for_loop_cf_to_inv_up I); 
+  [ 
+  | 
+  | intros i C
+  | apply rel_le_refl ].
+
+Tactic Notation "xfor_inv" constr(I) "as" ident(i) ident(C) :=
+  xfor_inv_gen_base I i C.
+Tactic Notation "xfor_inv" constr(I) "as" ident(i) :=
+  let C := fresh "C" i in xfor_inv I as i C.
+Tactic Notation "xfor_inv" constr(I) :=
+  let i := fresh "i" in xfor_inv I as i.
 
 
 Ltac auto_tilde ::= auto with maths.
@@ -134,36 +202,14 @@ Proof.
   xapp. hsimpl~.
 Qed.
 
-*)
 (********************************************************************)
 (* ** Factorial function: for-loop implementation, with invariant *)
 
-Lemma for_loop_cf_to_inv_gen' : 
-   forall I H',
-   forall (a:int) (b:int) (F:int->~~unit) H Q,
-   (a <= (b)%Z -> H ==> I a \* H') ->
-   (forall i, a <= i <= (b)%Z -> F i (I i) (# I(i+1))) ->
-   (a > (b)%Z -> H ==> I ((b)%Z+1) \* H') ->  
-   (# (I ((b)%Z+1) \* H')) ===> Q ->
-  (For i = a To b Do F i _Done) H Q.
-Proof. intros. applys* for_loop_cf_to_inv. intros C. hchange (H2 C). hchange (H3 tt). hsimpl. Qed.
-
-Ltac xfor_inv_gen_base I i C :=
-  eapply (@for_loop_cf_to_inv_gen' I); 
-  [ intros C
-  | intros i C
-  | intros C
-  | apply rel_le_refl ].
-
-Tactic Notation "xfor_inv_gen_base" constr(I) "as" ident(i) ident(C) :=
-  xfor_inv_gen_base I i C.
-
-
-Lemma facto_for_spec : Spec facto_for n |R>>
+Lemma facto_for_spec' : Spec facto_for n |R>>
   n >= 0 -> R [] (\= fact n).
 Proof.
   xcf. intros. xapp. xseq.
-  xfor_inv_gen_base (fun i:int => [0 < i <= n+1] \* (r ~~> fact (i-1))) as i C.
+  xfor_inv_gen (fun i:int => [0 < i <= n+1] \* (r ~~> fact (i-1))) as i.
   hsimpl. simpl. rewrite~ fact_zero. math.
   xapps. xapps. hsimpl.
     math_rewrite (i+1-1 = i). rewrite~ (@fact_succ i). ring.
@@ -181,22 +227,48 @@ Qed.
 Lemma facto_while_spec : Spec facto_while n |R>>
   n >= 0 -> R [] (\= fact n).
 Proof.
-  xcf. intros. xapp. xapp. 
-xuntag. apply while_loop_cf_to_inv.
-
- xwhile.  
+  xcf. intros. xapp. xapp. xwhile. 
   xgeneralize (forall i:int, R ([0 <= i <= n] \* m ~~> (i+1) \* r ~~> (fact i)) 
-              
                                 (# m ~~> (n+1) \* r ~~> (fact n))).
     xapply_local~ (Inv 0). hsimpl. rewrite~ fact_zero. math.
     intros i. induction_wf IH: (int_upto_wf (n+1)) i. xextract as Gt.
-    apply HR. clear HR. xif. xapps. xret.
-    xif_after. xseq. xapps. xapps. xapps. xapps. xapp.
+    apply (rm HR). xlet. xapps. xret. xifs.
+    xseq. xapps. xapps. xapps. xapps. xapp.
      xapply_local~ (IH (i+1)); hsimpl~.
-     rewrite~ (@fact_succ (i+1)). math_rewrite (i+1-1=i). ring.
-    xif_after. xret. math_rewrite (i=n). hsimpl.
-  xapp. hsimpl.
+      rewrite~ (@fact_succ (i+1)). math_rewrite (i+1-1=i). ring.
+    math_rewrite (i=n). xret~.
+  xapp. hsimpl~.
 Qed.
+
+*)
+
+(********************************************************************)
+(* ** Factorial function: while-loop implementation, invariant *)
+
+Ltac xok_core cont ::= 
+  solve [ cbv beta; apply rel_le_refl
+        | apply pred_le_refl
+        | apply hsimpl_to_qunit; reflexivity
+        | hextract; hsimpl; cont tt ].
+
+
+Lemma facto_while_spec' : Spec facto_while n |R>>
+  n >= 0 -> R [] (\= fact n).
+Proof.
+  xcf. intros. xapp. xapp. xseq.
+  eapply (@while_loop_cf_to_inv _ (fun i:int => [0 <= i <= n] \* m ~~> (i+1) \* r ~~> (fact i)) (upto (n+1))).
+  prove_wf.
+  exists 0. hsimpl. rewrite~ fact_zero. math.
+  intros i. xextract as C. apply local_erase. esplit. splits 3%nat.
+    xapps. xret.
+    xextract. intros. xclean.  (* todo: simplify this *)
+     xapps. xapps. xapps. xapps. xapps. hsimpl. rewrite~ (@fact_succ (i+1)). math_rewrite (i+1-1=i). ring. 
+     auto with maths.
+     math. hextract. xclean. math_rewrite (i = n). xok.
+  xapps. hsimpl~.
+Qed.
+
+  
 
 
 
