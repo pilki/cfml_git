@@ -3455,3 +3455,35 @@ Ltac hsimpl_extract_exists_step tt :=
   first [ hsimpl_extract_exists_with_hints tt
         | eapply hsimpl_extract_exists ];
    autorewrite with hsimpl_assoc.
+
+
+(* deprecated
+Lemma hsimpl_demo_5 : forall n J H,
+  n = 2 ->
+  J n \* H ==> H \* Hexists y, [y <> 3] \* J y.
+Proof.
+  intros. dup 3.
+  hsimpl. math.
+  hsimpl n. math.
+  hsimpl 2. subst~. math.
+Qed.
+*)
+
+
+
+
+Ltac hclean_protect tt :=
+  let Q' := fresh "TEMP" in
+  hclean_onQ ltac:(fun Q => set (Q' := Q : ltac_tag_subst _));
+  do 5 try (hclean_onH ltac:(fun H => protect_evars_in H); instantiate).
+
+Ltac hclean_relinearize tt :=
+  let go Hpre := match Hpre with ?H \* (_ \* _) =>
+    let T := fresh "TEMP" in 
+    sets T: H; 
+    autorewrite with hsimpl_assoc; 
+    subst T
+    end in
+  hclean_onH ltac:(go).
+ 
+

@@ -928,8 +928,6 @@ Tactic Notation "hsimpl" "~" constr(X1) constr(X2) :=
 Tactic Notation "hsimpl" "~" constr(X1) constr(X2) constr(X3) :=
   hsimpl X1 X2 X3; auto~.
 
-
-
 Lemma heap_weaken_star : forall H1' H1 H2 H3,
   (H1 ==> H1') -> (H1' \* H2 ==> H3) -> (H1 \* H2 ==> H3).
 Proof.
