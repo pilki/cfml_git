@@ -394,6 +394,9 @@ Tactic Notation "xextract" "as" simple_intropattern(I1) simple_intropattern(I2)
  simple_intropattern(I6) simple_intropattern(I7) := 
   xextract; intros I1 I2 I3 I4 I5 I6 I7; xclean.
 
+Tactic Notation "xextracts" :=
+  let E := fresh "TEMP" in xextract as E; subst_hyp E.
+
 Tactic Notation "xsimpl" := try hextract; try hsimpl.
 Tactic Notation "xsimpl" "~" := xsimpl; xauto~.
 Tactic Notation "xsimpl" "*" := xsimpl; xauto*.
@@ -527,6 +530,17 @@ Tactic Notation "xret" "~" :=
   xret; xauto~.
 Tactic Notation "xret" "*" :=  
   xret; xauto*.
+
+Ltac xrets_base :=
+  xret; xsimpl.
+
+Tactic Notation "xrets" :=
+  xrets_base.
+Tactic Notation "xrets" "~" :=  
+  xrets; xauto~.
+Tactic Notation "xrets" "*" :=  
+  xrets; xauto*.
+
 
 (*--------------------------------------------------------*)
 (* ** [xpost] *)
@@ -811,6 +825,7 @@ Ltac xapps_core spec args solver :=
   match ltac_get_tag tt with
   | tag_let_trm => xlet; [ cont1 tt | cont2 tt ]
   | tag_seq =>     xseq; [ cont1 tt | cont2 tt ]
+  | tag_apply => xapp_with spec args solver
   end.
 
 Tactic Notation "xapps" := 
@@ -1312,7 +1327,7 @@ Ltac xif_post H :=
    try (check_noevar_hyp H; rew_logicb in H; rew_logic in H).
 
 Ltac xif_core H :=
-  split; intro H.
+  apply local_erase; split; intro H.
 
 Ltac xif_base H cont :=
   xif_core H; cont tt.
@@ -1327,6 +1342,9 @@ Tactic Notation "xif" ident(H) :=
   xif_auto H.
 Tactic Notation "xif" :=
   let H := fresh "C" in xif H.
+
+Tactic Notation "xifs" :=
+  xextracts; xif.
 
 (* --old
 Ltac xif_core :=

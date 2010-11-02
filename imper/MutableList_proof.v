@@ -49,36 +49,12 @@ Proof.
   rewrite MList_null. hsimpl.
 Qed.
 
-Opaque MList.
-
 Lemma MList_not_null_keep : forall l A L (a : Type) (T:A->a->hprop),
   l <> null -> 
   l ~> MList T L ==> l ~> MList T L \* [L <> nil].
 Proof.
   intros. destruct L.
-  hchange_debug -> (MList_nil l T).
-hsimpl_setup tt.
-hsimpl_step tt.
-hsimpl_step tt.
-hsimpl_step tt.
-  try apply hsimpl_stop.
-  try apply hsimpl_stop.
-  try apply pred_le_refl;
-  try hsimpl_hint_remove tt;
-  try remove_empty_heaps_right tt;
-  try remove_empty_heaps_left tt.
-
-hsimpl.
-hcancel.
-hextract.
-hsimpl. hsimpl. 
-let L := constr:(MList_nil l T) in
-forwards_nounfold_then L ltac:(fun K => pose (K)).
-lets: (pred_le_proj1 _ e).
-
-  hchange_debug -> (MList_nil l T).
-
- hextract. false.
+  hchanges -> (MList_nil l T).
   hsimpl. auto_false.
 Qed.
 
@@ -87,7 +63,7 @@ Lemma MList_not_null : forall l A L (a : Type) (T:A->a->hprop),
   l ~> MList T L ==> Hexists x l' X L', [L = X::L'] \*
     l ~> Mlist Id Id x l' \* x ~> T X \* l' ~> MList T L'.
 Proof.
-  intros. hchange~ (@MList_not_null_keep _ l). hextract. 
+  intros. hchange~ (@MList_not_null_keep l). hextract.
   destruct L; tryfalse.
   hchange (MList_cons l). hextract. hsimpl~.
 Qed.
@@ -112,16 +88,16 @@ Proof.
     R (n ~~> k \* h ~~> l \* l ~> MList T L) 
       (# n ~~> (k + length L) \* h ~~> null \* l ~> MList T L)).
    applys (>>> Inv l). hsimpl.
-   clear l L. intros L. induction_wf IH: (@list_sub_wf A) L; intros.
-   apply HR. clear HR. xif. xapps. xapp.
+   clear l L. intros L. induction_wf IH: (@list_sub_wf A) L; intros. 
+   applys (rm HR). xlet. xapps. xapps. xifs.
    (* case cons *)
-   xextract as E. xchange (MList_not_null l) as x l' X L' EL. auto.
+   xchange (MList_not_null l) as x l' X L' EL. auto.
    xapps. xapps. xapps. xapp. subst L. xapply_local~ (>>> IH L' l').
-   hsimpl. intros _. hchange (MList_uncons l x l' T). hsimpl. rew_length. math.
+   hsimpl. intros _. hchanges (MList_uncons l). rew_length. math.
    (* case nil *)
-   xextract as E. subst. xchange MList_null_keep as M. subst. 
-    xret. xsimpl. rew_length. math.
-  xapp. hsimpl.
+   subst. xchange MList_null_keep as M. subst. 
+    xrets. rew_length. math.
+  xapp. hsimpl~.
 Qed.
 
 
@@ -138,14 +114,14 @@ Proof.
       (# Hexists l', f ~~> null \* r ~~> l' \* l' ~> MList T (rev Lf ++ Lr))).
     applys Inv L (@nil A) l null. hchange (MList_unnil T). hsimpl.
     intros Lf. induction_wf IH: (@list_sub_wf A) Lf.
-    intros. apply HR. clear HR. xif. xapps. xapp.
+    intros. applys (rm HR). xlet. xapps. xapps. xifs.
     (* case cons *)
-    xif_after. xchange (MList_not_null lf) as x lf' X Lf' EL. auto.
+    xchange (MList_not_null lf) as x lf' X Lf' EL. auto.
     xseq. xapps. xapps. xapps. xapp. xapp. xapp.
-    xchange (MList_uncons lf x lr T). subst Lf.
-    xapply_local~ (>>> IH Lf' (X::Lr) lf' lf). hsimpl. xsimpl. rew_rev~.
+    xchange (MList_uncons lf). subst Lf.
+    xapply_local~ (>>> (rm IH) Lf' (X::Lr) lf' lf). hsimpl. xsimpl. rew_rev~.
     (*case nil *)
-    xif_after. xret. hchange MList_null. xsimpl. subst~. 
+    xret. hchange MList_null. xsimpl. subst~. 
   xextract as l'. xgc. xapp. rew_app. hextract. subst. hsimpl.
 Qed.
 
@@ -160,15 +136,15 @@ Lemma append_spec : forall a b A,
      R (x ~> MList T L \* y ~> MList T M \* H) Q.
 Proof.
   intros. xinduct (unproj41 loc loc func (@list_sub A)).
-  xcf. intros x y k L IH M T H Q Sk. xif. xapp.
-  xif_after. xchange MList_null as E. subst. apply Sk.
-  xif_after. xchange (MList_not_null x) as v l' V L' E; auto. subst L.
+  xcf. intros x y k L IH M T H Q Sk. xapps. xif.
+  xchange MList_null as E. subst. apply Sk.
+  xchange (MList_not_null x) as v l' V L' E; auto. subst L.
    xfun (fun k' => Spec k' z |R>> 
      R (x ~> Mlist Id Id v l' \* v ~> T V \* z ~> MList T (L'++M) \* H) Q).
-     xapp. xchange (MList_uncons x v z T). rew_app in Sk. apply Sk.
-   xapps. xapp~ (x ~> Mlist Id Id v l' \* v ~> T V \* H). intros. xapp_hyp. hsimpl.
+     xapp. xchange (MList_uncons x) as. applys_eq Sk 2. apply pred_le_extens; hsimpl.
+   xapps. xapp~ (x ~> Mlist Id Id v l' \* v ~> T V \* H).
+    intros. xapply_local* (spec_elim_1_1 Sf). xsimpl. xok.
 Qed.
-
 
 
 

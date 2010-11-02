@@ -391,7 +391,7 @@ Notation "'App' f x1 x2 x3 x4 ;" :=
   (at level 68, f at level 0, x1 at level 0, x2 at level 0,
    x3 at level 0, x4 at level 0) : charac.
 
-Notation "'AppReturns'" := app_1. (*todo: move *)
+Notation "'AppReturns'" := (@app_1 _ _). 
 
 (** Let *)
 

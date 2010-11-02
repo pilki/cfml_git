@@ -1073,39 +1073,50 @@ Ltac hchange_forwards L modif cont1 cont2 :=
 
 Ltac hcancel_cont tt :=
   instantiate; hcancel.
+Ltac hsimpl_cont tt :=
+  instantiate; hsimpl.
 
-Ltac hchange_core E modif cont2 :=
+Ltac hchange_core E modif cont1 cont2 :=
   hextract;
   match E with
   (*  | ?H ==> ?H' => hchange_with_core H H' --todo*)
-  | _ => hchange_forwards E modif ltac:(hcancel_cont) ltac:(cont2)
+  | _ => hchange_forwards E modif ltac:(cont1) ltac:(cont2)
   end.
 
+Ltac hchange_debug_base E modif :=
+  hchange_forwards E modif ltac:(idcont) ltac:(idcont).
+
 Tactic Notation "hchange_debug" constr(E) :=
-  hchange_forwards E __ ltac:(idcont) ltac:(idcont).
+  hchange_debug_base E __.
 Tactic Notation "hchange_debug" "->" constr(E) :=
-  hchange_forwards E pred_le_proj1 ltac:(idcont) ltac:(idcont).
+  hchange_debug_base E pred_le_proj1.
 Tactic Notation "hchange_debug" "<-" constr(E) :=
-  hchange_forwards pred_le_proj2 ltac:(idcont) ltac:(idcont).
+  hchange_debug_base pred_le_proj2.
+
+Ltac hchange_base E modif :=
+  hchange_core E modif ltac:(hcancel_cont) ltac:(idcont).
 
 Tactic Notation "hchange" constr(E) :=
-  hchange_core E __ ltac:(idcont).
+  hchange_base E __.
 Tactic Notation "hchange" "->" constr(E) :=
-  hchange_core E pred_le_proj1 ltac:(idcont).
+  hchange_base E pred_le_proj1.
 Tactic Notation "hchange" "<-" constr(E) :=
-  hchange_core E pred_le_proj2 ltac:(idcont).
+  hchange_base E pred_le_proj2.
 
 Tactic Notation "hchange" "~" constr(E) :=
   hchange E; auto~.
 Tactic Notation "hchange" "*" constr(E) :=
   hchange E; auto*.
 
+Ltac hchanges_base E modif :=
+  hchange_core E modif ltac:(hcancel_cont)ltac:(hsimpl_cont).
+
 Tactic Notation "hchanges" constr(E) :=
-  hchange_core E __ ltac:(hcancel_cont).
+  hchanges_base E __.
 Tactic Notation "hchanges" "->" constr(E) :=
-  hchange_core E pred_le_proj1 ltac:(hcancel_cont).
+  hchanges_base E pred_le_proj1.
 Tactic Notation "hchange" "<-" constr(E) :=
-  hchange_core E pred_le_proj2 ltac:(hcancel_cont).
+  hchanges_base E pred_le_proj2.
 
 Tactic Notation "hchanges" "~" constr(E) :=
   hchanges E; auto~.
