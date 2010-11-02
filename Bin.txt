@@ -3396,3 +3396,62 @@ Proof.
 Qed.
 
 Hint Extern 1 (RegisterSpec iter) => Provide iter_spec.
+
+
+
+(*
+Hint Rewrite <- star_assoc : hsimpl_assoc.
+Hint Rewrite star_neutral_l star_neutral_r : hsimpl_neutral.
+*)
+
+(*
+Lemma hextract_last : forall H1 H2 H',
+  (H2 \* H1)  ==> H' -> H1 \* H2 ==> H'.
+Proof. intros. rewrite (star_comm H2) in H. auto. Qed.
+*)
+
+(*
+Lemma hextract_prop : forall H1 H' (P:Prop),
+  (P -> H1 \* [] ==> H') -> H1 \* [P] ==> H'.
+Proof.
+  introv W. intros h Hh.
+  destruct Hh as (h1&h2'&?&(?&?)&?&?).
+  apply~ W. subst. rew_heap. rewrite~ heap_union_neutral_r.
+Qed.
+*)
+(*
+Lemma hextract_id : forall A (x X : A) H1 H',
+  (x = X -> H1 \* [] ==> H') -> H1 \* (x ~> Id X) ==> H'.
+Proof. intros. unfold Id. apply~ hextract_prop. Qed.
+*)
+
+(*
+Lemma hextract_exists : forall A H1 H' (J:A->hprop),
+  (forall x, H1 \* J x ==> H') -> H1 \* (heap_is_pack J) ==> H'.
+Proof.  
+  introv W. intros h Hh. destruct Hh as (h1&h2'&?&(x&?)&?&?).
+  applys~ W x. exists h1 h2'. subst h. splits~. 
+Qed.
+*)
+  end end.
+
+(*
+  | [_] => apply hextract_prop; intros
+  | _ ~> Id _ => apply hextract_id; intros
+  | heap_is_pack _ => apply hextract_exists; intros
+  | _ => apply hextract_last
+*)
+
+Ltac hsimpl_extract_exists_with_hints tt :=
+  match goal with |- ?HL ==> ?HA \* (heap_is_pack ?J \* ?HR) =>
+    hsimpl_hint_next ltac:(fun x =>
+      match x with
+      | __ => eapply hsimpl_extract_exists
+      | _ => apply (@hsimpl_extract_exists _ x)
+      end)
+  end.
+
+Ltac hsimpl_extract_exists_step tt :=
+  first [ hsimpl_extract_exists_with_hints tt
+        | eapply hsimpl_extract_exists ];
+   autorewrite with hsimpl_assoc.
