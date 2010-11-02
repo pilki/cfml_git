@@ -303,19 +303,19 @@ let normalize_expression named e =
          let l',bi = List.split (List.map (aux false) l) in
          return (Pexp_array l'), List.flatten bi
       | Pexp_ifthenelse (e1, e2, None) ->
-          let e1', b = aux true e1 in
-          assign_var (return (Pexp_ifthenelse (e1', protect named e2, Some (return (Pexp_construct (Lident "()", None, false)))))) b
           (* old:
+          let e1', b = aux true e1 in
+          assign_var (return (Pexp_ifthenelse (e1', protect named e2, Some (return (Pexp_construct (Lident "()", None, false)))))) b
+          *)      
           let e1', b = aux false e1 in
           assign_var (return (Pexp_ifthenelse (e1', protect named e2, Some (return (Pexp_construct (Lident "()", None, false)))))) b
-          *)
       | Pexp_ifthenelse (e1, e2, Some e3) -> 
+          (* old
           let e1', b = aux true e1 in
           assign_var (return (Pexp_ifthenelse (e1', protect named e2, Some (protect named e3)))) b
-          (* old
+          *)
           let e1', b = aux false e1 in
           assign_var (return (Pexp_ifthenelse (e1', protect named e2, Some (protect named e3)))) b
-          *)
              (* todo: à tester: if then else fun x -> x *)
       | Pexp_sequence (e1,e2) -> 
           let e1', b = aux true e1 in

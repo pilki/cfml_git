@@ -309,9 +309,9 @@ Lemma pred_le_proj2 : forall A (H1 H2 : A->Prop),
   H1 = H2 -> H2 ==> H1.
 Proof. intros. subst~. Qed.
 
-Implicit Arguments pred_le_proj1 [H1 H2].
-Implicit Arguments pred_le_proj2 [H1 H2].
-Implicit Arguments pred_le_extens [H1 H2].
+Implicit Arguments pred_le_proj1 [A H1 H2].
+Implicit Arguments pred_le_proj2 [A H1 H2].
+Implicit Arguments pred_le_extens [A H1 H2].
 
 
 

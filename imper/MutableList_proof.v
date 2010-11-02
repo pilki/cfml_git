@@ -34,27 +34,51 @@ Lemma MList_null : forall A L (a : Type) (T:A->a->hprop),
   null ~> MList T L = [L = nil].
 Proof.
   intros. destruct L; simpl; hdata_simpl.
-  apply himpl_extens; xsimpl~.
-  apply himpl_extens.
+  apply pred_le_extens; xsimpl~.
+  apply pred_le_extens.
     unfold Mlist. hdata_simpl. hextract. 
-     rewrite heap_is_single_null_eq_false. hextract. false.
-    hextract. false.
+     rewrite heap_is_single_null_eq_false. hextract.
+    hextract.
 Qed.  
 
 Lemma MList_null_keep : forall A L (a : Type) (T:A->a->hprop),
   null ~> MList T L ==> null ~> MList T L \* [L = nil].
 Proof.
   intros. destruct L.
-  hsimpl. auto.
-  hchange MList_null. hextract. false.
+  hsimpl~.
+  rewrite MList_null. hsimpl.
 Qed.
+
+Opaque MList.
 
 Lemma MList_not_null_keep : forall l A L (a : Type) (T:A->a->hprop),
   l <> null -> 
   l ~> MList T L ==> l ~> MList T L \* [L <> nil].
 Proof.
   intros. destruct L.
-  hchange -> (MList_nil l T). hextract. false.
+  hchange_debug -> (MList_nil l T).
+hsimpl_setup tt.
+hsimpl_step tt.
+hsimpl_step tt.
+hsimpl_step tt.
+  try apply hsimpl_stop.
+  try apply hsimpl_stop.
+  try apply pred_le_refl;
+  try hsimpl_hint_remove tt;
+  try remove_empty_heaps_right tt;
+  try remove_empty_heaps_left tt.
+
+hsimpl.
+hcancel.
+hextract.
+hsimpl. hsimpl. 
+let L := constr:(MList_nil l T) in
+forwards_nounfold_then L ltac:(fun K => pose (K)).
+lets: (pred_le_proj1 _ e).
+
+  hchange_debug -> (MList_nil l T).
+
+ hextract. false.
   hsimpl. auto_false.
 Qed.
 

@@ -400,7 +400,7 @@ Proof.
   exists (Q' g1 \* H'') H2 __ (H' \* H''). splits.
     subst. exists___*.
     apply* local_wframe.
-    intros r. specializes Po r. hsimpl. auto.
+    intros r. specializes Po r. hchange Po. hsimpl.
 Qed.
 
 Lemma spec_intro_3 : forall A1 A2 A3 B f (K:A1->A2->A3->~~B->Prop),

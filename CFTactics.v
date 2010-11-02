@@ -1311,6 +1311,24 @@ Ltac xif_post H :=
    try fix_bool_of_known tt;
    try (check_noevar_hyp H; rew_logicb in H; rew_logic in H).
 
+Ltac xif_core H :=
+  split; intro H.
+
+Ltac xif_base H cont :=
+  xif_core H; cont tt.
+
+Ltac xif_auto H :=
+  xif_base H ltac:(fun _ => xif_post H).
+Tactic Notation "xif_manual" ident(H) :=
+  xif_base H ltac:(fun _ => idtac).
+Tactic Notation "xif_manual" :=
+  let H := fresh "C" in xif_manual H.
+Tactic Notation "xif" ident(H) :=
+  xif_auto H.
+Tactic Notation "xif" :=
+  let H := fresh "C" in xif H.
+
+(* --old
 Ltac xif_core :=
   xuntag tag_if; apply local_erase; esplit; splits 3%nat.
 
@@ -1322,6 +1340,7 @@ Tactic Notation "xif_after" ident(H) :=
 
 Tactic Notation "xif_after" :=
   let H := fresh "H" in xif_after H.
+*)
 
 
 (*--useless?--*)

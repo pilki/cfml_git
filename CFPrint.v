@@ -490,9 +490,19 @@ Notation "'LetFuns' f1 ':=' Q1 'and' f2 ':=' Q2 'and' f3 ':=' Q3 'in' F" :=
 
 (** Tests *)
 
-Notation "'If_' Q0 'Then' Q1 'Else' Q2" :=
+(* --old
+Notation "'If_' F0 'Then' F1 'Else' F2" :=
   (!I (fun H Q => exists Q', 
-         Q0 H Q' /\ Q1 (Q' true) Q /\ Q2 (Q' false) Q))
+         F0 H Q' /\ F1 (Q' true) Q /\ F2 (Q' false) Q))
+  (at level 69, x at level 0) : charac.
+*)
+
+Notation "'_If' x 'Then' F1 'Else' F2" :=
+  (!I (fun H Q => (x = true -> F1 H Q) /\ (x = false -> F2 H Q)))
+  (at level 69, x at level 0) : charac.
+
+Notation "'If_' F0 'Then' F1 'Else' F2" :=
+  (Let x := F0 in _If x  Then F1 Else F2)
   (at level 69, x at level 0) : charac.
 
 Notation "'Case' x '=' p 'Then' Q1 'Else' Q2" :=

@@ -2,6 +2,7 @@ Set Implicit Arguments.
 Require Export LibInt LibArray CFSpec CFPrint.
 
 
+
 (********************************************************************)
 (** Imperative Representation for base types *)
 
@@ -30,12 +31,11 @@ Notation "'~~>' v" := (~> Ref Id v)
 
 Lemma focus_ref : forall (l:loc) a A (T:htype A a) V,
   l ~> Ref T V ==> Hexists v, l ~~> v \* v ~> T V.
-Proof. intros. unfold Ref, hdata. unfold Id. hextract.
-hsimpl x x. auto. Qed.
+Proof. intros. unfold Ref, hdata. unfold Id. hextract. hsimpl~. Qed.
 
 Lemma unfocus_ref : forall (l:loc) a (v:a) A (T:htype A a) V,
   l ~~> v \* v ~> T V ==> l ~> Ref T V.
-Proof. intros. unfold Ref. hdata_simpl. hextract. hsimpl. subst~. Qed.
+Proof. intros. unfold Ref. hdata_simpl. hsimpl. subst~. Qed.
 
 Lemma heap_is_single_impl_null : forall (l:loc) A (v:A),
   heap_is_single l v ==> heap_is_single l v \* [l <> null].
@@ -47,7 +47,7 @@ Lemma focus_ref_null : forall a A (T:htype A a) V,
   null ~> Ref T V ==> [False].
 Proof.
   intros. unfold Ref, hdata. hextract as v.
-  hchange (@heap_is_single_impl_null null). hextract. false.
+  hchanges (@heap_is_single_impl_null null).
 Qed.
 
 Global Opaque Ref.
@@ -102,40 +102,30 @@ Proof. intros. simpl. hdata_simpl. hsimpl~. Qed.
 
 Lemma unfocus_nil : forall a (l:list a) A (T:A->a->hprop),
   l ~> List T nil ==> [l = nil].
-Proof. intros. simpl. hdata_simpl. destruct l. auto. hextract. false. Qed.
+Proof. intros. simpl. hdata_simpl. destruct l. auto. hsimpl. Qed.
 
 Lemma unfocus_nil' : forall A (L:list A) a (T:A->a->hprop),
   nil ~> List T L ==> [L = nil].
 Proof.
   intros. destruct L.
-  simpl. hdata_simpl. hextract. hsimpl. auto. (* todo simplify *)
-  simpl. hdata_simpl. hextract. false.
+  simpl. hdata_simpl. hsimpl~.
+  simpl. hdata_simpl. hsimpl.
 Qed.
 
 Lemma focus_cons : forall a (l:list a) A (X:A) (L':list A) (T:A->a->hprop),
   (l ~> List T (X::L')) ==>
   Hexists x l', (x ~> T X) \* (l' ~> List T L') \* [l = x::l'].
-Proof.
-  intros. simpl. hdata_simpl. destruct l.
-  hextract. false.
-  hsimpl. auto.
-Qed.
+Proof. intros. simpl. hdata_simpl. destruct l; hsimpl~. Qed.
 
 Lemma focus_cons' : forall a (x:a) (l:list a) A (L:list A) (T:A->a->hprop),
   (x::l) ~> List T L ==> 
   Hexists X L', [L = X::L'] \* (x ~> T X) \* (l ~> List T L').
-Proof.
-  intros. destruct L.
-  simpl. hdata_simpl. hextract. false.
-  simpl. hdata_simpl. hsimpl. auto.
-Qed.
+Proof. intros. destruct L; simpl; hdata_simpl; hsimpl~. Qed.
 
 Lemma unfocus_cons : forall a (x:a) (l:list a) A (X:A) (L:list A) (T:A->a->hprop),
   (x ~> T X) \* (l ~> List T L) ==> 
   ((x::l) ~> List T (X::L)).
-Proof.
-  intros. simpl. hdata_simpl. hsimpl.
-Qed.
+Proof. intros. simpl. hdata_simpl. hsimpl. Qed.
 
 Global Opaque List.
 

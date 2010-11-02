@@ -100,6 +100,7 @@ VAC=\
 	vacid/sparse_array_proof.v 
 
 NEW=\
+	CFLib.v \
 	imper/MutableList_ml.v \
 	imper/Facto_ml.v \
 	imper/Counter_ml.v \

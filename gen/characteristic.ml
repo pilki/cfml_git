@@ -498,8 +498,8 @@ let rec cfg_exp env e =
       end
 
    | Texp_ifthenelse (cond, ifso, Some ifnot) ->
-      Cf_caseif (aux cond, aux ifso, aux ifnot)
-       (* old: Cf_caseif (lift cond, aux ifso, aux ifnot) *)
+      (* old: Cf_caseif (aux cond, aux ifso, aux ifnot) *)
+      Cf_caseif (lift cond, aux ifso, aux ifnot) 
 
    | Texp_apply (funct, oargs) ->
       let args = simplify_apply_args oargs in

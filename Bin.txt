@@ -3487,3 +3487,464 @@ Ltac hclean_relinearize tt :=
   hclean_onH ltac:(go).
  
 
+
+
+
+
+
+(********************************************************************)
+(* ** Simplification and unification tactics for star *)
+
+Ltac check_goal_himpl tt :=
+  match goal with 
+  | |- @rel_le unit _ _ _ => let t := fresh "_tt" in intros t; destruct t
+  | |- @rel_le _ _ _ _ => let r := fresh "r" in intros r
+  | |- pred_le _ _ => idtac
+  end.
+
+Ltac protect_evars_in H :=
+   match H with context [ ?X ] =>
+     let go tt := 
+       match X with
+       | _ \* _ => fail 1
+       | X => fail 1 
+       | ?x ~> ?R => 
+           match x with
+           | x => idtac             
+           | _ => fail 20 "Uninstantiated argument at left of ~>"
+           end;
+           let TR := type of R in
+           let K := fresh "TEMP" in 
+           sets_eq K: (R : ltac_tag_subst TR)
+       | [ ?R ] => 
+           let TR := type of R in
+           let K := fresh "TEMP" in 
+           sets_eq K: (R : ltac_tag_subst TR)
+       | _ => let K := fresh "TEMP" in
+              sets_eq K: (X : ltac_tag_subst hprop)
+       end in
+     match type of X with 
+     | hprop => go tt
+     | heap -> Prop => go tt
+     end
+  end.
+
+
+Ltac protect_evars_debug :=
+  match goal with |- _ ==> ?H => protect_evars_in H end.
+
+Ltac protect_evars tt :=
+  do 5 try match goal with |- ?H1 ==> ?H2 =>
+     first [ protect_evars_in H1 | protect_evars_in H2 ]; instantiate
+  end.
+
+Ltac unprotect_evars tt :=
+  repeat match goal with H : ltac_tag_subst _ |- _ => 
+    subst H end;
+  unfold ltac_tag_subst.
+
+Hint Rewrite <- star_assoc : hsimpl_assoc.
+Hint Rewrite star_neutral_l star_neutral_r : hsimpl_neutral.
+
+Lemma hextract_start : forall H H',
+  [] \* (H \* []) ==> H' -> H ==> H'.
+Proof. intros. rew_heap in *. auto. Qed.
+
+Lemma hextract_keep : forall H1 H2 H3 H',
+  (H1 \* H2) \* H3 ==> H' -> H1 \* (H2 \* H3) ==> H'.
+Proof. intros. rew_heap in *. auto. Qed.
+
+Lemma hextract_prop : forall H1 H2 H' (P:Prop),
+  (P -> H1 \* H2 ==> H') -> H1 \* ([P] \* H2) ==> H'.
+Proof.
+  introv W. intros h Hh.
+  destruct Hh as (h1&h2'&?&(h2&h3&(?&?)&?&?&?)&?&?).
+  apply~ W. exists h1 h3. subst h h2 h2'.
+  splits~. rewrite~ heap_union_neutral_l.
+Qed.
+
+Lemma hextract_id : forall A (x X : A) H1 H2 H',
+  (x = X -> H1 \* H2 ==> H') -> H1 \* (x ~> Id X \* H2) ==> H'.
+Proof. intros. unfold Id. apply~ hextract_prop. Qed.
+
+Lemma hextract_exists : forall A H1 H2 H' (J:A->hprop),
+  (forall x, H1 \* J x \* H2 ==> H') -> H1 \* (heap_is_pack J \* H2) ==> H'.
+Proof.  
+  introv W. intros h Hh.
+  destruct Hh as (h1&h2'&?&(h2&h3&(?&?)&?&?&?)&?&?).
+  applys~ W x. exists h1 (heap_union h2 h3). subst h h2'.
+  splits~. exists h2 h3. splits~.
+Qed.
+
+Ltac hextract_setup tt :=
+  lets: ltac_mark;
+  apply hextract_start;
+  protect_evars tt; 
+  autorewrite with hsimpl_assoc.
+
+Ltac hextract_cleanup tt :=
+  autorewrite with hsimpl_assoc;
+  autorewrite with hsimpl_neutral;
+  unprotect_evars tt; 
+  gen_until_mark.
+
+Ltac hextract_relinearize tt :=
+  match goal with |- ?H \* (_ \* _) ==> _ =>
+    let T := fresh "TEMP" in 
+    sets T: H; 
+    autorewrite with hsimpl_assoc; 
+    subst T
+  end.
+
+Ltac hextract_step tt :=
+  match goal with |- ?HA \* (?H \* ?HR) ==> ?H' =>
+  first [ apply hextract_prop; intros
+        | apply hextract_id; intros
+        | apply hextract_exists; intros; hextract_relinearize tt
+        | apply hextract_keep ]
+  end.
+
+Ltac post_impl_intro tt :=
+  match goal with 
+  | |- @rel_le unit _ _ _ => let t := fresh "_tt" in intros t; destruct t
+  | |- @rel_le _ _ _ _ => let r := fresh "r" in intros r
+  end.
+
+Ltac hextract_main tt :=
+  check_goal_himpl tt;
+  hextract_setup tt;
+  (repeat (hextract_step tt));
+  hextract_cleanup tt.
+
+Ltac hextract_core :=
+  hextract_main tt.
+
+Ltac hextract_if_needed tt :=
+  match goal with |- ?H ==> _ => match H with
+  | context [ heap_is_pack _ ] => hextract_core
+  | context [ [ _ ] ] => hextract_core
+  end end.
+
+Tactic Notation "hextract" := 
+  hextract_core; intros.
+Tactic Notation "hextract" "as" := 
+  hextract_core.
+Tactic Notation "hextract" "as" simple_intropattern(I1) := 
+  hextract as; intros I1.
+Tactic Notation "hextract" "as" simple_intropattern(I1) simple_intropattern(I2) := 
+  hextract as; intros I1 I2.
+Tactic Notation "hextract" "as" simple_intropattern(I1) simple_intropattern(I2)
+ simple_intropattern(I3) := 
+  hextract as; intros I1 I2 I3.
+Tactic Notation "hextract" "as" simple_intropattern(I1) simple_intropattern(I2)
+ simple_intropattern(I3) simple_intropattern(I4) := 
+  hextract as; intros I1 I2 I3 I4. 
+Tactic Notation "hextract" "as" simple_intropattern(I1) simple_intropattern(I2)
+ simple_intropattern(I3) simple_intropattern(I4) simple_intropattern(I5) := 
+  hextract as; intros I1 I2 I3 I4 I5. 
+Tactic Notation "hextract" "as" simple_intropattern(I1) simple_intropattern(I2)
+ simple_intropattern(I3) simple_intropattern(I4) simple_intropattern(I5)
+ simple_intropattern(I6) := 
+  hextract as; intros I1 I2 I3 I4 I5 I6. 
+Tactic Notation "hextract" "as" simple_intropattern(I1) simple_intropattern(I2)
+ simple_intropattern(I3) simple_intropattern(I4) simple_intropattern(I5)
+ simple_intropattern(I6) simple_intropattern(I7) := 
+  hextract as; intros I1 I2 I3 I4 I5 I6 I7. 
+
+
+Inductive Hsimpl_hint : list Boxer -> Type :=
+  | hsimpl_hint : forall (L:list Boxer), Hsimpl_hint L.
+
+Ltac hsimpl_hint_put L := 
+  lets: (hsimpl_hint L).
+
+Ltac hsimpl_hint_next cont :=
+  match goal with H: Hsimpl_hint ((boxer ?x)::?L) |- _ =>
+    clear H; hsimpl_hint_put L; cont x end.
+
+Ltac hsimpl_hint_remove :=
+  match goal with H: Hsimpl_hint _ |- _ => clear H end.
+
+Lemma demo_hsimpl : exists n, n = 3.
+Proof.
+  hsimpl_hint_put (>>> 3 true).
+  hsimpl_hint_next ltac:(fun x => exists x).
+  hsimpl_hint_remove.
+  auto.
+Qed.
+
+
+Lemma hsimpl_start : forall H1 H2,
+  H1 \* [] ==> [] \* (H2 \* []) -> H1 ==> H2.
+Proof. intros. rew_heap in *. auto. Qed.
+
+Lemma hsimpl_keep : forall H1 H2 H3 H4,
+  H1 ==> (H2 \* H3) \* H4 -> H1 ==> H2 \* (H3 \* H4).
+Proof. intros. rew_heap in *. auto. Qed.
+
+Lemma hsimpl_extract_prop : forall H1 H2 H3 (P:Prop),
+  H1 ==> H2 \* H3 -> P -> H1 ==> H2 \* ([P] \* H3).
+Proof.
+  introv W HP PH1. destruct (W _ PH1) as (h1&h2&?&?&?&?).
+  exists h1 h2. splits~. exists heap_empty h2. splits~.
+Qed.
+
+Lemma hsimpl_extract_id : forall A (x X : A) H1 H2 H3,
+  H1 ==> H2 \* H3 -> x = X -> H1 ==> H2 \* (x ~> Id X \* H3).
+Proof. intros. unfold Id. apply~ hsimpl_extract_prop. Qed.
+
+Lemma hsimpl_extract_exists : forall A (x:A) H1 H2 H3 (J:A->hprop),
+  H1 ==> H2 \* J x \* H3 -> H1 ==> H2 \* (heap_is_pack J \* H3).
+Proof.
+  introv W. intros h1 PH1. destruct (W _ PH1) as (h2&h4&?&(hx&h3&?&?&?&?)&?&?).
+  exists h2 (heap_union hx h3). subst h1 h4. splits~.
+  exists hx h3. splits~. exists~ x.
+Qed.
+
+Lemma hsimpl_cancel_1 : forall H HA HR HT,
+  HT ==> HA \* HR -> H \* HT ==> HA \* (H \* HR).
+Proof. intros. rewrite star_comm_assoc. apply~ star_cancel. Qed.
+
+Lemma hsimpl_cancel_2 : forall H HA HR H1 HT,
+  H1 \* HT ==> HA \* HR -> H1 \* H \* HT ==> HA \* (H \* HR).
+Proof. intros. rewrite (star_comm_assoc H1). apply~ hsimpl_cancel_1. Qed.
+
+Lemma hsimpl_cancel_3 : forall H HA HR H1 H2 HT,
+  H1 \* H2 \* HT ==> HA \* HR -> H1 \* H2 \* H \* HT ==> HA \* (H \* HR).
+Proof. intros. rewrite (star_comm_assoc H2). apply~ hsimpl_cancel_2. Qed.
+
+Lemma hsimpl_cancel_4 : forall H HA HR H1 H2 H3 HT,
+  H1 \* H2 \* H3 \* HT ==> HA \* HR -> H1 \* H2 \* H3 \* H \* HT ==> HA \* (H \* HR).
+(*Proof. intros. rewrite (star_comm_assoc H3). apply~ hsimpl_cancel_3. Qed.*)
+Admitted. (* skip proof for faster compilation *)
+
+Lemma hsimpl_cancel_5 : forall H HA HR H1 H2 H3 H4 HT,
+  H1 \* H2 \* H3 \* H4 \* HT ==> HA \* HR -> H1 \* H2 \* H3 \* H4 \* H \* HT ==> HA \* (H \* HR).
+(*Proof. intros. rewrite (star_comm_assoc H4). apply~ hsimpl_cancel_4. Qed.*)
+Admitted.
+
+Lemma hsimpl_cancel_6 : forall H HA HR H1 H2 H3 H4 H5 HT,
+  H1 \* H2 \* H3 \* H4 \* H5 \* HT ==> HA \* HR -> H1 \* H2 \* H3 \* H4 \* H5 \* H \* HT ==> HA \* (H \* HR).
+(*Proof. intros. rewrite (star_comm_assoc H5). apply~ hsimpl_cancel_5. Qed.*)
+Admitted.
+
+Lemma hsimpl_cancel_eq_1 : forall H H' HA HR HT,
+  H = H' -> HT ==> HA \* HR -> H \* HT ==> HA \* (H' \* HR).
+Proof. intros. subst. apply~ hsimpl_cancel_1. Qed.
+
+Lemma hsimpl_cancel_eq_2 : forall H H' HA HR H1 HT,
+  H = H' -> H1 \* HT ==> HA \* HR -> H1 \* H \* HT ==> HA \* (H' \* HR).
+Proof. intros. subst. apply~ hsimpl_cancel_2. Qed.
+
+Lemma hsimpl_cancel_eq_3 : forall H H' HA HR H1 H2 HT,
+  H = H' -> H1 \* H2 \* HT ==> HA \* HR -> H1 \* H2 \* H \* HT ==> HA \* (H' \* HR).
+Proof. intros. subst. apply~ hsimpl_cancel_3. Qed.
+
+Lemma hsimpl_cancel_eq_4 : forall H H' HA HR H1 H2 H3 HT,
+  H = H' -> H1 \* H2 \* H3 \* HT ==> HA \* HR -> H1 \* H2 \* H3 \* H \* HT ==> HA \* (H' \* HR).
+Proof. intros. subst. apply~ hsimpl_cancel_4. Qed.
+
+Lemma hsimpl_cancel_eq_5 : forall H H' HA HR H1 H2 H3 H4 HT,
+  H = H' -> H1 \* H2 \* H3 \* H4 \* HT ==> HA \* HR -> H1 \* H2 \* H3 \* H4 \* H \* HT ==> HA \* (H' \* HR).
+Proof. intros. subst. apply~ hsimpl_cancel_5. Qed.
+
+Lemma hsimpl_cancel_eq_6 : forall H H' HA HR H1 H2 H3 H4 H5 HT,
+  H = H' -> H1 \* H2 \* H3 \* H4 \* H5 \* HT ==> HA \* HR -> H1 \* H2 \* H3 \* H4 \* H5 \* H \* HT ==> HA \* (H' \* HR).
+Proof. intros. subst. apply~ hsimpl_cancel_6. Qed.
+
+Ltac hsimpl_setup tt :=
+  apply hsimpl_start;
+  protect_evars tt; 
+  autorewrite with hsimpl_assoc.
+
+Ltac hsimpl_try_same tt :=
+  first 
+  [ apply hsimpl_cancel_1
+  | apply hsimpl_cancel_2
+  | apply hsimpl_cancel_3
+  | apply hsimpl_cancel_4
+  | apply hsimpl_cancel_5
+  | apply hsimpl_cancel_6 ].
+
+Ltac hsimpl_find_same H HL :=
+  match HL with
+  | H \* _ => apply hsimpl_cancel_1
+  | _ \* H \* _ => apply hsimpl_cancel_2
+  | _ \* _ \* H \* _ => apply hsimpl_cancel_3
+  | _ \* _ \* _ \* H \* _ => apply hsimpl_cancel_4
+  | _ \* _ \* _ \* _ \* H \* _ => apply hsimpl_cancel_5
+  | _ \* _ \* _ \* _ \* _ \* H \* _ => apply hsimpl_cancel_6
+  end.
+
+Ltac hsimpl_find_data H HL :=
+  match H with hdata _ ?l =>
+  match HL with
+  | hdata _ l \* _ => apply hsimpl_cancel_eq_1
+  | _ \* hdata _ l \* _ => apply hsimpl_cancel_eq_2
+  | _ \* _ \* hdata _ l \* _ => apply hsimpl_cancel_eq_3
+  | _ \* _ \* _ \* hdata _ l \* _ => apply hsimpl_cancel_eq_4
+  | _ \* _ \* _ \* _ \* hdata _ l \* _ => apply hsimpl_cancel_eq_5
+  | _ \* _ \* _ \* _ \* _ \* hdata _ l \* _ => apply hsimpl_cancel_eq_6
+  end end; [ fequal; fequal | ].
+
+Ltac hsimpl_extract_exists_with_hints tt :=
+  match goal with |- ?HL ==> ?HA \* (heap_is_pack ?J \* ?HR) =>
+    hsimpl_hint_next ltac:(fun x =>
+      match x with
+      | __ => eapply hsimpl_extract_exists
+      | _ => apply (@hsimpl_extract_exists _ x)
+      end)
+  end.
+
+Ltac hsimpl_extract_exists_step tt :=
+  first [ hsimpl_extract_exists_with_hints tt
+        | eapply hsimpl_extract_exists ];
+   autorewrite with hsimpl_assoc.
+
+Ltac hsimpl_step tt :=
+  match goal with |- ?HL ==> ?HA \* (?H \* ?HR) =>
+    first  (* hsimpl_find_same H HL |*)
+          [ hsimpl_try_same tt 
+          | hsimpl_find_data H HL;
+            [ first [ eassumption | symmetry; eassumption | idtac ]
+            | ]
+          | apply hsimpl_extract_prop
+          | apply hsimpl_extract_id
+          | hsimpl_extract_exists_step tt
+          | apply hsimpl_keep ]
+  end.
+
+Ltac hsimpl_cleanup tt :=
+  autorewrite with hsimpl_neutral;
+  unprotect_evars tt;
+  try apply pred_le_refl;
+  try hsimpl_hint_remove.
+
+Ltac hsimpl_main tt :=
+  check_goal_himpl tt;
+  hsimpl_setup tt;
+  (repeat (hsimpl_step tt));
+  hsimpl_cleanup tt.
+
+Tactic Notation "hsimpl" := hsimpl_main tt.
+Tactic Notation "hsimpl" "~" := hsimpl; auto_tilde.
+Tactic Notation "hsimpl" "*" := hsimpl; auto_star.
+Tactic Notation "hsimpl" constr(L) :=
+  match type of L with 
+  | list Boxer => hsimpl_hint_put L
+  | _ => hsimpl_hint_put (boxer L :: nil)
+  end; hsimpl.
+Tactic Notation "hsimpl" constr(X1) constr(X2) :=
+  hsimpl (>>> X1 X2).
+Tactic Notation "hsimpl" constr(X1) constr(X2) constr(X3) :=
+  hsimpl (>>> X1 X2 X3).
+
+Tactic Notation "hsimpl" "~" constr(L) :=
+  hsimpl L; auto~.
+Tactic Notation "hsimpl" "~" constr(X1) constr(X2) :=
+  hsimpl X1 X2; auto~.
+Tactic Notation "hsimpl" "~" constr(X1) constr(X2) constr(X3) :=
+  hsimpl X1 X2 X3; auto~.
+
+
+
+(********************************************************************)
+(* ** Extraction tactic for local goals *)
+
+Ltac xlocal_core tt :=
+  first [ assumption | apply local_is_local ].
+  (* match goal with |- is_local _ =>  end. *)
+
+Tactic Notation "xlocal" :=
+  xlocal_core tt.
+
+Lemma hclean_start : forall B (F:~~B) H Q,
+  is_local F -> F ([] \* (H \* [])) Q -> F H Q.
+Proof. intros. rew_heap in *. auto. Qed.
+
+Lemma hclean_step : forall B (F:~~B) H1 H2 H3 Q,
+  F ((H1 \* H2) \* H3) Q -> F (H1 \* (H2 \* H3)) Q.
+Proof. intros. rew_heap in *. auto. Qed.
+
+Lemma hclean_prop : forall B (F:~~B) H1 H2 (P:Prop) Q,
+  is_local F -> (P -> F (H1 \* H2) Q) -> F (H1 \* [P] \* H2) Q.
+Proof.
+  intros. rewrite star_comm_assoc. apply~ local_intro_prop'. 
+Qed. 
+
+Lemma hclean_id : forall A (x X : A) B (F:~~B) H1 H2 Q,
+  is_local F -> (x = X -> F (H1 \* H2) Q) -> F (H1 \* x ~> Id X \* H2) Q.
+Proof. intros. unfold Id. apply~ hclean_prop. Qed.
+
+Lemma hclean_exists : forall B (F:~~B) H1 H2 A (J:A->hprop) Q,
+  is_local F -> 
+  (forall x, F (H1 \* (J x) \* H2) Q) ->
+   F (H1 \* (heap_is_pack J \* H2)) Q.
+Proof. 
+  intros. rewrite star_comm_assoc. apply~ local_intro_exists.
+  intros. rewrite~ star_comm_assoc.
+Qed. 
+
+Ltac hclean_onH cont :=
+  match goal with
+  | |- _ ?H ?Q => cont H
+  | |- _ _ ?H ?Q => cont H
+  | |- _ _ _ ?H ?Q => cont H
+  | |- _ _ _ _ ?H ?Q => cont H
+  | |- _ _ _ _ _ ?H ?Q => cont H
+  | |- _ _ _ _ _ _ ?H ?Q => cont H
+  end.
+
+Ltac hclean_onQ cont :=
+  match goal with
+  | |- _ ?H ?Q => cont Q
+  | |- _ _ ?H ?Q => cont Q
+  | |- _ _ _ ?H ?Q => cont Q
+  | |- _ _ _ _ ?H ?Q => cont Q
+  | |- _ _ _ _ _ ?H ?Q => cont Q
+  | |- _ _ _ _ _ _ ?H ?Q => cont Q
+  end.
+
+Ltac hclean_protect tt :=
+  let Q' := fresh "TEMP" in
+  hclean_onQ ltac:(fun Q => set (Q' := Q : ltac_tag_subst _));
+  do 5 try (hclean_onH ltac:(fun H => protect_evars_in H); instantiate).
+
+Ltac hclean_setup tt :=
+  hclean_protect tt;
+  apply hclean_start; [ try xlocal | ];
+  autorewrite with hsimpl_assoc.
+
+Ltac hclean_relinearize tt :=
+  let go Hpre := match Hpre with ?H \* (_ \* _) =>
+    let T := fresh "TEMP" in 
+    sets T: H; 
+    autorewrite with hsimpl_assoc; 
+    subst T
+    end in
+  hclean_onH ltac:(go).
+ 
+Ltac hclean_step tt :=
+  let go H :=
+    match H with ?HA \* ?HX \* ?HR => match HX with
+    | [?P] => apply hclean_prop; [ try xlocal | intro ]
+    | ?x ~> Id ?X => apply hclean_id; [ try xlocal | intro ]
+    | heap_is_pack ?J => apply hclean_exists; [ try xlocal | intro; hclean_relinearize tt ]
+    | _ => apply hclean_step
+    end end in
+  hclean_onH ltac:(go).
+
+Ltac hclean_cleanup tt :=
+  autorewrite with hsimpl_neutral;
+  unprotect_evars tt.
+
+Ltac hclean_main tt :=
+  hclean_setup tt;
+  pose ltac_mark; 
+  (repeat (hclean_step tt));
+  hclean_cleanup tt;
+  gen_until_mark.
+
+Tactic Notation "hclean" := hclean_main tt.
+Tactic Notation "hclean" "~" := hclean; auto_tilde.
+Tactic Notation "hclean" "*" := hclean; auto_star.

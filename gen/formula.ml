@@ -30,12 +30,12 @@ type cf =
     (* Let x [Ai,Bi] := v in Q2  // where x : forall Ai.T *)
   | Cf_letfunc of (var * cf) list * cf 
     (* Let fi := Qi in Q *)
+(* old
   | Cf_caseif of cf * cf * cf 
     (* If Q0 Then Q1 else Q2 *)
-(* old
+*)
   | Cf_caseif of coq * cf * cf 
     (* If v Then Q1 else Q2 *)
-*)
   | Cf_case of coq * typed_vars * coq * coq option * (typed_var*coq) list * cf * cf 
     (* Case v [xi] p [When c] Then (Alias yk = vk in Q1) else Q2 *)
   | Cf_match of var * int * cf
@@ -46,6 +46,8 @@ type cf =
     (* for i = v1 to v2 do Q done *)
   | Cf_while of cf * cf
     (* while Q1 do Q2 done *)
+  | Cf_manual of coq 
+    (* Q *)
 
 (** Characteristic formulae for top-level declarations *)
 
@@ -255,13 +257,13 @@ let rec coq_of_pure_cf cf =
               (Q1 -> Q2 -> P1 f1 /\ P2 f2) /\ (P1 f1 -> P2 f2 -> Q P)) *)            
 
   | Cf_caseif (v,cf1,cf2) ->
-   assert false
    (* todo: update with cf0
+   assert false
+   *)
       let c1 = Coq_impl (coq_eq v (Coq_var "true"),  Coq_app (coq_of_cf cf1, p)) in
       let c2 = Coq_impl (coq_eq v (Coq_var "false"), Coq_app (coq_of_cf cf2, p)) in
       funp "tag_if" (coq_conj c1 c2)
       (* (!I a: (fun P => (x = true -> Q1 P) /\ (x = false -> Q2 P))) *)
-   *)
 
   | Cf_case (v,tps,pat,vwhenopt,aliases,cf1,cf2) ->
       let add_alias ((name,typ),exp) cf : coq =
@@ -284,6 +286,7 @@ let rec coq_of_pure_cf cf =
   | Cf_match (label, n,cf1) ->
       coq_tag (Printf.sprintf "(tag_match %d%snat)" n "%") ~label:label (coq_of_cf cf1)
 
+  | Cf_manual c -> c
   | Cf_seq _ -> unsupported "seq-expression in pure mode"
   | Cf_for _ -> unsupported "for-expression in pure mode"
   | Cf_while _ -> unsupported "while-expression in pure mode"
@@ -307,7 +310,8 @@ let rec coq_of_imp_cf cf =
      let f = Coq_app (Coq_var "local", f_core) in
      match label with 
      | None -> coq_tag tag f 
-     | Some x -> coq_tag tag ~label:x f 
+     | Some x ->  (*todo:remove this hack*) if x = "_c" then coq_tag tag f  else
+        coq_tag tag ~label:x f 
      in 
 
   match cf with
@@ -373,6 +377,7 @@ let rec coq_of_imp_cf cf =
       (* (!F a: fun H Q => forall f1 f2, exists P1 P2,
               (B1 -> B2 -> P1 f1 /\ P2 f2) /\ (P1 f1 -> P2 f2 -> F H Q)) *)            
 
+ (* old
    | Cf_caseif (cf0,cf1,cf2) ->
       let q' = Coq_var "Q'" in
       let c0 = coq_apps (coq_of_cf cf0) [h;q'] in
@@ -380,14 +385,13 @@ let rec coq_of_imp_cf cf =
       let c2 = coq_apps (coq_of_cf cf2) [ Coq_app (q',coq_bool_false); q] in
       funhq "tag_if" (coq_exist "Q'" (Coq_impl (coq_bool,hprop)) (coq_conjs [c0;c1;c2]))
       (* (!I a: (fun H Q => exists Q', Q0 H Q' /\ Q1 (Q' true) Q /\ Q2 (Q' false) Q)) *)
+   *)
 
- (* old
   | Cf_caseif (v,cf1,cf2) ->
       let c1 = Coq_impl (coq_eq v (Coq_var "true"),  coq_apps (coq_of_cf cf1) [h;q]) in
       let c2 = Coq_impl (coq_eq v (Coq_var "false"), coq_apps (coq_of_cf cf2) [h;q]) in
       funhq "tag_if" (coq_conj c1 c2)
       (* (!I a: (fun H Q => (x = true -> Q1 H Q) /\ (x = false -> Q2 H Q))) *)
-   *)
 
   | Cf_case (v,tps,pat,vwhenopt,aliases,cf1,cf2) ->
       let add_alias ((name,typ),exp) cf : coq =
@@ -438,8 +442,25 @@ let rec coq_of_imp_cf cf =
              /\ (i > v2 -> !Ret: (fun H Q => H ==> Q tt) H Q) )) 
            -> S i H Q) 
          -> S v1 H Q)  *)
+         (*--todo:optimize using rec calls *)
       
   | Cf_while (cf1,cf2) -> 
+      let r = Coq_var "R" in
+      let typr = formula_type in
+      let cfseq = Cf_seq (cf2, Cf_manual r) in
+      let cfret = Cf_ret coq_tt in
+      let cfif = Cf_caseif (Coq_var "_c", cfseq, cfret) in
+      let bodyr = coq_of_cf (Cf_let (("_c",coq_bool), cf1, cfif)) in
+      let hypr = coq_foralls [("H", hprop); ("Q", Coq_impl (coq_unit, hprop))] (Coq_impl (coq_apps bodyr [h;q],(coq_apps r [h;q]))) in
+      let localr = Coq_app (Coq_var "is_local", r) in
+      funhq "tag_while" (Coq_forall (("R",typr), coq_impls [localr; hypr] (coq_apps r [h;q])))
+      (* (!While: (fun H Q => forall R:~~unit, is_local R ->
+          (forall H Q,
+             (Let _c = F1 in If _c Then (F2 ; R) Ret tt) H Q
+             -> R H Q) 
+          -> R H Q). *)
+
+(* old:
       let r = Coq_var "R" in
       let typr = formula_type in
       let q' = Coq_var "Q'" in
@@ -450,7 +471,6 @@ let rec coq_of_imp_cf cf =
       let p2 = coq_apps body2 [Coq_app(q',coq_bool_true); q] in
       let body3 = funhq "tag_ret" ~rettype:coq_unit (heap_impl_unit h q) in     
       let p3 = coq_apps body3 [Coq_app(q',coq_bool_false); q] in    
-      let localr = Coq_app (Coq_var "is_local", r) in
       let bodyif = coq_exist "Q'" (Coq_impl (coq_bool, hprop)) (coq_conjs [p1;p2;p3]) in
       let bodyr = coq_apps (funhq "tag_if" bodyif) [h;q] in
       let hypr = coq_foralls [("H", hprop); ("Q", Coq_impl (coq_unit, hprop))] (Coq_impl (bodyr,(coq_apps r [h;q]))) in
@@ -464,7 +484,8 @@ let rec coq_of_imp_cf cf =
                H Q
              -> R H Q) 
           -> R H Q). *)
-     (* *)
+*)
+  | Cf_manual c -> c
 
   | Cf_letpure _ -> unsupported "letpure-expression in imperative mode"
 
