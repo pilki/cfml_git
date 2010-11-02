@@ -48,13 +48,13 @@ Notation "'For' i '=' a 'To' b 'Do' Q1 '_Done'" :=
 
 Lemma for_loop_cf_to_inv : 
    forall I H',
-   forall (a:int) (b:int) (F:~~unit) H (Q:unit->hprop),
+   forall (a:int) (b:int) (F:int->~~unit) H (Q:unit->hprop),
    (a > (b)%Z -> H ==> (Q tt)) ->
    (a <= (b)%Z ->
           (H ==> I a \* H') 
-       /\ (forall i, a <= i /\ i <= (b)%Z -> F (I i) (# I(i+1))) 
+       /\ (forall i, a <= i /\ i <= (b)%Z -> F i (I i) (# I(i+1))) 
        /\ (I ((b)%Z+1) \* H' ==> Q tt)) ->
-  (For i = a To b Do F _Done) H Q.
+  (For i = a To b Do F i _Done) H Q.
 Proof.
   introv M1 M2. apply local_erase. intros S LS HS.
   tests (a > b) as C. 
@@ -68,76 +68,25 @@ Proof.
   xret. math_rewrite~ (i = b +1).  
 Qed.
 
-
-
-(********************************************************************)
-(* ** Loop invariants for while-loops *)
-
-Definition while_loop_cf (F1:~~bool) (F2:~~unit) :=
-  local (fun (H:hprop) (Q:unit->hprop) => forall R:~~unit, is_local R ->
-    (forall H Q, (exists Q', F1 H Q' 
-       /\ (local (fun H Q => exists Q', F2 H Q' /\ R (Q' tt) Q) (Q' true) Q)
-       /\ Q' false ==> Q tt) -> R H Q) 
-    -> R H Q).
-
-Definition while_loop_inv (F1:~~bool) (F2:~~unit) :=
-  local (fun (H:hprop) (Q:unit->hprop) => 
-    exists A:Type, exists I:A->hprop, exists J:A->bool->hprop, exists lt:binary A,
-      wf lt 
-   /\ (exists X0, H ==> (I X0))
-   /\ (forall X, F1 (I X) (J X)
-              /\ F2 (J X true) (# Hexists Y, (I Y) \* [lt Y X])
-              /\ J X false ==> Q tt)).
-
-Lemma while_loop_cf_to_inv : forall (F1:~~bool) (F2:~~unit),
-  while_loop_inv F1 F2 ===> while_loop_cf F1 F2.
-Proof. 
-  intros. apply local_weaken_body. intros H Q (A&I&J&lt&W&(X0&I0)&M).
-  introv LR HR. applys* local_weaken I0. clear I0. gen X0. 
-  intros X. induction_wf IH: W X.
-  destruct (M X) as (M1&M2&M3).
-  applys HR. exists (J X). splits~.
-  apply local_erase. esplit. split. apply M2. 
-  apply~ local_extract_exists. intros x.
-   rewrite star_comm. apply~ CFHeaps.local_intro_prop'.
-Qed. 
-
-
-(********************************************************************)
-(* ** Loop invariants for for-loops *)
-
-Definition for_loop_cf (a:int) (b:int) (F:~~unit) :=
-  local (fun (H:hprop) (Q:unit->hprop) => forall S:int->~~unit, is_local_1 S ->
-     (forall i H Q,  
-          ((i <= (b)%Z -> (local (fun H Q => exists Q', F H Q' /\ S (i+1) (Q' tt) Q) H Q))
-       /\ (i > b%Z -> H ==> Q tt)) 
-       -> S i H Q)
-    -> S a H Q).
-
-Definition for_loop_inv (a:int) (b:int) (F:~~unit) :=
-  local (fun (H:hprop) (Q:unit->hprop) => 
-      (a > (b)%Z -> H ==> (Q tt)) 
-   /\ (a <= (b)%Z -> exists H', exists I,
+Lemma for_loop_cf_to_inv_gen : 
+   forall I H',
+   forall (a:int) (b:int) (F:int->~~unit) H,
+   (a <= (b)%Z ->
           (H ==> I a \* H') 
-       /\ (forall i, a <= i /\ i <= (b)%Z -> F (I i) (# I(i+1))) 
-       /\ (I ((b)%Z+1) \* H' ==> Q tt))).
+       /\ (forall i, a <= i /\ i <= (b)%Z -> F i (I i) (# I(i+1)))) ->
+   (a > (b)%Z -> H ==> I ((b)%Z+1) \* H') ->
+  (For i = a To b Do F i _Done) H (# I ((b)%Z+1) \* H').
+Proof. intros. applys* for_loop_cf_to_inv. Qed.
 
-Lemma for_loop_cf_to_inv : forall (a:int) (b:int) (F:~~unit),
-  for_loop_inv a b F ===> for_loop_cf a b F.
-Proof. 
-  intros. apply local_weaken_body. intros H Q (Mgt&Mle). introv LS HS.
-  tests (a > b) as C. apply HS. split. math. auto.
-  clear Mgt. specializes Mle. math. destruct Mle as (H'&I&M1&M2&M3).
-  applys~ (@local_wframe unit) (# I (b+1)); [| intros u; destruct~ u ]. 
-  clear M1. asserts L: (a <= a <= b+1). math. generalize L.
-  set (a' := a) at 1. generalize a as i. unfold a'.
-  intros i. induction_wf IH: (int_upto_wf (b+1)) i. intros Bnd.
-  applys HS. split; intros C'.
-    apply local_erase. esplit. split.
-      apply M2; auto with maths.
-      forwards: IH (i+1); auto with maths.
-    math_rewrite~ (i = b +1).
-Qed. 
+Lemma for_loop_cf_to_inv_up : 
+   forall I H',
+   forall (a:int) (b:int) (F:int->~~unit) H (Q:unit->hprop),
+   (a <= (b)%Z) ->
+   (H ==> I a \* H') ->
+   (forall i, a <= i /\ i <= (b)%Z -> F i (I i) (# I(i+1))) ->
+   (I ((b)%Z+1) \* H' ==> Q tt) ->
+   (For i = a To b Do F i _Done) H Q.
+Proof. intros. applys* for_loop_cf_to_inv. intros. math. Qed.
 
 
 
@@ -153,7 +102,7 @@ Parameter fact_succ : forall n, n > 0 ->
   fact n = n * fact (n-1).
 Lemma fact_one : fact 1 = 1.
 Proof. rewrite~ fact_succ. math_rewrite (1-1=0). rewrite~ fact_zero. Qed.
-
+(*
 
 (********************************************************************)
 (* ** Factorial function: recursive implementation *)
@@ -174,7 +123,7 @@ Qed.
 Lemma facto_for_spec : Spec facto_for n |R>>
   n >= 0 -> R [] (\= fact n).
 Proof.
-  xcf. intros. xapp. xseq . xfor.
+  xcf. intros. xapp. xseq. xfor.
   xgeneralize (forall i, 0 < i <= n+1 -> S i (r ~~> fact (i-1)) (# r ~~> fact n)).
     xapply_local~ Inv. hsimpl. simpl. rewrite~ fact_zero. 
     intros i. induction_wf IH: (int_upto_wf (n+1)) i. introv Gt.
@@ -184,6 +133,46 @@ Proof.
     hsimpl. xret. hsimpl. fequals. math.
   xapp. hsimpl~.
 Qed.
+
+*)
+(********************************************************************)
+(* ** Factorial function: for-loop implementation, with invariant *)
+
+Lemma for_loop_cf_to_inv_gen' : 
+   forall I H',
+   forall (a:int) (b:int) (F:int->~~unit) H Q,
+   (a <= (b)%Z -> H ==> I a \* H') ->
+   (forall i, a <= i <= (b)%Z -> F i (I i) (# I(i+1))) ->
+   (a > (b)%Z -> H ==> I ((b)%Z+1) \* H') ->  
+   (# (I ((b)%Z+1) \* H')) ===> Q ->
+  (For i = a To b Do F i _Done) H Q.
+Proof. intros. applys* for_loop_cf_to_inv. intros C. hchange (H2 C). hchange (H3 tt). hsimpl. Qed.
+
+Ltac xfor_inv_gen_base I i C :=
+  eapply (@for_loop_cf_to_inv_gen' I); 
+  [ intros C
+  | intros i C
+  | intros C
+  | apply rel_le_refl ].
+
+Tactic Notation "xfor_inv_gen_base" constr(I) "as" ident(i) ident(C) :=
+  xfor_inv_gen_base I i C.
+
+
+Lemma facto_for_spec : Spec facto_for n |R>>
+  n >= 0 -> R [] (\= fact n).
+Proof.
+  xcf. intros. xapp. xseq.
+  xfor_inv_gen_base (fun i:int => [0 < i <= n+1] \* (r ~~> fact (i-1))) as i C.
+  hsimpl. simpl. rewrite~ fact_zero. math.
+  xapps. xapps. hsimpl.
+    math_rewrite (i+1-1 = i). rewrite~ (@fact_succ i). ring.
+    math.
+  math_rewrite (n = 0). hsimpl.
+      math_rewrite (0+1-1=0). rewrite~ fact_zero.
+      math.
+  xapps. hsimpl. subst. fequals. math.
+Qed.  
 
 
 (********************************************************************)
