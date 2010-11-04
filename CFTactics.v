@@ -694,11 +694,8 @@ Ltac xapp_show_spec :=
 (* todo: when arities differ *)
 
 Ltac xapp_compact KR args :=
-  let args := ltac_args args in
-  match args with (boxer ?mode)::?vs => 
-  let args := constr:((boxer mode)::(boxer KR)::vs) in
-  constr:(args)
-  end.
+  let args := list_boxer_of args in
+  constr:((boxer KR)::args).
 
 Ltac xapp_final HR :=
   eapply local_wframe; 
@@ -755,54 +752,54 @@ Ltac xapp_with spec args solver :=
   xapp_then spec ltac:(fun _ => xapp_inst args solver).
 
 Tactic Notation "xapp" := 
-  xapp_with ___ (>>>) ltac:(fun _ => idtac).
+  xapp_with ___ (>>) ltac:(fun _ => idtac).
 Tactic Notation "xapp" constr(E) := 
   xapp_with ___ E ltac:(fun _ => idtac).
 Tactic Notation "xapp" constr(E1) constr(E2) := 
-  xapp (>>> E1 E2).
+  xapp (>> E1 E2).
 Tactic Notation "xapp" constr(E1) constr(E2) constr(E3) := 
-  xapp (>>> E1 E2 E3).
+  xapp (>> E1 E2 E3).
 Tactic Notation "xapp" constr(E1) constr(E2) constr(E3) constr(E4) := 
-  xapp (>>> E1 E2 E3 E4).
+  xapp (>> E1 E2 E3 E4).
 Tactic Notation "xapp" constr(E1) constr(E2) constr(E3) constr(E4) constr(E5) := 
-  xapp (>>> E1 E2 E3 E4 E5).
+  xapp (>> E1 E2 E3 E4 E5).
 
 Tactic Notation "xapp" "~" := 
-  xapp_with ___ (>>>) ltac:(fun _ => xauto~). (* ; xauto~.*)
+  xapp_with ___ (>>) ltac:(fun _ => xauto~). (* ; xauto~.*)
 Tactic Notation "xapp" "~" constr(E) := 
   xapp_with ___ E ltac:(fun _ => xauto~).
 Tactic Notation "xapp" "~" constr(E1) constr(E2) := 
-  xapp~ (>>> E1 E2).
+  xapp~ (>> E1 E2).
 Tactic Notation "xapp" "~" constr(E1) constr(E2) constr(E3) := 
-  xapp~ (>>> E1 E2 E3).
+  xapp~ (>> E1 E2 E3).
 Tactic Notation "xapp" "~" constr(E1) constr(E2) constr(E3) constr(E4) := 
-  xapp~ (>>> E1 E2 E3 E4).
+  xapp~ (>> E1 E2 E3 E4).
 Tactic Notation "xapp" "~" constr(E1) constr(E2) constr(E3) constr(E4) constr(E5) :=
-   xapp~ (>>> E1 E2 E3 E4 E5).
+   xapp~ (>> E1 E2 E3 E4 E5).
 
 Tactic Notation "xapp" "*" := 
-  xapp_with ___ (>>>) ltac:(fun _ => xauto*).
+  xapp_with ___ (>>) ltac:(fun _ => xauto*).
 Tactic Notation "xapp" "*" constr(E) := 
   xapp_with ___ E ltac:(fun _ => xauto*).
 Tactic Notation "xapp" "*" constr(E1) constr(E2) := 
-  xapp* (>>> E1 E2).
+  xapp* (>> E1 E2).
 Tactic Notation "xapp" "*" constr(E1) constr(E2) constr(E3) := 
-  xapp* (>>> E1 E2 E3).
+  xapp* (>> E1 E2 E3).
 Tactic Notation "xapp" "*" constr(E1) constr(E2) constr(E3) constr(E4) := 
-  xapp* (>>> E1 E2 E3 E4).
+  xapp* (>> E1 E2 E3 E4).
 Tactic Notation "xapp" "*" constr(E1) constr(E2) constr(E3) constr(E4) constr(E5) :=
-   xapp* (>>> E1 E2 E3 E4 E5).
+   xapp* (>> E1 E2 E3 E4 E5).
 
 Tactic Notation "xapp_spec" constr(H) := 
-  xapp_with H (>>>) ltac:(fun _ => idtac).
+  xapp_with H (>>) ltac:(fun _ => idtac).
 Tactic Notation "xapp_spec" constr(H) constr(E) := 
   xapp_with H E ltac:(fun _ => idtac).
 Tactic Notation "xapp_spec" "~" constr(H) := 
-  xapp_with H (>>>) ltac:(fun _ => xauto~). (* ; xauto~.*)
+  xapp_with H (>>) ltac:(fun _ => xauto~). (* ; xauto~.*)
 Tactic Notation "xapp_spec" "~" constr(H) constr(E) := 
   xapp_with H E ltac:(fun _ => xauto~).
 Tactic Notation "xapp_spec" "*" constr(H) := 
-  xapp_with H (>>>) ltac:(fun _ => xauto*).
+  xapp_with H (>>) ltac:(fun _ => xauto*).
 Tactic Notation "xapp_spec" "*" constr(H) constr(E) := 
   xapp_with H E ltac:(fun _ => xauto*).
 
@@ -830,17 +827,17 @@ Ltac xapps_core spec args solver :=
   end.
 
 Tactic Notation "xapps" := 
-  xapps_core ___ (>>>) ltac:(fun _ => idtac).
+  xapps_core ___ (>>) ltac:(fun _ => idtac).
 Tactic Notation "xapps" constr(E) := 
   xapps_core ___ E ltac:(fun _ => idtac).
 Tactic Notation "xapps" constr(E1) constr(E2) := 
-  xapps_core (>>> E1 E2).
+  xapps_core (>> E1 E2).
 Tactic Notation "xapps" constr(E1) constr(E2) constr(E3) := 
-  xapps_core (>>> E1 E2 E3).
+  xapps_core (>> E1 E2 E3).
 Tactic Notation "xapps" constr(E1) constr(E2) constr(E3) constr(E4) := 
-  xapps_core (>>> E1 E2 E3 E4).
+  xapps_core (>> E1 E2 E3 E4).
 Tactic Notation "xapps" constr(E1) constr(E2) constr(E3) constr(E4) constr(E5) := 
-  xapps_core (>>> E1 E2 E3 E4 E5).
+  xapps_core (>> E1 E2 E3 E4 E5).
 
 Tactic Notation "xapps" "~" := 
   xapps; auto_tilde.
@@ -1556,7 +1553,7 @@ Proof.
   introv LR HR. applys* local_weaken (rm I0). gen X0. 
   intros X. induction_wf IH: W X. 
   rewrite LR. introv Hh.
-  lets (H1&H2&Q1&H'&?&(Q'&?&?&?)&?): (>>> (rm M) X Hh).
+  lets (H1&H2&Q1&H'&?&(Q'&?&?&?)&?): (>> (rm M) X Hh).
   exists (H1 \* H2) [] (Q1 \*+ H2) H'. splits~.
   rew_heap~.
   applys HR. xextract. xlet (Q' \*+ H2). skip. (* todo: F1 local *)
@@ -1747,7 +1744,7 @@ Ltac run_hint h cont :=
       | tag_let_trm => fail (* todo!!*)
       | tag_apply => xapp E (*todo: not needed?*)
       end
-  | XspecArgs (>>> ?S) ?E => 
+  | XspecArgs (>> ?S) ?E => 
       match tag with
       | tag_let_trm =>  fail (* todo!!*)
       | tag_apply => xapp_spec S E (*todo: not needed?*)

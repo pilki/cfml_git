@@ -156,6 +156,7 @@ Lemma valid_spec :
     good_sizes n Val Idx Back -> index L i -> n <= L ->
     keep R (s ~> SarrayPacked n Val Idx Back)
            (\= istrue (Valid n Idx Back i)).
+(*
 Proof.
   xcf. introv Siz Ii Le. unfold SarrayPacked.
   xchange (Sarray_focus s) as n' val idx back E. subst n'.
@@ -169,6 +170,8 @@ Proof.
   xret. hsimpl. fold_bool. fold_prop. unfold Valid.
   cuts*: (~ index n (Idx\(i))). rewrite* int_index_def.
 Qed.
+*)
+Admitted.
 
 Hint Extern 1 (RegisterSpec valid) => Provide valid_spec.
 
@@ -185,6 +188,7 @@ Ltac hsimpl_find_data_post tt ::=
 Lemma get_spec' :
   Spec get i s |R>> forall f, index L i -> 
     keep R (s ~> SparseArray f) (\= f i).
+(*
 Proof.
   xcf. introv ILi.
   unfold SparseArray. hdata_simpl.
@@ -197,7 +201,8 @@ Proof.
   (* case not an index *)
   xrets*.
 Qed. 
-
+*)
+Admitted.
 
 (*--------------------------------------------------*)
 (** Function [set] *)
@@ -205,78 +210,71 @@ Qed.
 Definition update_fun A B (f:A->B) i v :=
   fun j => If i '= j then v else f j.
 
+
 Lemma set_spec :
   Spec set i v l |R>> forall f, index L i ->
     R (l ~> SparseArray f) (# l ~> SparseArray (update_fun f i v)).
 Proof.
   xcf. introv Imi. hdata_simpl SparseArray.
   xextract as n Val Idx Back (Siz&Bok&Iok).
-  xchange (Sarray_focus s) as n' val idx back.
+  xchange (Sarray_focus s) as n' val idx back. intro_subst.
   xapps. xapps*.
-  xchange (Sarray_unfocus s n' val idx back). 
-   fold SarrayPacked. clear n' val idx back.
+  xchange (Sarray_unfocus s n). fold SarrayPacked. clear val idx back.
   xapps*. hnf in Siz; math.
   xif.
   (* case create back-index *)
-  xchange (Sarray_focus s) as n' val idx back.
-  xchange (Id_focus n'). xextract. intro_subst.
-  lets Nbk: (>>> not_Valid_to_notin_Back Bok); eauto.
+  xchange (Sarray_focus s) as n' val idx back. intro_subst.
+  lets Nbk: not_Valid_to_notin_Back Bok; eauto.
   skip: (n < L). (* pigeon-holes, see task description *)
-  asserts: (0 <= n < L). hnf in Siz; math.
-  asserts: (index L n). rewrite~ int_index_def. (* faster *)
+  asserts: (0 <= n < L). hnf in Siz; math.                 (* easy for SMT *)
+  asserts: (index L n). rewrite~ int_index_def.            (* easy for SMT *)
   xapps. xapps. xapps*. xapps. xapps*. xapp.
-  intros _. hchange (Id_unfocus (n+1)).
-  hchange (Sarray_unfocus s (n+1) val idx back). hsimpl. splits.
-    hnf. rew_array. hnf in Siz. jauto_set; auto; math. (* faster *)
-    intros k Ik. tests (k = n).
-      rew_array*. 
-      rewrite @int_index_def in Ik.
-       asserts [? ?]: (index n k /\ index L k). strong. (* faster *)
-       forwards~ [? ?]: Bok k. rew_array*.
+  hchanges (Sarray_unfocus s (n+1) val idx back). splits.
+    hnf. rew_array. hnf in Siz. jauto_set; auto; math.     (* easy for SMT *)
+    intros k Ik. tests (k = n).                            (* easy for SMT *)
+      rew_array*.                                          (* easy for SMT *)
+      rewrite @int_index_def in Ik.                        (* easy for SMT *)
+       asserts [? ?]: (index n k /\ index L k). strong.    (* easy for SMT *)
+       forwards~ [? ?]: Bok k. rew_array*.                 (* easy for SMT *)
     intros j. unfold update_fun. specializes Iok j. case_if.
-      subst. asserts: (index (n + 1) n). eapply int_index_prove; math. (* faster *)
-       unfold Valid. rew_map_array*. case_if; tryfalse*; auto.
-      rewrite Iok. case_if as N. (*todo: name*) renames v0 to N.
-        rewrite If_l.
-          rew_array~.
-          unfold Valid in N|-*. destruct N as (N1&N2&N3). splits.
-            auto.
-            rew_array. rewrite int_index_def in N2 |- *. math.
-            apply* index_array_length_le. myunfold. math.
-            auto.
-          rew_array~. rew_array~. apply* index_array_length_le. myunfold. math.
-          rew_array. rewrite int_index_def in N2. math.
-          apply* index_array_length_le. myunfold. math.
-          auto.
-        unfold Valid in n1|-*. case_if; auto. rew_logic in n1.
-         false. destruct a as (N1&N2&N3). branches n1.
-           false.
-(*
-           rew_array in N2; auto. rewrite int_index_def in N2,H2. math.
+      asserts: (index (n + 1) n).                          (* easy for SMT *)
+        eapply int_index_prove; math.                      (* easy for SMT *)
+       subst. unfold Valid. rew_map_array*.                (* easy for SMT *)
+       case_if; tryfalse*; auto.                           (* easy for SMT *)
+      rewrite Iok. 
+Lemma If_eq' : forall (A : Type) (P P' : Prop) (x x' y y' : A),
+       (P <-> P') ->
+       (P -> x = x') -> (~P -> y = y') -> (If P then x else y) = (If P' then x' else y').
+Proof. intros. do 2 case_if; auto*. Qed.
+apply~ If_eq'.
+unfold Valid.
+Ltac clears_all :=
+  repeat match goal with H:_|-_ => first [clear H | generalizes H] end; intros. 
+(* asserts M: (forall P Q Q' : Prop, (P Q <-> Q') -> (P /\ Q <-> P /\ Q')). applys (rm M).*)
+test (index L j) as Ij; auto*. rewrite (prop_eq_True_back Ij); rew_logic.
+rewrite~ (array_update_read_neq (t:=Idx)).
+test (index n (Idx\(j))) as Iidx. rewrite (prop_eq_True_back Iidx); rew_logic.
+ asserts: (n <> Idx\(j)). rewrite int_index_def in Iidx. math.
+ asserts: (index Back (Idx\(j))). apply* index_array_length_le. myunfold. math.
+  iff M [Inj Eq].
+     split. rewrite int_index_def in Iidx|-*. math.
+            rew_array~.
+  rew_array in Eq; auto.
 
-        
- rew_array.
-      apply* index_array_length_le. myunfold. math. (* faster *) eauto. auto. unfold Valid. . fequals.
-      unfold Valid. case_if.
-   case_if; case_if; tryfalse; auto.
-*)
-skip.
-rew_array in N3; auto. skip. skip.
-(*
-      rew_map in Imj; try typeclass. destruct Imj; tryfalse.
-       forwards~ [(M1&M2&M3) E]: Iok j. unfold Valid. rew_map_array; auto.
-         splits~. splits*. rewrite int_index_def in M2 |- *. math. (* faster *)
-         apply* index_array_length_le. myunfold. math. (* faster *)
-         rewrite @int_index_def in M2. math. (* faster *)
-*)
-
+test (n = Idx\(j)) as EQn. iff [Inj EQ]; false.
+  rewrite <- EQn in EQ, Inj. 
+  rewrite (array_update_read_eq) in EQ. false.  
+  apply* index_array_length_le. myunfold. math.
+rewrite (prop_eq_False_back Iidx); rew_logic. iff ? [Inj EQ]; tryfalse.
+apply Iidx. rewrite int_index_def in Inj|-*. math.
+  intros V. rew_array~.
   (* case nothing to do *)
-   xret. hsimpl. splits~. 
-   intros j. specializes Iok j. unfold update_fun. 
-   case_if; case_if; tryfalse; auto.
-     subst. rew_map_array*.
-     rew_map_array*.
+   xret. hsimpl. splits~. unfold update_fun.
+   intros j. specializes Iok j.                            (* easy for SMT *)
+   case_if; case_if; tryfalse; auto.                       (* easy for SMT *)
+     subst. rew_map_array*.                                (* easy for SMT *)
+     rew_map_array*.                                       (* easy for SMT *)
 Qed.
 
 
-  
+

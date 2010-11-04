@@ -87,12 +87,12 @@ Proof.
   xwhile. xgeneralize (forall L (k:int) l,
     R (n ~~> k \* h ~~> l \* l ~> MList T L) 
       (# n ~~> (k + length L) \* h ~~> null \* l ~> MList T L)).
-   applys (>>> Inv l). hsimpl.
+   applys (>> Inv l). hsimpl.
    clear l L. intros L. induction_wf IH: (@list_sub_wf A) L; intros. 
    applys (rm HR). xlet. xapps. xapps. xifs.
    (* case cons *)
    xchange (MList_not_null l) as x l' X L' EL. auto.
-   xapps. xapps. xapps. xapp. subst L. xapply_local~ (>>> IH L' l').
+   xapps. xapps. xapps. xapp. subst L. xapply_local~ (>> IH L' l').
    hsimpl. intros _. hchanges (MList_uncons l). rew_length. math.
    (* case nil *)
    subst. xchange MList_null_keep as M. subst. 
@@ -119,7 +119,7 @@ Proof.
     xchange (MList_not_null lf) as x lf' X Lf' EL. auto.
     xseq. xapps. xapps. xapps. xapp. xapp. xapp.
     xchange (MList_uncons lf). subst Lf.
-    xapply_local~ (>>> (rm IH) Lf' (X::Lr) lf' lf). hsimpl. xsimpl. rew_rev~.
+    xapply_local~ (>> (rm IH) Lf' (X::Lr) lf' lf). hsimpl. xsimpl. rew_rev~.
     (*case nil *)
     xret. hchange MList_null. xsimpl. subst~. 
   xextract as l'. xgc. xapp. rew_app. hextract. subst. hsimpl.

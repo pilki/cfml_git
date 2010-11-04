@@ -767,7 +767,7 @@ Ltac hsimpl_hint_remove tt :=
 
 Lemma demo_hsimpl_hints : exists n, n = 3.
 Proof.
-  hsimpl_hint_put (>>> 3 true).
+  hsimpl_hint_put (>> 3 true).
   hsimpl_hint_next ltac:(fun x => exists x).
   hsimpl_hint_remove tt.
 Admitted.
@@ -1018,9 +1018,9 @@ Tactic Notation "hsimpl" constr(L) :=
   | _ => hsimpl_hint_put (boxer L :: nil)
   end; hsimpl.
 Tactic Notation "hsimpl" constr(X1) constr(X2) :=
-  hsimpl (>>> X1 X2).
+  hsimpl (>> X1 X2).
 Tactic Notation "hsimpl" constr(X1) constr(X2) constr(X3) :=
-  hsimpl (>>> X1 X2 X3).
+  hsimpl (>> X1 X2 X3).
 
 Tactic Notation "hsimpl" "~" constr(L) :=
   hsimpl L; auto~.

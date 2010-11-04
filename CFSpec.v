@@ -396,7 +396,7 @@ Proof.
   intros H Q M. rewrite app_local_1. introv Hh.
   destruct (M _ Hh) as (H1&H2&Q1&H'&(h1&h2&?&?&?&?)&(Q'&Ap1&Ap2)&Po). clear M.
   specializes Ap2 g1.
-  forwards* (H''&Ro): (>>> (@pureapp_and_app_1 A1 func) f x1).
+  forwards* (H''&Ro): (>> (@pureapp_and_app_1 A1 func) f x1).
   exists (Q' g1 \* H'') H2 __ (H' \* H''). splits.
     subst. exists___*.
     apply* local_wframe.
@@ -418,9 +418,9 @@ Proof.
   intros H Q M. rewrite app_local_1. introv Hh.
   destruct (M _ Hh) as (H1&H2&Q1&H'&(h1&h2&?&?&?&?)&(Q'&Ap1&Ap2)&Po). clear M.
   specializes Ap2 g1. 
-  forwards* (H''&(h3&h4&PH3&PH4&?&?)): (>>> (@pureapp_and_app_1 A1 func) f x1).
+  forwards* (H''&(h3&h4&PH3&PH4&?&?)): (>> (@pureapp_and_app_1 A1 func) f x1).
   destruct (Ap2 _ PH3) as (H1'&H2'&Q1'&H'''&(h1'&h2'&?&?&?&?)&(Q''&Ap1'&Ap2')&Po'). 
-  forwards* (Hf&(h3'&h4'&PH3'&PH4'&?&?)): (>>> (@pureapp_and_app_1 A2 func) g1 x2).
+  forwards* (Hf&(h3'&h4'&PH3'&PH4'&?&?)): (>> (@pureapp_and_app_1 A2 func) g1 x2).
   specializes Ap2' g2.
   exists (Q'' g2 \* H'') (H2 \* H2' \* Hf) __ (H' \* H'' \* H''' \* Hf). splits.
     exists (h3' \+ h4) (h2 \+ h2' \+ h4'). splits.
@@ -932,7 +932,7 @@ Lemma spec_iff_app_1 : forall A1 B f (G:A1->~~B),
   (forall x H Q, G x H Q -> app_1 f x H Q).
 Proof.
   intros. iff M.
-  introv S. forwards* [U V]: (>>> M (fun (x':A1) (R:~~B) => x' = x -> R H Q)).
+  introv S. forwards* [U V]: (>> M (fun (x':A1) (R:~~B) => x' = x -> R H Q)).
     intros_all. subst. applys* H1.
     intros. subst~.
   introv Is S. split~. intros x. applys Is S. intros H Q N. apply~ M.
@@ -953,7 +953,7 @@ Proof.
     forwards N: M (fun (x':A1) (y':A2) (R:~~B) => x' = x -> y' = y -> R H' Q').
        intros_all. subst. applys* H0. 
        intros_all. subst~.
-    lets Ag': (proj2 N x). lets Sg: (>>> (@pureapp_join A1 func) Ag Ag').
+    lets Ag': (proj2 N x). lets Sg: (>> (@pureapp_join A1 func) Ag Ag').
     apply~ (proj2 Sg y).
   introv Is S. split~. intros x. apply M. intros g N.
    split~. intros y. applys Is. apply S. intros H Q L. apply~ N.
