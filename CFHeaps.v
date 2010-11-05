@@ -568,19 +568,6 @@ Tactic Notation "hdata_simpl" constr(E) :=
 Definition Id {A:Type} (X:A) (x:A) := 
   [ X = x ].
  
-(* todo?
-Lemma Id_focus : forall A (x n : A),
-  x ~> Id n ==> [x = n].
-Proof. intros. unfold Id. hdata_simpl. hextract. hsimpl~. Qed.
-
-Lemma Id_unfocus : forall A (x : A),
-  [] ==> x ~> Id x.
-Proof. intros. unfold Id. hdata_simpl. hextract. hsimpl~. Qed.
-
-Implicit Arguments Id_focus [A].
-Implicit Arguments Id_unfocus [A].
-*)
-
 (*------------------------------------------------------------------*)
 (* ** Any *)
 

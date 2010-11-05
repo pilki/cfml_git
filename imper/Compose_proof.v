@@ -2,12 +2,6 @@ Set Implicit Arguments.
 Require Import CFLib Compose_ml.
 
 
-Notation "'Let' x ':' T ':=' F1 'in' F2" :=
-  (!T (fun H Q => exists Q1, F1 H Q1 /\ forall x:T, F2 (Q1 x) Q))
-  (at level 69, a at level 0, x ident, right associativity, only parsing) : charac.
-
-
-
 (********************************************************************)
 (* ** Verification of Compose *)
 

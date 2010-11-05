@@ -46,6 +46,45 @@ let rec compile k = function
   | Tfun t1 -> (Iclo (compile [Iret] t1))::k
   | Tapp (t1,t2) -> compile (compile (Iapp::k) t2) t1
 
+let run (e0:menv) (s0:mstack) (c0:mcode) = 
+  let e := ref e0 in
+  let s := ref s0 in
+  let c := ref c0 in
+  while !c <> [] do
+    match !c with i::c' ->
+    match i with
+     | Ivar n -> s := Sval(List.nth e n)::!s;
+                 c := c';
+     | Iint n -> s := Sval(Mint(n))::s;
+                 c := c';
+     | Iclo c -> s := Sval(Mclo(c,e))::s;
+                 c := c';
+     | Iapp   -> let Sval(v)::Sval(Mclo(c2,e2))::s2 = !s in
+	         e := v::e2;
+	         s := Sret(k,e)::s2;
+                 c := c2;
+     | Iret   -> let Sval(v)::Sret(k2,e2)::s2 = !s in
+	         e := e2;
+	         s := Sval(v)::s2;
+                 c := c2;
+  done;
+  let (Sval v)::_ = !s in v
+
+let exec t =
+  let c = compile [] t in
+  let Mint n = run [] [] c in
+  n
+
+(** Remark: this source code raises warnings in Caml 
+    for "non-exhaustive pattern".
+    We are not concerned with such a warning since we
+    prove that the evaluation of well-behaved programs 
+    will always satisfy all the patterns. *)
+
+
+(*---------------------------------------------------
+(* Note: an equivalent code in CPS form 
+
 let rec run e s = function
   | [] -> let (Sval v)::_ = s in v
   | i::k -> match i with
@@ -62,8 +101,6 @@ let exec t =
   let Mint n = run [] [] k in
   n
 
-(** Remark: this source code raises warnings in Caml 
-    for "non-exhaustive pattern".
-    We are not concerned with such a warning since we
-    prove that the evaluation of well-behaved programs 
-    will always satisfy all the patterns. *)
+*)
+
+

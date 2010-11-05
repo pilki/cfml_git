@@ -404,6 +404,10 @@ Notation "'Let' x ':=' F1 'in' F2" :=
   (at level 69, a at level 0, x ident, right associativity,
   format "'[v' '[' 'Let'  x  ':='  F1  'in' ']'  '/'  '[' F2 ']' ']'") : charac.
 
+Notation "'Let' x ':' T ':=' F1 'in' F2" :=
+  (!T (fun H Q => exists Q1, F1 H Q1 /\ forall x:T, F2 (Q1 x) Q))
+  (at level 69, a at level 0, x ident, right associativity, only parsing) : charac.
+
 Notation "Q1 ;; Q2" :=
   (!Seq (fun H Q => exists Q', Q1 H Q' /\ Q2 (Q' tt) Q))
   (at level 68, right associativity,

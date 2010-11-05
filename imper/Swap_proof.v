@@ -1,67 +1,67 @@
 Set Implicit Arguments.
-Require Import CFPrim Swap_ml.
+Require Import CFLib Swap_ml.
 
-
-(* todo: swap for strong references *)
 
 (********************************************************************)
 (* ** Swap for non-aliased references *)
 
-Lemma swap_spec : forall a,
+Lemma swap_spec_neq : forall a,
   Spec swap i j |R>> forall A (T:htype A a) X Y,
    R (i ~> Ref T X \* j ~> Ref T Y)  
    (# i ~> Ref T Y \* j ~> Ref T X).
 Proof.
   xcf. intros.
-  xchange (@focus_ref i). xextract as x.
-  xchange (@focus_ref j). xextract as y.
-  xapp. intro_subst.
-  xapp. intro_subst.
-  xapp. xapp.
-  intros _. (* todo avec le hchange *)  
-  hchange (@unfocus_ref i _ y).
-  hchange (@unfocus_ref j _ x).
-  hsimpl.
+  xchange (@focus_ref i) as x.
+  xchange (@focus_ref j) as y.
+  xapps. xapps. xapp. xapp. 
+  hchange (unfocus_ref i y).
+  hchanges (unfocus_ref j x).
 Qed.
 
-Lemma swap_spec' : forall a,
+(********************************************************************)
+(* ** Swap for aliased references *)
+
+Lemma swap_spec_equal : forall a,
   Spec swap i j |R>> forall A (T:htype A a) X,
     i = j -> keep R (i ~> Ref T X) (#[]).
 Proof.
   xcf. introv E. subst j.
-  xchange (@focus_ref i). xextract as x.
-  xapp. intro_subst.
-  xapp. intro_subst.
-  xapp. xapp. intros _.
-  hchange (@unfocus_ref i _ x).
-  hsimpl. 
+  xchange (focus_ref i) as x. 
+  xapps. xapps. xapp. xapp.
+  hchanges (unfocus_ref i x).
 Qed.
 
-
-
-
 (********************************************************************)
-(* ** Swap for strong aliased references *)
+(* ** General version of swap, with a group region *)
 
-(*
-Lemma swap_spec : forall a b,
-  Spec swap i j |R>> forall A B (T:htype A a) (U:htype B b) X Y,
-   R (i ~> Ref T X \* j ~> Ref U Y)  
-   (# i ~> Ref U Y \* j ~> Ref T X).
+Lemma swap_spec_group : forall a,
+  Spec swap i j |R>> forall `{Inhab A} (T:htype A a) (M:map loc A),
+    index M i -> index M j ->
+    let M' := M\(j:=M\(i))\(i:=M\(j)) in
+    R (Group (Ref T) M) (# Group (Ref T) M').
 Proof.
-  xcf. intros.
-  xchange (@focus_ref i). xextract as x.
-  xchange (@focus_ref j). xextract as y.
-  xapp. intro_subst.
-  xapp. intro_subst.
+  xcf. introv Ii Ij. intro. tests (j = i).
+  (* case aliased references *)
+  subst M' j. 
+  xchange~ (Group_rem i).
+  xchange (focus_ref i) as x.
+  xapps. xapps. xapp. xapp.
+  hchange (unfocus_ref i).
+  hchange~ (Group_add' i).
+  rewrite~ update_update_eq.         (* map specific *)
+  (* case non-aliased references *)
+  forwards*: (dom_restrict_in i j).  (* map specific *)
+  xchange~ (Group_rem i).
+  xchange~ (Group_rem j). 
+  xchange (focus_ref i) as x.
+  xchange (focus_ref j) as y.
+  xapps. xapps. xapp. xapp.
+  hchange (unfocus_ref i y). 
+  hchange (unfocus_ref j x).
+  hchange~ (Group_add' j).
+  rewrite~ restrict_update.          (* map specific *)
+  rewrite~ restrict_read.            (* map specific *)
+  hchange~ (Group_add' i). 
+  rewrite~ dom_update_in.            (* map specific *)
+Qed.
 
-
-*)
-
-
-(* 
-spec alias () |R>>
-  R [] (fun p => let (n,a) := p in  (*todo:notation*)
-        [n = 1] \* a ~> Ref (Ref Id) 3)
-*)
-     

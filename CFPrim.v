@@ -54,6 +54,8 @@ Proof.
 Qed.
 
 Global Opaque Ref.
+Implicit Arguments focus_ref [a A].
+Implicit Arguments unfocus_ref [a A].
 
 
 (*------------------------------------------------------------------*)

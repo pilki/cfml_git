@@ -1,4 +1,18 @@
 
+(* todo?
+Lemma Id_focus : forall A (x n : A),
+  x ~> Id n ==> [x = n].
+Proof. intros. unfold Id. hdata_simpl. hextract. hsimpl~. Qed.
+
+Lemma Id_unfocus : forall A (x : A),
+  [] ==> x ~> Id x.
+Proof. intros. unfold Id. hdata_simpl. hextract. hsimpl~. Qed.
+
+Implicit Arguments Id_focus [A].
+Implicit Arguments Id_unfocus [A].
+*)
+
+
 (*
 Notation "'exists' ( x1 : T1 ) ',' P" :=
   (exists x1:T1, P)
