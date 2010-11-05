@@ -1,12 +1,6 @@
 Set Implicit Arguments.
 Require Import CFLib LibSet LibMap LibArray sparse_array_ml.
 
-Lemma If_eq : forall (A:Type) (P P':Prop) (x x' y y' : A), 
-  (P <-> P') -> (x = x') -> (y = y') ->
-  (If P then x else y) = (If P' then x' else y').
-Proof. intros. subst. asserts_rewrite (P = P'). extens~. auto. Qed.
-
-
 
 (****************************************************)
 (** Shorthand *)
@@ -95,68 +89,16 @@ Tactic Notation "rew_map_array" "*" :=
 
 
 (****************************************************)
-(** Auxiliary lemmas *)
-
-Lemma not_Valid_to_notin_Back : forall i n Idx Back,
-  ~ (Valid n Idx Back i) -> index L i -> BackCorrect n Idx Back ->
-  (forall k, index n k -> i <> Back\(k)).
-Proof.
-  introv NVi ILi Bok Ink Eq. forwards~ [_ E]: Bok k. 
-  unfolds Valid. rewrite (prop_eq_True_back ILi) in NVi. 
-  rew_logic in NVi. destruct NVi as [H|H]; apply H; clear H; congruence.
-Qed.
-
-
-(****************************************************)
 (** Verification *)
-
-
-Lemma Id_focus : forall A (x n : A),
-  x ~> Id n ==> [x = n].
-Proof. intros. unfold Id. hdata_simpl. hextract. hsimpl~. Qed.
-
-Lemma Id_unfocus : forall A (x : A),
-  [] ==> x ~> Id x.
-Proof. intros. unfold Id. hdata_simpl. hextract. hsimpl~. Qed.
-
-Implicit Arguments Id_focus [A].
-Implicit Arguments Id_unfocus [A].
 
 (*--------------------------------------------------*)
 (** Function [valid] *)
-
-Lemma hsimpl_id_unify : forall A (x : A) H' H1 H2,
-  H' ==> H1 \* H2 -> H' ==> H1 \* (x ~> Id x \* H2).
-Proof. intros. apply~ hsimpl_id. Qed.
-
-
-Ltac hsimpl_step tt ::=
-  match goal with |- ?HL ==> ?HA \* ?HN =>
-  match HN with
-  | ?H \* _ =>
-    match H with
-    | [] => apply hsimpl_empty
-    | [_] => apply hsimpl_prop
-    | heap_is_pack _ => hsimpl_extract_exists tt
-    | _ \* _ => apply hsimpl_assoc
-    | heap_is_single _ _ => hsimpl_try_same tt
-    | ?H => hsimpl_find_same H HL 
-    | hdata _ ?l => hsimpl_find_data l HL ltac:(hsimpl_find_data_post)
-    | ?x ~> Id _ => check_noevar x; apply hsimpl_id
-    | ?x ~> _ _ => check_noevar x; apply hsimpl_id_unify
-    | ?H => apply hsimpl_keep
-    end
-  | [] => fail 1
-  | _ => apply hsimpl_starify
-  end end.
-
 
 Lemma valid_spec :
   Spec valid i s |R>> forall n Val Idx Back, 
     good_sizes n Val Idx Back -> index L i -> n <= L ->
     keep R (s ~> SarrayPacked n Val Idx Back)
            (\= istrue (Valid n Idx Back i)).
-(*
 Proof.
   xcf. introv Siz Ii Le. unfold SarrayPacked.
   xchange (Sarray_focus s) as n' val idx back E. subst n'.
@@ -170,8 +112,6 @@ Proof.
   xret. hsimpl. fold_bool. fold_prop. unfold Valid.
   cuts*: (~ index n (Idx\(i))). rewrite* int_index_def.
 Qed.
-*)
-Admitted.
 
 Hint Extern 1 (RegisterSpec valid) => Provide valid_spec.
 
@@ -179,16 +119,9 @@ Hint Extern 1 (RegisterSpec valid) => Provide valid_spec.
 (*--------------------------------------------------*)
 (** Function [get] *)
 
-Ltac hsimpl_find_data_post tt ::=
-  try solve 
-   [ reflexivity
-   | fequal; fequal; first [ eassumption | symmetry; eassumption ] ].
-
-
 Lemma get_spec' :
   Spec get i s |R>> forall f, index L i -> 
     keep R (s ~> SparseArray f) (\= f i).
-(*
 Proof.
   xcf. introv ILi.
   unfold SparseArray. hdata_simpl.
@@ -201,15 +134,48 @@ Proof.
   (* case not an index *)
   xrets*.
 Qed. 
-*)
-Admitted.
+
 
 (*--------------------------------------------------*)
 (** Function [set] *)
 
+(** Auxiliary definition for update of a function *)
+
 Definition update_fun A B (f:A->B) i v :=
   fun j => If i '= j then v else f j.
 
+(** Auxiliary lemma for back pointers *)
+
+Lemma not_Valid_to_notin_Back : forall i n Idx Back,
+  ~ (Valid n Idx Back i) -> index L i -> BackCorrect n Idx Back ->
+  (forall k, index n k -> i <> Back\(k)).
+Proof.
+  introv NVi ILi Bok Ink Eq. forwards~ [_ E]: Bok k. 
+  unfolds Valid. rewrite (prop_eq_True_back ILi) in NVi. 
+  rew_logic in NVi. destruct NVi as [H|H]; apply H; clear H; congruence.
+Qed.
+
+(** Auxiliary lemma for validity of indices *)
+
+Lemma Valid_extend : forall n Idx Back i j,
+  length Idx = L -> length Back = L -> index L n -> i <> j ->
+  (Valid n Idx Back j <-> Valid (n + 1) (Idx\(i:=n)) (Back\(n:=i)) j).
+Proof.
+  introv Le1 Le2 ILn Neq. unfold Valid. 
+  lets M: ILn. rewrite int_index_def in M.
+  test_prop (index L j); [|auto*].
+  rewrite~ (array_update_read_neq (t:=Idx)).
+  rewrite int_index_succ; [|math].
+  test_prop (index n (Idx\(j))).
+    rew_array*.                           (* easy for SMT *)
+      apply* index_array_length_le. math. (* easy for SMT *)
+      rewrite int_index_def in *. math.   (* easy for SMT *)
+    split; auto_false. intros [In Eq].    (* easy for SMT *)
+     rewrite In in Eq.                    (* easy for SMT *)
+     rewrite array_update_read_eq in Eq; auto_false. (* easy for SMT *)
+Qed.
+
+(** Verification of the [set] function *)
 
 Lemma set_spec :
   Spec set i v l |R>> forall f, index L i ->
@@ -220,8 +186,7 @@ Proof.
   xchange (Sarray_focus s) as n' val idx back. intro_subst.
   xapps. xapps*.
   xchange (Sarray_unfocus s n). fold SarrayPacked. clear val idx back.
-  xapps*. hnf in Siz; math.
-  xif.
+  xapps*. hnf in Siz; math. xif.
   (* case create back-index *)
   xchange (Sarray_focus s) as n' val idx back. intro_subst.
   lets Nbk: not_Valid_to_notin_Back Bok; eauto.
@@ -229,7 +194,7 @@ Proof.
   asserts: (0 <= n < L). hnf in Siz; math.                 (* easy for SMT *)
   asserts: (index L n). rewrite~ int_index_def.            (* easy for SMT *)
   xapps. xapps. xapps*. xapps. xapps*. xapp.
-  hchanges (Sarray_unfocus s (n+1) val idx back). splits.
+  hchanges (Sarray_unfocus s). splits.
     hnf. rew_array. hnf in Siz. jauto_set; auto; math.     (* easy for SMT *)
     intros k Ik. tests (k = n).                            (* easy for SMT *)
       rew_array*.                                          (* easy for SMT *)
@@ -241,33 +206,9 @@ Proof.
         eapply int_index_prove; math.                      (* easy for SMT *)
        subst. unfold Valid. rew_map_array*.                (* easy for SMT *)
        case_if; tryfalse*; auto.                           (* easy for SMT *)
-      rewrite Iok. 
-Lemma If_eq' : forall (A : Type) (P P' : Prop) (x x' y y' : A),
-       (P <-> P') ->
-       (P -> x = x') -> (~P -> y = y') -> (If P then x else y) = (If P' then x' else y').
-Proof. intros. do 2 case_if; auto*. Qed.
-apply~ If_eq'.
-unfold Valid.
-Ltac clears_all :=
-  repeat match goal with H:_|-_ => first [clear H | generalizes H] end; intros. 
-(* asserts M: (forall P Q Q' : Prop, (P Q <-> Q') -> (P /\ Q <-> P /\ Q')). applys (rm M).*)
-test (index L j) as Ij; auto*. rewrite (prop_eq_True_back Ij); rew_logic.
-rewrite~ (array_update_read_neq (t:=Idx)).
-test (index n (Idx\(j))) as Iidx. rewrite (prop_eq_True_back Iidx); rew_logic.
- asserts: (n <> Idx\(j)). rewrite int_index_def in Iidx. math.
- asserts: (index Back (Idx\(j))). apply* index_array_length_le. myunfold. math.
-  iff M [Inj Eq].
-     split. rewrite int_index_def in Iidx|-*. math.
-            rew_array~.
-  rew_array in Eq; auto.
-
-test (n = Idx\(j)) as EQn. iff [Inj EQ]; false.
-  rewrite <- EQn in EQ, Inj. 
-  rewrite (array_update_read_eq) in EQ. false.  
-  apply* index_array_length_le. myunfold. math.
-rewrite (prop_eq_False_back Iidx); rew_logic. iff ? [Inj EQ]; tryfalse.
-apply Iidx. rewrite int_index_def in Inj|-*. math.
-  intros V. rew_array~.
+      rewrite Iok. apply~ If_eq.
+        myunfold. apply~ Valid_extend.
+        intros. rew_array~.                                (* easy for SMT *)
   (* case nothing to do *)
    xret. hsimpl. splits~. unfold update_fun.
    intros j. specializes Iok j.                            (* easy for SMT *)
@@ -275,6 +216,7 @@ apply Iidx. rewrite int_index_def in Inj|-*. math.
      subst. rew_map_array*.                                (* easy for SMT *)
      rew_map_array*.                                       (* easy for SMT *)
 Qed.
+
 
 
 

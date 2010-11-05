@@ -148,6 +148,15 @@ Tactic Notation "rew_logic" "in" "*" :=
   rew_logicb in *; rew_logic in *.
 
 
+Tactic Notation "test_prop" constr(P) "as" ident(H) :=
+  test P as H; 
+  [ try rewrite (prop_eq_True_back H) in *; rew_logic in *
+  | try rewrite (prop_eq_False_back H) in *; rew_logic in * ].
+
+Tactic Notation "test_prop" constr(P) :=
+  let H := fresh "C" in test_prop P as H.
+
+
 (************************************************************)
 (* * Predicate for post-conditions on boolean values *)
 (* --> todo: remove *)

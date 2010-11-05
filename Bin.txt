@@ -3935,8 +3935,7 @@ Ltac hclean_step tt :=
   hclean_onH ltac:(go).
 
 Ltac hclean_cleanup tt :=
-  autorewrite with hsimpl_neutral;
-  unprotect_evars tt.
+  autorewrite with hsimpl_neutral;_evars tt.
 
 Ltac hclean_main tt :=
   hclean_setup tt;
@@ -3948,3 +3947,41 @@ Ltac hclean_main tt :=
 Tactic Notation "hclean" := hclean_main tt.
 Tactic Notation "hclean" "~" := hclean; auto_tilde.
 Tactic Notation "hclean" "*" := hclean; auto_star.
+
+
+
+(* asserts M: (forall P Q Q' : Prop, (P Q <-> Q') -> (P /\ Q <-> P /\ Q')). applys (rm M).*)
+test (index L j) as Ij; auto*. rewrite (prop_eq_True_back Ij); rew_logic.
+rewrite~ (array_update_read_neq (t:=Idx)).
+test (index n (Idx\(j))) as Iidx. rewrite (prop_eq_True_back Iidx); rew_logic.
+ asserts: (n <> Idx\(j)). rewrite int_index_def in Iidx. math.
+ asserts: (index Back (Idx\(j))). apply* index_array_length_le. myunfold. math.
+  iff M [Inj Eq].
+     split. rewrite int_index_def in Iidx|-*. math.
+            rew_array~.
+  rew_array in Eq; auto.
+
+test (n = Idx\(j)) as EQn. iff [Inj EQ]; false.
+  rewrite <- EQn in EQ, Inj. 
+  rewrite (array_update_read_eq) in EQ. false.  
+  apply* index_array_length_le. myunfold. math.
+rewrite (prop_eq_False_back Iidx); rew_logic. iff ? [Inj EQ]; tryfalse.
+apply Iidx. rewrite int_index_def in Inj|-*. math.
+
+
+
+(*
+
+Lemma Id_focus : forall A (x n : A),
+  x ~> Id n ==> [x = n].
+Proof. intros. unfold Id. hdata_simpl. hextract. hsimpl~. Qed.
+
+Lemma Id_unfocus : forall A (x : A),
+  [] ==> x ~> Id x.
+Proof. intros. unfold Id. hdata_simpl. hextract. hsimpl~. Qed.
+
+Implicit Arguments Id_focus [A].
+Implicit Arguments Id_unfocus [A].
+*)
+
+

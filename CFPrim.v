@@ -1,6 +1,54 @@
 Set Implicit Arguments.
 Require Export LibInt LibArray CFSpec CFPrint.
 
+Require Import LibMonoid.
+
+Definition sep_monoid_data := monoid_ heap_is_star heap_is_empty.
+
+Lemma sep_monoid_prop : monoid_prop sep_monoid_data.
+Proof.
+  constructor; simpl.
+  apply star_assoc.
+  apply star_neutral_l.
+  apply star_neutral_r.
+Qed.
+
+Definition sep_monoid := Build_monoid sep_monoid_prop.
+
+Section Reduce.
+Variables (A B C : Type).
+Parameter reduce : monoid C -> (A -> B -> C) -> map A B -> C.
+Parameter reduce_empty : forall m f,
+  reduce m f \{} = monoid_neutral m.
+Parameter reduce_single : forall m f x v,
+  reduce m f (x \:= v) = f x v.
+Parameter reduce_union : forall m f M1 M2,
+  reduce m f (M1 \u M2) = (monoid_oper m) (reduce m f M1) (reduce m f M2).
+End Reduce.
+
+Lemma map_update_as_union : forall A B (M:map A B) x v,
+  M\(x:=v) = M \u (x \:= v).
+Proof. auto. Qed.
+
+
+Definition Group a A (G:htype A a) (M:map a A) :=
+  reduce sep_monoid (fun x X => x ~> G X) M.
+
+Lemma Group_add : forall a A (G:htype A a) (M:map a A) x X,
+  Group G M \* (x ~> G X) = Group G (M\(x:=X)).
+Proof.
+  intros. unfold Group. rewrite map_update_as_union.
+  rewrite reduce_union. rewrite~ reduce_single.
+Qed.
+
+Lemma Group_add : forall a A (G:htype A a) (M:map a A) x X,
+  Group G M \* (x ~> G X) = Group G (M\(x:=X)).
+Proof.
+  intros. unfold Group. rewrite map_update_as_union.
+  rewrite reduce_union. rewrite~ reduce_single.
+Qed.
+
+
 
 
 (********************************************************************)

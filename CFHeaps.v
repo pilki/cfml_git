@@ -812,6 +812,10 @@ Lemma hsimpl_id : forall A (x X : A) H' H1 H2,
   H' ==> H1 \* H2 -> x = X -> H' ==> H1 \* (x ~> Id X \* H2).
 Proof. intros. unfold Id. apply~ hsimpl_prop. Qed.
 
+Lemma hsimpl_id_unify : forall A (x : A) H' H1 H2,
+  H' ==> H1 \* H2 -> H' ==> H1 \* (x ~> Id x \* H2).
+Proof. intros. apply~ hsimpl_id. Qed.
+
 Lemma hsimpl_exists : forall A (x:A) H' H1 H2 (J:A->hprop),
   H' ==> H1 \* J x \* H2 -> H' ==> H1 \* (heap_is_pack J \* H2).
 Proof.
@@ -966,9 +970,12 @@ Ltac hsimpl_extract_exists tt :=
       end)
   | eapply hsimpl_exists ].
 
+
 Ltac hsimpl_find_data_post tt :=
-  fequal; fequal; 
-  try solve [ eassumption | symmetry; eassumption ].
+  try solve 
+   [ reflexivity
+   | fequal; fequal; first [ eassumption | symmetry; eassumption ] ].
+   (* todo: match goal *)
 
 (* todo: better implemented in cps style ? *)
 
@@ -981,10 +988,11 @@ Ltac hsimpl_step tt :=
     | [_] => apply hsimpl_prop
     | heap_is_pack _ => hsimpl_extract_exists tt
     | _ \* _ => apply hsimpl_assoc
-    | _ ~> Id _ => apply hsimpl_id
     | heap_is_single _ _ => hsimpl_try_same tt
     | ?H => hsimpl_find_same H HL 
     | hdata _ ?l => hsimpl_find_data l HL ltac:(hsimpl_find_data_post)
+    | ?x ~> Id _ => check_noevar x; apply hsimpl_id
+    | ?x ~> _ _ => check_noevar x; apply hsimpl_id_unify
     | ?H => apply hsimpl_keep
     end
   | [] => fail 1
