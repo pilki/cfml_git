@@ -1,91 +1,63 @@
 Set Implicit Arguments.
-Require Import CFLib LibSet LibMap LibArray sparse_array_ml.
+Require Import CFLib LibSet LibMap union_find_ml.
 
 
 (****************************************************)
-(** Shorthand *)
+(** Reflexive-symmetric-transitive closure *) 
 
-Notation "'tab'" := (array int).
-Notation "'L'" := maxlen.
+(** Recall that [binary A] is the type of binary 
+    relations over A, defined as [A->A->Prop]. *)
 
-Definition SarrayPacked :=
-  @Sarray int (array int) (array int) (array int) Id (Array Id) (Array Id) (Array Id).
-
-Definition SarrayUnpacked :=
-  @Sarray int loc loc loc Id Id Id Id.
-
-
-(****************************************************)
-(** Invariant *)
-
-(** [good_sizes] asserts that the three arrays have size [L] *)
-
-Definition good_sizes n (Val Idx Back : tab) :=
-  length Val = L /\ length Idx = L /\ length Back = L /\ 0 <= n <= L.
-
-(** [i] is a [Valid] index if [Back(k) = i] for some [k] *)
-
-Definition Valid n (Idx Back : tab) i :=
-  index L i /\ let k := Idx\(i) in 
-  index n k /\ Back\(k) = i.
-
-(** [BackCorrect] holds when [k < n -> Idx(Back(k)) = k]*)
-
-Definition BackCorrect n (Idx Back:tab) :=
-  forall k, index n k ->
-  let i := Back\(k) in index L i /\ Idx\(i) = k.
-
-(** [s ~> SparseArray f] indicates that [s] is a record 
-    describing a sparse array whose model is the function [f] *)
-
-Definition SparseArray (f:int->int) (s:loc) :=
-  Hexists (n:int) (Val:tab) (Idx:tab) (Back:tab),
-     s ~> SarrayPacked n Val Idx Back
-  \* [ good_sizes n Val Idx Back
-       /\ BackCorrect n Idx Back
-       /\ (forall i, f i = If Valid n Idx Back i then Val\(i) else 0) ].
+Inductive closure (A:Type) (R:binary A) : binary A :=
+  | closure_step : forall x y,
+      R x y -> closure R x y
+  | closure_refl : forall x,
+      closure R x x
+  | closure_sym : forall x y, 
+      closure R x y -> closure R y x
+  | closure_trans : forall y x z,
+      closure R x y -> closure R y z -> closure R x z.
 
 
 (****************************************************)
-(** Automation *)
+(** Graph structure *)
 
-(** Automation of [index] goals *)
+(** A graph here is simply a set of edges, which are pairs
+    of nodes. *)
 
-Ltac myunfold := 
-  repeat match goal with 
-  | H: Valid _ _ _ _ |- _ => hnf in H 
-  | H: good_sizes _ _ _ _ |- _ => hnf in H 
-  end; jauto_set.
+Record graph A := { edges : set (A*A) }.
 
-Hint Extern 1 (@index _ _ (array_index _) ?t ?i) =>
-  myunfold; eassumption.
-Hint Extern 1 (@index _ _ int_index ?t ?i) =>
-  myunfold; eassumption.
-Hint Extern 1 (@index _ _ (array_index _) ?t ?i) =>
-  myunfold; match goal with H: @index _ _ int_index ?n i |- _ => 
-    eapply index_array_length end.
 
-Lemma index_array_length_le : forall A (t : array A) n i,
-  index n i -> n <= length t -> index t i.
-Proof.
-  intros. subst. rewrite array_index_def.
-  rewrite @int_index_def in *. math.
-Qed.
+(** [connected G x y] indicates that the nodes [x] and [y]
+    belong to the same connected component in [G]. 
+    A connected component is defined as the reflexive-
+    symmetric-transitive closure of the edges. *)
 
-Ltac strong := 
-  math_0; math_1; math_2; math_3; try split; 
-  eapply int_index_prove; math_3; math_4; math_5.
+Definition connected A (G:graph A) : binary A :=
+  closure (fun x y => (x,y) \in edges G).
 
-(** Tactic for rewriting *)
 
-Tactic Notation "inhabs" := (* workaround coq bug *)
-  try match goal with |- Inhab _ => typeclass end.
-Tactic Notation "rew_map_array" :=
-  rew_map; rew_array; inhabs.
-Tactic Notation "rew_map_array" "~" :=
-  rew_map_array; auto~; inhabs.
-Tactic Notation "rew_map_array" "*" :=
-  rew_map_array; auto*; inhabs.
+(****************************************************)
+(** Invariant of union-find *)
+
+Implicit Type M : map loc content.
+   
+
+(** [is_repr M x y] asserts that [y] is the end of the
+    path that starts from [x]. *)
+
+Definition is_repr 
+
+(** [is_forest M] captures the fact that every node has a
+    path to a root. *)
+
+(** [UF G] is a heap predicate that corresponds to a set of 
+    cells describing the union-find structure associated with
+    the graph [G], where the nodes of [G] are of type [loc] *)
+    
+Definition UF (G:graph loc) : hprop :=
+  Hexists (M:map loc content), Group Id M \*
+    [ is_forest M /\ is_equiv M = connected G ].
 
 
 (****************************************************)
@@ -220,3 +192,10 @@ Qed.
 
 
 
+
+
+
+(*
+      forall_ x \in nodes G, forall_ y \in nodes
+ G,        (connected G x y <-> is_equiv M x y) ].
+*)
