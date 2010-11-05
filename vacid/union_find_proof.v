@@ -2,6 +2,10 @@ Set Implicit Arguments.
 Require Import CFLib LibSet LibMap union_find_ml.
 
 
+Instance content_inhab : Inhab content.
+Proof. typeclass. Qed.
+
+
 (****************************************************)
 (** Reflexive-symmetric-transitive closure *) 
 
@@ -22,11 +26,20 @@ Inductive closure (A:Type) (R:binary A) : binary A :=
 (****************************************************)
 (** Graph structure *)
 
-(** A graph here is simply a set of edges, which are pairs
-    of nodes. *)
+(** A graph has nodes and edges, which are pairs of nodes. *)
 
-Record graph A := { edges : set (A*A) }.
+Record graph A := graph_of { 
+  nodes : set A;
+  edges : set (A*A) }.
 
+(** The functions [add_node] and [add_edge] can be used to
+    augment a given graph. *)
+
+Definition add_node A (G:graph A) x :=
+  graph_of (nodes G \u \{x}) (edges G).
+
+Definition add_edge A (G:graph A) x y :=
+  graph_of (nodes G) (edges G \u \{(x,y)}).
 
 (** [connected G x y] indicates that the nodes [x] and [y]
     belong to the same connected component in [G]. 
@@ -42,47 +55,88 @@ Definition connected A (G:graph A) : binary A :=
 
 Implicit Type M : map loc content.
    
-
-(** [is_repr M x y] asserts that [y] is the end of the
+(** [is_repr M x r] asserts that [r] is the end of the
     path that starts from [x]. *)
 
-Definition is_repr 
+Inductive is_repr M : binary loc := 
+  | is_repr_root : forall x, 
+      M\(x) = Root -> is_repr M x x
+  | is_repr_step : forall x y r,
+      M\(x) = Node y -> is_repr M y r -> is_repr M x r.
+ 
+(** [is_forest M] captures the fact that every node 
+    points to some root. *)
 
-(** [is_forest M] captures the fact that every node has a
-    path to a root. *)
+Definition is_forest M :=
+  forall x, x \indom M -> exists r, is_repr M x r.
+
+(** [is_equiv M x y] captures the fact that [x] and [y]
+    point to a same root. *)
+
+Definition is_equiv M x y :=
+  exists r, is_repr M x r /\ is_repr M y r. 
 
 (** [UF G] is a heap predicate that corresponds to a set of 
     cells describing the union-find structure associated with
     the graph [G], where the nodes of [G] are of type [loc] *)
     
 Definition UF (G:graph loc) : hprop :=
-  Hexists (M:map loc content), Group Id M \*
+  Hexists (M:map loc content), Group (Ref Id) M \*
     [ is_forest M /\ is_equiv M = connected G ].
+
+
+(****************************************************)
+(** Automation *)
+
+Hint Constructors is_repr.
+
+Notation "x \indom' E" := (@is_in _ (set _) _ x (@dom _ (set loc) _ E)) 
+  (at level 39) : container_scope.
+Notation "x \notindom' E" := (x \notin ((dom E) : set _)) 
+  (at level 39) : container_scope.
+
+
+Tactic Notation "rew_map" "~" := 
+  rew_map; auto_tilde.
+
+
+Axiom map_indom_inv : forall A `{Inhab B} (m:map A B) (i j:A) (v:B),
+  j \indom (m\(i:=v)) -> (j = i \/ j \indom m).
+
+Lemma case_classic_l : forall P Q, P \/ Q -> (P \/ (~ P /\ Q)).
+Proof. intros. tautoB P Q. Qed.
+
+(****************************************************)
+(** Lemmas *)
+
+Lemma is_repr_extend : forall M r c x y,
+  r \notin (dom M:set _) -> is_repr M x y -> is_repr (M\(r:=c)) x y.
+Proof.
+  introv N H. induction H.
+  constructor. rew_map~. skip.
+
+Qed. 
 
 
 (****************************************************)
 (** Verification *)
 
 (*--------------------------------------------------*)
-(** Function [valid] *)
+(** Function [create] *)
 
-Lemma valid_spec :
-  Spec valid i s |R>> forall n Val Idx Back, 
-    good_sizes n Val Idx Back -> index L i -> n <= L ->
-    keep R (s ~> SarrayPacked n Val Idx Back)
-           (\= istrue (Valid n Idx Back i)).
+Hint Resolve content_inhab.
+
+Lemma create_spec :
+  Spec create () |R>> forall G,
+    R (UF G) (fun r => UF (add_node G r)).
 Proof.
-  xcf. introv Siz Ii Le. unfold SarrayPacked.
-  xchange (Sarray_focus s) as n' val idx back E. subst n'.
-  xapps. xapps*. xapps. xif. 
-  (* case inbound *)
-  xapps. xapps. hnf in Siz. eapply array_index_prove. math.
-  xchange (Sarray_unfocus s).
-  xret. hsimpl. rew_logics. unfolds Valid. splits*.
-  (* case outof bound *)
-  xchange (Sarray_unfocus s). 
-  xret. hsimpl. fold_bool. fold_prop. unfold Valid.
-  cuts*: (~ index n (Idx\(i))). rewrite* int_index_def.
+  xcf. intros. unfold UF. xextract as M [FM EM].
+  xapp_spec ml_ref_spec_group. intros r. hsimpl. split.
+  (* forest property *)
+  intros x Dx. destruct (map_indom_inv Dx).
+    subst. exists r. constructor. rew_map~.
+    forwards* [y Ry]: FM x. exists y. 
+  (* connected components *)
 Qed.
 
 Hint Extern 1 (RegisterSpec valid) => Provide valid_spec.
