@@ -1,69 +1,6 @@
 Set Implicit Arguments.
 Require Export LibInt LibArray CFSpec CFPrint.
 
-Require Import LibMonoid.
-
-Definition sep_monoid_data := monoid_ heap_is_star heap_is_empty.
-
-Lemma sep_monoid_prop : monoid_prop sep_monoid_data.
-Proof.
-  constructor; simpl.
-  apply star_assoc.
-  apply star_neutral_l.
-  apply star_neutral_r.
-Qed.
-
-Definition sep_monoid := Build_monoid sep_monoid_prop.
-
-Section Reduce.
-Variables (A B C : Type).
-Parameter reduce : monoid C -> (A -> B -> C) -> map A B -> C.
-Parameter reduce_empty : forall m f,
-  reduce m f \{} = monoid_neutral m.
-Parameter reduce_single : forall x v m f,
-  reduce m f (x \:= v) = f x v.
-Parameter reduce_union : forall M1 M2 m f,
-  reduce m f (M1 \u M2) = (monoid_oper m) (reduce m f M1) (reduce m f M2).
-End Reduce.
-
-Lemma map_update_as_union : forall A B (M:map A B) x v,
-  M\(x:=v) = M \u (x \:= v).
-Proof. auto. Qed.
-Axiom map_split : forall A (E:set A) B (M:map A B),
-  M = (M \- E) \u (M \| E).
-Axiom map_restrict_single : forall A (x:A) B `{Inhab B} (M:map A B),
-  M \| \{x} = (x \:= (M\(x))).
-Lemma map_split_single : forall A (x:A) B `{Inhab B} (M:map A B),
-  M = (M \- \{x}) \u (x \:= (M\(x))).
-Proof. intros. rewrite~ <- map_restrict_single. apply map_split. Qed.
-
-
-Definition Group a A (G:htype A a) (M:map a A) :=
-  reduce sep_monoid (fun x X => x ~> G X) M.
-
-Lemma Group_add : forall a (x:a) A (M:map a A) (G:htype A a) X,
-  Group G M \* (x ~> G X) = Group G (M\(x:=X)).
-Proof.
-  intros. unfold Group. rewrite map_update_as_union.
-  rewrite reduce_union. rewrite~ reduce_single.
-Qed.
-
-Require Import LibSet.
-
-Notation "x \indom E" := (x \in (dom E : set _)) 
-  (at level 39) : container_scope.
-
-Global Opaque remove_inst.
-
-Lemma Group_rem : forall a (x:a) A `{Inhab A} (M:map a A) (G:htype A a),
-  x \indom M ->
-  Group G M = Group G (M \- \{x}) \* (x ~> G (M\(x))).
-Proof.
-  intros. unfold Group. rewrite (map_split_single x M) at 1.
-  rewrite reduce_union. rewrite~ reduce_single.
-Qed.
-
-
 
 (********************************************************************)
 (** Imperative Representation for base types *)
@@ -90,6 +27,10 @@ Notation "l '~~>' v" := (l ~> Ref Id v)
   (at level 32, no associativity) : heap_scope.
 Notation "'~~>' v" := (~> Ref Id v)
   (at level 32, no associativity) : heap_scope.
+(*
+ Notation "l '~~>' v" := (hdata (Ref Id v) l)
+  (at level 32, no associativity) : heap_scope.
+*)
 
 Lemma focus_ref : forall (l:loc) a A (T:htype A a) V,
   l ~> Ref T V ==> Hexists v, l ~~> v \* v ~> T V.
@@ -295,28 +236,6 @@ Hint Extern 1 (RegisterSpec ml_decr) => Provide ml_decr_spec.
 
 Require Import CFTactics.
 
-Ltac hsimpl_step tt ::=
-  match goal with |- ?HL ==> ?HA \* ?HN =>
-  match HN with
-  | ?H \* _ =>
-    match H with
-    | [] => apply hsimpl_empty
-    | [_] => apply hsimpl_prop
-    | heap_is_pack _ => hsimpl_extract_exists tt
-    | _ \* _ => apply hsimpl_assoc
-    | heap_is_single _ _ => hsimpl_try_same tt
-    | Group _ _ => hsimpl_try_same tt
-    | ?H => hsimpl_find_same H HL 
-    | hdata _ ?l => hsimpl_find_data l HL ltac:(hsimpl_find_data_post)
-    | ?x ~> Id _ => check_noevar x; apply hsimpl_id
-    | ?x ~> _ _ => check_noevar x; apply hsimpl_id_unify
-    | ?H => apply hsimpl_keep
-    end
-  | [] => fail 1
-  | _ => apply hsimpl_starify
-  end end.
-
-
 Lemma ml_ref_spec_group : forall a,
   Spec ml_ref (v:a) |R>> forall (M:map loc a),
     R (Group (Ref Id) M) (fun l => Group (Ref Id) (M\(l:=v))).
@@ -325,12 +244,6 @@ Proof.
   xframe - []. eauto. intros l. 
   hchange Group_add. hsimpl. hsimpl.
 Qed.
-
-Implicit Arguments Group_rem [a A [H]].
-
- Notation "l '~~>' v" := (hdata (Ref Id v) l)
-  (at level 32, no associativity) : heap_scope.
-
 
 Lemma ml_get_spec_group : forall `{Inhab a},
   Spec ml_get (l:loc) |R>> forall (M:map loc a), l \indom M ->
@@ -344,8 +257,10 @@ Lemma ml_set_spec_group :  forall `{Inhab a},
   Spec ml_set (l:loc) (v:a) |R>> forall (M:map loc a), l \indom M ->
     R (Group (Ref Id) M) (# Group (Ref Id) (M\(l:=v))).
 Proof.
-  intros. xweaken. intros l R LR HR M IlM. simpls.
-  rewrite~ (Group_rem l M). xapply_local (HR (M\(l))); hsimpl~. 
+  intros. xweaken. intros l v R LR HR M IlM. simpls.
+  rewrite~ (Group_rem l M).
+  xapply_local (HR (M\(l))). hsimpl.
+  intros _. hchanges~ (Group_add' l M).
 Qed.
 
 

@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-Require Export LibCore LibEpsilon Shared LibMap.
+Require Export LibCore LibEpsilon LibMonoid Shared LibMap.
 
 
 (********************************************************************)
@@ -456,6 +456,23 @@ Proof. introv W h. exists x. apply~ W. Qed.
 
 End Star.
 
+
+(*------------------------------------------------------------------*)
+(* ** Separation Logic monoid *)
+
+Definition sep_monoid_data := monoid_ heap_is_star heap_is_empty.
+
+Lemma sep_monoid_prop : monoid_prop sep_monoid_data.
+Proof.
+  constructor; simpl.
+  apply star_assoc.
+  apply star_neutral_l.
+  apply star_neutral_r.
+Qed.
+
+Definition sep_monoid := Build_monoid sep_monoid_prop.
+
+
 (*------------------------------------------------------------------*)
 (* ** Normalization of [star] *)
 
@@ -549,7 +566,6 @@ Tactic Notation "hdata_simpl" constr(E) :=
 Definition Id {A:Type} (X:A) (x:A) := 
   [ X = x ].
  
-(* TEMP
 Lemma Id_focus : forall A (x n : A),
   x ~> Id n ==> [x = n].
 Proof. intros. unfold Id. hdata_simpl. hextract. hsimpl~. Qed.
@@ -560,7 +576,6 @@ Proof. intros. unfold Id. hdata_simpl. hextract. hsimpl~. Qed.
 
 Implicit Arguments Id_focus [A].
 Implicit Arguments Id_unfocus [A].
-*)
 
 
 (*------------------------------------------------------------------*)
@@ -572,6 +587,42 @@ Implicit Arguments Id_unfocus [A].
 
 Definition Any {A:Type} (X:unit) (x:A) := 
   [True].
+
+
+(*------------------------------------------------------------------*)
+(* ** Groups *)
+
+Definition Group a A (G:htype A a) (M:map a A) :=
+  reduce sep_monoid (fun x X => x ~> G X) M.
+
+Lemma Group_add : forall a (x:a) A (M:map a A) (G:htype A a) X,
+  Group G M \* (x ~> G X) = Group G (M\(x:=X)).
+Proof.
+  intros. unfold Group. rewrite map_update_as_union.
+  rewrite reduce_union. rewrite~ reduce_single.
+Qed.
+
+Implicit Arguments Group_add' [a A].
+
+Lemma Group_rem : forall a (x:a) A `{Inhab A} (M:map a A) (G:htype A a),
+  x \indom M ->
+  Group G M = Group G (M \- \{x}) \* (x ~> G (M\(x))).
+Proof.
+  intros. unfold Group. rewrite (map_split_single x M) at 1.
+  rewrite reduce_union. rewrite~ reduce_single.
+Qed.
+
+Implicit Arguments Group_rem [a A [H]].
+
+Lemma Group_add' : forall a (x:a) A `{Inhab A} (M:map a A) (G:htype A a) X,
+  x \indom M ->
+  Group G (M \- \{x}) \* (x ~> G X) = Group G (M\(x:=X)).
+Proof.
+  intros. rewrite~ (Group_rem x (M\(x:=X))).
+  rewrite map_update_read_eq. rewrite~ map_update_restrict.
+Qed.
+
+Implicit Arguments Group_add' [a A [H]].
 
 
 (********************************************************************)
@@ -989,6 +1040,7 @@ Ltac hsimpl_step tt :=
     | heap_is_pack _ => hsimpl_extract_exists tt
     | _ \* _ => apply hsimpl_assoc
     | heap_is_single _ _ => hsimpl_try_same tt
+    | Group _ _ => hsimpl_try_same tt
     | ?H => hsimpl_find_same H HL 
     | hdata _ ?l => hsimpl_find_data l HL ltac:(hsimpl_find_data_post)
     | ?x ~> Id _ => check_noevar x; apply hsimpl_id
