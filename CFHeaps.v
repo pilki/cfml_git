@@ -460,6 +460,8 @@ End Star.
 (*------------------------------------------------------------------*)
 (* ** Separation Logic monoid *)
 
+Require Import LibMonoid.
+
 Definition sep_monoid_data := monoid_ heap_is_star heap_is_empty.
 
 Lemma sep_monoid_prop : monoid_prop sep_monoid_data.
@@ -566,6 +568,7 @@ Tactic Notation "hdata_simpl" constr(E) :=
 Definition Id {A:Type} (X:A) (x:A) := 
   [ X = x ].
  
+(* todo?
 Lemma Id_focus : forall A (x n : A),
   x ~> Id n ==> [x = n].
 Proof. intros. unfold Id. hdata_simpl. hextract. hsimpl~. Qed.
@@ -576,7 +579,7 @@ Proof. intros. unfold Id. hdata_simpl. hextract. hsimpl~. Qed.
 
 Implicit Arguments Id_focus [A].
 Implicit Arguments Id_unfocus [A].
-
+*)
 
 (*------------------------------------------------------------------*)
 (* ** Any *)
@@ -602,7 +605,7 @@ Proof.
   rewrite reduce_union. rewrite~ reduce_single.
 Qed.
 
-Implicit Arguments Group_add' [a A].
+Implicit Arguments Group_add [a A].
 
 Lemma Group_rem : forall a (x:a) A `{Inhab A} (M:map a A) (G:htype A a),
   x \indom M ->

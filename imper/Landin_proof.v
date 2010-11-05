@@ -55,7 +55,7 @@ Proof.
      intros SK K' Sf'. unfold K', sframe.
      applys SK. apply (spec_elim_1 Sf' x).
      intros H Q Happ. xapp. intro_subst. 
-     rewrite star_comm. apply Happ.
+     rewrite star_comm. xapply_local Happ; hsimpl.
   (* verification of f *)
   xfun (fun f => Spec f x |R>> forall y,
      let I := (r ~> Ref Id f) in

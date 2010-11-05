@@ -1,9 +1,10 @@
 Set Implicit Arguments.
-Require Import LibCore CFPrim TreeCopy_ml.
+Require Import CFLib TreeCopy_ml.
 
-(*
-Definition Hor (H1 H2 : hprop) := fun h => H1 h \/ H2 h.
-*)
+(********************************************************************)
+(** Representation predicate for trees *)
+
+(** Model of imperative trees: functional trees *)
 
 Inductive tree A :=
   | Leaf : tree A
@@ -11,10 +12,12 @@ Inductive tree A :=
 
 Implicit Arguments Leaf [[A]].
 
+(** Representation predicate form mutable trees *)
+
 Fixpoint Tree A a (T:htype A a) (t:tree A) (l:loc) : hprop :=
   match t with
   | Leaf => [l = null]
-  | Node x t1 t2 => l ~> Ref3 T (Tree T) (Tree T) x t1 t2
+  | Node x t1 t2 => l ~> _tree_of Ref3 T (Tree T) (Tree T) x t1 t2
   end.
 
 Fixpoint tree_set A (t:tree A) : set A :=

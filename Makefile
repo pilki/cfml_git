@@ -101,12 +101,18 @@ VAC=\
 
 NEW=\
 	CFLib.v \
+	imper/Compose_ml.v \
+	imper/Swap_ml.v \
 	imper/MutableList_ml.v \
 	imper/Facto_ml.v \
 	imper/Counter_ml.v \
+	imper/Landin_ml.v \
+	imper/Compose_proof.v \
+	imper/Swap_proof.v \
 	imper/Facto_proof.v \
 	imper/MutableList_proof.v \
 	imper/Counter_proof.v \
+	imper/Landin_proof.v \
 
 IMP=\
 	CFHeaps.v \
@@ -117,8 +123,6 @@ IMP=\
 	CFLib.v 
 
 IMPER=\
-	imper/Landin_ml.v \
-	imper/Landin_proof.v \
 	imper/TreeCopy_ml.v \
 	imper/Loops_ml.v \
 	imper/StrongUpdate_ml.v \
@@ -129,23 +133,19 @@ IMPER=\
 	imper/StrongUpdate_proof.v \
 	imper/InOut_proof.v \
 	imper/Dijkstra_ml.v \
-	imper/Dijkstra_proof.v  \
-	imper/CPS_ml.v \
-	imper/CPS_proof.v \
+	imper/Dijkstra_proof.v \
+	imper/TreeCopy_proof.v \
 	demo/test_ml.v \
 	demo/test_proof.v \
 	imper/ListIterators_ml.v \
 	imper/ListIterators_proof.v \
 	imper/LambdaEval_ml.v \
 	imper/LambdaEval_proof.v \
-	imper/Compose_ml.v \
-	imper/Compose_proof.v \
-	imper/Swap_ml.v \
-	imper/Swap_proof.v \
-	imper/TreeCopy_ml.v \
-	imper/TreeCopy_proof.v 
+
 
 #	okasaki/Okasaki_ml.v
+#	imper/CPS_ml.v \
+#	imper/CPS_proof.v \
 
 # 	
 #	okasaki/BinaryRandomAccessList_ml.v \

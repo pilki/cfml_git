@@ -10,5 +10,5 @@ let decr_ret r =
    decr r; 
    r
 
-let test x = 
-  compose decr_ret incr_ret x
+let test r = 
+  compose decr_ret incr_ret r
