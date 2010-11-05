@@ -917,8 +917,9 @@ and cfg_type_decls decls =
        then cfg_type_record (List.hd decls)
     else if (List.for_all is_algebraic decls)  
        then cfg_algebraic decls
-    else
-       unsupported "type definitions must be single abbreviations or mutually-recursive inductive definitions (mixing both is not supported in Coq)"
+    else (* /todo/ very experimental support: simply break circularity *)
+       list_concat_map cfg_type_decls (List.map (fun x -> [x]) decls)
+       (* unsupported "type definitions must be single abbreviations or mutually-recursive inductive definitions (mixing both is not supported in Coq)" *)
 
 (** Generate the top-level Coq declarations associated with 
     the content of a module. *)

@@ -96,6 +96,7 @@ OKA=$(OKAS) $(OKAQ) $(OKAH) $(OKAO)
 #	imper/LambdaByte_proof.v \
 
 VAC=\
+	vacid/union_find_ml.v \
 	vacid/sparse_array_ml.v \
 	vacid/sparse_array_proof.v 
 

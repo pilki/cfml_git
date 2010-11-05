@@ -1,34 +1,22 @@
+(** Union find represented using pointers *)
 
-type state = {
-   mutable nb_compo : int;
-   mutable parent : int array; }
+type cell = content ref
+and content = Node of cell | Root
 
-let create size =
-   { nb_compo = size;
-     parent = Array.init size (fun i -> i) }
+let create () = 
+   ref Root
 
-let get_nb_compo s =
-   s.nb_compo
+let rec repr x =
+   match !x with
+   | Root -> x
+   | Node y -> repr y
 
-let rec find s a =
-   if s.parent.(a) = a 
-      then a   
-      else find s s.parent.(a)
+let equiv x y =
+  repr x == repr y
 
-let union s a b =
-   let ra = find s a in
-   let rb = find s b in
-   if ra <> rb then begin
-      s.parent.(ra) <- rb;
-      s.nb_compo <- s.nb_compo - 1;
-   end
-
-let same_compo s a b =
-   find s a = find s b
+let union x y =
+   let rx = repr x in
+   let ry = repr y in
+   rx := Node ry 
 
 
-(*
-let build_maze n =
-   let s = create (n*n) in
-   while get_nb_compo s > 1 do
-*) 
