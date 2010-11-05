@@ -1117,7 +1117,7 @@ Tactic Notation "hchange" "*" constr(E) :=
   hchange E; auto*.
 
 Ltac hchanges_base E modif :=
-  hchange_core E modif ltac:(hcancel_cont)ltac:(hsimpl_cont).
+  hchange_core E modif ltac:(hcancel_cont) ltac:(hsimpl_cont).
 
 Tactic Notation "hchanges" constr(E) :=
   hchanges_base E __.
