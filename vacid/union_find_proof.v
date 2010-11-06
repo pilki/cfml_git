@@ -409,12 +409,16 @@ Lemma connected_already : forall A (G:graph A) x y,
   connected (add_edge G x y) = connected G.
 Proof.
   introv (_&_&E). extens. intros a b. unfold connected. simpls.
-  iff (?&?&R); splits~.
-  skip. 
-  applys closure_le R. intros u v M. apply* @in_union_l. typeclass.
-Admitted.
-
-
+  iff (Ia&Ib&R); splits~.
+  clear Ia Ib. induction R; intros.
+    destruct (in_union_inv H) as [|M].
+      eauto.
+      rewrite (in_single_eq) in M. inverts~ M.  
+    eauto.
+    eauto.
+    eauto.
+  applys closure_le R. intros u v M. apply in_union_l. eauto.
+Qed.
 
 Lemma union_spec :
   Spec union x y |R>> forall G,
