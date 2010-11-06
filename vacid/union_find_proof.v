@@ -312,6 +312,16 @@ Tactic Notation "xapp" "~" "as" ident(x) :=
 Tactic Notation "xapp" "*" "as" ident(x) :=
   xapp_as_base ___ (>>) ltac:(fun _ => xauto*) x.
 
+Tactic Notation "hextracts" :=
+  let E := fresh "TEMP" in hextract as E; subst_hyp E.
+
+Lemma is_equiv_iff_same_repr : forall M x y rx ry,
+  is_repr M x rx -> is_repr M y ry ->
+  ((rx = ry) <-> is_equiv M x y).
+Proof. 
+  introv Rx Ry. iff H (r&Rx'&Ry'). subst*.
+  applys (eq_trans r); applys is_repr_inj; eauto.
+Qed.
 
 Lemma equiv_spec :
   Spec equiv x y |R>> forall G, 
@@ -320,7 +330,9 @@ Lemma equiv_spec :
 Proof.
   xcf. introv Dx Dy. unfold UF. xextract as M (FM&DM&EM).
   rewrite <- DM in *. clear DM.
-  xapp~ as rx. intros R
+  xapp~ as rx. intros Rx. xapp~ as ry. intros Ry.
+  xapp. intros b. xsimpl; subst~.
+  fequal. rewrite <- EM. extens. apply* is_equiv_iff_same_repr.
 Admitted.
 
 Hint Extern 1 (RegisterSpec equiv) => Provide equiv_spec.
