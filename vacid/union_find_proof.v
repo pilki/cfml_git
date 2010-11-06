@@ -203,14 +203,22 @@ Axiom dom_update_notin : forall A i `{Inhab B} v (M:map A B),
 
 Tactic Notation "applys_to" hyp(H1) "," hyp(H2) constr(E) :=
   applys_to H1 E; applys_to H2 E.  
+(*
+Lemma is_repr_added_node : forall M x z,
+  z \notindom' M -> is_repr (M\(z:=Root)) x z -> x = z.
+Proof.
+  introv D Rx. inverts~ Rx.
+Qed.
 
+*)
 Lemma inv_add_node : forall M G z,
+  is_forest M ->
   dom M = nodes G ->
   is_equiv M = connected G ->
   z \notindom' M -> 
   is_equiv (M\(z:=Root)) = connected (add_node G z).
 Proof.
-  introv DM EM D. extens. intros x y.
+  introv FM DM EM D. extens. intros x y.
   lets EQ: (rel_eq_elim (rm EM) x y). iff (r&Rx&Ry) H.
   (* -> *)
   unfolds. simpl. rewrite <- DM. 
@@ -320,7 +328,7 @@ Tactic Notation "xapp" "~" "as" ident(x) :=
   xapp_as_base ___ (>>) ltac:(fun _ => xauto~) x.
 Tactic Notation "xapp" "*" "as" ident(x) :=
   xapp_as_base ___ (>>) ltac:(fun _ => xauto*) x.
-
+nouveau dossier
 Tactic Notation "hextracts" :=
   let E := fresh "TEMP" in hextract as E; subst_hyp E.
 
