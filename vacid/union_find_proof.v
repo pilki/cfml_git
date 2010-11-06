@@ -89,7 +89,7 @@ Definition is_equiv M x y :=
     
 Definition UF (G:graph loc) : hprop :=
   Hexists (M:map loc content), Group (Ref Id) M \*
-    [ is_forest M /\ is_equiv M = connected G ].
+    [ is_forest M /\ dom M = nodes G /\ is_equiv M = connected G ].
 
 
 (****************************************************)
@@ -268,20 +268,23 @@ Admitted.
 Hint Extern 1 (RegisterSpec repr) => Provide repr_spec.
 
 
-
 (*--------------------------------------------------*)
 (** Function [create] *)
+
+Axiom dom_update_notin : forall A i `{Inhab B} v (M:map A B),
+  i \notindom' M -> dom (M\(i:=v)) = dom M \u \{i}.
 
 Lemma create_spec :
   Spec create () |R>> forall G,
     R (UF G) (fun r => UF (add_node G r)).
 Proof.
-  xcf. intros. unfold UF. xextract as M [FM EM].
+  xcf. intros. unfold UF. xextract as M (FM&DM&EM).
   xapp_spec ml_ref_spec_group.
-  intros r. hextract as Neq. hsimpl. split.
+  intros r. hextract as Neq. hsimpl. splits.
     apply~ is_forest_add_node.
+    rewrite~ dom_update_notin. fequals.
     apply~ inv_add_node.
-Qed.
+Admitted.
 
 Hint Extern 1 (RegisterSpec create) => Provide create_spec.
 
@@ -289,11 +292,36 @@ Hint Extern 1 (RegisterSpec create) => Provide create_spec.
 (*--------------------------------------------------*)
 (** Function [equiv] *)
 
+(*
+Lemma indom_from_innodes : forall x G M,
+  dom M = nodes G -> x \in nodes G -> x \indom' M.
+Proof. introv H D. rewrite H. auto. Qed.
+Hint Resolve indom_from_innodes.
+*)
+
+Ltac xapp_as_base spec args solver x :=
+  let cont tt := xapp_inst args solver in
+  xlet as x; 
+  [ xuntag tag_apply; xapp_core spec cont
+  | instantiate; xextract ].
+
+Tactic Notation "xapp" "as" ident(x) :=
+  xapp_as_base ___ (>>) ltac:(fun _ => idtac) x.
+Tactic Notation "xapp" "~" "as" ident(x) :=
+  xapp_as_base ___ (>>) ltac:(fun _ => xauto~) x.
+Tactic Notation "xapp" "*" "as" ident(x) :=
+  xapp_as_base ___ (>>) ltac:(fun _ => xauto*) x.
+
+
 Lemma equiv_spec :
-  Spec equiv x y |R>> forall G,
+  Spec equiv x y |R>> forall G, 
+    x \in (nodes G) -> y \in (nodes G) ->
     keep R (UF G) (\= istrue(connected G x y)).
 Proof.
-Qed.
+  xcf. introv Dx Dy. unfold UF. xextract as M (FM&DM&EM).
+  rewrite <- DM in *. clear DM.
+  xapp~ as rx. intros R
+Admitted.
 
 Hint Extern 1 (RegisterSpec equiv) => Provide equiv_spec.
 
