@@ -341,17 +341,47 @@ Hint Extern 1 (RegisterSpec equiv) => Provide equiv_spec.
 (*--------------------------------------------------*)
 (** Function [union] *)
 
+Axiom ml_set_spec_group :  forall a, 
+  Spec ml_set (l:loc) (v:a) |R>> forall (M:map loc a), 
+    Inhab a -> l \indom M ->
+    R (Group (Ref Id) M) (# Group (Ref Id) (M\(l:=v))).
+
+Lemma is_repr_in_dom' : forall M x r, 
+  is_repr M x r -> r \indom M.
+Proof. introv H. induction H. apply* binds_dom. auto. Qed. 
+
+Lemma is_repr_binds_root : forall M x r, 
+  is_repr M x r -> binds M r Root.
+Proof. introv H. induction~ H. Qed.
+
+Lemma is_forest_update : forall M x y,
+  is_forest M -> binds M x Root -> binds M y Root -> 
+  is_forest (M\(x:=Node y)).
+Admitted.
+
+Lemma inv_add_edge : forall M G x rx y ry,
+  is_equiv M = connected G ->
+  is_repr M x rx ->
+  is_repr M y ry ->
+  is_equiv (M\(rx:=Node ry)) = connected (add_edge G x y).
+Admitted.
+
+
 Lemma union_spec :
   Spec union x y |R>> forall G,
+    x \in (nodes G) -> y \in (nodes G) ->
     R (UF G) (# UF (add_edge G x y)).
 Proof.
-Qed.
+  xcf. introv Dx Dy. unfold UF. xextract as M (FM&DM&EM).
+  rewrite <- DM in *. clear DM.
+  xapp~ as rx. intros Rx. xapp~ as ry. intros Ry.
+  xapp_spec~ ml_set_spec_group. apply* is_repr_in_dom'.
+  hsimpl. splits.
+    apply* is_forest_update; apply* is_repr_binds_root.  
+    rewrite~ dom_update_in. forwards: is_repr_binds_root Rx. skip.
+    apply* inv_add_edge.
+Admitted.
 
 Hint Extern 1 (RegisterSpec union) => Provide union_spec.
 
-(*--------------------------------------------------*)
 
-(*
-      forall_ x \in nodes G, forall_ y \in nodes
- G,        (connected G x y <-> is_equiv M x y) ].
-*)
