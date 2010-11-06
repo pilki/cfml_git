@@ -6,6 +6,10 @@ Instance content_inhab : Inhab content.
 Proof. typeclass. Qed.
 Hint Resolve content_inhab.
 
+Notation "x \indom' E" := (@is_in _ (set _) _ x (@dom _ (set loc) _ E)) 
+  (at level 39) : container_scope.
+Notation "x \notindom' E" := (x \notin ((dom E) : set _)) 
+  (at level 39) : container_scope.
 
 
 (****************************************************)
@@ -48,8 +52,9 @@ Definition add_edge A (G:graph A) x y :=
     A connected component is defined as the reflexive-
     symmetric-transitive closure of the edges. *)
 
-Definition connected A (G:graph A) : binary A :=
-  closure (fun x y => (x,y) \in edges G).
+Definition connected A (G:graph A) x y :=
+  x \in (nodes G) /\ y \in (nodes G) /\
+  closure (fun x y => (x,y) \in edges G) x y.
 
 
 (****************************************************)
@@ -93,10 +98,6 @@ Definition UF (G:graph loc) : hprop :=
 Hint Constructors is_repr.
 Hint Unfold is_equiv.
 
-Notation "x \indom' E" := (@is_in _ (set _) _ x (@dom _ (set loc) _ E)) 
-  (at level 39) : container_scope.
-Notation "x \notindom' E" := (x \notin ((dom E) : set _)) 
-  (at level 39) : container_scope.
 
 
 Tactic Notation "rew_map" "~" := 
@@ -171,40 +172,101 @@ Lemma is_repr_add_node : forall M r c x y,
   r \notin (dom M:set _) -> is_repr M x y -> is_repr (M\(r:=c)) x y.
 Proof. introv N H. induction H; constructors*. Qed. 
 
-Lemma connected_eq : forall A (G G':graph A),
+(*
+Lemma connected_eq : forall A (G' G:graph A),
   edges G = edges G' -> connected G = connected G'.
 Proof. introv H. unfolds. rewrite~ H. Qed.
 
-Lemma is_equiv_add_node : forall  M r c x y,
-  is_equiv (M\(r:=Root)) x y  
+Implicit Arguments connected_eq [A].
+*)
 
+Lemma is_equiv_add_node : forall M r,
+  is_forest M -> r \notindom' M ->
+  is_equiv (M\(r:=Root)) = is_equiv M.
+Proof.
+  introv FM D. extens. intros x y.
+  tests (x = r); tests (y = r).
+(*
+ (* todo: wlog *)
+  iff H. apply~ is_equiv_refl.
+  unfold is_equiv.
+*)
+Admitted.
+(*
+Lemma is_equiv_add_node : forall M r x y,
+  is_equiv (M\(r:=Root)) x y = (is_equiv M x y \/ (x = r /\ y = r)).
+Admitted.
+*)
+
+Lemma inv_add_node : forall M G r,
+  is_equiv M = connected G ->
+  r \notindom' M -> 
+  is_equiv (M\(r:=Root)) = connected (add_node G r).
+Admitted.
+
+Lemma is_forest_add_node : forall M r,
+  is_forest M -> r \notindom' M -> is_forest (M\(r:=Root)).
+Proof.
+  introv FM Dr. intros x Dx. destruct (map_indom_inv Dx).
+    subst*.
+    forwards* [y Ry]: FM x. exists y. apply* is_repr_add_node.
+Qed.
 
 
 (****************************************************)
 (** Verification *)
 
 (*--------------------------------------------------*)
-(** Function [repr] 
+(** Function [repr] *)
+
+Axiom ml_get_spec_group : forall a,
+  Spec ml_get (l:loc) |R>> forall (M:map loc a),   
+    Inhab a -> l \indom M ->
+    keep R (Group (Ref Id) M) (\= M\(l)).
+
+Axiom binds_get : forall A `{Inhab B} (M:map A B) x v,
+  binds M x v -> M\(x) = v.
+Axiom binds_dom : forall A `{Inhab B} (M:map A B) x v,
+  binds M x v -> x \indom M.
+
+Lemma is_repr_in_dom : forall M x r, 
+  is_repr M x r -> x \indom M.
+Proof. introv H. inverts H; apply* binds_dom. Qed. 
+
+Tactic Notation "xgos" :=
+  xgo; hsimpl.
+Tactic Notation "xgos" "~" :=
+  xgos; auto_tilde.
+Tactic Notation "xgos" "*" :=
+  xgos; auto_star.
+
+Tactic Notation "xapply" constr(H) :=
+  xapply_local H. 
+Tactic Notation "xapplys" constr(H) :=
+  xapply_local H; [ hcancel | hsimpl ].
+
+Tactic Notation "xapplys" "~" constr(H) :=
+  xapplys H; auto_tilde.
+Tactic Notation "xapplys" "*" constr(H) :=
+  xapplys H; auto_star.
 
 Lemma repr_spec :
   Spec repr x |R>> forall M,
-    is_forest M ->
+    is_forest M -> x \indom M ->
     keep R (Group (Ref Id) M) (\[is_repr M x]).
 Proof.
-  xcf. introv ILi.
-  unfold SparseArray. hdata_simpl.
-  xextract as n Val Idx Back (Siz&Bok&Iok).
-  xapps*. hnf in Siz; math.
-  lets M: Iok i. xif; case_if in M; tryfalse.
-  (* case is an index *)
-  xchange (Sarray_focus s) as n' val idx back E. subst n'. xapps. xapp*.
-  intros r. hchanges (Sarray_unfocus s); subst~.
-  (* case not an index *)
-  xrets*.
-Qed. 
+  xintros. intros x M FM D. forwards~ [r Hr]: FM x. induction Hr.
+  (* case root *)
+  xcf_app. xlet. xapp_spec~ ml_get_spec_group. xextracts. (*todo:xapps_spec*)
+  rewrite (binds_get H). xgos*. 
+  (* case node *)
+  xcf_app. xlet. xapp_spec~ ml_get_spec_group. xextracts. (*todo:xapps_spec*) 
+  rewrite (binds_get H). xmatch. 
+  forwards K: IHHr. apply* is_repr_in_dom. xapplys* K.
+Admitted.
 
 Hint Extern 1 (RegisterSpec repr) => Provide repr_spec.
-*)
+
 
 
 (*--------------------------------------------------*)
@@ -217,12 +279,8 @@ Proof.
   xcf. intros. unfold UF. xextract as M [FM EM].
   xapp_spec ml_ref_spec_group.
   intros r. hextract as Neq. hsimpl. split.
-  (* forest property *)
-  intros x Dx. destruct (map_indom_inv Dx).
-    subst*.
-    forwards* [y Ry]: FM x. exists y. apply* is_repr_add_node.
-  (* connected components *)
-  extens. intros x y. unfold is_equiv.
+    apply~ is_forest_add_node.
+    apply~ inv_add_node.
 Qed.
 
 Hint Extern 1 (RegisterSpec create) => Provide create_spec.
