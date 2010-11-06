@@ -4,6 +4,8 @@ Require Import CFLib LibSet LibMap union_find_ml.
 
 Instance content_inhab : Inhab content.
 Proof. typeclass. Qed.
+Hint Resolve content_inhab.
+
 
 
 (****************************************************)
@@ -60,9 +62,9 @@ Implicit Type M : map loc content.
 
 Inductive is_repr M : binary loc := 
   | is_repr_root : forall x, 
-      M\(x) = Root -> is_repr M x x
+      binds M x Root -> is_repr M x x
   | is_repr_step : forall x y r,
-      M\(x) = Node y -> is_repr M y r -> is_repr M x r.
+      binds M x (Node y) -> is_repr M y r -> is_repr M x r.
  
 (** [is_forest M] captures the fact that every node 
     points to some root. *)
@@ -89,6 +91,7 @@ Definition UF (G:graph loc) : hprop :=
 (** Automation *)
 
 Hint Constructors is_repr.
+Hint Unfold is_equiv.
 
 Notation "x \indom' E" := (@is_in _ (set _) _ x (@dom _ (set loc) _ E)) 
   (at level 39) : container_scope.
@@ -106,48 +109,87 @@ Axiom map_indom_inv : forall A `{Inhab B} (m:map A B) (i j:A) (v:B),
 Lemma case_classic_l : forall P Q, P \/ Q -> (P \/ (~ P /\ Q)).
 Proof. intros. tautoB P Q. Qed.
 
+
+Axiom binds_def : forall A `{Inhab B} (M:map A B) x v,
+  binds M x v = (x \indom M /\ M\(x) = v).
+Axiom binds_inv : forall A `{Inhab B} (M:map A B) x v,
+  binds M x v -> (x \indom M /\ M\(x) = v).
+Axiom binds_prove : forall A `{Inhab B} (M:map A B) x v,
+  x \indom M -> M\(x) = v -> binds M x v.
+
+Axiom binds_update_neq : forall A i j `{Inhab B} v w (M:map A B),
+  j \notindom' M -> binds M i v -> binds (M\(j:=w)) i v.
+Axiom binds_update_eq : forall A i `{Inhab B} v (M:map A B),
+  binds (M\(i:=v)) i v.
+
+Axiom binds_inj : forall A i `{Inhab B} v1 v2 (M:map A B),
+  binds M i v1 -> binds M i v2 -> v1 = v2.
+
+
+Hint Resolve binds_update_neq binds_update_eq.
+
+Axiom ml_ref_spec_group : forall a,
+  Spec ml_ref (v:a) |R>> forall (M:map loc a),
+    R (Group (Ref Id) M) (fun l => Group (Ref Id) (M\(l:=v)) \* [l\notindom' M]).
+
+
 (****************************************************)
 (** Lemmas *)
 
-Lemma is_repr_extend : forall M r c x y,
-  r \notin (dom M:set _) -> is_repr M x y -> is_repr (M\(r:=c)) x y.
-Proof.
-  introv N H. induction H.
-  constructor. rew_map~. skip.
+Global Opaque binds_inst. (* todo: bug de congruence *)
 
-Qed. 
+Lemma is_repr_inj : forall r1 r2 M x,
+  is_repr M x r1 -> is_repr M x r2 -> r1 = r2.
+Proof.
+  introv H. gen r2. induction H; introv H'. (* todo : inductions. *)
+  inverts H'.
+    auto. 
+    forwards~: binds_inj H H0. false.
+  inverts H'. 
+    forwards~: binds_inj H1 H. false.  
+    forwards~ E: binds_inj H1 H. inverts E. apply~ IHis_repr.
+Qed.
+
+Lemma is_equiv_refl : forall M x, 
+  x \indom M -> is_forest M -> is_equiv M x x.
+Proof. introv D H. forwards* [r R]: (H x). Qed. 
+
+Lemma is_equiv_sym : forall M,
+  sym (is_equiv M).
+Proof. intros M x y (r&Hx&Hy). eauto. Qed.
+
+Implicit Arguments is_repr_inj [ ].
+
+Lemma is_equiv_trans : forall M,
+  trans (is_equiv M).
+Proof.
+  intros M y x z (r1&Hx&Hy) (r2&Hy'&Hz).
+  forwards: is_repr_inj r1 r2; eauto. subst*.
+Qed.
+
+Lemma is_repr_add_node : forall M r c x y,
+  r \notin (dom M:set _) -> is_repr M x y -> is_repr (M\(r:=c)) x y.
+Proof. introv N H. induction H; constructors*. Qed. 
+
+Lemma connected_eq : forall A (G G':graph A),
+  edges G = edges G' -> connected G = connected G'.
+Proof. introv H. unfolds. rewrite~ H. Qed.
+
+Lemma is_equiv_add_node : forall  M r c x y,
+  is_equiv (M\(r:=Root)) x y  
+
 
 
 (****************************************************)
 (** Verification *)
 
 (*--------------------------------------------------*)
-(** Function [create] *)
+(** Function [repr] 
 
-Hint Resolve content_inhab.
-
-Lemma create_spec :
-  Spec create () |R>> forall G,
-    R (UF G) (fun r => UF (add_node G r)).
-Proof.
-  xcf. intros. unfold UF. xextract as M [FM EM].
-  xapp_spec ml_ref_spec_group. intros r. hsimpl. split.
-  (* forest property *)
-  intros x Dx. destruct (map_indom_inv Dx).
-    subst. exists r. constructor. rew_map~.
-    forwards* [y Ry]: FM x. exists y. 
-  (* connected components *)
-Qed.
-
-Hint Extern 1 (RegisterSpec valid) => Provide valid_spec.
-
-
-(*--------------------------------------------------*)
-(** Function [get] *)
-
-Lemma get_spec' :
-  Spec get i s |R>> forall f, index L i -> 
-    keep R (s ~> SparseArray f) (\= f i).
+Lemma repr_spec :
+  Spec repr x |R>> forall M,
+    is_forest M ->
+    keep R (Group (Ref Id) M) (\[is_repr M x]).
 Proof.
   xcf. introv ILi.
   unfold SparseArray. hdata_simpl.
@@ -161,93 +203,55 @@ Proof.
   xrets*.
 Qed. 
 
+Hint Extern 1 (RegisterSpec repr) => Provide repr_spec.
+*)
+
 
 (*--------------------------------------------------*)
-(** Function [set] *)
+(** Function [create] *)
 
-(** Auxiliary definition for update of a function *)
-
-Definition update_fun A B (f:A->B) i v :=
-  fun j => If i '= j then v else f j.
-
-(** Auxiliary lemma for back pointers *)
-
-Lemma not_Valid_to_notin_Back : forall i n Idx Back,
-  ~ (Valid n Idx Back i) -> index L i -> BackCorrect n Idx Back ->
-  (forall k, index n k -> i <> Back\(k)).
+Lemma create_spec :
+  Spec create () |R>> forall G,
+    R (UF G) (fun r => UF (add_node G r)).
 Proof.
-  introv NVi ILi Bok Ink Eq. forwards~ [_ E]: Bok k. 
-  unfolds Valid. rewrite (prop_eq_True_back ILi) in NVi. 
-  rew_logic in NVi. destruct NVi as [H|H]; apply H; clear H; congruence.
+  xcf. intros. unfold UF. xextract as M [FM EM].
+  xapp_spec ml_ref_spec_group.
+  intros r. hextract as Neq. hsimpl. split.
+  (* forest property *)
+  intros x Dx. destruct (map_indom_inv Dx).
+    subst*.
+    forwards* [y Ry]: FM x. exists y. apply* is_repr_add_node.
+  (* connected components *)
+  extens. intros x y. unfold is_equiv.
 Qed.
 
-(** Auxiliary lemma for validity of indices *)
+Hint Extern 1 (RegisterSpec create) => Provide create_spec.
 
-Lemma Valid_extend : forall n Idx Back i j,
-  length Idx = L -> length Back = L -> index L n -> i <> j ->
-  (Valid n Idx Back j <-> Valid (n + 1) (Idx\(i:=n)) (Back\(n:=i)) j).
+
+(*--------------------------------------------------*)
+(** Function [equiv] *)
+
+Lemma equiv_spec :
+  Spec equiv x y |R>> forall G,
+    keep R (UF G) (\= istrue(connected G x y)).
 Proof.
-  introv Le1 Le2 ILn Neq. unfold Valid. 
-  lets M: ILn. rewrite int_index_def in M.
-  test_prop (index L j); [|auto*].
-  rewrite~ (array_update_read_neq (t:=Idx)).
-  rewrite int_index_succ; [|math].
-  test_prop (index n (Idx\(j))).
-    rew_array*.                           (* easy for SMT *)
-      apply* index_array_length_le. math. (* easy for SMT *)
-      rewrite int_index_def in *. math.   (* easy for SMT *)
-    split; auto_false. intros [In Eq].    (* easy for SMT *)
-     rewrite In in Eq.                    (* easy for SMT *)
-     rewrite array_update_read_eq in Eq; auto_false. (* easy for SMT *)
 Qed.
 
-(** Verification of the [set] function *)
+Hint Extern 1 (RegisterSpec equiv) => Provide equiv_spec.
 
-Lemma set_spec :
-  Spec set i v l |R>> forall f, index L i ->
-    R (l ~> SparseArray f) (# l ~> SparseArray (update_fun f i v)).
+
+(*--------------------------------------------------*)
+(** Function [union] *)
+
+Lemma union_spec :
+  Spec union x y |R>> forall G,
+    R (UF G) (# UF (add_edge G x y)).
 Proof.
-  xcf. introv Imi. hdata_simpl SparseArray.
-  xextract as n Val Idx Back (Siz&Bok&Iok).
-  xchange (Sarray_focus s) as n' val idx back. intro_subst.
-  xapps. xapps*.
-  xchange (Sarray_unfocus s n). fold SarrayPacked. clear val idx back.
-  xapps*. hnf in Siz; math. xif.
-  (* case create back-index *)
-  xchange (Sarray_focus s) as n' val idx back. intro_subst.
-  lets Nbk: not_Valid_to_notin_Back Bok; eauto.
-  skip: (n < L). (* pigeon-holes, see task description *)
-  asserts: (0 <= n < L). hnf in Siz; math.                 (* easy for SMT *)
-  asserts: (index L n). rewrite~ int_index_def.            (* easy for SMT *)
-  xapps. xapps. xapps*. xapps. xapps*. xapp.
-  hchanges (Sarray_unfocus s). splits.
-    hnf. rew_array. hnf in Siz. jauto_set; auto; math.     (* easy for SMT *)
-    intros k Ik. tests (k = n).                            (* easy for SMT *)
-      rew_array*.                                          (* easy for SMT *)
-      rewrite @int_index_def in Ik.                        (* easy for SMT *)
-       asserts [? ?]: (index n k /\ index L k). strong.    (* easy for SMT *)
-       forwards~ [? ?]: Bok k. rew_array*.                 (* easy for SMT *)
-    intros j. unfold update_fun. specializes Iok j. case_if.
-      asserts: (index (n + 1) n).                          (* easy for SMT *)
-        eapply int_index_prove; math.                      (* easy for SMT *)
-       subst. unfold Valid. rew_map_array*.                (* easy for SMT *)
-       case_if; tryfalse*; auto.                           (* easy for SMT *)
-      rewrite Iok. apply~ If_eq.
-        myunfold. apply~ Valid_extend.
-        intros. rew_array~.                                (* easy for SMT *)
-  (* case nothing to do *)
-   xret. hsimpl. splits~. unfold update_fun.
-   intros j. specializes Iok j.                            (* easy for SMT *)
-   case_if; case_if; tryfalse; auto.                       (* easy for SMT *)
-     subst. rew_map_array*.                                (* easy for SMT *)
-     rew_map_array*.                                       (* easy for SMT *)
 Qed.
 
+Hint Extern 1 (RegisterSpec union) => Provide union_spec.
 
-
-
-
-
+(*--------------------------------------------------*)
 
 (*
       forall_ x \in nodes G, forall_ y \in nodes

@@ -3,13 +3,13 @@
 type cell = content ref
 and content = Node of cell | Root
 
-let create () = 
-   ref Root
-
 let rec repr x =
    match !x with
    | Root -> x
    | Node y -> repr y
+
+let create () = 
+   ref Root
 
 let equiv x y =
   repr x == repr y
