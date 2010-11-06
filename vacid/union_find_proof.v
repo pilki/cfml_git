@@ -142,14 +142,16 @@ Global Opaque binds_inst. (* todo: bug de congruence *)
 Lemma is_repr_inj : forall r1 r2 M x,
   is_repr M x r1 -> is_repr M x r2 -> r1 = r2.
 Proof.
-  introv H. gen r2. induction H; introv H'. (* todo : inductions. *)
-  inverts H'.
+  introv H. gen r2. induction H; introv H'; inverts H'; auto_false.
+  forwards~ E: binds_inj H1 H. inverts~ E.
+Qed.
+(*
+ inverts H'.
     auto. 
     forwards~: binds_inj H H0. false.
   inverts H'. 
     forwards~: binds_inj H1 H. false.  
-    forwards~ E: binds_inj H1 H. inverts E. apply~ IHis_repr.
-Qed.
+    forwards~ E: binds_inj H1 H. inverts E. apply~ IHis_repr.*)
 
 Lemma is_equiv_refl : forall M x, 
   x \indom M -> is_forest M -> is_equiv M x x.
@@ -173,36 +175,53 @@ Lemma is_repr_add_node : forall M r c x y,
 Proof. introv N H. induction H; constructors*. Qed. 
 
 (*
-Lemma connected_eq : forall A (G' G:graph A),
-  edges G = edges G' -> connected G = connected G'.
-Proof. introv H. unfolds. rewrite~ H. Qed.
+Axiom binds_update_rem : forall A i j `{Inhab B} v w (M:map A B),
+  j \notindom' M -> binds (M\(j:=w)) i v -> binds M i v.
+Hint Resolve binds_update_rem.
 
-Implicit Arguments connected_eq [A].
+Lemma is_repr_rem_node : forall M r c x y,
+  r \notin (dom M:set _) -> is_repr (M\(r:=c)) x y -> is_repr M x y.
+Proof. introv N H. induction H; constructors*. Qed. 
 *)
 
-Lemma is_equiv_add_node : forall M r,
-  is_forest M -> r \notindom' M ->
-  is_equiv (M\(r:=Root)) = is_equiv M.
-Proof.
-  introv FM D. extens. intros x y.
-  tests (x = r); tests (y = r).
-(*
- (* todo: wlog *)
-  iff H. apply~ is_equiv_refl.
-  unfold is_equiv.
-*)
-Admitted.
-(*
-Lemma is_equiv_add_node : forall M r x y,
-  is_equiv (M\(r:=Root)) x y = (is_equiv M x y \/ (x = r /\ y = r)).
-Admitted.
-*)
+Axiom binds_get : forall A `{Inhab B} (M:map A B) x v,
+  binds M x v -> M\(x) = v.
+Axiom binds_dom : forall A `{Inhab B} (M:map A B) x v,
+  binds M x v -> x \indom M.
 
-Lemma inv_add_node : forall M G r,
+Lemma is_repr_in_dom : forall M x r, 
+  is_repr M x r -> x \indom M.
+Proof. introv H. inverts H; apply* binds_dom. Qed. 
+
+Lemma rel_eq_elim : forall A (R1 R2 : binary A), 
+  R1 = R2 -> (forall x y, R1 x y <-> R2 x y).
+Proof. intros. subst*. Qed.
+
+
+Axiom dom_update_notin : forall A i `{Inhab B} v (M:map A B),
+  i \notindom' M -> dom (M\(i:=v)) = dom M \u \{i}.
+
+Tactic Notation "applys_to" hyp(H1) "," hyp(H2) constr(E) :=
+  applys_to H1 E; applys_to H2 E.  
+
+Lemma inv_add_node : forall M G z,
+  dom M = nodes G ->
   is_equiv M = connected G ->
-  r \notindom' M -> 
-  is_equiv (M\(r:=Root)) = connected (add_node G r).
-Admitted.
+  z \notindom' M -> 
+  is_equiv (M\(z:=Root)) = connected (add_node G z).
+Proof.
+  introv DM EM D. extens. intros x y.
+  lets EQ: (rel_eq_elim (rm EM) x y). iff (r&Rx&Ry) H.
+  (* -> *)
+  unfolds. simpl. rewrite <- DM. 
+  lets Mx: is_repr_in_dom Rx. lets My: is_repr_in_dom Ry.
+  rewrite dom_update_notin in Mx,My; auto. splits~.
+  apply EQ. tests (r = z).
+    exists z. skip.
+    skip.  (* todo! *)
+  (* <- *)
+  lets H': H. unfolds in H'. simpl in H'. skip.
+Qed.
 
 Lemma is_forest_add_node : forall M r,
   is_forest M -> r \notindom' M -> is_forest (M\(r:=Root)).
@@ -224,14 +243,6 @@ Axiom ml_get_spec_group : forall a,
     Inhab a -> l \indom M ->
     keep R (Group (Ref Id) M) (\= M\(l)).
 
-Axiom binds_get : forall A `{Inhab B} (M:map A B) x v,
-  binds M x v -> M\(x) = v.
-Axiom binds_dom : forall A `{Inhab B} (M:map A B) x v,
-  binds M x v -> x \indom M.
-
-Lemma is_repr_in_dom : forall M x r, 
-  is_repr M x r -> x \indom M.
-Proof. introv H. inverts H; apply* binds_dom. Qed. 
 
 Tactic Notation "xgos" :=
   xgo; hsimpl.
@@ -271,8 +282,6 @@ Hint Extern 1 (RegisterSpec repr) => Provide repr_spec.
 (*--------------------------------------------------*)
 (** Function [create] *)
 
-Axiom dom_update_notin : forall A i `{Inhab B} v (M:map A B),
-  i \notindom' M -> dom (M\(i:=v)) = dom M \u \{i}.
 
 Lemma create_spec :
   Spec create () |R>> forall G,
@@ -341,7 +350,7 @@ Hint Extern 1 (RegisterSpec equiv) => Provide equiv_spec.
 (*--------------------------------------------------*)
 (** Function [union] *)
 
-Axiom ml_set_spec_group :  forall a, 
+Axiom ml_set_spec_group : forall a, 
   Spec ml_set (l:loc) (v:a) |R>> forall (M:map loc a), 
     Inhab a -> l \indom M ->
     R (Group (Ref Id) M) (# Group (Ref Id) (M\(l:=v))).
@@ -354,10 +363,32 @@ Lemma is_repr_binds_root : forall M x r,
   is_repr M x r -> binds M r Root.
 Proof. introv H. induction~ H. Qed.
 
-Lemma is_forest_update : forall M x y,
-  is_forest M -> binds M x Root -> binds M y Root -> 
-  is_forest (M\(x:=Node y)).
-Admitted.
+Axiom binds_index : forall A i `{Inhab B} v (M:map A B),
+  binds M i v -> index M i.
+Hint Resolve binds_index.
+
+Axiom binds_update_neq' : forall A i j `{Inhab B} v w (M:map A B),
+  i <> j -> binds M i v -> binds (M\(j:=w)) i v.
+Hint Resolve binds_update_neq'.
+
+
+Hint Resolve is_repr_in_dom.
+Lemma is_forest_update : forall M rx ry,
+  is_forest M -> binds M rx Root -> binds M ry Root -> rx <> ry ->
+  is_forest (M\(rx:=Node ry)).
+Proof.
+  introv FM Bx By Neq. intros x D. rewrite* dom_update_in in D.
+  forwards~ [r R]: FM x. tests (r = rx) as C.
+  exists ry. induction R.
+    eauto.
+    cuts*: (x <> r). intro_subst. congruence.
+  exists r. gen C. induction R; intros.
+    eauto.
+    cuts*: (x<>rx). congruence.
+Qed.
+
+
+  
 
 Lemma inv_add_edge : forall M G x rx y ry,
   is_equiv M = connected G ->
@@ -365,6 +396,24 @@ Lemma inv_add_edge : forall M G x rx y ry,
   is_repr M y ry ->
   is_equiv (M\(rx:=Node ry)) = connected (add_edge G x y).
 Admitted.
+
+
+Hint Constructors closure.
+Lemma closure_le : forall A (R1 R2 : binary A),
+  rel_le R1 R2 -> rel_le (closure R1) (closure R2).
+Proof. unfolds rel_le, pred_le. introv Le H. induction* H. Qed.
+
+
+Lemma connected_already : forall A (G:graph A) x y,
+  connected G x y ->
+  connected (add_edge G x y) = connected G.
+Proof.
+  introv (_&_&E). extens. intros a b. unfold connected. simpls.
+  iff (?&?&R); splits~.
+  skip. 
+  applys closure_le R. intros u v M. apply* @in_union_l. typeclass.
+Admitted.
+
 
 
 Lemma union_spec :
@@ -375,13 +424,47 @@ Proof.
   xcf. introv Dx Dy. unfold UF. xextract as M (FM&DM&EM).
   rewrite <- DM in *. clear DM.
   xapp~ as rx. intros Rx. xapp~ as ry. intros Ry.
+  xapps. xif.
+  (* case [rx <> ry] *)
   xapp_spec~ ml_set_spec_group. apply* is_repr_in_dom'.
   hsimpl. splits.
     apply* is_forest_update; apply* is_repr_binds_root.  
-    rewrite~ dom_update_in. forwards: is_repr_binds_root Rx. skip.
+    rewrite~ dom_update_in. forwards*: is_repr_binds_root Rx.
     apply* inv_add_edge.
+  (* case [rx = ry] *)
+  xrets. splits~. rewrite~ connected_already. rewrite* <- EM. 
 Admitted.
 
 Hint Extern 1 (RegisterSpec union) => Provide union_spec.
 
 
+
+
+---------------
+
+(*
+Lemma connected_eq : forall A (G' G:graph A),
+  edges G = edges G' -> connected G = connected G'.
+Proof. introv H. unfolds. rewrite~ H. Qed.
+
+Implicit Arguments connected_eq [A].
+*)
+
+(*
+Lemma is_equiv_add_node : forall M r,
+  is_forest M -> r \notindom' M ->
+  is_equiv (M\(r:=Root)) = is_equiv M.
+Proof.
+  introv FM D. extens. intros x y.
+  tests (x = r); tests (y = r).
+
+ (* todo: wlog *)
+  iff H. apply~ is_equiv_refl.
+  unfold is_equiv.
+*)
+Admitted.
+(*
+Lemma is_equiv_add_node : forall M r x y,
+  is_equiv (M\(r:=Root)) x y = (is_equiv M x y \/ (x = r /\ y = r)).
+Admitted.
+*)

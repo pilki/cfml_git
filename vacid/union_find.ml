@@ -17,6 +17,7 @@ let equiv x y =
 let union x y =
    let rx = repr x in
    let ry = repr y in
-   rx := Node ry 
+   if rx != ry 
+      then rx := Node ry 
 
 
