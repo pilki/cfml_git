@@ -53,7 +53,7 @@ Definition add_edge A (G:graph A) x y :=
     symmetric-transitive closure of the edges. *)
 
 Definition connected A (G:graph A) x y :=
-  x \in (nodes G) /\ y \in (nodes G) /\
+
   closure (fun x y => (x,y) \in edges G) x y.
 
 
