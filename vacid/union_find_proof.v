@@ -433,6 +433,7 @@ Proof.
     applys stclosure_step. left. cuts~: (rb \in per_dom B). rewrite <- DM.
      applys~ (map_indom_update_already_inv (binds_dom H)).
     tests (x = ra) as C'.
+
       applys~ trans_sym_1 a. skip.
       applys~ trans_elim b. skip.
       skip.
