@@ -363,7 +363,7 @@ Proof.
   forwards~: IHis_repr. subst y. false. tests (x = z).
     applys* (>> binds_diff_false H).
     forwards*: points_indom x. applys* binds_update_neq_inv.
-  (* -- case [r <> z] *)
+  (* -- subcase [r <> z] *)
   cuts St: (forall x, is_repr (M\(z:=Root)) x r -> is_repr M x r).
     left. rewrite <- EM. exists* r.
   clears x y. introv H. induction H.
@@ -376,12 +376,10 @@ Proof.
   cuts St: (forall x, is_repr M x r -> is_repr (M\(z:=Root)) x r).
     exists* r.
   clears x y. introv H. induction H. eauto.
-  asserts: (x <> z). intro_subst. lets~: binds_dom H.
-  
-
+  cuts*: (x <> z). intro_subst. lets~: binds_dom H.
   (* -- subcase [x = y = z] *)
   subst x y. exists* z.
-Qed.
+Admitted. (*faster*)
 
 (** Lemmas for 'union' function *)
 
@@ -399,13 +397,30 @@ Proof.
     cuts*: (x<>rx). congruence.
 Qed.
 
-Lemma inv_add_edge : forall M G a ra b rb,
+Lemma inv_add_edge : forall M B a ra b rb,
   per B ->
   is_equiv M = B ->
   is_repr M a ra ->
   is_repr M b rb ->
-  is_equiv (M\(rx:=Node ry)) = add_edge B a b.
+  is_equiv (M\(ra:=Node rb)) = add_edge B a b.
 Proof.
+  introv PB EM Ra Rb. extens. intros x y. split.
+  (* -- case [is_equiv M' -> B'] *)
+  (* -- subcase [r = z] *)
+  (* -- case [r <> z] *)
+skip.
+  (* -- case [B' -> is_equiv M'] *)
+  asserts Sa: (forall x, is_repr M x ra -> is_repr (M\(ra:=Node rb)) x rb).
+    skip.
+  asserts Sr: (forall x r, r <> ra -> is_repr M x r -> is_repr (M\(ra:=Node rb)) x r).
+    skip.
+  intros H. induction H.
+  destruct H as [?|[? ?]].
+    rewrite <- EM in H. destruct H as (r&Rx&Ry).
+     tests* (r = ra). exists* rb. exists* r.
+    subst x y. 
+  applys* is_equiv_sym.
+  applys* is_equiv_trans.
 Qed.
 
 
