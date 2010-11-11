@@ -400,18 +400,43 @@ Qed.
 Tactic Notation "asserts" "*" ":" constr(E) :=
   let H := fresh "H" in asserts* H: E.
 
+(* todo: bug forwards: need to unfold if more arguments come *)
+
+Lemma per_add_edge : forall A (R : binary A) a b,
+  per R -> per (add_edge R a b).
+Proof.
+  introv [Rs Rt]. unfold add_edge. constructor.
+  introv H. induction* H.
+  introv H1. gen z. induction* H1. 
+Qed.
+
+Axiom map_indom_update_already_inv : forall A `{Inhab B} (m:map A B) (i j:A) (v:B),
+  j \indom (m\(i:=v)) -> i \indom m -> j \indom m.
+
+
 Lemma inv_add_edge : forall M B a ra b rb,
-  per B -> ra <> rb ->
+  per B -> ra <> rb -> ra \indom M -> rb \indom M ->
+  dom M = per_dom B ->
   is_equiv M = B ->
   is_repr M a ra ->
   is_repr M b rb ->
   is_equiv (M\(ra:=Node rb)) = add_edge B a b.
 Proof.
-  introv PB Neq EM Ra Rb. extens. intros x y. split.
+  introv PB Neq Da Db DM EM Ra Rb. extens. intros x y. split.
   (* -- case [is_equiv M' -> B'] *)
   intros (r&Rx&Ry). tests (r = rb) as C.
   (* -- subcase [r = rb] *)
-  .
+  lets Pt: per_trans. lets Ps: per_sym.
+  sets B': (add_edge B a b). asserts PB': (per B'). unfold B'. apply~ per_add_edge.
+  cuts St: (forall x, is_repr (M\(ra:=Node rb)) x rb -> B' x rb). applys~ trans_sym_2.
+  clears x y. introv H. gen_eq r:rb. induction H; intro_subst.
+    applys stclosure_step. left. cuts~: (rb \in per_dom B). rewrite <- DM.
+     applys~ (map_indom_update_already_inv (binds_dom H)).
+    tests (x = ra) as C'.
+      applys~ trans_sym_1 a. skip.
+      applys~ trans_elim b. skip.
+      skip.
+per_trans. applys~ per_sym.
   (* -- case [r <> rb] *)
   cuts St: (forall x, is_repr (M\(ra:=Node rb)) x r -> is_repr M x r).
     applys add_edge_le. rewrite <- EM. exists* r.
