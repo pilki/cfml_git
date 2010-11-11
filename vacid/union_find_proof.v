@@ -1,20 +1,21 @@
 Set Implicit Arguments.
-Require Import CFLib LibSet LibMap LibRelation union_find_ml.
+Require Import CFLib LibMap LibRelation union_find_ml.
+Require Import LibSet.
 
+Notation "\set{ x | P }" := (@set_st _ (fun x => P))
+  (at level 0, x ident, P at level 200).
 
 (** LibRelation *)
 
 Module Import Rel := LibRelation.
 
-Definition single a b : binary A :=
-  fun x y => x = a /\ y = b.
 
 Record per A (R:binary A) :=
  { per_sym : sym R;
    per_trans : trans R }. 
 
 Definition per_dom A (R:binary A) :=
-  '{ x | R x x}.
+  \set{ x | R x x}.
 
 Lemma rel_eq_elim : forall A (R1 R2 : binary A), 
   R1 = R2 -> (forall x y, R1 x y <-> R2 x y).
@@ -43,7 +44,7 @@ Tactic Notation "xapp" "~" "as" ident(x) :=
   xapp_as_base ___ (>>) ltac:(fun _ => xauto~) x.
 Tactic Notation "xapp" "*" "as" ident(x) :=
   xapp_as_base ___ (>>) ltac:(fun _ => xauto*) x.
-nouveau dossier
+
 Tactic Notation "hextracts" :=
   let E := fresh "TEMP" in hextract as E; subst_hyp E.
 
@@ -72,6 +73,11 @@ Hint Resolve content_inhab.
 
 (** CFPrim *)
 
+Notation "x \indom' E" := (@is_in _ (set _) _ x (@dom _ (set loc) _ E)) 
+  (at level 39) : container_scope.
+Notation "x \notindom' E" := (x \notin ((dom E) : set _)) 
+  (at level 39) : container_scope.
+
 Axiom ml_ref_spec_group : forall a,
   Spec ml_ref (v:a) |R>> forall (M:map loc a),
     R (Group (Ref Id) M) (fun l => Group (Ref Id) (M\(l:=v)) \* [l\notindom' M]).
@@ -91,36 +97,14 @@ Axiom ml_set_spec_group : forall a,
 Lemma case_classic_l : forall P Q, P \/ Q -> (P \/ (~ P /\ Q)).
 Proof. intros. tautoB P Q. Qed.
 
-(*
-
-Inductive closure (A:Type) (R:binary A) : binary A :=
-  | closure_step : forall x y,
-      R x y -> closure R x y
-  | closure_refl : forall x,
-      closure R x x
-  | closure_sym : forall x y, 
-      closure R x y -> closure R y x
-  | closure_trans : forall y x z,
-      closure R x y -> closure R y z -> closure R x z.
-
-
-Hint Constructors closure.
-Lemma closure_le : forall A (R1 R2 : binary A),
-  rel_le R1 R2 -> rel_le (closure R1) (closure R2).
-Proof. unfolds rel_le, pred_le. introv Le H. induction* H. Qed.
-*)
-
 (** Maps *)
 
-Notation "x \indom' E" := (@is_in _ (set _) _ x (@dom _ (set loc) _ E)) 
-  (at level 39) : container_scope.
-Notation "x \notindom' E" := (x \notin ((dom E) : set _)) 
-  (at level 39) : container_scope.
+
 
 Axiom map_indom_update_inv : forall A `{Inhab B} (m:map A B) (i j:A) (v:B),
   j \indom (m\(i:=v)) -> (j = i \/ j \indom m).
 Axiom map_indom_update_already : forall A `{Inhab B} (m:map A B) (i j:A) (v:B),
-  j \indom m -> j \indom (m\(i:=v))
+  j \indom m -> j \indom (m\(i:=v)).
 
 Axiom binds_def : forall A `{Inhab B} (M:map A B) x v,
   binds M x v = (x \indom M /\ M\(x) = v).
@@ -133,6 +117,9 @@ Axiom binds_update_neq : forall A i j `{Inhab B} v w (M:map A B),
   j \notindom' M -> binds M i v -> binds (M\(j:=w)) i v.
 Axiom binds_update_eq : forall A i `{Inhab B} v (M:map A B),
   binds (M\(i:=v)) i v.
+
+Axiom binds_update_neq_inv : forall A i j `{Inhab B} v w (M:map A B),
+  binds (M\(j:=w)) i v -> i <> j -> binds M i v.
 
 Axiom binds_inj : forall A i `{Inhab B} v1 v2 (M:map A B),
   binds M i v1 -> binds M i v2 -> v1 = v2.
@@ -187,7 +174,8 @@ Lemma stclosure_le : forall A (R1 R2 : binary A),
   rel_le R1 R2 -> rel_le (stclosure R1) (stclosure R2).
 Proof. unfolds rel_le, pred_le. introv Le H. induction* H. Qed.
 
-
+Definition single A (a b:A) :=
+  fun x y => x = a /\ y = b.
 
 (** Extension of an per [B] with a node [z] *)
 
@@ -199,22 +187,21 @@ Definition add_node A (B:binary A) (z:A) :=
 Definition add_edge A (B:binary A) (x y:A) :=
   stclosure (Rel.union B (single x y)).
 
-Lemma add_edge_already : forall A (B:binary A) x y,
-  per B -> B x y -> add_edge B x y = B.
+Lemma add_edge_le : forall A (B:binary A) a b,
+  rel_le B (add_edge B a b).
+Proof. introv. intros x y H. apply stclosure_step. left~. Qed.
+
+Lemma add_edge_already : forall A (B:binary A) a b,
+  per B -> B a b -> add_edge B a b = B.
 Proof.
-  introv (_&_&E). extens. intros a b. unfold connected. simpls.
-  iff (Ia&Ib&R); splits~.
-  clear Ia Ib. induction R; intros.
-    destruct (in_union_inv H) as [|M].
-      eauto.
-      rewrite (in_single_eq) in M. inverts~ M.  
-    eauto.
-    eauto.
-    eauto.
-  applys closure_le R. intros u v M. apply in_union_l. eauto.
+  introv P H. extens. intros x y. iff M.
+  induction M.
+    destruct H0. auto. destruct H0. subst~.
+    apply* per_sym.
+    apply* per_trans.
+  hnf in M.
+  apply~ add_edge_le.
 Qed.
-
-
 
 
 (****************************************************)
@@ -269,14 +256,7 @@ Hint Resolve binds_update_neq'.
 
 Hint Resolve binds_update_neq binds_update_eq.
 
-
-Lemma is_equiv_iff_same_repr : forall M x y rx ry,
-  is_repr M x rx -> is_repr M y ry ->
-  ((rx = ry) <-> is_equiv M x y).
-Proof. 
-  introv Rx Ry. iff H (r&Rx'&Ry'). subst*.
-  applys (eq_trans r); applys is_repr_inj; eauto.
-Qed.
+Ltac auto_star ::= jauto.
 
 
 (****************************************************)
@@ -292,6 +272,14 @@ Proof.
 Qed.
 
 Implicit Arguments is_repr_inj [ ].
+
+Lemma is_equiv_iff_same_repr : forall M x y rx ry,
+  is_repr M x rx -> is_repr M y ry ->
+  ((rx = ry) <-> is_equiv M x y).
+Proof. 
+  introv Rx Ry. iff H (r&Rx'&Ry'). subst*.
+  applys (eq_trans r); applys is_repr_inj; eauto.
+Qed.
 
 Lemma is_equiv_refl : forall M x, 
   x \indom M -> is_forest M -> is_equiv M x x.
@@ -328,14 +316,21 @@ Lemma is_repr_add_node : forall M r c x y,
   r \notin (dom M:set _) -> is_repr M x y -> is_repr (M\(r:=c)) x y.
 Proof. introv N H. induction H; constructors*. Qed. 
 
+Lemma binds_diff_false : forall x y M,
+  binds M x Root -> binds M x (Node y) -> False.
+Proof. introv H1 H2. forwards~: binds_inj H1 H2. false. Qed.
+
+
 Lemma node_not_root : forall r x M y,
-  binds M r Root -> is_repr M x (Node y) -> x <> r.
-Proof.
-Qed.
+  binds M r Root -> binds M x (Node y) -> x <> r.
+Proof. introv H1 H2. intro_subst. applys* binds_diff_false. Qed.
 
 Lemma points_indom : forall x M y,
-  binds M x (Node y) -> is_forest M -> y \indom M.
+  is_forest M -> binds M x (Node y) -> y \indom M.
 Proof.
+  introv FM Bx. forwards  [r Hr]: FM x. applys* binds_dom. inverts Hr.
+    false* binds_diff_false.
+    forwards* E: binds_inj Bx H. inverts E. inverts* H0.
 Qed.
 
 Hint Resolve node_not_root points_indom.
@@ -352,11 +347,31 @@ Qed.
 
 Lemma inv_add_node : forall M B z,
   is_forest M ->
-  dom M = rel_dom B ->
+  dom M = per_dom B ->
   is_equiv M = B ->
   z \notindom' M -> 
   is_equiv (M\(z:=Root)) = add_node B z.
 Proof.
+  introv FM DM EM Mz. extens. intros x y. split.
+  (* -- is_equiv M' -> B' *)
+  intros (r&Rx&Ry). tests (r = z).
+  (* ----- case r = z *)
+  asserts Eq: (forall x, is_repr (M\(z:=Root)) x z -> x = z).
+    clears x y. intros x H. gen_eq r: z. gen_eq M': (M\(r:=Root)).
+    induction~ H; intro_subst; intro_subst.
+    forwards~: IHis_repr. subst y. false. tests (x = z).
+      applys* (>> binds_diff_false H).
+      applys Mz. applys~ points_indom x. applys* binds_update_neq_inv.
+   rewrite~ (Eq x). rewrite~ (Eq y). right. unfolds~.
+  (* ---- case r <> z *)
+  asserts St: (forall x, is_repr (M\(z:=Root)) x r -> is_repr M x r).
+    clears x y. introv H. induction H.
+      applys is_repr_root. applys* binds_update_neq_inv.
+       forwards*: (binds_update_neq_inv H). applys* node_not_root.
+  left. rewrite <- EM. exists* r.
+  (* -- B' -> is_equiv M' *)
+  
+
 Qed.
 
 (** Lemmas for 'union' function *)
@@ -545,3 +560,23 @@ Proof. introv H D. rewrite H. auto. Qed.
 Hint Resolve indom_from_innodes.
 *)
 
+
+
+(*
+
+Inductive closure (A:Type) (R:binary A) : binary A :=
+  | closure_step : forall x y,
+      R x y -> closure R x y
+  | closure_refl : forall x,
+      closure R x x
+  | closure_sym : forall x y, 
+      closure R x y -> closure R y x
+  | closure_trans : forall y x z,
+      closure R x y -> closure R y z -> closure R x z.
+
+
+Hint Constructors closure.
+Lemma closure_le : forall A (R1 R2 : binary A),
+  rel_le R1 R2 -> rel_le (closure R1) (closure R2).
+Proof. unfolds rel_le, pred_le. introv Le H. induction* H. Qed.
+*)
