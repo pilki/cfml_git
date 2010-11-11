@@ -345,6 +345,8 @@ Proof.
     forwards* [y Ry]: FM x. exists y. apply* is_repr_add_node.
 Qed.
 
+Hint Resolve binds_update_neq_inv.
+
 Lemma inv_add_node : forall M B z,
   is_forest M ->
   dom M = per_dom B ->
@@ -362,13 +364,11 @@ Proof.
   induction~ H; intro_subst; intro_subst.
   forwards~: IHis_repr. subst y. false. tests (x = z).
     applys* (>> binds_diff_false H).
-    forwards*: points_indom x. applys* binds_update_neq_inv.
+    forwards*: points_indom x.
   (* -- subcase [r <> z] *)
   cuts St: (forall x, is_repr (M\(z:=Root)) x r -> is_repr M x r).
     left. rewrite <- EM. exists* r.
-  clears x y. introv H. induction H.
-    applys is_repr_root. applys* binds_update_neq_inv.
-     forwards*: (binds_update_neq_inv H). applys* node_not_root.
+  clears x y. introv H. induction H. applys* is_repr_root. eauto 7.
   (* -- case [B' -> is_equiv M'] *)
   intros [H|[Ex Ey]].
   (* -- subcase [B x y] *)
@@ -397,31 +397,42 @@ Proof.
     cuts*: (x<>rx). congruence.
 Qed.
 
+Tactic Notation "asserts" "*" ":" constr(E) :=
+  let H := fresh "H" in asserts* H: E.
+
 Lemma inv_add_edge : forall M B a ra b rb,
-  per B ->
+  per B -> ra <> rb ->
   is_equiv M = B ->
   is_repr M a ra ->
   is_repr M b rb ->
   is_equiv (M\(ra:=Node rb)) = add_edge B a b.
 Proof.
-  introv PB EM Ra Rb. extens. intros x y. split.
+  introv PB Neq EM Ra Rb. extens. intros x y. split.
   (* -- case [is_equiv M' -> B'] *)
-  (* -- subcase [r = z] *)
-  (* -- case [r <> z] *)
-skip.
+  intros (r&Rx&Ry). tests (r = rb) as C.
+  (* -- subcase [r = rb] *)
+  .
+  (* -- case [r <> rb] *)
+  cuts St: (forall x, is_repr (M\(ra:=Node rb)) x r -> is_repr M x r).
+    applys add_edge_le. rewrite <- EM. exists* r.
+  clears x y. introv H. induction H; cuts*: (x <> ra). 
+    intro_subst. lets N: (binds_get H). rew_map in N. inverts N.
+    intro_subst. lets N: (binds_get H). rew_map in N. inverts N.
+     renames y to rb. applys C. applys* is_repr_inj. 
   (* -- case [B' -> is_equiv M'] *)
-  asserts Sa: (forall x, is_repr M x ra -> is_repr (M\(ra:=Node rb)) x rb).
-    skip.
-  asserts Sr: (forall x r, r <> ra -> is_repr M x r -> is_repr (M\(ra:=Node rb)) x r).
-    skip.
+  asserts [Sa Sr]: 
+     ((forall x, is_repr M x ra -> is_repr (M\(ra:=Node rb)) x rb) /\
+      (forall x r, r <> ra -> is_repr M x r -> is_repr (M\(ra:=Node rb)) x r)).
+    clears x y. split. 
+      introv H. induction H; eauto 7. 
+      introv Nq H. induction H; eauto 7. 
   intros H. induction H.
   destruct H as [?|[? ?]].
-    rewrite <- EM in H. destruct H as (r&Rx&Ry).
-     tests* (r = ra). exists* rb. exists* r.
-    subst x y. 
+    rewrite <- EM in H. destruct H as (r&Rx&Ry). tests (r = ra); eauto 7.
+    subst x y. exists* rb.
   applys* is_equiv_sym.
   applys* is_equiv_trans.
-Qed.
+Admitted.
 
 
 (****************************************************)
