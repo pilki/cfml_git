@@ -11,7 +11,7 @@ let rec repr x =
 let create () = 
    ref Root
 
-let equiv x y =
+let same x y =
   repr x == repr y
 
 let union x y =
