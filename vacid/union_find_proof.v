@@ -353,25 +353,34 @@ Lemma inv_add_node : forall M B z,
   is_equiv (M\(z:=Root)) = add_node B z.
 Proof.
   introv FM DM EM Mz. extens. intros x y. split.
-  (* -- is_equiv M' -> B' *)
+  (* -- case [is_equiv M' -> B'] *)
   intros (r&Rx&Ry). tests (r = z).
-  (* ----- case r = z *)
-  asserts Eq: (forall x, is_repr (M\(z:=Root)) x z -> x = z).
-    clears x y. intros x H. gen_eq r: z. gen_eq M': (M\(r:=Root)).
-    induction~ H; intro_subst; intro_subst.
-    forwards~: IHis_repr. subst y. false. tests (x = z).
-      applys* (>> binds_diff_false H).
-      applys Mz. applys~ points_indom x. applys* binds_update_neq_inv.
-   rewrite~ (Eq x). rewrite~ (Eq y). right. unfolds~.
-  (* ---- case r <> z *)
-  asserts St: (forall x, is_repr (M\(z:=Root)) x r -> is_repr M x r).
-    clears x y. introv H. induction H.
-      applys is_repr_root. applys* binds_update_neq_inv.
-       forwards*: (binds_update_neq_inv H). applys* node_not_root.
-  left. rewrite <- EM. exists* r.
-  (* -- B' -> is_equiv M' *)
+  (* -- subcase [r = z] *)
+  cuts St: (forall x, is_repr (M\(z:=Root)) x z -> x = z).
+    rewrite~ (St x). rewrite~ (St y). right. unfolds~.
+  clears x y. introv H. gen_eq r: z. gen_eq M': (M\(r:=Root)).
+  induction~ H; intro_subst; intro_subst.
+  forwards~: IHis_repr. subst y. false. tests (x = z).
+    applys* (>> binds_diff_false H).
+    forwards*: points_indom x. applys* binds_update_neq_inv.
+  (* -- case [r <> z] *)
+  cuts St: (forall x, is_repr (M\(z:=Root)) x r -> is_repr M x r).
+    left. rewrite <- EM. exists* r.
+  clears x y. introv H. induction H.
+    applys is_repr_root. applys* binds_update_neq_inv.
+     forwards*: (binds_update_neq_inv H). applys* node_not_root.
+  (* -- case [B' -> is_equiv M'] *)
+  intros [H|[Ex Ey]].
+  (* -- subcase [B x y] *)
+  rewrite <- EM in H. destruct H as (r&Rx&Ry).
+  cuts St: (forall x, is_repr M x r -> is_repr (M\(z:=Root)) x r).
+    exists* r.
+  clears x y. introv H. induction H. eauto.
+  asserts: (x <> z). intro_subst. lets~: binds_dom H.
   
 
+  (* -- subcase [x = y = z] *)
+  subst x y. exists* z.
 Qed.
 
 (** Lemmas for 'union' function *)
