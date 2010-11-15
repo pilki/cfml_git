@@ -275,7 +275,7 @@ Implicit Arguments is_repr_inj [ ].
 
 Lemma is_equiv_iff_same_repr : forall M x y rx ry,
   is_repr M x rx -> is_repr M y ry ->
-  ((rx = ry) <-> is_equiv M x y).
+  ((rx = ry) = is_equiv M x y).
 Proof. 
   introv Rx Ry. iff H (r&Rx'&Ry'). subst*.
   applys (eq_trans r); applys is_repr_inj; eauto.
@@ -414,30 +414,37 @@ Axiom map_indom_update_already_inv : forall A `{Inhab B} (m:map A B) (i j:A) (v:
   j \indom (m\(i:=v)) -> i \indom m -> j \indom m.
 
 
+Lemma is_repr_equiv_root : forall M x r,
+  is_repr M x r -> is_equiv M x r.
+Proof. introv H. exists* r. Qed.
+Hint Resolve is_repr_equiv_root.
+
+Section InvAdd.
+Hint Resolve per_trans per_sym.
+
 Lemma inv_add_edge : forall M B a ra b rb,
   per B -> ra <> rb -> ra \indom M -> rb \indom M ->
-  dom M = per_dom B ->
-  is_equiv M = B ->
-  is_repr M a ra ->
-  is_repr M b rb ->
+  is_forest M -> dom M = per_dom B -> is_equiv M = B ->
+  is_repr M a ra -> is_repr M b rb ->
   is_equiv (M\(ra:=Node rb)) = add_edge B a b.
 Proof.
-  introv PB Neq Da Db DM EM Ra Rb. extens. intros x y. split.
+  introv PB Neq Da Db FM DM EM Ra Rb. extens. intros x y. split.
   (* -- case [is_equiv M' -> B'] *)
   intros (r&Rx&Ry). tests (r = rb) as C.
   (* -- subcase [r = rb] *)
-  lets Pt: per_trans. lets Ps: per_sym.
   sets B': (add_edge B a b). asserts PB': (per B'). unfold B'. apply~ per_add_edge.
   cuts St: (forall x, is_repr (M\(ra:=Node rb)) x rb -> B' x rb). applys~ trans_sym_2.
-  clears x y. introv H. gen_eq r:rb. induction H; intro_subst.
-    applys stclosure_step. left. cuts~: (rb \in per_dom B). rewrite <- DM.
-     applys~ (map_indom_update_already_inv (binds_dom H)).
-    tests (x = ra) as C'.
-
-      applys~ trans_sym_1 a. skip.
-      applys~ trans_elim b. skip.
-      skip.
-per_trans. applys~ per_sym.
+  clears x y. introv H. gen_eq r:rb. gen Rb. induction H; intros.
+    subst x. applys stclosure_step. left. cuts~: (rb \in per_dom B).
+     rewrite <- DM. applys~ (map_indom_update_already_inv (binds_dom H)).
+    subst r0 r1. tests (x = ra) as C'.
+      applys~ trans_sym_1 a; [ | applys~ trans_elim b  ].
+        applys add_edge_le. rewrite* <- EM.
+        applys stclosure_step. right. unfolds~.
+        applys add_edge_le. rewrite* <- EM.
+      applys~ trans_elim y. applys add_edge_le. rewrite <- EM.
+       forwards: binds_update_neq_inv x; eauto 3.
+       forwards [ry Hry]: FM y __; eauto 3. exists* ry.
   (* -- case [r <> rb] *)
   cuts St: (forall x, is_repr (M\(ra:=Node rb)) x r -> is_repr M x r).
     applys add_edge_le. rewrite <- EM. exists* r.
@@ -460,6 +467,7 @@ per_trans. applys~ per_sym.
   applys* is_equiv_trans.
 Admitted.
 
+End InvAdd.
 
 (****************************************************)
 (** Verification *)
@@ -479,7 +487,7 @@ Proof.
   (* case node *)
   xcf_app. xlet. xapp_spec~ ml_get_spec_group. xextracts. (*todo:xapps_spec*) 
   rewrite (binds_get H). xmatch. 
-  forwards K: IHHr. apply* is_repr_in_dom. xapplys* K.
+  forwards K: IHHr. apply* is_repr_in_dom_l. xapplys* K.
 Admitted.
 
 Hint Extern 1 (RegisterSpec repr) => Provide repr_spec.
@@ -488,16 +496,42 @@ Hint Extern 1 (RegisterSpec repr) => Provide repr_spec.
 (*--------------------------------------------------*)
 (** Function [create] *)
 
+Lemma per_dom_add_edge : forall A (B:binary A) x y,
+   per_dom (add_edge B x y) = per_dom B \u \{x} \u \{y}.
+Proof.
+(*
+  intros. unfold per_dom. apply set_ext. intros y.
+  rewrite in_set. iff H.*) skip.
+Qed.
+
+Lemma per_dom_add_node : forall A (B:binary A) x,
+   per_dom (add_edge B x x) = per_dom B \u \{x}.
+Proof.
+(*
+  intros. unfold per_dom. apply set_ext. intros y.
+  rewrite in_set. iff H.*) skip.
+Qed.
+
+
+Axiom inv_add_node' : forall M B z,
+  is_forest M ->
+  dom M = per_dom B ->
+  is_equiv M = B ->
+  z \notindom' M -> 
+  is_equiv (M\(z:=Root)) = add_edge B z z.
+
 Lemma create_spec :
   Spec create () |R>> forall B,
-    S (UF B) (fun r => [r \notin (rel_dom B)] \* UF (Rel.union B (single r r))).
+    R (UF B) (fun r => [r \notin (per_dom B)] \* UF (add_edge B r r)).
 Proof.
-  xcf. intros. unfold UF. xextract as M (FM&DM&EM).
+  xcf. intros. unfold UF. xextract as M (PM&FM&DM&EM).
   xapp_spec ml_ref_spec_group.
   intros r. hextract as Neq. hsimpl. splits.
+    apply~ per_add_edge.
     apply~ is_forest_add_node.
-    rewrite~ dom_update_notin. fequals.
-    apply~ inv_add_node.
+    rewrite~ dom_update_notin. rewrite per_dom_add_node. fequals.
+    applys~ inv_add_node'.
+    rewrite~ <- DM.
 Admitted.
 
 Hint Extern 1 (RegisterSpec create) => Provide create_spec.
@@ -508,39 +542,51 @@ Hint Extern 1 (RegisterSpec create) => Provide create_spec.
 
 Lemma same_spec :
   Spec same x y |R>> forall B, 
-    x \in (rel_dom B) -> y \in (rel_dom B) ->
+    x \in (per_dom B) -> y \in (per_dom B) ->
     keep R (UF B) (\= istrue (B x y)).
 Proof.
-  xcf. introv Dx Dy. unfold UF. xextract as M (FM&DM&EM).
+  xcf. introv Dx Dy. unfold UF. xextract as M (PM&FM&DM&EM).
   rewrite <- DM in *. clear DM.
   xapp~ as rx. intros Rx. xapp~ as ry. intros Ry.
-  xapp. intros b. xsimpl; subst~.
-  fequal. rewrite <- EM. extens. apply* is_equiv_iff_same_repr.
+  xapp. intros b. xsimpl. subst~.
+  subst b. rewrite <- EM. fequals. applys~ is_equiv_iff_same_repr.
 Admitted.
 
-Hint Extern 1 (RegisterSpec equiv) => Provide equiv_spec.
+Hint Extern 1 (RegisterSpec equiv) => Provide same_spec.
 
 
 (*--------------------------------------------------*)
 (** Function [union] *)
 
+
+Tactic Notation "set_eq" :=
+  let H := fresh "TEMP" in 
+  apply set_ext; iff H; set_in H; in_union_get.
+Tactic Notation "set_eq" "*" :=
+  set_eq; auto*.
+
 Lemma union_spec :
-  Spec union x y |R>> forall B,
-    x \in (rel_dom B) -> y \in (rel_dom B) ->
-    R (UF B) (# UF (stclosure (Rel.union B (single x y)))).
+  Spec union_find_ml.union x y |R>> forall B,
+    x \in (per_dom B) -> y \in (per_dom B) ->
+    R (UF B) (# UF (add_edge B x y)). 
 Proof.
-  xcf. introv Dx Dy. unfold UF. xextract as M (FM&DM&EM).
-  rewrite <- DM in *. clear DM.
+  xcf. introv Dx Dy. unfold UF. xextract as M (PM&FM&DM&EM).
+  rewrite <- DM in *. 
   xapp~ as rx. intros Rx. xapp~ as ry. intros Ry.
   xapps. xif.
   (* case [rx <> ry] *)
   xapp_spec~ ml_set_spec_group. apply* is_repr_in_dom_r.
   hsimpl. splits.
+    applys~ per_add_edge.   
     apply* is_forest_add_edge; apply* is_repr_binds_root.  
-    rewrite~ dom_update_in. forwards*: is_repr_binds_root Rx.
+    rewrite per_dom_add_edge. rewrite <- DM.
+     rewrite~ dom_update_in. set_eq*. forwards*: is_repr_binds_root Rx.
     apply* inv_add_edge.
   (* case [rx = ry] *)
-  xrets. splits~. rewrite~ inv_add_no_edge. rewrite* <- EM. 
+  xrets. splits~. 
+    applys~ per_add_edge. 
+    rewrite per_dom_add_edge. rewrite <- DM. set_eq*.
+    rewrite~ add_edge_already. rewrite* <- EM. 
 Admitted.
 
 Hint Extern 1 (RegisterSpec union) => Provide union_spec.
