@@ -22,6 +22,9 @@ Lemma rel_eq_elim : forall A (R1 R2 : binary A),
 Proof. intros. subst*. Qed.
 
 
+(* todo: bug forwards: need to unfold if more arguments come *)
+
+
 (*Lemma in_set : forall A (P:A->Prop) x,
   x \in set_st P = P x.*)
 
@@ -29,6 +32,15 @@ Proof. intros. subst*. Qed.
 
 Tactic Notation "applys_to" hyp(H1) "," hyp(H2) constr(E) :=
   applys_to H1 E; applys_to H2 E.  
+Tactic Notation "asserts" "*" ":" constr(E) :=
+  let H := fresh "H" in asserts* H: E.
+
+Tactic Notation "set_eq" :=
+  let H := fresh "TEMP" in 
+  apply set_ext; iff H; set_in H; in_union_get.
+Tactic Notation "set_eq" "*" :=
+  set_eq; auto*.
+
 
 (** CFTactics *)
 
@@ -148,10 +160,14 @@ Axiom binds_index : forall A i `{Inhab B} v (M:map A B),
 Axiom binds_update_neq' : forall A i j `{Inhab B} v w (M:map A B),
   i <> j -> binds M i v -> binds (M\(j:=w)) i v.
 
+Axiom map_indom_update_already_inv : forall A `{Inhab B} (m:map A B) (i j:A) (v:B),
+  j \indom (m\(i:=v)) -> i \indom m -> j \indom m.
+
 
 Global Opaque binds_inst. 
 
 (* todo: bug de congruence *)
+
 
 
 (****************************************************)
@@ -201,6 +217,30 @@ Proof.
     apply* per_trans.
   hnf in M.
   apply~ add_edge_le.
+Qed.
+
+Lemma per_add_edge : forall A (R : binary A) a b,
+  per R -> per (add_edge R a b).
+Proof.
+  introv [Rs Rt]. unfold add_edge. constructor.
+  introv H. induction* H.
+  introv H1. gen z. induction* H1. 
+Qed.
+
+Lemma per_dom_add_edge : forall A (B:binary A) x y,
+   per_dom (add_edge B x y) = per_dom B \u \{x} \u \{y}.
+Proof.
+(*
+  intros. unfold per_dom. apply set_ext. intros y.
+  rewrite in_set. iff H.*) skip.
+Qed.
+
+Lemma per_dom_add_node : forall A (B:binary A) x,
+   per_dom (add_edge B x x) = per_dom B \u \{x}.
+Proof.
+(*
+  intros. unfold per_dom. apply set_ext. intros y.
+  rewrite in_set. iff H.*) skip.
 Qed.
 
 
@@ -308,7 +348,12 @@ Lemma is_repr_binds_root : forall M x r,
   is_repr M x r -> binds M r Root.
 Proof. introv H. induction~ H. Qed.
 
-Hint Resolve is_repr_in_dom_l is_repr_in_dom_r is_repr_binds_root.
+Lemma is_repr_equiv_root : forall M x r,
+  is_repr M x r -> is_equiv M x r.
+Proof. introv H. exists* r. Qed.
+
+Hint Resolve is_repr_binds_root is_repr_equiv_root.
+Hint Resolve is_repr_in_dom_l is_repr_in_dom_r.
 
 (** General lemmas *)
 
@@ -381,6 +426,14 @@ Proof.
   subst x y. exists* z.
 Admitted. (*faster*)
 
+Axiom inv_add_node' : forall M B z,
+  is_forest M ->
+  dom M = per_dom B ->
+  is_equiv M = B ->
+  z \notindom' M -> 
+  is_equiv (M\(z:=Root)) = add_edge B z z.
+
+
 (** Lemmas for 'union' function *)
 
 Lemma is_forest_add_edge : forall M rx ry,
@@ -396,28 +449,6 @@ Proof.
     eauto.
     cuts*: (x<>rx). congruence.
 Qed.
-
-Tactic Notation "asserts" "*" ":" constr(E) :=
-  let H := fresh "H" in asserts* H: E.
-
-(* todo: bug forwards: need to unfold if more arguments come *)
-
-Lemma per_add_edge : forall A (R : binary A) a b,
-  per R -> per (add_edge R a b).
-Proof.
-  introv [Rs Rt]. unfold add_edge. constructor.
-  introv H. induction* H.
-  introv H1. gen z. induction* H1. 
-Qed.
-
-Axiom map_indom_update_already_inv : forall A `{Inhab B} (m:map A B) (i j:A) (v:B),
-  j \indom (m\(i:=v)) -> i \indom m -> j \indom m.
-
-
-Lemma is_repr_equiv_root : forall M x r,
-  is_repr M x r -> is_equiv M x r.
-Proof. introv H. exists* r. Qed.
-Hint Resolve is_repr_equiv_root.
 
 Section InvAdd.
 Hint Resolve per_trans per_sym.
@@ -496,30 +527,6 @@ Hint Extern 1 (RegisterSpec repr) => Provide repr_spec.
 (*--------------------------------------------------*)
 (** Function [create] *)
 
-Lemma per_dom_add_edge : forall A (B:binary A) x y,
-   per_dom (add_edge B x y) = per_dom B \u \{x} \u \{y}.
-Proof.
-(*
-  intros. unfold per_dom. apply set_ext. intros y.
-  rewrite in_set. iff H.*) skip.
-Qed.
-
-Lemma per_dom_add_node : forall A (B:binary A) x,
-   per_dom (add_edge B x x) = per_dom B \u \{x}.
-Proof.
-(*
-  intros. unfold per_dom. apply set_ext. intros y.
-  rewrite in_set. iff H.*) skip.
-Qed.
-
-
-Axiom inv_add_node' : forall M B z,
-  is_forest M ->
-  dom M = per_dom B ->
-  is_equiv M = B ->
-  z \notindom' M -> 
-  is_equiv (M\(z:=Root)) = add_edge B z z.
-
 Lemma create_spec :
   Spec create () |R>> forall B,
     R (UF B) (fun r => [r \notin (per_dom B)] \* UF (add_edge B r r)).
@@ -557,13 +564,6 @@ Hint Extern 1 (RegisterSpec equiv) => Provide same_spec.
 
 (*--------------------------------------------------*)
 (** Function [union] *)
-
-
-Tactic Notation "set_eq" :=
-  let H := fresh "TEMP" in 
-  apply set_ext; iff H; set_in H; in_union_get.
-Tactic Notation "set_eq" "*" :=
-  set_eq; auto*.
 
 Lemma union_spec :
   Spec union_find_ml.union x y |R>> forall B,
