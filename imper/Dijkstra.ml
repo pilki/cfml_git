@@ -1,6 +1,7 @@
 module type Ordered =
 sig 
    type t
+   type t
    val le : t -> t -> bool
 end 
 
@@ -14,75 +15,36 @@ sig
   val pop : heap -> Element.t 
 end
 
-(* todo: gérer un context pour savoir si on est dans un module ou pas *)
+type len = Val of int | Inf
 
-
-
-
-
-module Item = (* : Ordered with type t = (int*int) *)
+module NextNode : Ordered with type t = int * int
 struct
-  type t = int*int
-  let le : t -> t -> bool =
-     fun (_,x1) (_,x2) -> (x1 <= x2)
+   type t = int * int
+   let le (_,d1) (_,d2) -> (d1 <= d2)
 end
 
-module type HeapItems = (* HeapSig with module Element = Item *)
-sig
-  type heap
-  val create : unit -> heap
-  val is_empty : heap -> bool
-  val push : Item.t -> heap -> unit
-  val pop : heap -> Item.t 
-end
-
-
-
-module Dijkstra (Heap:HeapItems) = 
-struct
-
-   type weight = Finite of int | Infinite
-
-   let weight_lt d1 d2 =
-      match d1,d2 with
-        | Finite x, Finite y -> x < y
-        | Finite x, Infinite -> true
-        | Infinite, _ -> false
-
-   type edge = (int * int)
-   type graph = (edge list) array
-   
-   let calc_shortest_path (g:graph) source dest = 
-      let nb_nodes = Array.length g in
-      let dist = Array.make nb_nodes Infinite in
-      let treated = Array.make nb_nodes false in
-      let next = Heap.create() in
-      Heap.push (source,0) next;
-      let finished = ref false in
-      while not !finished do
-         let (node,node_dist) = Heap.pop next in
-         if not treated.(node) then begin
-            treated.(node) <- true;
-            List.iter (fun (edge_dest,edge_dist) ->
-               let new_dist = node_dist + edge_dist in
-               if weight_lt (Finite new_dist) dist.(edge_dest)
-                  then (dist.(edge_dest) <- Finite new_dist;
-                        Heap.push (edge_dest,new_dist) next)
-               ) (g.(node));
+module Dijkstra (Heap:HeapSig with module Element = NextNode) = 
+struct 
+   let shortest_path g a b = 
+      let n = Array.length g in
+      let b = Array.make n Inf in
+      let t = Array.make n false in
+      let h = Heap.create() in
+      b.(a) <- Val 0;
+      Heap.push (a,0) h;
+      while not (Heap.is_empty h) do
+         let (x,dx) = Heap.pop h in
+         if not t.(x) then begin
+            t.(x) <- true;
+            let udpate (y,w) =
+              let dy = dx + w in
+                 if (match b.(y) with | Val d -> dy < d
+                                      | Inf -> True) then 
+                    (b.(y) <- Val dy; 
+                     Heap.push h (y,dy))
+               in
+            List.iter update g.(x);
          end;
-         if Heap.is_empty next || treated.(dest) 
-            then finished := true
       done;
-      dist.(dest)
+      dist.(b)
 end
-
-
-   (*
-   let weight_le d1 d2 =
-      match d1,d2 with
-        | Finite x, Finite y -> x <= y
-        | Finite x, Infinite -> true
-        | Infinite, Finite _ -> false
-        | Infinite, Infinite -> true
-  *)
-
