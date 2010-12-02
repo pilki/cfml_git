@@ -1,3 +1,68 @@
+Definition source_ok B :=
+  B\(a) = 0.
+
+Definition treated_ok T B :=
+  forall v, T\(v) -> B\(v) = dist G a v.
+
+Definition untreated_ok T B reach :=
+  forall v, ~ T\(v) -> v <> a -> B\(v) = MinBar weight reach.
+
+Definition heap_correct T H :=
+  forall v d, ~ T\(v) -> v <> a -> (v,d) \in H -> 
+    exists p, reach v p /\ weight p = d.
+
+Definition heap_complete T H :=
+  forall v p, reach v p -> 
+    exists d, (v,d) \in H /\ d <= weight p.
+    
+    (*-----------------------------------------------------------*)
+
+Parameter graph : Type -> Type -> Type.
+Parameter nodes : forall A B, graph A B -> set A.
+Parameter edges : forall A B, graph A B -> set (A*A*B).
+  
+Definition has_edge A B (g:graph A B) x y w :=
+  (x,y,w) \in edges g.
+
+Parameter edges_are_nodes : forall A B (g : graph A B) x y w,
+  has_edge g x y w -> x \in nodes g /\ y \in nodes g.
+
+Definition nonnegative_edges A (g:graph A int) :=
+  forall x y w, has_edge g x y w -> w >= 0.
+
+(*-----------------------------------------------------------*)
+
+Definition path A B := list (A*A*B).
+
+Inductive is_path A B (g:graph A B) : A -> A -> Prop :=
+  | is_path_nil : forall x, 
+      is_path nil
+  | is_path_cons : forall x y z w p,
+      is_path g x y p ->
+      has_edge g y z w ->
+      is_path g x z ((y,z,w)::p).
+
+Definition weight A (p:path A int) :=
+  nosimpl (fold_left (fun e acc => let '(_,_,w) := e in w+acc) 0).
+
+Lemma weight_nil : forall A, 
+  weight (@nil (A*A*int)) = 0.
+Proof. auto. Qed.
+
+Lemma weight_cons : forall A (p:path A int) x y w, 
+  weight ((x,y,w)::p) = w + weight p.
+Proof. unfold weight; rew_list~. Qed.
+
+(*-----------------------------------------------------------*)
+
+Definition Min A (f:A->int) (P:A->Prop) :=  
+  epsilon (fun y => (exists x, P x /\ y = f x)
+                 /\ (forall x, P x -> y <= f x)).
+
+Definition MinBar A (f:A->int) (P:A->Prop) :=  
+  If (exists x, P x) Then Finite(Min f P) Else Infinite.
+
+Definition dist A (g:graph A int) 
 module type Ordered =
 sig 
    type t
@@ -1744,3 +1809,4 @@ End Dijkstra.
 
 
 *)
+
