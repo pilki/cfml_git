@@ -787,6 +787,9 @@ Tactic Notation "hextract" "as" simple_intropattern(I1) simple_intropattern(I2)
  simple_intropattern(I6) simple_intropattern(I7) := 
   hextract as; intros I1 I2 I3 I4 I5 I6 I7. 
 
+Tactic Notation "hextracts" :=
+  let E := fresh "TEMP" in hextract as E; subst_hyp E.
+
 
 (********************************************************************)
 (* ** Simplification in [H2] on [H1 ==> H2] *)

@@ -4,6 +4,33 @@ Open Scope comp_scope.
 
 (*************************************************************)
 
+
+(*-----------------------------------------------------------*)
+
+Definition Min A (f:A->int) (P:A->Prop) :=  
+  epsilon (fun n => (exists x, P x /\ n = f x)
+                 /\ (forall x, P x -> n <= f x)).
+
+Definition MinBar A (f:A->int) (P:A->Prop) :=  
+  If (exists x, P x) Then Finite(Min f P) Else Infinite.
+
+Lemma MinBar_Infinite : forall A (f:A->int) P,
+  (forall x, ~ P x) -> MinBar f P = Infinite.
+Proof. Admitted.
+
+Lemma MinBar_Finite : forall A x (f:A->int) P,
+  P x -> (forall y, f x <= f y) ->
+  MinBar f P = Finite (f x).
+Proof. Admitted.
+
+Lemma MinBar_Finite_inv : forall A n x (f:A->int) P,
+  MinBar f P = Finite n -> P x -> n <= f x.
+Proof. Admitted.
+
+Lemma MinBar_Infinite_inv : forall A x (f:A->int) P,
+  MinBar f P = Infinite -> ~ P x.
+Proof. Admitted.
+
 (*-----------------------------------------------------------*)
 
 Parameter graph : Type -> Type.
@@ -34,6 +61,10 @@ Inductive is_path A (g:graph A) : int -> int -> Prop :=
 Definition weight (p:path int) :=
   nosimpl (fold_left (fun e acc => let '(_,_,w) := e in w+acc) 0).
 
+Definition dist (g:graph int) x y :=  
+  MinBar weight (is_path g x y).
+
+
 Lemma weight_nil : 
   weight (nil : path int) = 0.
 Proof. auto. Qed.
@@ -41,19 +72,6 @@ Proof. auto. Qed.
 Lemma weight_cons : forall (p:path int) x y w, 
   weight ((x,y,w)::p) = w + weight p.
 Proof. unfold weight; rew_list~. Qed.
-
-
-(*-----------------------------------------------------------*)
-
-Definition Min A (f:A->int) (P:A->Prop) :=  
-  epsilon (fun y => (exists x, P x /\ y = f x)
-                 /\ (forall x, P x -> y <= f x)).
-
-Definition MinBar A (f:A->int) (P:A->Prop) :=  
-  If (exists x, P x) Then Finite(Min f P) Else Infinite.
-
-Definition dist (g:graph int) x y :=  
-  MinBar weight (is_path g x y).
 
 (*-----------------------------------------------------------*)
 
@@ -200,6 +218,19 @@ Admitted.
 
 Lemma enters_step : forall T x v p, ~ T\(x) ->
   enters (T\(x:=true)) v p = (enters T v p \/ enters_via x (N\(x)) v p).
+Proof.
+Admitted.
+
+Lemma enters_shorter : forall T y p, 
+  ~ T\(v) -> is_path G a y p ->
+  exists z q, enters T z q /\ weight q <= weight p.
+Proof.
+Admitted.
+
+Lemma enters_best : forall T x p,
+  ~ T\(x) -> enters T x p ->
+  (forall y q, enters T y q -> weight p <= weight q) ->
+  dist G a x = Fin (weight p).
 Proof.
 Admitted.
 

@@ -2,13 +2,10 @@ Set Implicit Arguments.
 Require Import CFLib LibMap LibRelation union_find_ml.
 Require Import LibSet.
 
-Notation "\set{ x | P }" := (@set_st _ (fun x => P))
-  (at level 0, x ident, P at level 200).
 
 (** LibRelation *)
 
 Module Import Rel := LibRelation.
-
 
 Record per A (R:binary A) :=
  { per_sym : sym R;
@@ -44,39 +41,6 @@ Tactic Notation "set_eq" "*" :=
 
 (** CFTactics *)
 
-Ltac xapp_as_base spec args solver x :=
-  let cont tt := xapp_inst args solver in
-  xlet as x; 
-  [ xuntag tag_apply; xapp_core spec cont
-  | instantiate; xextract ].
-
-Tactic Notation "xapp" "as" ident(x) :=
-  xapp_as_base ___ (>>) ltac:(fun _ => idtac) x.
-Tactic Notation "xapp" "~" "as" ident(x) :=
-  xapp_as_base ___ (>>) ltac:(fun _ => xauto~) x.
-Tactic Notation "xapp" "*" "as" ident(x) :=
-  xapp_as_base ___ (>>) ltac:(fun _ => xauto*) x.
-
-Tactic Notation "hextracts" :=
-  let E := fresh "TEMP" in hextract as E; subst_hyp E.
-
-Tactic Notation "xgos" :=
-  xgo; hsimpl.
-Tactic Notation "xgos" "~" :=
-  xgos; auto_tilde.
-Tactic Notation "xgos" "*" :=
-  xgos; auto_star.
-
-Tactic Notation "xapply" constr(H) :=
-  xapply_local H. 
-Tactic Notation "xapplys" constr(H) :=
-  xapply_local H; [ hcancel | hsimpl ].
-
-Tactic Notation "xapplys" "~" constr(H) :=
-  xapplys H; auto_tilde.
-Tactic Notation "xapplys" "*" constr(H) :=
-  xapplys H; auto_star.
-
 
 Instance content_inhab : Inhab content.
 Proof. typeclass. Qed.
@@ -104,67 +68,8 @@ Axiom ml_set_spec_group : forall a,
     Inhab a -> l \indom M ->
     R (Group (Ref Id) M) (# Group (Ref Id) (M\(l:=v))).
 
-(** Other *)
-
-Lemma case_classic_l : forall P Q, P \/ Q -> (P \/ (~ P /\ Q)).
-Proof. intros. tautoB P Q. Qed.
-
-(** Maps *)
 
 
-
-Axiom map_indom_update_inv : forall A `{Inhab B} (m:map A B) (i j:A) (v:B),
-  j \indom (m\(i:=v)) -> (j = i \/ j \indom m).
-Axiom map_indom_update_already : forall A `{Inhab B} (m:map A B) (i j:A) (v:B),
-  j \indom m -> j \indom (m\(i:=v)).
-
-Axiom binds_def : forall A `{Inhab B} (M:map A B) x v,
-  binds M x v = (x \indom M /\ M\(x) = v).
-Axiom binds_inv : forall A `{Inhab B} (M:map A B) x v,
-  binds M x v -> (x \indom M /\ M\(x) = v).
-Axiom binds_prove : forall A `{Inhab B} (M:map A B) x v,
-  x \indom M -> M\(x) = v -> binds M x v.
-
-Axiom binds_update_neq : forall A i j `{Inhab B} v w (M:map A B),
-  j \notindom' M -> binds M i v -> binds (M\(j:=w)) i v.
-Axiom binds_update_eq : forall A i `{Inhab B} v (M:map A B),
-  binds (M\(i:=v)) i v.
-
-Axiom binds_update_neq_inv : forall A i j `{Inhab B} v w (M:map A B),
-  binds (M\(j:=w)) i v -> i <> j -> binds M i v.
-
-Axiom binds_inj : forall A i `{Inhab B} v1 v2 (M:map A B),
-  binds M i v1 -> binds M i v2 -> v1 = v2.
-
-(*
-Axiom binds_update_rem : forall A i j `{Inhab B} v w (M:map A B),
-  j \notindom' M -> binds (M\(j:=w)) i v -> binds M i v.
-Hint Resolve binds_update_rem.
-
-Lemma is_repr_rem_node : forall M r c x y,
-  r \notin (dom M:set _) -> is_repr (M\(r:=c)) x y -> is_repr M x y.
-Proof. introv N H. induction H; constructors*. Qed. 
-*)
-
-Axiom binds_get : forall A `{Inhab B} (M:map A B) x v,
-  binds M x v -> M\(x) = v.
-Axiom binds_dom : forall A `{Inhab B} (M:map A B) x v,
-  binds M x v -> x \indom M.
-
-Axiom dom_update_notin : forall A i `{Inhab B} v (M:map A B),
-  i \notindom' M -> dom (M\(i:=v)) = dom M \u \{i}.
-
-Axiom binds_index : forall A i `{Inhab B} v (M:map A B),
-  binds M i v -> index M i.
-
-Axiom binds_update_neq' : forall A i j `{Inhab B} v w (M:map A B),
-  i <> j -> binds M i v -> binds (M\(j:=w)) i v.
-
-Axiom map_indom_update_already_inv : forall A `{Inhab B} (m:map A B) (i j:A) (v:B),
-  j \indom (m\(i:=v)) -> i \indom m -> j \indom m.
-
-
-Global Opaque binds_inst. 
 
 (* todo: bug de congruence *)
 

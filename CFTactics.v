@@ -851,14 +851,27 @@ Tactic Notation "xapps" "*" constr(E) :=
 (* todo: when hypothesis in an app instance *)
 
 
-(* todo: remove*)
-Tactic Notation "xapp_hyp" :=
+Tactic Notation "xapp_hyp" := (* todo: remove*)
   eapply local_weaken; 
     [ xlocal
     | let f := spec_goal_fun tt in let H := get_spec_hyp f in 
       apply (proj2 H) (* todo generalize to arities*)
     | hsimpl
     | hsimpl ].
+
+
+Ltac xapp_as_base spec args solver x :=
+  let cont tt := xapp_inst args solver in
+  xlet as x; 
+  [ xuntag tag_apply; xapp_core spec cont
+  | instantiate; xextract ].
+
+Tactic Notation "xapp" "as" ident(x) :=
+  xapp_as_base ___ (>>) ltac:(fun _ => idtac) x.
+Tactic Notation "xapp" "~" "as" ident(x) :=
+  xapp_as_base ___ (>>) ltac:(fun _ => xauto~) x.
+Tactic Notation "xapp" "*" "as" ident(x) :=
+  xapp_as_base ___ (>>) ltac:(fun _ => xauto*) x.
 
 
 (*--------------------------------------------------------*)
@@ -1285,6 +1298,16 @@ Tactic Notation "xapply_local" "*" constr(E) :=
 (*todo*)
 Tactic Notation "xapply_local_pre" constr(E) :=
   eapply local_weaken_pre; [xlocal | sapply E | ].
+
+Tactic Notation "xapply" constr(H) :=
+  xapply_local H. 
+Tactic Notation "xapplys" constr(H) :=
+  xapply_local H; [ hcancel | hsimpl ].
+
+Tactic Notation "xapplys" "~" constr(H) :=
+  xapplys H; auto_tilde.
+Tactic Notation "xapplys" "*" constr(H) :=
+  xapplys H; auto_star.
 
 
 (*--------------------------------------------------------*)
@@ -1821,3 +1844,10 @@ Tactic Notation "xgo" "~" constr(a1) constr(h1) "," constr(a2) constr(h2) ","
 Tactic Notation "xgo" "~" constr(a1) constr(h1) "," constr(a2) constr(h2) ","
   constr(a3) constr(h3) "," constr(a4) constr(h4) := 
   add_hint a1 h1; add_hint a2 h2; add_hint a3 h3; add_hint a4 h4; xgo~.
+
+Tactic Notation "xgos" :=
+  xgo; hsimpl.
+Tactic Notation "xgos" "~" :=
+  xgos; auto_tilde.
+Tactic Notation "xgos" "*" :=
+  xgos; auto_star.

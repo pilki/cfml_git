@@ -376,3 +376,4 @@ Ltac inhab :=
 
 Instance inhabited_Z : Inhabited Z.
 Admitted. (* todo -- trivial, use 0%Z *)
+
