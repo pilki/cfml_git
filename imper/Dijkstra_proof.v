@@ -334,14 +334,27 @@ Proof.
      exists q x w. split~. rew_array~.
 Qed.
 
-Lemma enters_shorter : forall V v y p, 
-  ~ V\(v) -> is_path G s y p ->
+Axiom bool_test' : forall b,
+  b = true \/ b = false.
+
+Hint Constructors is_path.
+
+Lemma enters_shorter : forall V v p, 
+  V\(s) = true -> nonnegative_edges G ->
+  is_path G s v p -> V\(v) = false -> 
   exists z q, enters V z q /\ weight q <= weight p.
 Proof.
-Admitted.
+  introv Vs NG P. set_eq s': s in P. set_eq G': G in P. 
+  induction P; intros; subst. false. destruct (bool_test' (V\(y))).
+    exists z ((y,z,w)::p). split. 
+      split. split~.
+      exists p y w. split~. apply le_refl.
+    forwards~ (z'&q&E&L): IHP. exists z' q. split~.
+     rewrite weight_cons. forwards: NG H. math.    
+Qed.
 
 Lemma enters_best : forall V x p,
-  ~ V\(x) -> enters V x p ->
+  V\(x) = false -> enters V x p ->
   (forall y q, enters V y q -> weight p <= weight q) ->
   dist G s x = Finite (weight p).
 Proof.
