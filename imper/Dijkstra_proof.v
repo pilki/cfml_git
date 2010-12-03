@@ -295,7 +295,7 @@ Definition from_out V z p :=
   is_path G s z p /\ V\(z) = false.
 
 Definition enters V z p :=
-  from_out V z p /\ (exists q y w, p = (y,z,w)::q /\ V\(y) = true).
+  from_out V z p /\ (p = nil \/ exists q y w, p = (y,z,w)::q /\ V\(y) = true).
 
 Definition enters_via x L V z p :=
   from_out V z p /\ exists q w, p = (x,z,w)::q /\ Mem (z,w) L.
@@ -328,38 +328,42 @@ Lemma enters_step : forall L V x z p, V\(x) = false -> z <> x ->
   enters (V\(x:=true)) z p = new_enters x L V z p.
 Proof.
   introv Vx Nvx EQ. extens. iff H. hnf in H.
-  destruct H as (F&(q&y&w&E&Vy)).
+  destruct H as (F&[N|(q&y&w&E&Vy)]).
+   rewrite~ from_out_update in F. subst. left. split~.
    rewrite~ from_out_update in F. tests (y = x).
     right. split~. exists q w. split~. rewrite EQ. 
      lets: (proj1 F). subst p. inverts* H.
     left. rew_array~ in Vy. splits*.
-  destruct H as [(F&(q&y&w&E&Vy))|(P&(q&w&E&M))];
+  destruct H as [(F&[N|(q&y&w&E&Vy)])|(P&(q&w&E&M))];
    (split; [ rewrite~ from_out_update | ]).
-     exists q y w. split~. rew_array~. intro_subst; false.
-     exists q x w. split~. rew_array~.
+     auto.
+     right. exists q y w. split~. rew_array~. intro_subst; false.
+     right. exists q x w. split~. rew_array~.
 Qed.
 
 Lemma enters_shorter : forall V z p, 
-  V\(s) = true -> nonnegative_edges G ->
+  nonnegative_edges G ->
   is_path G s z p -> V\(z) = false -> 
   exists x q, enters V x q /\ weight q <= weight p.
 Proof.
-  introv Vs NG P. set_eq s': s in P. set_eq G': G in P. 
-  induction P; intros; subst. false. destruct (bool_test' (V\(y))).
+  introv NG P. set_eq s': s in P. set_eq G': G in P. 
+  induction P; intros; subst. 
+  exists s (nil:path int). splits_all~. apply le_refl.
+  destruct (bool_test' (V\(y))).
     exists z ((y,z,w)::p). split. 
       split. split~.
-      exists p y w. split~. apply le_refl.
+      right. exists p y w. split~. apply le_refl.
     forwards~ (x&q&E&L): IHP. exists x q. split~.
      rewrite weight_cons. forwards: NG H. math.    
 Qed.
 
 Lemma enters_best : forall V x p,
-  V\(s) = true -> nonnegative_edges G ->
+  nonnegative_edges G ->
   V\(x) = false -> enters V x p ->
   (forall y q, enters V y q -> weight p <= weight q) ->
   dist G s x = Finite (weight p).
 Proof.
-  introv Vs NG Vx E BE.
+  introv NG Vx E BE.
   unfold dist.
   lets ((?&_)&_): E. applys~ (@MinBar_Finite (path int)) p.
   intros p' P'. forwards~ (y&q&E'&L): enters_shorter V P'.
@@ -381,18 +385,15 @@ Lemma inv_heap_empty_correct : forall e V B,
   inv V B \{} (enters V) -> B\(e) = dist G s e.
 Proof.
   introv [Sok Tok Uok Hcorr Hcomp].
-  destruct (bool_test' (V\(e))) as [E|E].
-  apply~ Tok.
+  destruct (bool_test' (V\(e))) as [E|E]. apply~ Tok.
+  asserts Ne: (forall z p, ~ enters V z p).
+    introv P. forwards (d&N&_): Hcomp P. multiset_in N.
   unfold dist. tests (e = s).
     rewrite Sok. rewrite~ (MinBar_Finite (nil:path int)).
      intros. applys* nonnegative_path.
-    rewrite~ Uok. apply (eq_trans' Infinite); 
-     rewrite~ MinBar_Infinite; intros p P.
-     
-enters_shorter : forall V z p, 
-  V\(s) = true -> nonnegative_edges G ->
-  is_path G s z p -> V\(z) = false -> 
-  exists x q, enters V x q /\ weight q <= weight p.
+  rewrite~ Uok. apply (eq_trans' Infinite); rewrite~ MinBar_Infinite.
+  intros p P. forwards* (z&q&Q): enters_shorter P.
+Qed.
 
 
 (*-----------------------------------------------------------*)
@@ -480,9 +481,14 @@ Proof.
       rew_array~.
       introv Mz. rew_array~ in Mz. false.
       introv Mz Ns. rew_array~. rewrite~ MinBar_Infinite.
-       intros p (_&(q&y&w&_&E)). rew_array~ in E. (* false *)
+       intros p (P&[Pn|(q&y&w&_&E)]).
+         subst. destruct P as [H _]. inverts H. false.
+         rew_array~ in E.
       introv _ Ns E. multiset_in E. intros E. inverts E. false.
-      introv (_&(q&y&w&_&E)). rew_array~ in E. false.  
+      introv (P&[Pn|(q&y&w&_&E)]). 
+        exists 0. subst p. destruct P as [H _]. inverts H. split.
+         auto. apply le_refl. (* todo: auto le_refl *)
+        rew_array~ in E. false.  
     (* -- verification of the loop body -- *) 
     intros H. unfold hinv. xextract as B V [Sok Tok Uok Hcorr Hcomp]. 
      apply local_erase. esplit. splits.
