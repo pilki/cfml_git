@@ -102,6 +102,18 @@ VAC=\
 
 NEW=\
 	CFLib.v \
+	imper/Dijkstra_ml.v \
+	imper/Dijkstra_proof.v 
+
+IMP=\
+	CFHeaps.v \
+	CFSpec.v \
+	CFPrint.v \
+	CFTactics.v \
+	CFPrim.v \
+	CFLib.v 
+
+IMPER=\
 	imper/Compose_ml.v \
 	imper/Swap_ml.v \
 	imper/MutableList_ml.v \
@@ -114,16 +126,6 @@ NEW=\
 	imper/MutableList_proof.v \
 	imper/Counter_proof.v \
 	imper/Landin_proof.v \
-
-IMP=\
-	CFHeaps.v \
-	CFSpec.v \
-	CFPrint.v \
-	CFTactics.v \
-	CFPrim.v \
-	CFLib.v 
-
-IMPER=\
 	imper/TreeCopy_ml.v \
 	imper/Loops_ml.v \
 	imper/StrongUpdate_ml.v \
@@ -333,8 +335,8 @@ include $(ALL:.v=.d)
 endif
 
 ifneq ($(findstring $(MAKECMDGOALS),new),)
-include $(ALL:.v=.d)  $(NEW:.v=.d)
-#include
+include $(IMP:.v=.d) $(NEW:.v=.d)
+#include $(ALL:.v=.d) $(NEW:.v=.d)
 #include $(TOOLS:.v=.d)
 endif
 

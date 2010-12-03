@@ -981,7 +981,22 @@ and cfg_signature_item s =
       let mt' =
          match mt with
          | Tmty_ident p -> Mod_typ_var (lift_full_path_name p)
-         | _ -> unsupported "module constraint is not just a name"  
+         | Tmty_signature s -> 
+             
+            (* *)
+            Printf.printf "%d\n" (List.length s);
+             begin match List.hd s with
+              | Tsig_value (id,vd) -> unsupported "u" 
+              | Tsig_type (id, td, rs) -> unsupported "x" 
+              | Tsig_module (id,mt,rs) ->   unsupported "y" 
+              | Tsig_modtype (id,decl) ->   unsupported "z"  
+              | Tsig_exception _ -> unsupported "exceptions"
+              | Tsig_class _ -> unsupported "objects"
+              | Tsig_cltype _ -> unsupported "objects"
+              end;
+              
+            unsupported "module constraint is not just a name (4) -- todo: should be supported"  
+         | _ -> unsupported "module constraint is not just a name (2)"  
          in
       [Coqtop_declare_module (x, mt')] 
 
@@ -1048,8 +1063,9 @@ and cfg_module id m =
       | Tmod_constraint(m1, mt, coercion) ->
            begin match mt with
            | Tmty_ident p -> aux bindings (Mod_cast_super (Mod_typ_var (lift_full_path_name p))) m1
-           | Tmty_signature s -> unsupported "module constraint is not just a name  -- todo: should be supported"  
-             (*Printf.printf "%d\n" (List.length s);
+           | Tmty_signature s -> 
+             unsupported "module constraint is not just a name (3) -- todo: should be supported"  
+            (*Printf.printf "%d\n" (List.length s);
              begin match List.hd s with
               | Tsig_value (id,vd) -> unsupported "u" 
               | Tsig_type (id, td, rs) -> unsupported "x" 
@@ -1059,8 +1075,8 @@ and cfg_module id m =
               | Tsig_class _ -> unsupported "objects"
               | Tsig_cltype _ -> unsupported "objects"
               end
-              *)
-           | _ -> unsupported "module constraint is not just a name"  
+               *)
+           | _ -> unsupported "module constraint is not just a name (1)"  
            end
       in
    let mod_dec, str_opt = aux [] Mod_cast_free m in

@@ -54,6 +54,7 @@ Notation "x \indom' E" := (@is_in _ (set _) _ x (@dom _ (set loc) _ E))
 Notation "x \notindom' E" := (x \notin ((dom E) : set _)) 
   (at level 39) : container_scope.
 
+
 Axiom ml_ref_spec_group : forall a,
   Spec ml_ref (v:a) |R>> forall (M:map loc a),
     R (Group (Ref Id) M) (fun l => Group (Ref Id) (M\(l:=v)) \* [l\notindom' M]).

@@ -309,6 +309,9 @@ Hint Extern 1 (RegisterSpec ml_array_get) => Provide ml_array_get_spec.
 Hint Extern 1 (RegisterSpec ml_array_set) => Provide ml_array_set_spec.
 Hint Extern 1 (RegisterSpec ml_array_length) => Provide ml_array_length_spec.
 
+(** Lists *)
+
+Parameter ml_list_iter : func.
 
 
 (********************************************************************)
