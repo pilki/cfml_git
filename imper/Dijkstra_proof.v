@@ -495,7 +495,18 @@ Proof.
     (* ---- loop condition -- *) 
     unfold data. xapps. xret.
     (* ---- loop body -- *) 
-    xextract as HN. xapp. skip.
+    xextract as HN. xapp. intros [x d] H' Mi HE. intro_subst. xmatch.
+    xapps~. xif; [ skip: (V\(x) = false) | ].
+    (* ------ node treated -- *) 
+    skip.
+    (* ------ node ignored -- *) 
+    xret. unfold data. hsimpl.
+      skip. (*termination*) skip: (V\(x) = true) .
+      constructors~.
+        introv Vz Nzs In. apply~ Hcorr. rewrite HE. auto. (* mset *)
+        introv E. lets ((_&?)&_): E. tests (z = x); tryfalse.
+          forwards (d'&R&?): Hcomp E. exists d'. split~.
+           rewrite HE in R. multiset_in R; auto_false.
     (* ---- loop post-condition -- *) 
     hextract as He. fold_bool. rew_logic in He. subst H.
      unfold data. xsimpl. constructor~.
