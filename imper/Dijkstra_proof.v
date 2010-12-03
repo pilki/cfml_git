@@ -251,37 +251,6 @@ Module Dijkstra := MLDijkstra MLHeap.
 Import Dijkstra.
 
 
-Implicit Types V : array bool.
-Implicit Types B : array len.
-Implicit Types H : multiset (int*int).
-Implicit Types p : path int.
-
-Section Invariants.
-Variables (G:graph int) (s:int).
-
-(*-----------------------------------------------------------*)
-
-Record inv V B H reach : Prop :=
-  { source_ok     : B\(s) = Finite 0;
-    treated_ok    : forall v, V\(v) = true -> B\(v) = dist G s v;
-    untreated_ok  : forall v, V\(v) = false -> v <> s -> 
-                      B\(v) = MinBar weight (reach v);
-    heap_correct  : forall v d, V\(v) = false -> v <> s -> (v,d) \in H -> 
-                      exists p, reach v p /\ weight p = d;
-    heap_complete : forall v p, reach v p -> 
-                      exists d, (v,d) \in H /\ d <= weight p }.  
-
-Definition from_out V v p :=
-  is_path G s v p /\ V\(v) = false.
-
-Definition enters V v p :=
-  from_out V v p /\ (exists q y w, p = (y,v,w)::q /\ V\(y) = true).
-
-Definition enters_via x L V v p :=
-  from_out V v p /\ exists q w, p = (x,v,w)::q /\ Mem (v,w) L.
-
-Definition new_enters x L V v p :=
-  enters V v p \/ enters_via x L V v p.
 
 (*-----------------------------------------------------------*)
 
@@ -299,28 +268,64 @@ Tactic Notation "rew_array" "~" :=
 Tactic Notation "rew_array" "~" "in" hyp(H) :=
   rew_array in H; auto_tilde.
 
+
 (*-----------------------------------------------------------*)
 
-Lemma new_enters_grows : forall x L V v p y w,
-  new_enters x L V v p -> new_enters x ((y,w)::L) V v p.
+Implicit Types V : array bool.
+Implicit Types B : array len.
+Implicit Types H : multiset (int*int).
+Implicit Types p : path int.
+
+Section Invariants.
+Variables (G:graph int) (s:int).
+
+(*-----------------------------------------------------------*)
+
+Record inv V B H reach : Prop :=
+  { source_ok     : B\(s) = Finite 0;
+    treated_ok    : forall z, V\(z) = true -> B\(z) = dist G s z;
+    untreated_ok  : forall z, V\(z) = false -> z <> s -> 
+                      B\(z) = MinBar weight (reach z);
+    heap_correct  : forall z d, V\(z) = false -> z <> s -> (z,d) \in H -> 
+                      exists p, reach z p /\ weight p = d;
+    heap_complete : forall z p, reach z p -> 
+                      exists d, (z,d) \in H /\ d <= weight p }.  
+
+Definition from_out V z p :=
+  is_path G s z p /\ V\(z) = false.
+
+Definition enters V z p :=
+  from_out V z p /\ (exists q y w, p = (y,z,w)::q /\ V\(y) = true).
+
+Definition enters_via x L V z p :=
+  from_out V z p /\ exists q w, p = (x,z,w)::q /\ Mem (z,w) L.
+
+Definition new_enters x L V z p :=
+  enters V z p \/ enters_via x L V z p.
+
+
+(*-----------------------------------------------------------*)
+
+Lemma new_enters_grows : forall x L V z p y w,
+  new_enters x L V z p -> new_enters x ((y,w)::L) V z p.
 Proof. introv [H|(q&w'&?&?&M)]. left~. right. split~. exists___*. Qed.
 
-Lemma new_enters_inv : forall x L V v p y w,
-  new_enters x ((y,w)::L) V v p -> 
-      new_enters x L V v p 
-   \/ (from_out V v p /\ exists q, p = (x,y,w)::q).
+Lemma new_enters_inv : forall x L V z p y w,
+  new_enters x ((y,w)::L) V z p -> 
+      new_enters x L V z p 
+   \/ (from_out V z p /\ exists q, p = (x,y,w)::q).
 Proof.
   introv [H|(P&(q&w'&E&M))]. left. left~.
   inverts M. right*. left; right; split*.
 Qed.
 
-Lemma from_out_update : forall x V v p, v <> x ->
-  from_out (V\(x:=true)) v p = from_out V v p.
+Lemma from_out_update : forall x V z p, z <> x ->
+  from_out (V\(x:=true)) z p = from_out V z p.
 Proof. intros. unfold from_out. rew_array~. Qed.
 
-Lemma enters_step : forall L V x v p, V\(x) = false -> v <> x ->
+Lemma enters_step : forall L V x z p, V\(x) = false -> z <> x ->
   (forall y w, Mem (y,w) L = has_edge G x y w) ->
-  enters (V\(x:=true)) v p = new_enters x L V v p.
+  enters (V\(x:=true)) z p = new_enters x L V z p.
 Proof.
   introv Vx Nvx EQ. extens. iff H. hnf in H.
   destruct H as (F&(q&y&w&E&Vy)).
@@ -334,17 +339,17 @@ Proof.
      exists q x w. split~. rew_array~.
 Qed.
 
-Lemma enters_shorter : forall V v p, 
+Lemma enters_shorter : forall V z p, 
   V\(s) = true -> nonnegative_edges G ->
-  is_path G s v p -> V\(v) = false -> 
-  exists z q, enters V z q /\ weight q <= weight p.
+  is_path G s z p -> V\(z) = false -> 
+  exists x q, enters V x q /\ weight q <= weight p.
 Proof.
   introv Vs NG P. set_eq s': s in P. set_eq G': G in P. 
   induction P; intros; subst. false. destruct (bool_test' (V\(y))).
     exists z ((y,z,w)::p). split. 
       split. split~.
       exists p y w. split~. apply le_refl.
-    forwards~ (z'&q&E&L): IHP. exists z' q. split~.
+    forwards~ (x&q&E&L): IHP. exists x q. split~.
      rewrite weight_cons. forwards: NG H. math.    
 Qed.
 
@@ -360,6 +365,35 @@ Proof.
   intros p' P'. forwards~ (y&q&E'&L): enters_shorter V P'.
    forwards: BE E'. math.
 Qed.
+
+Lemma nonnegative_path : forall p x y, 
+  nonnegative_edges G -> is_path G x y p -> 0 <= weight p.
+Proof.
+  introv NG H. induction H. 
+  rewrite weight_nil. apply le_refl.
+  rewrite weight_cons. forwards: NG H0. math.
+Qed.
+
+Implicit Arguments eq_trans' [A].
+
+Lemma inv_heap_empty_correct : forall e V B,
+  nonnegative_edges G -> 
+  inv V B \{} (enters V) -> B\(e) = dist G s e.
+Proof.
+  introv [Sok Tok Uok Hcorr Hcomp].
+  destruct (bool_test' (V\(e))) as [E|E].
+  apply~ Tok.
+  unfold dist. tests (e = s).
+    rewrite Sok. rewrite~ (MinBar_Finite (nil:path int)).
+     intros. applys* nonnegative_path.
+    rewrite~ Uok. apply (eq_trans' Infinite); 
+     rewrite~ MinBar_Infinite; intros p P.
+     
+enters_shorter : forall V z p, 
+  V\(s) = true -> nonnegative_edges G ->
+  is_path G s z p -> V\(z) = false -> 
+  exists x q, enters V x q /\ weight q <= weight p.
+
 
 (*-----------------------------------------------------------*)
 
@@ -394,14 +428,37 @@ Hint Extern 1 (RegisterSpec pop) => Provide pop_spec.
 
 (*-----------------------------------------------------------*)
 
-Hint Extern 1 (index _ _) => skip.
 
 Ltac xwhile_inv_core W I :=
-  first [ eapply (@while_loop_cf_to_inv _ I W); [ try prove_wf | | ]
-        | eapply (@while_loop_cf_to_inv _ I _ W ) ].
+  match type of W with
+  | wf _ => eapply (@while_loop_cf_to_inv _ I _ W)
+  | _ -> nat => eapply (@while_loop_cf_to_inv _ I (measure W))
+  | _ => eapply (@while_loop_cf_to_inv _ I W)
+  end.
+
 
 Tactic Notation "xwhile_inv" constr(W) constr(I) :=
   xwhile_pre ltac:(fun _ => xwhile_inv_core W I).
+
+Axiom array_make_read : forall `{Inhab A} (i n:int) (v:A),
+  index n i -> (make n v)\(i) = v.
+
+Hint Rewrite @array_make_read : rew_array.
+
+
+
+Ltac multiset_in_inv_base H M ::=
+  match type of H with
+  | _ \in \{} => false; apply (@in_empty_inv _ _ H)  
+  | _ \in \{_} => 
+    generalize (in_single_inv H); try clear H; try intro_subst_hyp
+  | _ \in _ \u _ => 
+    let H' := fresh "TEMP" in
+    destruct (in_union_inv H) as [H'|H']; 
+    try clear H; multiset_in_inv_base H' M
+  | _ => rename H into M
+  end.
+
 
 Lemma shortest_path_spec :
   Spec shortest_path g a b |R>> forall G,
@@ -412,9 +469,57 @@ Lemma shortest_path_spec :
 Proof.
   xcf. introv Pos Ds De. unfold GraphAdjList at 1. hdata_simpl.
   xextract as N NG Adj. xapps. xapps. xapps. xapps. xapps~. xapps.
-  xwhile_inv (fun H:multiset(int*int) => H) (fun H:multiset(int*int) => Hexists V B,
-      g ~> Array Id N \* v ~> Array Id V \* b ~> Array Id B \* h ~> Heap H \* 
-      [inv G s V B H (enters G s T)]).
+  set (data := fun B V H =>
+    g ~> Array Id N \* v ~> Array Id V \* b ~> Array Id B \* h ~> Heap H).
+  set (hinv := fun H:multiset(int*int) => 
+    Hexists B V, data B V H \* [inv G s V B H (enters G s V)]).
+  xseq (# hinv \{}). xwhile_inv (fun H:multiset(int*int) => 0%nat) hinv. 
+    skip. (* todo: termination *)
+    (* -- initial state satisfies invariant -- *)
+    esplit. unfold hinv,data. hsimpl. constructor.
+      rew_array~.
+      introv Mz. rew_array~ in Mz. false.
+      introv Mz Ns. rew_array~. rewrite~ MinBar_Infinite.
+       intros p (_&(q&y&w&_&E)). rew_array~ in E. (* false *)
+      introv _ Ns E. multiset_in E. intros E. inverts E. false.
+      introv (_&(q&y&w&_&E)). rew_array~ in E. false.  
+    (* -- verification of the loop body -- *) 
+    intros H. unfold hinv. xextract as B V [Sok Tok Uok Hcorr Hcomp]. 
+     apply local_erase. esplit. splits.
+    (* ---- loop condition -- *) 
+    unfold data. xapps. xret.
+    (* ---- loop body -- *) 
+    xextract as HN. xapp. skip.
+    (* ---- loop post-condition -- *) 
+    hextract as He. fold_bool. rew_logic in He. subst H.
+     unfold data. xsimpl. constructor~.
+  (* ---- return value -- *) 
+  unfold hinv, data. xextract as B V Inv. 
+  xapp~. intros l. hdata_simpl GraphAdjList. xsimpl~.
+  subst l. apply* inv_heap_empty_correct.
+Qed.
+
+
+
+
+
+
+Definition from_out V z p :=
+  is_path G s z p /\ V\(z) = false.
+
+Definition enters V z p :=
+  from_out V z p /\ (exists q y w, p = (y,z,w)::q /\ V\(y) = true).
+
+
+Record inv V B H reach : Prop :=
+  { source_ok     : B\(s) = Finite 0;
+    treated_ok    : forall z, V\(z) = true -> B\(z) = dist G s z;
+    untreated_ok  : forall z, V\(z) = false -> z <> s -> 
+                      B\(z) = MinBar weight (reach z);
+    heap_correct  : forall z d, V\(z) = false -> z <> s -> (z,d) \in H -> 
+                      exists p, reach z p /\ weight p = d;
+    heap_complete : forall z p, reach z p -> 
+                      exists d, (z,d) \in H /\ d <= weight p }.  
 
 
 
