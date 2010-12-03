@@ -269,6 +269,29 @@ Tactic Notation "rew_array" "~" "in" hyp(H) :=
   rew_array in H; auto_tilde.
 
 
+
+Implicit Arguments eq_trans' [A].
+
+Axiom array_make_read : forall `{Inhab A} (i n:int) (v:A),
+  index n i -> (make n v)\(i) = v.
+
+Hint Rewrite @array_make_read : rew_array.
+
+Ltac multiset_in_inv_base H M ::=
+  match type of H with
+  | _ \in \{} => false; apply (@in_empty_inv _ _ H)  
+  | _ \in \{_} => 
+    generalize (in_single_inv H); try clear H; try intro_subst_hyp
+  | _ \in _ \u _ => 
+    let H' := fresh "TEMP" in
+    destruct (in_union_inv H) as [H'|H']; 
+    try clear H; multiset_in_inv_base H' M
+  | _ => rename H into M
+  end.
+
+
+
+
 (*-----------------------------------------------------------*)
 
 Implicit Types V : array bool.
@@ -319,6 +342,7 @@ Proof.
   inverts M. right*. left; right; split*.
 Qed.
 
+(* todo: mettre en assert dans le lemme *)
 Lemma from_out_update : forall x V z p, z <> x ->
   from_out (V\(x:=true)) z p = from_out V z p.
 Proof. intros. unfold from_out. rew_array~. Qed.
@@ -378,9 +402,7 @@ Proof.
   rewrite weight_cons. forwards: NG H0. math.
 Qed.
 
-Implicit Arguments eq_trans' [A].
-
-Lemma inv_heap_empty_correct : forall e V B,
+Lemma inv_at_end_correct : forall e V B,
   nonnegative_edges G -> 
   inv V B \{} (enters V) -> B\(e) = dist G s e.
 Proof.
@@ -394,6 +416,25 @@ Proof.
   rewrite~ Uok. apply (eq_trans' Infinite); rewrite~ MinBar_Infinite.
   intros p P. forwards* (z&q&Q): enters_shorter P.
 Qed.
+
+Lemma inv_at_start : forall n,
+  inv (make n false) (make n Infinite\(s:=Finite 0)) 
+      ('{(s, 0)}) (enters (make n false)).
+Proof.
+  constructor.
+    rew_array~.
+    introv Mz. rew_array~ in Mz. false.
+    introv Mz Ns. rew_array~. rewrite~ MinBar_Infinite.
+     intros p (P&[Pn|(q&y&w&_&E)]).
+       subst. destruct P as [H _]. inverts H. false.
+       rew_array~ in E.
+    introv _ Ns E. multiset_in E. intros E. inverts E. false.
+    introv (P&[Pn|(q&y&w&_&E)]). 
+      exists 0. subst p. destruct P as [H _]. inverts H. split.
+       auto. apply le_refl. (* todo: auto le_refl *)
+      rew_array~ in E. false.  
+Qed.
+
 
 
 (*-----------------------------------------------------------*)
@@ -441,24 +482,12 @@ Ltac xwhile_inv_core W I :=
 Tactic Notation "xwhile_inv" constr(W) constr(I) :=
   xwhile_pre ltac:(fun _ => xwhile_inv_core W I).
 
-Axiom array_make_read : forall `{Inhab A} (i n:int) (v:A),
-  index n i -> (make n v)\(i) = v.
 
-Hint Rewrite @array_make_read : rew_array.
-
-
-
-Ltac multiset_in_inv_base H M ::=
-  match type of H with
-  | _ \in \{} => false; apply (@in_empty_inv _ _ H)  
-  | _ \in \{_} => 
-    generalize (in_single_inv H); try clear H; try intro_subst_hyp
-  | _ \in _ \u _ => 
-    let H' := fresh "TEMP" in
-    destruct (in_union_inv H) as [H'|H']; 
-    try clear H; multiset_in_inv_base H' M
-  | _ => rename H into M
-  end.
+Ltac xfun_mg_core tt :=
+  apply local_erase;
+  intro; let f := get_last_hyp tt in let H := fresh "S" f in
+  esplit; split; intros H; [ pattern f in H; eexact H | ].
+Tactic Notation "xfun_mg" := xfun_mg_core tt.
 
 
 Lemma shortest_path_spec :
@@ -469,7 +498,7 @@ Lemma shortest_path_spec :
     keep R (g ~> GraphAdjList G) (\= dist G a b).
 Proof.
   xcf. introv Pos Ds De. unfold GraphAdjList at 1. hdata_simpl.
-  xextract as N NG Adj. xapps. xapps. xapps. xapps. xapps~. xapps.
+  xextract as N NG Adj. xapps. xapps. xapps. xapps. xapps~. xapps. (* todo: xgo loop *)
   set (data := fun B V H =>
     g ~> Array Id N \* v ~> Array Id V \* b ~> Array Id B \* h ~> Heap H).
   set (hinv := fun H:multiset(int*int) => 
@@ -477,18 +506,8 @@ Proof.
   xseq (# hinv \{}). xwhile_inv (fun H:multiset(int*int) => 0%nat) hinv. 
     skip. (* todo: termination *)
     (* -- initial state satisfies invariant -- *)
-    esplit. unfold hinv,data. hsimpl. constructor.
-      rew_array~.
-      introv Mz. rew_array~ in Mz. false.
-      introv Mz Ns. rew_array~. rewrite~ MinBar_Infinite.
-       intros p (P&[Pn|(q&y&w&_&E)]).
-         subst. destruct P as [H _]. inverts H. false.
-         rew_array~ in E.
-      introv _ Ns E. multiset_in E. intros E. inverts E. false.
-      introv (P&[Pn|(q&y&w&_&E)]). 
-        exists 0. subst p. destruct P as [H _]. inverts H. split.
-         auto. apply le_refl. (* todo: auto le_refl *)
-        rew_array~ in E. false.  
+    esplit. unfold hinv,data. hsimpl. 
+     applys_eq inv_at_start 2. permut_simpl.
     (* -- verification of the loop body -- *) 
     intros H. unfold hinv. xextract as B V [Sok Tok Uok Hcorr Hcomp]. 
      apply local_erase. esplit. splits.
@@ -498,7 +517,39 @@ Proof.
     xextract as HN. xapp. intros [x d] H' Mi HE. intro_subst. xmatch.
     xapps~. xif; [ skip: (V\(x) = false) | ].
     (* ------ node treated -- *) 
+    xapps~. xfun_mg. xapps~. 
+Lemma ml_list_iter_spec : forall a,
+  Spec ml_list_iter f l |R>> forall (I:list a->hprop),
+    (Spec f x |R>> forall t, R (I (x::t)) (# I t)) -> 
+    R (I l) (# I nil).
+Admitted.
+Hint Extern 1 (RegisterSpec  ml_list_iter) => Provide ml_list_iter_spec.
+sets V': (V\(x:=true)).
+    sets I: (fun L => Hexists L', Hexists B H, data B V' H (* todo bug si Hexists *)
+        \* [inv G s V B H (new_enters G s x L' V) ] \* [N\(x) = L'++L]).
+    xapp_manual. xapply (KR I); clear KR; match goal with |- context [update] => idtac | _ => clears update end.
+    (* -------- verification of update -- *) 
+    apply Supdate. xisspec. clears update.  (* todo tactic *)
+    unfold I at 1. hide I. unfold data. clears B H. 
+    intros [y w] L. xextract as L' B H [Sok Tok Uok Hcorr Hcomp] EQ.
+    xmatch. xlet. xret. (* todo xret does xlet *)
+    xapps~. xlet. skip. (*  xframe - []. xmatch. xret. hsimpl. -- todo post of let *) 
+    xif. 
+    xapps~. skip. xapps~. skip.
     skip.
+    xret. skip.
+    skip.
+...
+    (* -------- iter pre-condition -- *) 
+    unfold I. unfold data. hsimpl (nil:list (int*int)).
+    auto. constructors~.
+    skip.  (* if x = z then lemma enters_best else Tok *)
+    skip. (* if x = z then absurd else Uok *)
+    skip. (* if x = z then absurd else Hcorr *)
+    (* -------- iter post-condition -- *) 
+    xok. clears update. subst I. hsimpl~. hsimpl. 
+    skip. (* termination *)
+    unfold V'.  skip. (* inv_step *)
     (* ------ node ignored -- *) 
     xret. unfold data. hsimpl.
       skip. (*termination*) skip: (V\(x) = true) .
@@ -513,10 +564,10 @@ Proof.
   (* ---- return value -- *) 
   unfold hinv, data. xextract as B V Inv. 
   xapp~. intros l. hdata_simpl GraphAdjList. xsimpl~.
-  subst l. apply* inv_heap_empty_correct.
+  subst l. apply* inv_at_end_correct.
 Qed.
 
-
+(* todo: prettyprint for  "let (x,y) =" and "fun (x,y) ="
 
 
 
