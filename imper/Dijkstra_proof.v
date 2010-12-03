@@ -21,7 +21,7 @@ Definition MinBar A (f:A->int) (P:A->Prop) :=
   If (exists x, P x) then Finite(Min f P) else Infinite.
 
 Lemma Min_eq : forall A x (f:A->int) (P:A->Prop),
-  P x -> (forall y, f x <= f y) -> Min f P = f x.
+  P x -> (forall y, P y -> f x <= f y) -> Min f P = f x.
 Proof.
   intros. unfold Min.
   spec_epsilon* as y [(?&?&?) Sy]. clearbody y. subst y.
@@ -70,7 +70,7 @@ Proof.
 Qed.
 
 Lemma MinBar_Finite : forall A x (f:A->int) (P:A->Prop),
-  P x -> (forall y, f x <= f y) ->
+  P x -> (forall y, P y -> f x <= f y) ->
   MinBar f P = Finite (f x).
 Proof. 
   intros. unfold MinBar. case_if. 
@@ -201,6 +201,10 @@ Parameter pop_spec :
     R (h ~> Heap S E) (fun x => Hexists X F, 
       [is_min_of E X] \* [E = \{X} \u F] \* x ~> S X \* h ~> Heap S F).
 
+Hint Extern 1 (RegisterSpec create) => Provide create_spec.
+Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
+Hint Extern 1 (RegisterSpec push) => Provide push_spec.
+Hint Extern 1 (RegisterSpec pop) => Provide pop_spec.
 End HeapSigSpec.
 
 
@@ -249,20 +253,13 @@ Import Dijkstra.
 
 Implicit Types V : array bool.
 Implicit Types B : array len.
-Implicit Types H : set (int*int).
+Implicit Types H : multiset (int*int).
 Implicit Types p : path int.
 
 Section Invariants.
 Variables (G:graph int) (s:int).
 
 (*-----------------------------------------------------------*)
-
-(*
-Global Instance test : BagRead int Type (array bool).
-Proof. constructor. exact (fun t i => read t i = true). Defined.
-Global Instance test' : BagRead int Prop (array bool).
-Proof. constructor. exact (fun t i => read t i = true). Defined.
-*)
 
 Record inv V B H reach : Prop :=
   { source_ok     : B\(s) = Finite 0;
@@ -290,29 +287,32 @@ Definition new_enters x L V v p :=
 
 Hint Constructors Mem.
 
+Hint Extern 1 (index _ _) => skip.
+
+Axiom bool_test' : forall b,
+  b = true \/ b = false.
+
+Hint Constructors is_path.
+
 Tactic Notation "rew_array" "~" :=
   rew_array; auto_tilde.
 Tactic Notation "rew_array" "~" "in" hyp(H) :=
   rew_array in H; auto_tilde.
 
+(*-----------------------------------------------------------*)
 
 Lemma new_enters_grows : forall x L V v p y w,
   new_enters x L V v p -> new_enters x ((y,w)::L) V v p.
 Proof. introv [H|(q&w'&?&?&M)]. left~. right. split~. exists___*. Qed.
-
-Hint Unfold enters_via.
 
 Lemma new_enters_inv : forall x L V v p y w,
   new_enters x ((y,w)::L) V v p -> 
       new_enters x L V v p 
    \/ (from_out V v p /\ exists q, p = (x,y,w)::q).
 Proof.
-  introv [H|(P&(q&w'&E&M))].
-  left; left~.
-  inverts M. right*. left; right; eauto 6.
+  introv [H|(P&(q&w'&E&M))]. left. left~.
+  inverts M. right*. left; right; split*.
 Qed.
-
-Hint Extern 1 (index _ _) => skip.
 
 Lemma from_out_update : forall x V v p, v <> x ->
   from_out (V\(x:=true)) v p = from_out V v p.
@@ -334,11 +334,6 @@ Proof.
      exists q x w. split~. rew_array~.
 Qed.
 
-Axiom bool_test' : forall b,
-  b = true \/ b = false.
-
-Hint Constructors is_path.
-
 Lemma enters_shorter : forall V v p, 
   V\(s) = true -> nonnegative_edges G ->
   is_path G s v p -> V\(v) = false -> 
@@ -354,16 +349,59 @@ Proof.
 Qed.
 
 Lemma enters_best : forall V x p,
+  V\(s) = true -> nonnegative_edges G ->
   V\(x) = false -> enters V x p ->
   (forall y q, enters V y q -> weight p <= weight q) ->
   dist G s x = Finite (weight p).
 Proof.
-Admitted.
-
+  introv Vs NG Vx E BE.
+  unfold dist.
+  lets ((?&_)&_): E. applys~ (@MinBar_Finite (path int)) p.
+  intros p' P'. forwards~ (y&q&E'&L): enters_shorter V P'.
+   forwards: BE E'. math.
+Qed.
 
 (*-----------------------------------------------------------*)
 
 End Invariants.
+
+Import MLHeap.
+
+Parameter Heap : htype (multiset (int*int)) heap.
+
+Parameter create_spec :
+  Spec create () |R>> 
+    R [] (~> Heap \{}).
+
+Parameter is_empty_spec : 
+  Spec is_empty (h:heap) |R>> forall E,
+    keep R (h ~> Heap E) (\= istrue (E = \{})).
+
+Parameter push_spec : 
+  Spec push (x:int*int) (h:heap) |R>> forall E X,
+    R (h ~> Heap E \* x ~> S X) (# h ~> Heap (\{X} \u E)).
+
+Parameter pop_spec : 
+  Spec pop (h:heap) |R>> forall E,
+    R (h ~> Heap E) (fun x => Hexists X F, 
+      [is_min_of E X] \* [E = \{X} \u F] \* x ~> Id X \* h ~> Heap F).
+
+Hint Extern 1 (RegisterSpec create) => Provide create_spec.
+Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
+Hint Extern 1 (RegisterSpec push) => Provide push_spec.
+Hint Extern 1 (RegisterSpec pop) => Provide pop_spec.
+
+
+(*-----------------------------------------------------------*)
+
+Hint Extern 1 (index _ _) => skip.
+
+Ltac xwhile_inv_core W I :=
+  first [ eapply (@while_loop_cf_to_inv _ I W); [ try prove_wf | | ]
+        | eapply (@while_loop_cf_to_inv _ I _ W ) ].
+
+Tactic Notation "xwhile_inv" constr(W) constr(I) :=
+  xwhile_pre ltac:(fun _ => xwhile_inv_core W I).
 
 Lemma shortest_path_spec :
   Spec shortest_path g a b |R>> forall G,
@@ -372,7 +410,12 @@ Lemma shortest_path_spec :
     b \in nodes G ->
     keep R (g ~> GraphAdjList G) (\= dist G a b).
 Proof.
-Admitted.
+  xcf. introv Pos Ds De. unfold GraphAdjList at 1. hdata_simpl.
+  xextract as N NG Adj. xapps. xapps. xapps. xapps. xapps~. xapps.
+  xwhile_inv (fun H:multiset(int*int) => H) (fun H:multiset(int*int) => Hexists V B,
+      g ~> Array Id N \* v ~> Array Id V \* b ~> Array Id B \* h ~> Heap H \* 
+      [inv G s V B H (enters G s T)]).
+
 
 
 (*-----------------------------------------------------------*)

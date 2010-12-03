@@ -37,14 +37,14 @@ struct
    let shortest_path g s e = 
       let n = Array.length g in
       let b = Array.make n Infinite in
-      let t = Array.make n false in
+      let v = Array.make n false in
       let h = Heap.create() in
       b.(s) <- Finite 0;
       Heap.push (s,0) h;
       while not (Heap.is_empty h) do
          let (x,dx) = Heap.pop h in
-         if not t.(x) then begin
-            t.(x) <- true;
+         if not v.(x) then begin
+            v.(x) <- true;
             let update (y,w) =
               let dy = dx + w in
                  if (match b.(y) with | Finite d -> dy < d
@@ -57,3 +57,4 @@ struct
       done;
       b.(e)
 end
+

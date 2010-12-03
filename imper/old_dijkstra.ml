@@ -1,3 +1,12 @@
+
+(*
+Global Instance test : BagRead int Type (array bool).
+Proof. constructor. exact (fun t i => read t i = true). Defined.
+Global Instance test' : BagRead int Prop (array bool).
+Proof. constructor. exact (fun t i => read t i = true). Defined.
+*)
+
+
 module type Ordered =
 sig 
    type t
@@ -849,7 +858,7 @@ Theorem dijkstra_correct :
 
 (*------------------------------------------------------------------*)
 (*             Formalization of Dijkstra's algorithm                *)
-(*             Arthur Charguéraud      December 2006                *)
+(*             Arthur CharguÃ©raud      December 2006                *)
 (*------------------------------------------------------------------*)
 
 Set Implicit Arguments.
