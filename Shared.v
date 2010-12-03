@@ -330,9 +330,9 @@ Implicit Arguments pred_le_extens [A H1 H2].
 Inductive Mem (A:Type) (x:A) : list A -> Prop :=
   | Mem_here : forall l, 
       Mem x (x::l)
-  | Mem_next : forall l, 
+  | Mem_next : forall y l, 
       Mem x l -> 
-      Mem x (x::l).
+      Mem x (y::l).
 
 Axiom Mem_app_or : forall (A:Type) (l1 l2 : list A) x,
   Mem x l1 \/ Mem x l2 -> Mem x (l1 ++ l2).

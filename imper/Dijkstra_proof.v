@@ -20,22 +20,79 @@ Definition Min A (f:A->int) (P:A->Prop) :=
 Definition MinBar A (f:A->int) (P:A->Prop) :=  
   If (exists x, P x) then Finite(Min f P) else Infinite.
 
+Lemma Min_eq : forall A x (f:A->int) (P:A->Prop),
+  P x -> (forall y, f x <= f y) -> Min f P = f x.
+Proof.
+  intros. unfold Min.
+  spec_epsilon* as y [(?&?&?) Sy]. clearbody y. subst y.
+  forwards*: Sy x. forwards*: H0 x0. apply* le_antisym.
+Qed.
+
+Lemma Min_exists_nonneg : forall A (f:A->int) (P:A->Prop),
+  (exists x, P x) -> 
+  (forall x, P x -> f x >= 0) ->
+  exists n, (exists x, P x /\ n = f x)
+          /\ (forall x, P x -> n <= f x).
+Proof.
+(*
+  introv [a Pa] Pos. 
+  match goal with |- ?G' => set (G := G') end.
+  cuts: (forall m:nat, G \/ (forall x, P x -> f x <= m -> False)).
+    destruct (H (abs (f a))) as [?|M].
+      auto.
+      false~ (M a). rewrite~ abs_pos. apply le_refl.
+  induction m.
+  destruct (classic (exists x, P x /\ f x = 0)) as [(y&Py&Hy)|M].
+    left. exists* 0.
+    right. intros x Px Non. rew_classic in M. specializes M x.
+     rew_classic in M. destruct M as [?|H]. false. apply H. 
+      apply~ le_antisym. rewrite le_is_flip_ge. unfold flip. auto.
+  destruct IHm as [?|N]. eauto. right. intros x Px Le.
+    destruct (classic (exists x, P x /\ f x = m)) as [(y&Py&Hy)|M].
+*)
+Admitted.
+
+Lemma Min_inv : forall A x (f:A->int) (P:A->Prop),
+  (forall x, P x -> f x >= 0) ->
+  P x -> 
+  Min f P <= f x.
+Proof.
+(*
+  unfold Min. introv H Px. 
+  spec_epsilon as z Hz. exists (f x). 
+*)
+Admitted.
+
 Lemma MinBar_Infinite : forall A (f:A->int) (P:A->Prop),
   (forall x, ~ P x) -> MinBar f P = Infinite.
-Proof. Admitted.
+Proof.
+  intros. unfold MinBar. case_if~. destruct e as [x ?]. false*.
+Qed.
 
 Lemma MinBar_Finite : forall A x (f:A->int) (P:A->Prop),
   P x -> (forall y, f x <= f y) ->
   MinBar f P = Finite (f x).
-Proof. Admitted.
+Proof. 
+  intros. unfold MinBar. case_if. 
+  fequal. apply~ Min_eq. 
+  rew_classic in n. false*.
+Qed.
 
 Lemma MinBar_Finite_inv : forall A n x (f:A->int) (P:A->Prop),
-  MinBar f P = Finite n -> P x -> n <= f x.
-Proof. Admitted.
+  MinBar f P = Finite n -> (forall x, P x -> f x >= 0) -> P x -> n <= f x.
+Proof.
+  unfold MinBar. introv H Pos Px. case_if.
+  destruct e as [y ?]. invert H as M. apply~ Min_inv.
+  false.
+Qed.
 
 Lemma MinBar_Infinite_inv : forall A x (f:A->int) (P:A->Prop),
   MinBar f P = Infinite -> ~ P x.
-Proof. Admitted.
+Proof. 
+  unfold MinBar. introv H Px. case_if.
+  false.
+  rew_classic in n. false*.
+Qed.
 
 (*-----------------------------------------------------------*)
 
@@ -102,7 +159,7 @@ Parameter S : htype T t.
 Global Instance le_inst : Le T.
 Global Instance le_order : Le_total_order.
 
-Parameter le_spec : Spec le (x:t) (y:t) |R>> forall Y X, 
+Parameter le_spec : Spec le (x:t) (y:t) |R>> forall X Y,  
   keep R (x ~> S X \* y ~> S Y) (\= istrue (LibOrder.le X Y)).
 
 Hint Extern 1 (RegisterSpec le) => Provide le_spec.
@@ -164,10 +221,11 @@ Defined.
 Global Instance le_order : Le_total_order.
 Admitted. (* todo :order prod *)
 
-Lemma le_spec : Spec le (x:t) (y:t) |R>> forall Y X, 
+Lemma le_spec : Spec le (x:t) (y:t) |R>> forall X Y, 
   keep R (x ~> S X \* y ~> S Y) (\= istrue (LibOrder.le X Y)).
 Proof.
-Admitted.
+  xcf. unfold S. intros x y X Y. xextract. intros. subst. xgo~.
+Qed.
 
 Hint Extern 1 (RegisterSpec le) => Provide le_spec.
 
@@ -183,10 +241,13 @@ Proof. constructor. exact Infinite. Qed.
 Require Import LibArray LibMap.
 
 Module DijkstraSpec.
-Declare Module Heap : MLHeapSig with Module MLElement := MLNextNode.
+Declare Module MLHeap : MLHeapSig with Module MLElement := MLNextNode.
 Import NextNodeSpec.
+Module Dijkstra := MLDijkstra MLHeap.
+Import Dijkstra.
 
-Implicit Types T : array bool.
+
+Implicit Types V : array bool.
 Implicit Types B : array len.
 Implicit Types H : set (int*int).
 Implicit Types p : path int.
@@ -196,62 +257,91 @@ Variables (G:graph int) (s:int).
 
 (*-----------------------------------------------------------*)
 
+(*
 Global Instance test : BagRead int Type (array bool).
 Proof. constructor. exact (fun t i => read t i = true). Defined.
 Global Instance test' : BagRead int Prop (array bool).
 Proof. constructor. exact (fun t i => read t i = true). Defined.
+*)
 
-Record inv T B H reach : Prop :=
+Record inv V B H reach : Prop :=
   { source_ok     : B\(s) = Finite 0;
-    treated_ok    : forall v, T\(v) -> B\(v) = dist G s v;
-    untreated_ok  : forall v, ~ T\(v) -> v <> s -> 
+    treated_ok    : forall v, V\(v) = true -> B\(v) = dist G s v;
+    untreated_ok  : forall v, V\(v) = false -> v <> s -> 
                       B\(v) = MinBar weight (reach v);
-    heap_correct  : forall v d, ~ T\(v) -> v <> s -> (v,d) \in H -> 
+    heap_correct  : forall v d, V\(v) = false -> v <> s -> (v,d) \in H -> 
                       exists p, reach v p /\ weight p = d;
     heap_complete : forall v p, reach v p -> 
                       exists d, (v,d) \in H /\ d <= weight p }.  
 
-Definition enters T v p := 
-  exists q y w, is_path G s y q 
-             /\ has_edge G y v w
-             /\ T\(y)
-             /\ ~ T\(v).
+Definition enters V v p := 
+     is_path G s v p 
+  /\ V\(v) = false
+  /\ (exists q y w, p = (y,v,w)::q /\ V\(y) = true).
   
 Definition enters_via x L v p :=
-  exists q w, p = (x,v,w)::q /\ is_path G s x q /\ Mem (v,w) L.
+     is_path G s v p 
+  /\ exists q w, p = (x,v,w)::q /\ Mem (v,w) L.
 
-Definition new_enters x L T v p :=
-  enters T v p \/ enters_via x L v p.
+Definition new_enters x L V v p :=
+  enters V v p \/ enters_via x L v p.
 
 (*-----------------------------------------------------------*)
 
-Lemma new_enters_grows : forall x L T v p y w,
-  new_enters x L T v p -> new_enters x ((y,w)::L) T v p.
+Hint Constructors Mem.
+
+Tactic Notation "rew_array" "~" :=
+  rew_array; auto_tilde.
+Tactic Notation "rew_array" "~" "in" hyp(H) :=
+  rew_array in H; auto_tilde.
+
+
+Lemma new_enters_grows : forall x L V v p y w,
+  new_enters x L V v p -> new_enters x ((y,w)::L) V v p.
+Proof. introv [H|(q&w'&?&?&M)]. left~. right. split~. exists___*. Qed.
+
+Hint Unfold enters_via.
+
+Lemma new_enters_inv : forall x L V v p y w,
+  new_enters x ((y,w)::L) V v p -> 
+      new_enters x L V v p 
+   \/ (is_path G s v p /\ exists q, p = (x,y,w)::q).
+Proof.
+  introv [H|(P&(q&w'&E&M))].
+  left; left~.
+  inverts M. right*. left; right; eauto 6.
+Qed.
+
+Hint Extern 1 (index _ _) => skip.
+
+Lemma enters_step : forall L V x v p, V\(x) = false -> v <> x ->
+  (forall y w, Mem (y,w) L = has_edge G x y w) ->
+  enters (V\(x:=true)) v p = (enters V v p \/ enters_via x L v p).
+Proof.
+  introv Vx Nvx EQ. extens. iff H. hnf in H.
+  destruct H as (P&Vv&(q&y&w&E&Vy)). rew_array~ in Vv. tests (y=x).
+    right. split~. subst p. inverts P. exists q w. rewrite* EQ.
+    left. rew_array~ in Vy. splits*.
+  
+
+rew_array in Vy.
+  lets: (@array_update_read_eq bool bool_inhab V).
+rewrite H in Vy.
+ in Vy.
+    rew_map in Vy.
+    
+
+Admitted.
+
+Lemma enters_shorter : forall V v y p, 
+  ~ V\(v) -> is_path G s y p ->
+  exists z q, enters V z q /\ weight q <= weight p.
 Proof.
 Admitted.
 
-Lemma new_enters_inv : forall x L T v p y w,
-  new_enters x ((y,w)::L) T v p -> 
-      new_enters x L T v p 
-   \/ exists q, p = (x,y,w)::q /\ is_path G s x q.
-Proof.
-Admitted.
-
-Lemma enters_step : forall L T x v p, ~ T\(x) ->
-  (forall y w, Mem (y,w) L <-> (x,y,w) \in edges G) ->
-  enters (T\(x:=true)) v p = (enters T v p \/ enters_via x L v p).
-Proof.
-Admitted.
-
-Lemma enters_shorter : forall T v y p, 
-  ~ T\(v) -> is_path G s y p ->
-  exists z q, enters T z q /\ weight q <= weight p.
-Proof.
-Admitted.
-
-Lemma enters_best : forall T x p,
-  ~ T\(x) -> enters T x p ->
-  (forall y q, enters T y q -> weight p <= weight q) ->
+Lemma enters_best : forall V x p,
+  ~ V\(x) -> enters V x p ->
+  (forall y q, enters V y q -> weight p <= weight q) ->
   dist G s x = Finite (weight p).
 Proof.
 Admitted.
@@ -261,14 +351,14 @@ Admitted.
 
 End Invariants.
 
-Lemma dijkstra_spec :
-  Spec dijkstra g a b |R>> forall G,
-    nonnegative_weights G ->
+Lemma shortest_path_spec :
+  Spec shortest_path g a b |R>> forall G,
+    nonnegative_edges G ->
     a \in nodes G ->
     b \in nodes G ->
     keep R (g ~> GraphAdjList G) (\= dist G a b).
 Proof.
-Qed.
+Admitted.
 
 
 (*-----------------------------------------------------------*)
