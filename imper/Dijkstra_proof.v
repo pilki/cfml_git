@@ -274,17 +274,17 @@ Record inv V B H reach : Prop :=
     heap_complete : forall v p, reach v p -> 
                       exists d, (v,d) \in H /\ d <= weight p }.  
 
-Definition enters V v p := 
-     is_path G s v p 
-  /\ V\(v) = false
-  /\ (exists q y w, p = (y,v,w)::q /\ V\(y) = true).
-  
-Definition enters_via x L v p :=
-     is_path G s v p 
-  /\ exists q w, p = (x,v,w)::q /\ Mem (v,w) L.
+Definition from_out V v p :=
+  is_path G s v p /\ V\(v) = false.
+
+Definition enters V v p :=
+  from_out V v p /\ (exists q y w, p = (y,v,w)::q /\ V\(y) = true).
+
+Definition enters_via x L V v p :=
+  from_out V v p /\ exists q w, p = (x,v,w)::q /\ Mem (v,w) L.
 
 Definition new_enters x L V v p :=
-  enters V v p \/ enters_via x L v p.
+  enters V v p \/ enters_via x L V v p.
 
 (*-----------------------------------------------------------*)
 
@@ -305,7 +305,7 @@ Hint Unfold enters_via.
 Lemma new_enters_inv : forall x L V v p y w,
   new_enters x ((y,w)::L) V v p -> 
       new_enters x L V v p 
-   \/ (is_path G s v p /\ exists q, p = (x,y,w)::q).
+   \/ (from_out V v p /\ exists q, p = (x,y,w)::q).
 Proof.
   introv [H|(P&(q&w'&E&M))].
   left; left~.
@@ -314,24 +314,25 @@ Qed.
 
 Hint Extern 1 (index _ _) => skip.
 
+Lemma from_out_update : forall x V v p, v <> x ->
+  from_out (V\(x:=true)) v p = from_out V v p.
+Proof. intros. unfold from_out. rew_array~. Qed.
+
 Lemma enters_step : forall L V x v p, V\(x) = false -> v <> x ->
   (forall y w, Mem (y,w) L = has_edge G x y w) ->
-  enters (V\(x:=true)) v p = (enters V v p \/ enters_via x L v p).
+  enters (V\(x:=true)) v p = new_enters x L V v p.
 Proof.
   introv Vx Nvx EQ. extens. iff H. hnf in H.
-  destruct H as (P&Vv&(q&y&w&E&Vy)). rew_array~ in Vv. tests (y=x).
-    right. split~. subst p. inverts P. exists q w. rewrite* EQ.
+  destruct H as (F&(q&y&w&E&Vy)).
+   rewrite~ from_out_update in F. tests (y = x).
+    right. split~. exists q w. split~. rewrite EQ. 
+     lets: (proj1 F). subst p. inverts* H.
     left. rew_array~ in Vy. splits*.
-  
-
-rew_array in Vy.
-  lets: (@array_update_read_eq bool bool_inhab V).
-rewrite H in Vy.
- in Vy.
-    rew_map in Vy.
-    
-
-Admitted.
+  destruct H as [(F&(q&y&w&E&Vy))|(P&(q&w&E&M))];
+   (split; [ rewrite~ from_out_update | ]).
+     exists q y w. split~. rew_array~. intro_subst; false.
+     exists q x w. split~. rew_array~.
+Qed.
 
 Lemma enters_shorter : forall V v y p, 
   ~ V\(v) -> is_path G s y p ->
