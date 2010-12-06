@@ -611,7 +611,7 @@ Proof.
     introv Ey. lets [E|[(P'&Vy') (p'&Ep)]]: (new_enters_inv Ey).
       applys Hcomp E.
       subst p. inverts P' as P' W. rewrite weight_cons.
-       forwards~ M: @MinBar_Finite_inv p' (eq_sym Eq). skip. (* nonneg *)
+       forwards~ M: (@MinBar_Finite_inv (path int)) p' (eq_sym Eq). skip. (* nonneg *)
         rewrite Dok in Nlt. forwards (q&Q&Wq): MinBar_len_lt_not Nlt. 
         skip. (* nonnegative *)
        lets (dy&Iy&Wy): Hcomp Q. exists dy. split~. math.    
@@ -619,27 +619,16 @@ Proof.
    do 3 rewrite~ new_enters_not. 
 Qed.
   
- constructors; unfolds.
-  intros z. lets M: Dok z. case_If. auto. rewrite M.
-hnf in Dok.
-   unfolds len_less. 
-   fequal. extens. intros p. 
 
-Lemma new_enters_grows : forall x L V z p y w,
-  new_enters x L V z p -> new_enters x ((y,w)::L) V z p.
-*) skip.
-Qed.
-
-(*
-Lemma inv_step_push : forall V V' B H
-  inv V' B H (new_enters G L' V) ->
-  len_less B\(y) dy ->
-  inv V' (B\(y:=Finite dy)) ('{(y, dy)} \u H) (new_enters x (L' & (y, w)) V)
+Lemma inv_step_push : forall V V' B H y w x dy L,
+  inv V' B H (new_enters x L V) ->
+  len_lt (B\(y)) dy ->
+  inv V' (B\(y:=Finite dy)) ('{(y, dy)} \u H) (new_enters x ((y,w)::L) V).
 Proof.
-
+ skip.
 
 Qed.
-*)
+
 
 
 (*-----------------------------------------------------------*)
@@ -766,18 +755,17 @@ Hint Resolve istrue_True.
     xok. xextracts. rewrite app_last in EQ. rewrite <- rev_cons in EQ.
     show_all. unfold I, data. xif.
     (* ---------- case smaller dist -- *) 
-      xapps~. xapps~. hsimpl. apply EQ. skip.
+      xapps~. xapps~. hsimpl. apply EQ. apply~ inv_step_push.
     (* ---------- case not smaller dist -- *) 
-      xret. hsimpl. apply EQ. skip.
+      xret. hsimpl. apply EQ. skip. (* apply~ inv_step_ignore. skip. skip*)
     (* -------- iter pre-condition -- *) 
     unfold I. unfold data. hsimpl (nil:list (int*int)). auto.
-    applys inv_begin_loop HE. fold_bool. auto. (* cleanup*) 
-      constructors~. (*copy inv before*)
+    applys~ inv_begin_loop HE. fold_bool. auto. (* cleanup*) 
     (* -------- iter post-condition -- *) 
     xok. clears update. subst I.
     hextract as L B' H'' I' Leq. hsimpl~ H'' B' V'.
     skip. (* termination *)
-    rew_app in Leq. subst L. applys~ inv_end_loop I'.
+    rew_app in Leq. .. subst L. applys~ inv_end_loop I'.
       intros. apply~ Adj. skip. (* todo *)
       fold_bool. auto. (* todo: clean *)
     (* ------ node ignored -- *) 
