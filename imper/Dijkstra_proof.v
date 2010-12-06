@@ -586,13 +586,38 @@ Proof.
      introv En. apply Hcomp. rewrite~ enters_step.
 Qed.
 
+Section Here'.
+Hint Unfold new_enters enters_via.
+Lemma new_enters_not : forall x L V z y w, y <> z ->
+  new_enters x ((y,w)::L) V z = new_enters x L V z.
+Proof.
+  intros. extens. intros p. iff (?&[?|(?&(q&w'&?&M))]).
+   eauto 10. inverts M. false. eauto 10. eauto 10. eauto 10.
+Qed.
+End Here'.
+
 Lemma inv_step_ignore : forall L dx x y w V V' B H,
   inv V' B H (new_enters x L V) ->
   Finite dx = dist G s x ->
+  nonnegative_edges G ->
   ~ len_lt (B\(y)) (dx + w) ->
-  inv V' B H (new_enters x (L & (y, w)) V).
+  inv V' B H (new_enters x ((y, w)::L) V).
 Proof.
-  introv [Dok Hcorr Hcomp] Eq Nl.
+  introv Inv Eq NG Nlt. intros z. lets R: Inv z. tests (z = y).
+  case_If. auto. destruct R as (Dok&Hcorr&Hcomp). splits.  
+    skip.
+    introv Iy. lets (p&P&Wp): Hcorr Iy. exists p. split~.
+     apply~ new_enters_grows.   
+    introv Ey. lets [E|[(P'&Vy') (p'&Ep)]]: (new_enters_inv Ey).
+      applys Hcomp E.
+      subst p. inverts P' as P' W. rewrite weight_cons.
+       forwards~ M: @MinBar_Finite_inv p' (eq_sym Eq). skip. (* nonneg *)
+        rewrite Dok in Nlt. forwards (q&Q&Wq): MinBar_len_lt_not Nlt. 
+        skip. (* nonnegative *)
+       lets (dy&Iy&Wy): Hcomp Q. exists dy. split~. math.    
+  case_If. auto. unfolds heap_correct, heap_complete.
+   do 3 rewrite~ new_enters_not. 
+Qed.
   
  constructors; unfolds.
   intros z. lets M: Dok z. case_If. auto. rewrite M.
@@ -602,10 +627,10 @@ hnf in Dok.
 
 Lemma new_enters_grows : forall x L V z p y w,
   new_enters x L V z p -> new_enters x ((y,w)::L) V z p.
-
+*) skip.
 Qed.
 
-
+(*
 Lemma inv_step_push : forall V V' B H
   inv V' B H (new_enters G L' V) ->
   len_less B\(y) dy ->
@@ -614,7 +639,7 @@ Proof.
 
 
 Qed.
-
+*)
 
 
 (*-----------------------------------------------------------*)
@@ -701,7 +726,7 @@ Proof.
     esplit. unfold hinv,data. hsimpl. 
      applys_eq~ inv_start 2. permut_simpl.
     (* -- verification of the loop body -- *) 
-    intros H. unfold hinv. xextract as B V [Dok Hcorr Hcomp]. 
+    intros H. unfold hinv. xextract as B V Inv. 
      apply local_erase. esplit. splits.
     (* ---- loop condition -- *) 
     unfold data. xapps. xret.
@@ -712,7 +737,7 @@ Proof.
     xapps~. xfun_mg. xapps~. 
     sets V': (V\(x:=true)).
     sets I: (fun L => Hexists L', Hexists B H, data B V' H (* todo bug when writing Hexists *)
-        \* [inv G s V' B H (new_enters G s x L' V) ] \* [N\(x) = L'++L]).
+        \* [inv G s V' B H (new_enters G s x L' V) ] \* [N\(x) = rev(L')++L]).
     xapp_manual. xapply (KR I); clear KR; match goal with |- context [update] => idtac | _ => clears update end.
     (* -------- verification of update -- *) 
     apply Supdate. xisspec. clears update. clear hinv. (* todo tactic *)
@@ -738,7 +763,8 @@ Hint Resolve istrue_True.
     xpost (\= istrue match B\(y) with Finite d' => dy < d' | Infinite => True end).
      (* todo: give a name ! *)
     destruct (B\(y)); xgo~. 
-    xok. xextracts. rewrite app_last in EQ. show_all. unfold I, data. xif.
+    xok. xextracts. rewrite app_last in EQ. rewrite <- rev_cons in EQ.
+    show_all. unfold I, data. xif.
     (* ---------- case smaller dist -- *) 
       xapps~. xapps~. hsimpl. apply EQ. skip.
     (* ---------- case not smaller dist -- *) 
