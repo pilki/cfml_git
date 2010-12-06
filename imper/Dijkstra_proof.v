@@ -289,7 +289,7 @@ Ltac multiset_in_inv_base H M ::=
   | _ => rename H into M
   end.
 
-
+Ltac auto_star ::= try solve [ auto | jauto ].
 
 
 (*-----------------------------------------------------------*)
@@ -304,15 +304,23 @@ Variables (G:graph int) (s:int).
 
 (*-----------------------------------------------------------*)
 
+Definition dist_ok V B H reach := forall z, 
+  If (z = s) \/ V\(z) = true
+    then B\(z) = dist G s z
+    else B\(z) = MinBar weight (reach z).
+
+Definition heap_correct V B H reach := forall z d,
+   V\(z) = false -> z <> s -> (z,d) \in H -> 
+    exists p, reach z p /\ weight p = d.
+
+Definition heap_complete V B H reach := forall z p,
+   reach z p -> exists d, (z,d) \in H /\ d <= weight p. 
+
 Record inv V B H reach : Prop :=
-  { source_ok     : B\(s) = Finite 0;
-    treated_ok    : forall z, V\(z) = true -> B\(z) = dist G s z;
-    untreated_ok  : forall z, V\(z) = false -> z <> s -> 
-                      B\(z) = MinBar weight (reach z);
-    heap_correct  : forall z d, V\(z) = false -> z <> s -> (z,d) \in H -> 
-                      exists p, reach z p /\ weight p = d;
-    heap_complete : forall z p, reach z p -> 
-                      exists d, (z,d) \in H /\ d <= weight p }.  
+  { inv_dist  : dist_ok V B H reach;
+    inv_hcorr : heap_correct V B H reach;
+    inv_hcomp : heap_complete V B H reach }.
+
 
 Definition from_out V z p :=
   is_path G s z p /\ V\(z) = false.
@@ -331,7 +339,7 @@ Definition new_enters x L V z p :=
 
 Lemma new_enters_grows : forall x L V z p y w,
   new_enters x L V z p -> new_enters x ((y,w)::L) V z p.
-Proof. introv [H|(q&w'&?&?&M)]. left~. right. split~. exists___*. Qed.
+Proof. introv [H|(q&w'&?&?&M)]. left~. right. split*. Qed.
 
 Lemma new_enters_inv : forall x L V z p y w,
   new_enters x ((y,w)::L) V z p -> 
@@ -342,24 +350,23 @@ Proof.
   inverts M. right*. left; right; split*.
 Qed.
 
-(* todo: mettre en assert dans le lemme *)
-Lemma from_out_update : forall x V z p, z <> x ->
-  from_out (V\(x:=true)) z p = from_out V z p.
-Proof. intros. unfold from_out. rew_array~. Qed.
-
+(* todo: seul un sens est nécessaire *)
 Lemma enters_step : forall L V x z p, V\(x) = false -> z <> x ->
   (forall y w, Mem (y,w) L = has_edge G x y w) ->
   enters (V\(x:=true)) z p = new_enters x L V z p.
 Proof.
-  introv Vx Nvx EQ. extens. iff H. hnf in H.
+  introv Vx Nvx EQ.
+  asserts EF: (from_out (V\(x:=true)) z p = from_out V z p).
+    intros. unfold from_out. rew_array~.
+  extens. iff H. hnf in H.
   destruct H as (F&[N|(q&y&w&E&Vy)]).
-   rewrite~ from_out_update in F. subst. left. split~.
-   rewrite~ from_out_update in F. tests (y = x).
+   rewrite~ EF in F. subst. left. split~.
+   rewrite~ EF in F. tests (y = x).
     right. split~. exists q w. split~. rewrite EQ. 
      lets: (proj1 F). subst p. inverts* H.
-    left. rew_array~ in Vy. splits*.
+    left. rew_array~ in Vy. splits~. right*.
   destruct H as [(F&[N|(q&y&w&E&Vy)])|(P&(q&w&E&M))];
-   (split; [ rewrite~ from_out_update | ]).
+   (split; [ rewrite~ EF | ]).
      auto.
      right. exists q y w. split~. rew_array~. intro_subst; false.
      right. exists q x w. split~. rew_array~.
@@ -402,39 +409,92 @@ Proof.
   rewrite weight_cons. forwards: NG H0. math.
 Qed.
 
-Lemma inv_at_end_correct : forall e V B,
-  nonnegative_edges G -> 
-  inv V B \{} (enters V) -> B\(e) = dist G s e.
+
+(*-----------------------------------------------------------*)
+
+Lemma cases_or_l : forall (P Q:Prop),
+  P \/ (~ P /\ Q) \/ (~ P /\ ~ Q).
+Proof. intros. tautoB P Q. Qed.
+
+Ltac apply_to_If cont :=
+  match goal with 
+  | |- context [If ?B then _ else _] => cont B
+  | K: context [If ?B then _ else _] |- _ => cont B
+  end.
+
+Ltac case_If_core B I1 I2:=
+  let H1 := fresh "TEMP" in let H2 := fresh "TEMP" in
+  destruct (classicT B) as [H1|H2]; 
+  [ rew_logic in H1; revert H1; intros I1
+  | rew_logic in H2; revert H2; intros I2 ].
+
+Tactic Notation "case_If" "as" simple_intropattern(I1) simple_intropattern(I2) :=
+  apply_to_If ltac:(fun B => case_If_core B I1 I2).
+
+Tactic Notation "case_If" "as" simple_intropattern(I) :=
+  apply_to_If ltac:(fun B => case_If_core B I I).
+
+
+(*-----------------------------------------------------------*)
+
+Ltac my_cases :=
+  apply_to_If ltac:(fun B =>
+    match B with ?P \/ ?Q =>
+     destruct (cases_or_l P Q) as [So|[[So Vi]|[So Vi]]] end).
+
+Lemma dist_source : 
+  nonnegative_edges G -> dist G s s = Finite 0.
 Proof.
-  introv [Sok Tok Uok Hcorr Hcomp].
-  destruct (bool_test' (V\(e))) as [E|E]. apply~ Tok.
-  asserts Ne: (forall z p, ~ enters V z p).
-    introv P. forwards (d&N&_): Hcomp P. multiset_in N.
-  unfold dist. tests (e = s).
-    rewrite Sok. rewrite~ (MinBar_Finite (nil:path int)).
-     intros. applys* nonnegative_path.
-  rewrite~ Uok. apply (eq_trans' Infinite); rewrite~ MinBar_Infinite.
-  intros p P. forwards* (z&q&Q): enters_shorter P.
+  introv NG. applys~ (MinBar_Finite (nil:path int)).
+  intros. apply* nonnegative_path.
 Qed.
 
-Lemma inv_at_start : forall n,
+
+Lemma inv_start : forall n, nonnegative_edges G -> 
   inv (make n false) (make n Infinite\(s:=Finite 0)) 
       ('{(s, 0)}) (enters (make n false)).
 Proof.
-  constructor.
-    rew_array~.
-    introv Mz. rew_array~ in Mz. false.
-    introv Mz Ns. rew_array~. rewrite~ MinBar_Infinite.
+  introv NG. constructor; unfolds.
+  intros. case_If as I [So _]. destruct (case_classic_l I) as [So|[So Vi]].
+    subst. rew_array~. rewrite~ dist_source.
+    rew_array~ in Vi. false.
+    rew_array~. rewrite~ MinBar_Infinite.
      intros p (P&[Pn|(q&y&w&_&E)]).
        subst. destruct P as [H _]. inverts H. false.
        rew_array~ in E.
-    introv _ Ns E. multiset_in E. intros E. inverts E. false.
-    introv (P&[Pn|(q&y&w&_&E)]). 
-      exists 0. subst p. destruct P as [H _]. inverts H. split.
-       auto. apply le_refl. (* todo: auto le_refl *)
-      rew_array~ in E. false.  
+  introv _ Ns E. multiset_in E. intros E. inverts E. false.
+  introv (P&[Pn|(q&y&w&_&E)]). 
+    exists 0. subst p. destruct P as [H _]. inverts H. split.
+     auto. apply le_refl. (* todo: auto le_refl *)
+    rew_array~ in E. false.  
 Qed.
 
+Axiom bool_neq_true_eq_false : forall b,
+  b <> true -> b = false.
+Hint Resolve bool_neq_true_eq_false.
+
+
+Lemma inv_end_elim : forall e V B,
+  nonnegative_edges G -> 
+  inv V B \{} (enters V) -> B\(e) = dist G s e.
+Proof.
+  introv [Dok Hcorr Hcomp].
+  specializes Dok e. case_If as E [So Vf]. auto.
+  asserts Ne: (forall z p, ~ enters V z p).
+    introv P. forwards (d&N&_): Hcomp P. multiset_in N.
+  unfold dist. rewrite Dok.
+  apply (eq_trans' Infinite); rewrite~ MinBar_Infinite.
+  intros p P. forwards* (z&q&Q&?): enters_shorter P. 
+Qed.
+
+(*
+Lemma inv_step : 
+
+: forall L V x z p, V\(x) = false -> z <> x ->
+  (forall y w, Mem (y,w) L = has_edge G x y w) ->
+  enters (V\(x:=true)) z p = new_enters x L V z p.
+Proof.
+*)
 
 
 (*-----------------------------------------------------------*)
@@ -507,9 +567,9 @@ Proof.
     skip. (* todo: termination *)
     (* -- initial state satisfies invariant -- *)
     esplit. unfold hinv,data. hsimpl. 
-     applys_eq inv_at_start 2. permut_simpl.
+     applys_eq~ inv_start 2. permut_simpl.
     (* -- verification of the loop body -- *) 
-    intros H. unfold hinv. xextract as B V [Sok Tok Uok Hcorr Hcomp]. 
+    intros H. unfold hinv. xextract as B V [Dok Hcorr Hcomp]. 
      apply local_erase. esplit. splits.
     (* ---- loop condition -- *) 
     unfold data. xapps. xret.
@@ -531,7 +591,7 @@ sets V': (V\(x:=true)).
     (* -------- verification of update -- *) 
     apply Supdate. xisspec. clears update.  (* todo tactic *)
     unfold I at 1. hide I. unfold data. clears B H. 
-    intros [y w] L. xextract as L' B H [Sok Tok Uok Hcorr Hcomp] EQ.
+    intros [y w] L. xextract as L' B H [Dok Hcorr Hcomp] EQ.
     xmatch. xlet. xret. (* todo xret does xlet *)
     xapps~. xlet. skip. (*  xframe - []. xmatch. xret. hsimpl. -- todo post of let *) 
     xif. 
