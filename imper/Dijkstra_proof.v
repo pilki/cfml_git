@@ -304,7 +304,7 @@ Variables (G:graph int) (s:int).
 
 (*-----------------------------------------------------------*)
 
-Definition dist_ok V B H reach := forall z, 
+Definition dist_ok V B reach := forall z, 
   If (z = s) \/ V\(z) = true
     then B\(z) = dist G s z
     else B\(z) = MinBar weight (reach z).
@@ -317,7 +317,7 @@ Definition heap_complete V B H reach := forall z p,
    reach z p -> exists d, (z,d) \in H /\ d <= weight p. 
 
 Record inv V B H reach : Prop :=
-  { inv_dist  : dist_ok V B H reach;
+  { inv_dist  : dist_ok V B reach;
     inv_hcorr : heap_correct V B H reach;
     inv_hcomp : heap_complete V B H reach }.
 
@@ -444,14 +444,6 @@ Tactic Notation "case_If" "as" simple_intropattern(I) :=
 Tactic Notation "case_If" :=
   let C := fresh "C" in case_If as C.
 
-
-Lemma ml_list_iter_spec : forall a,
-  Spec ml_list_iter f l |R>> forall (I:list a->hprop),
-    (Spec f x |R>> forall t, R (I (x::t)) (# I t)) -> 
-    R (I l) (# I nil).
-Admitted.
-Hint Extern 1 (RegisterSpec  ml_list_iter) => Provide ml_list_iter_spec.
-
 (**
 
 Ltac my_cases :=
@@ -521,7 +513,50 @@ Proof.
   intros p P. forwards* (z&q&Q&?): enters_shorter P. 
 Qed.
 
-Lemma inv_step : forall V x H B L,
+
+Lemma inv_step_begin : forall x d V B H H',
+  H = H' \u '{(x,d)} -> V\(x) = false ->
+  inv V B H (enters V) ->
+  inv (V\(x:=true)) B H' (new_enters x nil V).
+Proof.
+  introv EQ Vx [Dok Hcorr Hcomp]. rewrite new_enters_nil. constructors.
+  intros z. specializes Dok z. tests (z = x); rew_array~.
+   case_If as I [? ?]. skip. (* best *)
+  introv Vz Nze Hzd. skip.
+hnf.
+  introv En.
+
+ asserts: (z <> x). intro_subst. lets ((?&?)&?): En. false.
+ forwards (d'&?&?): Hcomp En. subst H. multiset_in H0.
+  apply Hcomp. 
+
+*)
+Admitted.
+
+Lemma inv_step_end : forall V x H B L,
+  (forall y w, Mem (y,w) L = has_edge G x y w) ->  (* todo: use def for this *)
+  V\(x) = false ->
+  inv (V\(x:=true)) B H (new_enters x L V) ->
+  inv (V\(x:=true)) B H (enters (V\(x:=true))).
+Proof.
+  introv EL Vx [Dok Hcorr Hcomp]. constructors; unfolds.
+  intros. specializes Dok z. case_If as _ [_ E].
+    auto.
+    tests (x = z).
+      rewrite~ @array_update_read_eq in E. false. (* todo: fix*)
+      rewrite~ enters_step in Dok.
+  introv Vz Nze Hzd. tests (x = z).
+   rewrite~ @array_update_read_eq in Vz. false. (* todo: fix*)
+   forwards~ (p&M&?): Hcorr Hzd. 
+    exists p. split~. rewrite~ enters_step in M.
+  introv En. tests (x = z).
+    false. lets ((_&E)&_): En. rewrite~ @array_update_read_eq in E. false. (* todo: fix*)
+    apply Hcomp. rewrite~ enters_step.
+Qed.
+
+
+(*--bin
+Lemma inv_step_end : forall V x H B L,
   (forall y w, Mem (y,w) L = has_edge G x y w) ->  (* todo: use def for this *)
   V\(x) = false ->
   inv V B H (new_enters x L V) ->
@@ -533,29 +568,15 @@ Proof.
     specializes Dok z. case_If as I.
       auto.
       rewrite~ enters_step in Dok.
-  
+  introv Vz Nze Hzd. tests (x = z).
+   rewrite~ @array_update_read_eq in Vz. false. (* todo: fix*)
+   rew_array~ in Vz. forwards~ (p&M&?): Hcorr Hzd. 
+    exists p. split~. rewrite~ enters_step in M.
+  introv En. tests (x = z).
+    false. lets ((_&E)&_): En. rewrite~ @array_update_read_eq in E. false. (* todo: fix*)
+    apply Hcomp. rewrite~ enters_step.
 Qed.
-
-Lemma enters_step : forall L V x z p, V\(x) = false -> z <> x ->
-  
-  enters (V\(x:=true)) z p = new_enters x L V z p.
-
-(* -- bin
-Lemma inv_step_begin : forall x V B H,
-  inv V B H (enters V) ->
-  inv V B H (new_enters x nil V).
-Proof. intros. rewrite~ new_enters_nil. Qed.
 *)
-
-(*
-Lemma inv_step : 
-
-: forall L V x z p, V\(x) = false -> z <> x ->
-  (forall y w, Mem (y,w) L = has_edge G x y w) ->
-  enters (V\(x:=true)) z p = new_enters x L V z p.
-Proof.
-*)
-
 
 (*-----------------------------------------------------------*)
 
@@ -610,6 +631,18 @@ Ltac xfun_mg_core tt :=
 Tactic Notation "xfun_mg" := xfun_mg_core tt.
 
 
+
+Lemma ml_list_iter_spec : forall a,
+  Spec ml_list_iter f l |R>> forall (I:list a->hprop),
+    (Spec f x |R>> forall t, R (I (x::t)) (# I t)) -> 
+    R (I l) (# I nil).
+Admitted.
+Hint Extern 1 (RegisterSpec  ml_list_iter) => Provide ml_list_iter_spec.
+
+
+(*-----------------------------------------------------------*)
+
+
 Lemma shortest_path_spec :
   Spec shortest_path g a b |R>> forall G,
     nonnegative_edges G ->
@@ -639,9 +672,9 @@ Proof.
     (* ------ node treated -- *) 
     xapps~. xfun_mg. xapps~. 
 
-sets V': (V\(x:=true)).
+    sets V': (V\(x:=true)).
     sets I: (fun L => Hexists L', Hexists B H, data B V' H (* todo bug si Hexists *)
-        \* [inv G s V B H (new_enters G s x L' V) ] \* [N\(x) = L'++L]).
+        \* [inv G s V' B H (new_enters G s x L' V) ] \* [N\(x) = L'++L]).
     xapp_manual. xapply (KR I); clear KR; match goal with |- context [update] => idtac | _ => clears update end.
     (* -------- verification of update -- *) 
 skip. (*
@@ -658,6 +691,8 @@ skip. (*
 *)
     (* -------- iter pre-condition -- *) 
     unfold I. unfold data. hsimpl (nil:list (int*int)). auto.
+    apply inv_step_begin.
+    
 skip. (*
 Lemma inv_begin_new : forall 
   (inv G s V B H (enters G s V)). 
@@ -668,39 +703,24 @@ inv G s V B H' (new_enters G s x nil V)
      *)
     (* -------- iter post-condition -- *) 
     xok. clears update. subst I.
-    hextract as L B' H'' I' Leq. hsimpl~. hsimpl. 
+    hextract as L B' H'' I' Leq. hsimpl~ H'' B' V'.
     skip. (* termination *)
-    unfold V'. skip. (* inv_step *)
-
-(* Lemma :
-inv G s V B H (new_enters G s x N\(x) V) ->
-inv G s (V\(x:=true)) B H (enters G s (V\(x:=true)))
-*)
-
-
+    rew_app in Leq. subst L. applys~ inv_step_end I'.
+      intros. apply~ Adj. skip. (* todo *)
+      fold_bool. auto. (* todo: clean *)
     (* ------ node ignored -- *) 
     xret. unfold data. hsimpl.
-      skip. (*termination*) skip: (V\(x) = true) .
-      constructors~.
+      skip. (*termination*) skip: (V\(x) = true) . (* cleanup*)
+      constructors~. (* todo: move to lemma *)
         introv Vz Nzs In. apply~ Hcorr. rewrite HE. auto. (* mset *)
-(*
-Lemma:
-heap_complete V B H (enters G s V)
-HE : H = '{(x, d)} \u H'
-heap_complete V B H' (enters G s V)
-
-        introv E. lets ((_&?)&_): E. tests (z = x); tryfalse.
-          forwards (d'&R&?): Hcomp E. exists d'. split~.
-           rewrite HE in R. multiset_in R; auto_false.
-*)
-
+        applys* heap_complete_rem.
     (* ---- loop post-condition -- *) 
     hextract as He. fold_bool. rew_logic in He. subst H.
      unfold data. xsimpl. constructor~.
   (* ---- return value -- *) 
   unfold hinv, data. xextract as B V Inv. 
   xapp~. intros l. hdata_simpl GraphAdjList. xsimpl~.
-  subst l. apply* inv_at_end_correct.
+  subst l. apply* inv_end_elim.
 Qed.
 
 (* todo: prettyprint for  "let (x,y) =" and "fun (x,y) ="
