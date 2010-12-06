@@ -332,23 +332,19 @@ Variables (G:graph int) (s:int).
 
 (*-----------------------------------------------------------*)
 
-Definition dist_ok V B reach := forall z, 
-  If (z = s) \/ V\(z) = true
-    then B\(z) = dist G s z
-    else B\(z) = MinBar weight (reach z).
 
-Definition heap_correct V B H reach := forall z d,
-   V\(z) = false -> z <> s -> (z,d) \in H -> 
-    exists p, reach z p /\ weight p = d.
+Definition heap_correct V B H reach z := 
+  forall d, (z,d) \in H -> exists p, reach z p /\ weight p = d.
 
-Definition heap_complete V B H reach := forall z p,
+Definition heap_complete V B H reach z := forall p,
    reach z p -> exists d, (z,d) \in H /\ d <= weight p. 
 
-Record inv V B H reach : Prop :=
-  { inv_dist  : dist_ok V B reach;
-    inv_hcorr : heap_correct V B H reach;
-    inv_hcomp : heap_complete V B H reach }.
-
+Definition inv V B H reach := forall z,
+  If V\(z) = true 
+    then B\(z) = dist G s z
+    else B\(z) = MinBar weight (reach z)
+      /\ heap_correct V B H reach z
+      /\ heap_complete V B H reach z.
 
 Definition from_out V z p :=
   is_path G s z p /\ V\(z) = false.
@@ -497,10 +493,10 @@ Proof.
   intros. apply* nonnegative_path.
 Qed.
 
-Lemma heap_complete_rem : forall V B H H' x d, 
-  heap_complete V B H (enters V) ->
+Lemma heap_complete_rem : forall V B H H' x d z, 
+  heap_complete V B H (enters V) z ->
   H = '{(x, d)} \u H' -> V\(x) = true ->
-  heap_complete V B H' (enters V).
+  heap_complete V B H' (enters V) z.
 Proof.
   introv Hco EQ Tx En. lets ((_&?)&_): En.
   forwards (d'&R&?): Hco En. exists d'. split~.
@@ -510,58 +506,69 @@ Qed.
 
 (*-----------------------------------------------------------*)
 
+
 Lemma inv_start : forall n, nonnegative_edges G -> 
   inv (make n false) (make n Infinite\(s:=Finite 0)) 
       ('{(s, 0)}) (enters (make n false)).
 Proof.
-  introv NG. constructor; unfolds.
-  intros. case_If as I [So _]. destruct (case_classic_l I) as [So|[So Vi]].
-    subst. rew_array~. rewrite~ dist_source.
+  introv NG. intros z. case_If as Vi.
+  tests (z = s).
+    rew_array~. rewrite~ dist_source.
     rew_array~ in Vi. false.
-    rew_array~. rewrite~ MinBar_Infinite.
-     intros p (P&[Pn|(q&y&w&_&E)]).
-       subst. destruct P as [H _]. inverts H. false.
-       rew_array~ in E.
-  introv _ Ns E. multiset_in E. intros E. inverts E. false.
+  asserts N: (enters (make n false) s nil).
+    splits~. splits~. rew_array~.
+   splits.
+    tests (z = s).
+      rew_array~. rewrite~ (MinBar_Finite (nil:path int)). 
+       intros p ((?&?)&?). apply* nonnegative_path. 
+      rew_array~. rewrite~ MinBar_Infinite.
+       intros p (P&[Pn|(q&y&w&_&E)]).
+         subst. destruct P as [H _]. inverts H. false.
+         rew_array~ in E.
+  introv E. multiset_in E. intros E. inverts E. exists~ (nil:path int).
   introv (P&[Pn|(q&y&w&_&E)]). 
     exists 0. subst p. destruct P as [H _]. inverts H. split.
      auto. apply le_refl. (* todo: auto le_refl *)
-    rew_array~ in E. false.  
+    rew_array~ in E. false.    
 Qed.
 
 Lemma inv_end_elim : forall e V B,
   nonnegative_edges G -> 
   inv V B \{} (enters V) -> B\(e) = dist G s e.
 Proof.
-  introv [Dok Hcorr Hcomp].
-  specializes Dok e. case_If as E [So Vf]. auto.
+  introv NE Inv. lets H: Inv e. case_If. auto.
+  destruct H as (Dok&?&?). unfold dist. rewrite Dok.
   asserts Ne: (forall z p, ~ enters V z p).
-    introv P. forwards (d&N&_): Hcomp P. multiset_in N.
-  unfold dist. rewrite Dok.
+    introv P. lets R: Inv z. lets ((_&?)&_): P. case_If.
+     forwards (d&N&_): (proj33 R) P. multiset_in N.
   apply (eq_trans' Infinite); rewrite~ MinBar_Infinite.
   intros p P. forwards* (z&q&Q&?): enters_shorter P. 
 Qed.
 
-
 Lemma inv_begin_loop : forall x d V B H H',
-  H = '{(x,d)} \u H' -> V\(x) = false ->
+  H = '{(x,d)} \u H' -> 
+  is_min_of H (x,d) ->
+  nonnegative_edges G ->
+  V\(x) = false ->
   inv V B H (enters V) ->
   inv (V\(x:=true)) B H' (new_enters x nil V).
 Proof.
-  introv EQ Vx [Dok Hcorr Hcomp]. constructors.
-  intros z. specializes Dok z. tests (z = x); rew_array~.  
-    case_If as I [? ?]. skip. (* best *)
-    case_If. auto. rewrite~ new_enters_nil.
-  intros z dz Vz Nze Hzd. tests (x = z).
-    rewrite~ @array_update_read_eq in Vz. false. (* todo: fix*)
-    rew_array~ in Vz. forwards~ (p&M&?): Hcorr z dz. subst H. auto. (* set *)
+  introv EQ Mi NG Vx Inv. intros z. lets R: (Inv z).
+  tests (z = x); rew_array~.  
+  case_If. case_If. destruct R as (Dok&Hcorr&Hcomp).
+   rewrite Dok. destruct Mi as [In Mi]. lets (p&E&W): Hcorr In.
+   asserts: (forall y q, enters V y q -> weight p <= weight q).
+     introv Ey. lets ((_&?)&_): Ey. lets IY: Inv y.
+     case_If. lets (d'&In'&?): (proj33 IY) Ey. 
+     lets Sy: Mi In'. skip: (d <= d'). math.
+   rewrite* (MinBar_Finite p). rewrite~ <- (@enters_best V x p). (* only p needed *)
+  case_If. auto. destruct R as (Dok&Hcorr&Hcomp). splits.
+    rewrite~ new_enters_nil. 
+    intros dz Iz. forwards~ (p&M&?): Hcorr dz. subst H. auto. (* set *)
      exists p. split~. rewrite~ new_enters_nil.
-  introv En. tests (x = z).
-    false~ (proj1 En).
-    rewrite~ new_enters_nil in En. forwards (dz&Hz&?): Hcomp En.
+    introv En. rewrite~ new_enters_nil in En. forwards (dz&Hz&?): Hcomp En.
      exists~ dz. subst H. multiset_in Hz; intros; tryfalse. split~.
 Qed.
-
 
 Lemma inv_end_loop : forall V x H B L,
   (forall y w, Mem (y,w) L = has_edge G x y w) ->  (* todo: use def for this *)
@@ -569,19 +576,14 @@ Lemma inv_end_loop : forall V x H B L,
   inv (V\(x:=true)) B H (new_enters x L V) ->
   inv (V\(x:=true)) B H (enters (V\(x:=true))).
 Proof.
-  introv EL Vx [Dok Hcorr Hcomp]. constructors; unfolds.
-  intros. specializes Dok z. case_If as _ [_ E].
-    auto.
-    tests (x = z).
-      rewrite~ @array_update_read_eq in E. false. (* todo: fix*)
-      rewrite~ enters_step in Dok.
-  introv Vz Nze Hzd. tests (x = z).
-    rewrite~ @array_update_read_eq in Vz. false. (* todo: fix*)
-    forwards~ (p&M&?): Hcorr Hzd. 
-     exists p. split~. rewrite~ enters_step in M.
-  introv En. tests (x = z).
-    false. lets ((_&E)&_): En. rewrite~ @array_update_read_eq in E. false. (* todo: fix*)
-    apply Hcomp. rewrite~ enters_step.
+  introv EL Vx Inv. intros z. lets R: Inv z. tests (x = z).
+  rew_array~. rewrite~ @array_update_read_eq in R. case_If. auto.
+  rew_array~. rew_array~ in R. case_If. auto. 
+   destruct R as (Dok&Hcorr&Hcomp). splits.  
+     rewrite~ enters_step in Dok.
+     introv Hzd. forwards~ (p&M&?): Hcorr Hzd. 
+      exists p. split~. rewrite~ enters_step in M.
+     introv En. apply Hcomp. rewrite~ enters_step.
 Qed.
 
 Lemma inv_step_ignore : forall L dx x y w V V' B H,
