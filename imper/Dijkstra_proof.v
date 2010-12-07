@@ -745,6 +745,20 @@ Hint Extern 1 (RegisterSpec pop) => Provide pop_spec.
 (*-----------------------------------------------------------*)
 
 
+Lemma fix_post : forall (B:Type) (Q':B->hprop) (F:~~B) (H:hprop) Q,
+  is_local F ->
+  F H Q' -> 
+  Q' ===> Q ->
+  F H Q.
+Proof. intros. apply* local_weaken. Qed.
+Tactic Notation "xpost" constr(Q) := 
+  apply (@fix_post _ Q); [ try xlocal | | try apply rel_le_refl ].
+
+Tactic Notation "xmatch" constr(Q) :=
+  xpost Q; xmatch.
+Hint Resolve istrue_True.
+
+
 (*-----------------------------------------------------------*)
 
 
@@ -784,52 +798,40 @@ Proof.
     apply Supdate. xisspec. clears update. clear hinv. (* todo tactic *)
     unfold I at 1. hide I. unfold data. hide data. clears B H. 
     intros [y w] L. xextract as L' B H Inv EQ.
-    xmatch. xlet. xret. (* todo xret does xlet *)
+    xmatch. xlet. xret. xextract as Dy. (* todo xret does xlet *)
     xapps~. xlet.
-    xframe - []. 
-
-Lemma fix_post : forall (B:Type) (Q':B->hprop) (F:~~B) (H:hprop) Q,
-  is_local F ->
-  F H Q' -> 
-  Q' ===> Q ->
-  F H Q.
-Proof. intros. apply* local_weaken. Qed.
-Tactic Notation "xpost" constr(Q) := 
-  apply (@fix_post _ Q); [ try xlocal | | try apply rel_le_refl ].
-
-Tactic Notation "xmatch" constr(Q) :=
-  xpost Q; xmatch.
-Hint Resolve istrue_True.
-
-    xpost (\= istrue match B\(y) with Finite d' => dy < d' | Infinite => True end).
-     (* todo: give a name ! *)
+    xframe - []. xpost (\= istrue (len_lt (B\(y)) dy)).
     destruct (B\(y)); xgo~. 
     xok. xextracts. rewrite app_last in EQ. rewrite <- rev_cons in EQ.
-    show_all. unfold I, data. xif.
+    show_all. unfold I, data. skip: (Finite d = dist G s x).
+    xif.
     (* ---------- case smaller dist -- *) 
-      xapps~. xapps~. hsimpl. apply EQ. apply~ inv_step_push.
+    xapps~. xapps~. hsimpl. apply EQ. applys~ inv_step_push d. 
+     unfold V'. rew_array~. skip. (* todo *)
     (* ---------- case not smaller dist -- *) 
-      xret. hsimpl. apply EQ. skip. (* apply~ inv_step_ignore. skip. skip*)
+    xret. hsimpl. apply EQ. applys~ inv_step_ignore d. subst dy. auto.
     (* -------- iter pre-condition -- *) 
     unfold I. unfold data. hsimpl (nil:list (int*int)). auto.
-    applys~ inv_begin_loop HE. fold_bool. auto. (* cleanup*) 
+    applys~ inv_begin_loop HE. xok. 
     (* -------- iter post-condition -- *) 
-    xok. clears update. subst I.
+    clears update. subst I.
     hextract as L B' H'' I' Leq. hsimpl~ H'' B' V'.
     skip. (* termination *)
-    rew_app in Leq. .. subst L. applys~ inv_end_loop I'.
-      intros. apply~ Adj. skip. (* todo *)
-      fold_bool. auto. (* todo: clean *)
+    rew_app in Leq. applys~ inv_end_loop I'.
+      intros. rewrite~ <- Adj. rewrite Leq. skip. (*apply Mem_rev.*)
+      skip.
     (* ------ node ignored -- *) 
     xret. unfold data. hsimpl.
       skip. (*termination*) 
        skip: (V\(x) = true) . (* cleanup*)
-      constructors~. (* todo: move to lemma *)
-        introv Vz Nzs In. apply~ Hcorr. rewrite HE. auto. (* mset *)
+      (* todo: move to lemma *)
+      intros z. lets R: Inv z. case_If. auto. 
+      destruct R as (Dok&Hcorr&Hcomp). splits~.
+        introv In. apply~ Hcorr. rewrite HE. auto. (* mset *)
         applys* heap_complete_rem.
     (* ---- loop post-condition -- *) 
     hextract as He. fold_bool. rew_logic in He. subst H.
-     unfold data. xsimpl. constructor~.
+     unfold data. xsimpl~.
   (* ---- return value -- *) 
   unfold hinv, data. xextract as B V Inv. 
   xapp~. intros l. hdata_simpl GraphAdjList. xsimpl~.
