@@ -8,6 +8,12 @@ Module Type MLOrderedPairInt :=
 Module MLNextNode' :  MLOrdered with Definition t := (int*int)%type.
 *)
 
+
+Lemma not_True_to_False : ~ True -> False.
+Proof. intros. rew_logic in *. auto. Qed.
+Hint Immediate not_True_to_False.
+
+
 (*************************************************************)
 
 
@@ -52,16 +58,20 @@ Proof.
 *)
 Admitted.
 
+Lemma min_inv : forall A (f:A->int) (P:A->Prop),
+  (exists x, P x) -> value_nonneg f P -> 
+  exists x, P x /\ min f P = f x /\ (forall y, P y -> f x <= f y).
+Proof.
+  intros. forwards* (n&(y&Py&Ey)&My): min_exists_nonneg.
+  unfold min. spec_epsilon* as z' ((z&Pz&Ez)&Hz). rewrite* Ez in Hz.
+Qed.
+
 Lemma min_elim : forall A x (f:A->int) (P:A->Prop),
   value_nonneg f P ->
   P x -> 
   min f P <= f x.
-Proof.
-(*
-  unfold min. introv H Px. 
-  spec_epsilon as z Hz. exists (f x). 
-*)
-Admitted.
+Proof. intros. forwards* (y&Py&Ey&My): min_inv. rewrite~ Ey. Qed.
+
 
 (*-----------------------------------------------------------*)
 
@@ -85,7 +95,10 @@ Qed.
 Lemma mininf_finite_inv : forall A n (f:A->int) (P:A->Prop),
   mininf f P = Finite n -> value_nonneg f P ->
    exists x, P x /\ f x = n /\ (forall y, P y -> n <= f y).
-Admitted.
+Proof.
+  introv E N. unfold mininf in E. case_If. inverts E. 
+  forwards* (x&Px&Ex&Mx): min_inv. rewrite* <- Ex in Mx.
+Qed.
 
 Lemma mininf_finite_elim : forall A n x (f:A->int) (P:A->Prop),
   mininf f P = Finite n -> value_nonneg f P -> P x -> n <= f x.
@@ -127,9 +140,10 @@ Lemma mininf_len_lt_not : forall d A (f:A->int) (P:A->Prop),
   ~ (len_lt (mininf f P) d) ->
   value_nonneg f P ->
   exists d', mininf f P = Finite d' /\ d' <= d.
-Admitted.
-
-
+Proof. 
+  unfold len_lt. introv H N. cases (mininf f P); tryfalse~.
+  forwards* (x&Px&Ex&Mx): mininf_finite_inv. eauto with maths.
+Qed.
 
 (*-----------------------------------------------------------*)
 
@@ -140,8 +154,16 @@ Parameter edges : forall A, graph A -> set (int*int*A).
 Definition has_edge A (g:graph A) x y w :=
   (x,y,w) \in edges g.
 
-Parameter edges_are_nodes : forall A (g : graph A) x y w,
+Parameter has_edge_nodes : forall A (g : graph A) x y w,
   has_edge g x y w -> x \in nodes g /\ y \in nodes g.
+
+Lemma has_edge_in_nodes_l : forall A (g : graph A) x y w,
+  has_edge g x y w -> x \in nodes g.
+Proof. intros. forwards*: has_edge_nodes. Qed.
+
+Lemma has_edge_in_nodes_r : forall A (g : graph A) x y w,
+  has_edge g x y w -> y \in nodes g.
+Proof. intros. forwards*: has_edge_nodes. Qed.
 
 Definition nonneg_edges (g:graph int) :=
   forall x y w, has_edge g x y w -> w >= 0.
@@ -153,6 +175,7 @@ Definition path A := list (int*int*A).
 
 Inductive is_path A (g:graph A) : int -> int -> path A -> Prop :=
   | is_path_nil : forall x, 
+      x \in nodes g ->
       is_path g x x nil
   | is_path_cons : forall x y z w p,
       is_path g x y p ->
@@ -173,14 +196,31 @@ Lemma weight_cons : forall (p:path int) x y w,
   weight ((x,y,w)::p) = w + weight p.
 Proof. intros. unfold weight. rew_list~. Qed.
 
-Lemma nonneg_edges_to_path : forall g p x y, 
+Lemma nonneg_edges_to_path : forall g x y, 
   nonneg_edges g ->
   value_nonneg weight (is_path g x y).
 Proof.
   introv NG H. induction H. 
-  rewrite weight_nil. apply le_refl.
+  rewrite weight_nil. math. 
   rewrite weight_cons. forwards: NG H0. math.
 Qed.
+
+Lemma is_path_cons_has_edge : forall A (g:graph A) x y z w p,
+  is_path g x z ((y,z,w)::p) -> has_edge g y z w.
+Proof. introv H. inverts~ H. Qed.
+
+Lemma is_path_in_nodes_l : forall A (g:graph A) x y p,
+  is_path g x y p -> x \in nodes g.
+Proof. introv H. induction~ H. Qed.
+
+Lemma is_path_in_nodes_r : forall A (g:graph A) x y p,
+  is_path g x y p -> y \in nodes g.
+Proof. introv H. inverts~ H. apply* has_edge_in_nodes_r. Qed. 
+     
+Parameter edges_are_nodes : forall A (g : graph A) x y w,
+  has_edge g x y w -> x \in nodes g /\ y \in nodes g.
+
+
 
 (*-----------------------------------------------------------*)
 
@@ -331,8 +371,6 @@ Hint Extern 1 (RegisterSpec pop) => Provide pop_spec.
 
 Hint Constructors Mem.
 
-Hint Extern 1 (index _ _) => skip.
-
 Axiom bool_test' : forall b,
   b = true \/ b = false.
 
@@ -367,13 +405,20 @@ Variables (G:graph int) (s:int).
 Definition size_ok `{Inhab A} (T:array A) :=
   forall x, x \in nodes G -> index T x.
 
+Lemma size_ok_elim : forall `{Inhab A} (T:array A) x,
+  size_ok T -> x \in nodes G -> index T x.
+Proof. unfolds~ size_ok. Qed.
+
+Hint Extern 1 (index _ _) => apply size_ok_elim.
+
+(*-----------------------------------------------------------*)
 Definition heap_correct V H reach z := 
   forall d, (z,d) \in H -> exists p, reach z p /\ weight p = d.
 
 Definition heap_complete V H reach z := forall p,
    reach z p -> exists d, (z,d) \in H /\ d <= weight p. 
 
-Definition inv V B H reach := forall z,
+Definition inv V B H reach := forall z, z \in nodes G ->
   If V\(z) = true 
     then B\(z) = dist G s z
     else B\(z) = mininf weight (reach z)
@@ -427,66 +472,89 @@ End Here.
 
 (*-----------------------------------------------------------*)
 
-Variables (NG:nonneg_edges G).
+Hint Rewrite @array_update_read_eq : rew_arr.
+
+Tactic Notation "rew_arr" := 
+  autorewrite with rew_arr.
+Tactic Notation "rew_arr" "in" hyp(H) := 
+  autorewrite with rew_arr in H.
+Tactic Notation "rew_arr" "in" "*" := 
+  autorewrite with rew_arr in *.
+
+Tactic Notation "rew_arr" "~" :=
+  rew_arr; auto_tilde.
+Tactic Notation "rew_arr" "*" :=
+  rew_arr; auto_star.
+Tactic Notation "rew_arr" "~" "in" hyp(H) :=
+  rew_arr in H; auto_tilde.
+Tactic Notation "rew_arr" "*" "in" hyp(H) :=
+  rew_arr in H; auto_star.
+
+(*-----------------------------------------------------------*)
+
+
+Variables (NG:nonneg_edges G) (Ns:s \in nodes G).
 
 Hint Resolve nonneg_edges_to_path.
 
 Lemma enters_step : forall L V x, 
-  V\(x) = false -> size_ok V ->
+  V\(x) = false -> size_ok V -> x \in nodes G ->
   outgoing_edges x L ->
   new_enters x L V = enters (V\(x:=true)).
 Proof.
-  introv Vx EQ. extens. intros z p. 
-  asserts EF: (z <> x -> from_out (V\(x:=true)) z p = from_out V z p).
+  introv Vx SV Nx EQ. extens. intros z p. 
+  asserts Nz: (forall V, from_out V z p -> z \in nodes G).
+    introv [F _]. apply* is_path_in_nodes_r.
+  asserts Ny: (forall V y w q, p = (y,z,w)::q -> from_out V z p -> y \in nodes G).
+    introv E [F _]. subst. inverts F. apply* is_path_in_nodes_r.
+  asserts EF: (z \in nodes G -> z <> x -> from_out (V\(x:=true)) z p = from_out V z p).
     intros. unfold from_out. rew_array~.
   iff (Nzx&H) H.
    hnf in H. destruct H as [(F&[N|(q&y&w&E&Vy)])|(P&(q&w&E&M))];
-    (split; [ rewrite~ EF | ]).
+    (split; [ rewrite* EF | ]).
      auto.
-     right. exists q y w. split~. rew_array~. intro_subst; false.
-     right. exists q x w. split~. rew_array~.
-  asserts: (z <> x). intro_subst. lets ((_&E)&_): H.
-    skip. (* false *)
-   destruct H as (F&[N|(q&y&w&E&Vy)]).
-    rewrite~ EF in F. subst. split~. left. split~.
-    rewrite~ EF in F. tests (y = x); split~.
-    right. split~. exists q w. split~. rewrite EQ. 
-     lets: (proj1 F). subst p. inverts* H.
-    left. rew_array~ in Vy. splits~. right*.
+     right. exists q y w. split~. rew_array*. auto_false.
+     right. exists q x w. rew_arr~.     
+   asserts: (z <> x).
+     intro_subst. lets ((_&E)&_): H. rew_arr~ in E. false.
+    destruct H as (F&[N|(q&y&w&E&Vy)]).
+      rewrite* EF in F. subst. split~. left. split~.
+      rewrite* EF in F. tests (y = x); split~.
+        right. split~. exists q w. split~. rewrite EQ. 
+         subst p. applys* is_path_cons_has_edge (proj1 F).
+        left. subst p. rew_array* in Vy. splits~. right*.
 Qed.
 
 Lemma enters_shorter : forall V z p, 
-  is_path G s z p -> V\(z) = false -> size_ok V -> 
+  is_path G s z p -> V\(z) = false -> 
   exists x q, enters V x q /\ weight q <= weight p.
 Proof.
-  introv NG P. set_eq s': s in P. set_eq G': G in P. 
+  introv P. set_eq s': s in P. set_eq G': G in P. 
   induction P; intros; subst. 
   exists s (nil:path int). splits_all~. apply le_refl.
   destruct (bool_test' (V\(y))).
     exists z ((y,z,w)::p). split. 
       split. split~.
-      right. exists p y w. split~. apply le_refl.
+      right. exists p y w. split~. math.
     forwards~ (x&q&E&L): IHP. exists x q. split~.
      rewrite weight_cons. forwards: NG H. math.    
 Qed.
 
 Lemma enters_best : forall V x p,
-  V\(x) = false -> enters V x p -> size_ok V ->
+  V\(x) = false -> enters V x p -> 
   (forall y q, enters V y q -> weight p <= weight q) ->
   dist G s x = Finite (weight p).
 Proof.
-  introv NG Vx E BE.
-  unfold dist.
-  lets ((?&_)&_): E. applys~ (@mininf_finite (path int)) p.
+  introv Vx En BE. unfold dist.
+  lets ((?&_)&_): En. applys~ (@mininf_finite (path int)) p.
   intros p' P'. forwards~ (y&q&E'&L): enters_shorter V P'.
    forwards: BE E'. math.
 Qed.
 
-Lemma dist_source : 
-  nonneg_edges G -> dist G s s = Finite 0.
+Lemma dist_source : dist G s s = Finite 0.
 Proof.
-  introv NG. applys~ (mininf_finite (nil:path int)).
-  intros. apply* nonneg_path.
+  applys~ (mininf_finite (nil:path int)).
+  intros. apply* nonneg_edges_to_path.
 Qed.
 
 Lemma heap_complete_rem : forall V H x d z, 

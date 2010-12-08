@@ -1087,7 +1087,7 @@ Ltac xfun_mg_core tt :=
   intro; let f := get_last_hyp tt in let H := fresh "S" f in
   esplit; split; intros H; [ pattern f in H; eexact H | ].
 
-Tactic Notation "xfun_mg" := xfun_mg_core tt.
+Tactic Notation "xfun" := xfun_mg_core tt.
 
 Tactic Notation "xfun_mg" := xfun. (* todo: remove *)
 
