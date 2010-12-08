@@ -122,28 +122,36 @@ Proof. intros. apply* mininf_infinite_inv. Qed.
 
 (*-----------------------------------------------------------*)
 
-Definition len_lt l d :=
+Definition len_gt l d :=
   match l with Finite d' => d < d' | Infinite => True end.
 
-Lemma mininf_len_lt : forall d A (f:A->int) (P:A->Prop),
-  len_lt (mininf f P) d ->
+Lemma mininf_len_gt : forall d A (f:A->int) (P:A->Prop),
+  len_gt (mininf f P) d ->
   value_nonneg f P ->
   forall x, P x -> d < f x.
 Proof.
-  unfold len_lt. introv H NE. sets_eq l:(mininf f P).  (* todo: case_eq*)
+  unfold len_gt. introv H NE. sets_eq l:(mininf f P).  (* todo: case_eq*)
   intros. destruct l.
     forwards*: (@mininf_finite_elim A). math.
     forwards*: (@mininf_infinite_elim A) x.
 Qed.
 
-Lemma mininf_len_lt_not : forall d A (f:A->int) (P:A->Prop),
-  ~ (len_lt (mininf f P) d) ->
+Lemma mininf_len_gt_not : forall d A (f:A->int) (P:A->Prop),
+  ~ (len_gt (mininf f P) d) ->
   value_nonneg f P ->
   exists d', mininf f P = Finite d' /\ d' <= d.
 Proof. 
-  unfold len_lt. introv H N. cases (mininf f P); tryfalse~.
+  unfold len_gt. introv H N. cases (mininf f P); tryfalse~.
   forwards* (x&Px&Ex&Mx): mininf_finite_inv. eauto with maths.
-Qed.
+Qed.
+Lemma mininf_len_gt_not_elim : forall d A (f:A->int) (P:A->Prop),
+  ~ (len_gt (mininf f P) d) ->
+  value_nonneg f P ->
+  exists x, P x /\ f x <= d.
+Proof.
+  introv H N. forwards~ (d'&E&L): mininf_len_gt_not H.
+  forwards~ (x&Px&Lx&_): mininf_finite_inv E. eauto with maths.
+Qed.
 
 (*-----------------------------------------------------------*)
 
@@ -411,6 +419,33 @@ Proof. unfolds~ size_ok. Qed.
 
 Hint Extern 1 (index _ _) => apply size_ok_elim.
 
+
+(*-----------------------------------------------------------*)
+
+Hint Rewrite @array_update_read_eq : rew_arr.
+
+Tactic Notation "rew_arr" := 
+  autorewrite with rew_arr.
+Tactic Notation "rew_arr" "in" hyp(H) := 
+  autorewrite with rew_arr in H.
+Tactic Notation "rew_arr" "in" "*" := 
+  autorewrite with rew_arr in *.
+
+Tactic Notation "rew_arr" "~" :=
+  rew_arr; auto_tilde.
+Tactic Notation "rew_arr" "*" :=
+  rew_arr; auto_star.
+Tactic Notation "rew_arr" "~" "in" hyp(H) :=
+  rew_arr in H; auto_tilde.
+Tactic Notation "rew_arr" "*" "in" hyp(H) :=
+  rew_arr in H; auto_star.
+
+
+Axiom make_index : forall `{Inhab A} n i (v:A),
+  index n i -> index (make n v) i.
+Hint Resolve @make_index.
+Hint Resolve len_inhab.
+
 (*-----------------------------------------------------------*)
 Definition heap_correct V H reach z := 
   forall d, (z,d) \in H -> exists p, reach z p /\ weight p = d.
@@ -472,26 +507,6 @@ End Here.
 
 (*-----------------------------------------------------------*)
 
-Hint Rewrite @array_update_read_eq : rew_arr.
-
-Tactic Notation "rew_arr" := 
-  autorewrite with rew_arr.
-Tactic Notation "rew_arr" "in" hyp(H) := 
-  autorewrite with rew_arr in H.
-Tactic Notation "rew_arr" "in" "*" := 
-  autorewrite with rew_arr in *.
-
-Tactic Notation "rew_arr" "~" :=
-  rew_arr; auto_tilde.
-Tactic Notation "rew_arr" "*" :=
-  rew_arr; auto_star.
-Tactic Notation "rew_arr" "~" "in" hyp(H) :=
-  rew_arr in H; auto_tilde.
-Tactic Notation "rew_arr" "*" "in" hyp(H) :=
-  rew_arr in H; auto_star.
-
-(*-----------------------------------------------------------*)
-
 
 Variables (NG:nonneg_edges G) (Ns:s \in nodes G).
 
@@ -505,7 +520,11 @@ Lemma from_out_cons_in_nodes : forall V z p y w q,
   from_out V z p -> p = (y,z,w)::q -> y \in nodes G.
 Proof. introv [F _] E. subst. inverts F. apply* is_path_in_nodes_r. Qed.
 
-Hint Resolve from_out_in_nodes from_out_cons_in_nodes.
+Lemma enters_in_nodes : forall V z p, 
+  enters V z p -> z \in nodes G.
+Proof. introv [F _]. apply* from_out_in_nodes. Qed.
+
+Hint Resolve from_out_in_nodes from_out_cons_in_nodes enters_in_nodes.
 
 Lemma enters_step : forall L V x, 
   V\(x) = false -> size_ok V -> x \in nodes G ->
@@ -575,12 +594,6 @@ Qed.
 
 
 (*-----------------------------------------------------------*)
-
-Axiom make_index : forall `{Inhab A} n i (v:A),
-  index n i -> index (make n v) i.
-Hint Resolve @make_index.
-Hint Resolve len_inhab.
-
 Lemma inv_start : forall n, 
   (forall x, x \in nodes G -> index n x) ->
   inv (make n false) (make n Infinite\(s:=Finite 0)) 
@@ -604,53 +617,64 @@ Proof.
     rew_array* in Ey. false.
 Qed.
 
-Lemma inv_end_elim : forall e V B,
+Lemma inv_end_elim : forall x V B,
   inv V B \{} (enters V) -> 
   x \in nodes G ->
   B\(x) = dist G s x.
 Proof.
-  introv NE Inv. lets H: Inv x. case_If. auto.
-  destruct H as (Dok&?&?). unfold dist. rewrite Dok.
-  asserts Ne: (forall z p, ~ enters V z p).
-    introv P. lets R: Inv z. lets ((_&?)&_): P. case_If.
+  introv Inv Nx. lets H: Inv x. case_If. auto.
+  destruct~ H as (Dok&?&?). unfold dist. rewrite Dok.
+  asserts Ne: (forall z p, z \in nodes G -> ~ enters V z p).
+    introv Nz P. lets R: Inv Nz. lets ((_&?)&_): P. case_If.
      forwards (d&N&_): (proj33 R) P. multiset_in N.
   apply (eq_trans' Infinite); rewrite~ mininf_infinite.
-  intros p P. forwards* (z&q&Q&?): enters_shorter P. 
+  intros p P. forwards* (z&q&Q&?): enters_shorter P.
 Qed.
 
 Lemma inv_begin_loop : forall x d V B H H',
   H = '{(x,d)} \u H' -> 
   is_min_of H (x,d) ->
+  x \in nodes G ->
   V\(x) = false ->
   size_ok V -> size_ok B ->
   inv V B H (enters V) ->
-  inv (V\(x:=true)) B H' (new_enters x nil V).
+     inv (V\(x:=true)) B H' (new_enters x nil V)
+  /\ Finite d = dist G s x.
 Proof.
-  introv EQ Mi NG Vx Inv. intros z. lets R: (Inv z).
-  tests (z = x); rew_array~.  
-  case_If. case_If. destruct R as (Dok&Hcorr&Hcomp).
+  introv EQ [In Mi] Nx Vx SV SB Inv. 
+  asserts: (forall y q, enters V y q -> d <= weight q). 
+    introv Ey. lets ((_&?)&_): Ey. forwards* IY: Inv y.
+    case_If. lets (d'&In'&?): (proj33 IY) Ey. 
+    lets Sy: Mi In'. skip: (d <= d'). math. (* todo *)
+  logic (forall P Q:Prop, P -> (P /\ Q) -> P /\ Q)
+
+split.
+  introv Nz. lets R: Inv Nz.
+  tests (z = x).
+  rew_arr~. case_If. case_If. destruct R as (Dok&Hcorr&Hcomp).
    rewrite Dok. destruct Mi as [In Mi]. lets (p&E&W): Hcorr In.
    asserts: (forall y q, enters V y q -> weight p <= weight q).
-     introv Ey. lets ((_&?)&_): Ey. lets IY: Inv y.
+     introv Ey. lets ((_&?)&_): Ey. forwards* IY: Inv y.
      case_If. lets (d'&In'&?): (proj33 IY) Ey. 
      lets Sy: Mi In'. skip: (d <= d'). math.
    rewrite* (mininf_finite p). rewrite~ <- (@enters_best V x p). (* only p needed *)
-  case_If. auto. destruct R as (Dok&Hcorr&Hcomp). splits.
+  rew_array~. case_If. auto. destruct R as (Dok&Hcorr&Hcomp). splits.
     rewrite~ new_enters_nil. 
-    intros dz Iz. rewrite~ new_enters_nil. apply Hcorr. subst H. auto. (* set *)
+    intros dz Iz. rewrite~ new_enters_nil. apply Hcorr. subst H. multiset_in.
     introv En. rewrite~ new_enters_nil in En. forwards (dz&Hz&?): Hcomp En.
      exists~ dz. subst H. multiset_in Hz; intros; tryfalse. split~.
 Qed.
 
 Lemma inv_end_loop : forall V x H B L,
   outgoing_edges x L ->
+  x \in nodes G ->
   V\(x) = false ->
   size_ok V -> size_ok B ->
   inv (V\(x:=true)) B H (new_enters x L V) ->
   inv (V\(x:=true)) B H (enters (V\(x:=true))).
 Proof.
-  introv EL Vx Inv. intros z. lets R: Inv z. tests (x = z).
-  rew_array~. rewrite~ @array_update_read_eq in R. case_If. auto.
+  introv EL Nx Vx SV SB Inv. introv Nz. lets R: Inv Nz. tests (x = z).
+  rew_arr~. rewrite~ @array_update_read_eq in R. case_If. auto.
   rew_array~. rew_array~ in R. case_If. auto. 
    destruct R as (Dok&Hcorr&Hcomp). splits.  
      rewrite~ enters_step in Dok.
@@ -661,84 +685,102 @@ Qed.
 
 Lemma inv_step_ignore : forall L dx x y w V B H,
   inv (V\(x:=true)) B H (new_enters x L V) ->
+  x \in nodes G ->
   Finite dx = dist G s x ->
   size_ok V -> size_ok B ->
-  ~ len_lt (B\(y)) (dx + w) ->
+  ~ len_gt (B\(y)) (dx + w) ->
   inv (V\(x:=true)) B H (new_enters x ((y, w)::L) V).
 Proof.
-  introv Inv Eq NG Nlt. intros z. lets R: Inv z. tests (z = y).
+  introv Inv Nx Eq SV SB Nlt. introv Nz. lets R: Inv Nz. tests (z = y).
   case_If. auto. destruct R as (Dok&Hcorr&Hcomp). splits.  
-    rewrite Dok in Nlt. forwards (d&Md&Ld): mininf_len_lt_not Nlt. skip. (* nonneg *)  
-     forwards~ (q&Q&Wq&Mq): (@mininf_finite_inv (path int)) Md. 
+    rewrite Dok in Nlt. forwards (d&Md&Ld): mininf_len_gt_not Nlt. skip. (* nonneg *)  
+     forwards~ (q&Q&Wq&Mq): (@mininf_finite_inv (path int)) Md.  skip. (* nonneg *)  
      rewrite Dok. rewrite Md. rewrite~ (mininf_finite q).
       rewrite~ Wq. apply~ new_enters_grows.
       intros p Ep. rewrite Wq. lets [E|[(P'&Vy') (p'&Ep')]]: (new_enters_inv Ep).
         apply~ Mq.
         subst p. inverts P' as P' W. rewrite weight_cons. 
-         forwards~ M: (@mininf_finite_elim (path int)) p' (eq_sym Eq). skip. (* nonneg *)
+         forwards~ M: (@mininf_finite_elim (path int)) p' (eq_sym Eq). 
          math.
     introv Iy. lets (p&P&Wp): Hcorr Iy. exists p. split~.
      apply~ new_enters_grows.   
     introv Ey. lets [E|[(P'&Vy') (p'&Ep)]]: (new_enters_inv Ey).
       applys Hcomp E.
       subst p. inverts P' as P' W. rewrite weight_cons.
-       forwards~ M: (@mininf_finite_elim (path int)) p' (eq_sym Eq). skip. (* nonneg *)
-        rewrite Dok in Nlt. forwards (q&Q&Wq): mininf_len_lt_not Nlt. 
-        skip. (* nonneg *)
-       lets (dy&Iy&Wy): Hcomp Q. exists dy. split~. math.    
+       forwards~ M: (@mininf_finite_elim (path int)) p' (eq_sym Eq). 
+        rewrite Dok in Nlt. forwards (q&Q&Wq): mininf_len_gt_not_elim Nlt. skip. (* nonneg *) 
+        lets (dy&Iy&Wy): Hcomp Q. exists dy. split~. math.    
   case_If. auto. unfolds heap_correct, heap_complete.
    do 3 rewrite~ new_enters_not. 
 Qed.
  
 
-Lemma inv_step_push : forall V V' B H y w x dy dx L,
+Lemma inv_step_push : forall V B H y w x dy dx L,
   inv (V\(x:=true)) B H (new_enters x L V) ->
   Finite dx = dist G s x ->
   dy = dx + w ->
   has_edge G x y w ->
-  len_lt (B\(y)) dy ->
+  len_gt (B\(y)) dy ->
   size_ok V -> size_ok B ->
   inv (V\(x:=true)) (B\(y:=Finite dy)) ('{(y, dy)} \u H) (new_enters x ((y,w)::L) V).
 Proof.
-  introv Inv Eq Dy Vx Ed NG Nlt. intros z. lets R: Inv z. tests (z = y).
+  introv Inv Eq Dy Ed Nlt SV SB. introv Nz. lets R: Inv Nz. tests (z = y).
   forwards~ (px&Px&Wx&Mx): (@mininf_finite_inv (path int)) (eq_sym Eq). 
   case_If.
   skip.
    (* should test in code
-   false. rewrite R in Nlt. forwards M: mininf_len_lt Nlt ((x,y,w)::px). skip. (* nonneg *)
+   false. rewrite R in Nlt. forwards M: mininf_len_gt Nlt ((x,y,w)::px). skip. (* nonneg *)
     constructors~. rewrite weight_cons in M. subst dy. math.
 *)
   sets p: ((x,y,w)::px). 
   asserts P: (new_enters x ((y, w) :: L) V y p).
-    subst p. split. intro_subst. false. right. split. split. auto.
+    subst p. split. intro_subst. rew_arr~ in C. right. split. split. auto.
     skip. (* needs def of V' *) exists___~. 
   asserts W: (weight p = dy).
     subst p. rewrite weight_cons. math. 
   destruct R as (Dok&Hcorr&Hcomp). splits.  
-    rew_array~. rewrite~ (mininf_finite p). rewrite~ W.
+    rew_arr~. rewrite~ (mininf_finite p). rewrite~ W.
      intros q Enq. lets [E|[(P'&Vy') (p'&Ep)]]: (new_enters_inv Enq).
-       rewrite Dok in Nlt. forwards: mininf_len_lt Nlt E. skip. (*nonneg *) math.
+       rewrite Dok in Nlt. forwards: mininf_len_gt Nlt E. skip. (*nonneg *) math.
        subst q. rewrite weight_cons. inverts P' as Q' _. forwards: Mx Q'. math.
     introv Iy. multiset_in Iy.
       introv E. inverts E. exists~ p.
       lets (p'&P'&Wp'): Hcorr H0. exists p'. split~. apply~ new_enters_grows.   
     intros py Ey. lets [E|[(P'&Vy') (p'&Ep)]]: (new_enters_inv Ey).
-      forwards~ (d&D'&In'): Hcomp E. exists d. split~. (* auto set *)
+      forwards~ (d&D'&In'): Hcomp E. exists d. split~. multiset_in.
       subst py. inverts P' as P' W. rewrite weight_cons.
-       exists dy. split~. 
-       forwards~ M: (@mininf_finite_elim (path int)) p' (eq_sym Eq). skip. (* nonneg *)
-       math.
+       exists dy. split~. multiset_in.
+       forwards~ M: (@mininf_finite_elim (path int)) p' (eq_sym Eq). math.
   case_If. rew_array~. destruct R as (Dok&Hcorr&Hcomp). splits.  
     rew_array~. rewrite~ new_enters_not.
     intros dz Iz. rewrite~ new_enters_not. apply Hcorr.
      multiset_in Iz. intros EQ. inverts EQ. false. auto. (* cleanup *) 
     introv En. rewrite~ new_enters_not in En. forwards (dz&Hz&?): Hcomp En.
-     exists~ dz. (* auto set *)
+     exists~ dz. split~. multiset_in.
 Qed.
 
 End Invariants.
 
 (*-----------------------------------------------------------*)
+
+Lemma pred_ext_elim_l_0 : forall A (P Q:A->Prop),
+  (forall x, P x = Q x) -> (forall x, P x -> Q x).
+Proof. introv H. intros. rewrite~ <- H. Qed.
+Implicit Arguments pred_ext_elim_l_0 [A P Q].
+
+Axiom index_update : forall `{Inhab A} (T:array A) n i j (v:A),
+  index n i -> index (T\(j:=v)) i.
+Hint Resolve @index_update.
+
+Axiom index_array_length : forall A (t : array A) i,
+  index (length t) i -> index t i.
+
+Hint Resolve index_array_length.
+
+Hint Resolve @make_index.
+Hint Resolve len_inhab.
+Hint Resolve bool_inhab.
+Hint Unfold size_ok.
 
 Lemma shortest_path_spec :
   Spec shortest_path g a b |R>> forall G,
@@ -748,26 +790,31 @@ Lemma shortest_path_spec :
     keep R (g ~> GraphAdjList G) (\= dist G a b).
 Proof.
   xcf. introv Pos Ds De. unfold GraphAdjList at 1. hdata_simpl.
-  xextract as N NG Adj. xapps. xapps. xapps. xapps. xapps~. xapps. (* todo: xgo loop *)
+  xextract as N NG Adj. lets NG': (pred_ext_elim_l_0 NG).
+  xapps. xapps. xapps. xapps. xapps*. xapps.
   set (data := fun B V H =>
-    g ~> Array Id N \* v ~> Array Id V \* b ~> Array Id B \* h ~> Heap H).
+    g ~> Array Id N \* v ~> Array Id V \* b ~> Array Id B \* h ~> Heap H
+    \* [size_ok G B] \* [size_ok G V]).
   set (hinv := fun H:multiset(int*int) => 
     Hexists B V, data B V H \* [inv G s V B H (enters G s V)]).
   xseq (# hinv \{}). xwhile_inv (fun H:multiset(int*int) => 0%nat) hinv. 
     skip. (* todo: termination *)
     (* -- initial state satisfies invariant -- *)
-    esplit. unfold hinv,data. hsimpl. 
-     applys_eq~ inv_start 2. permut_simpl.
+    esplit. unfold hinv,data. hsimpl*. 
+      applys_eq~ inv_start 2. permut_simpl.
     (* -- verification of the loop body -- *) 
     intros H. unfold hinv. xextract as B V Inv. 
      apply local_erase. esplit. splits.
     (* ---- loop condition -- *) 
-    unfold data. xapps. xret.
+    unfold data. xextract as SB SV. xframe ([size_ok G B] \*  [size_ok G V]); auto. (* todo *)
+    xapps. xret.
     (* ---- loop body -- *) 
-    xextract as HN. xapp. intros [x d] H' Mi HE. intro_subst. xmatch.
-    xapps~. xif; [ skip: (V\(x) = false) | ].
+    xextract as HN SB SV. xapp. intros [x d] H' Mi HE. intro_subst.
+    asserts: (x \in nodes G). (* todo : move *)
+      lets: (Inv x). skip. (* todo: extract heap_complete *)
+    xmatch. xapps~. xif; [ skip: (V\(x) = false) | ]. (* todo: cleanup *)
     (* ------ node treated -- *) 
-    xapps~. xfun_mg. xapps~. 
+    xapps~. xfun_mg. xapps~.
     sets V': (V\(x:=true)).
     sets I: (fun L => Hexists L', Hexists B H, data B V' H (* todo bug when writing Hexists *)
         \* [inv G s V' B H (new_enters G s x L' V) ] \* [N\(x) = rev(L')++L]).
@@ -775,13 +822,17 @@ Proof.
     (* -------- verification of update -- *) 
     apply Supdate. xisspec. clears update. clear hinv. (* todo tactic *)
     unfold I at 1. hide I. unfold data. hide data. clears B H. 
-    intros [y w] L. xextract as L' B H Inv EQ.
-    xmatch. xlet. xret. xextract as Dy. (* todo xret does xlet *)
+    intros [y w] L. xextract as L' B H SB SV' Inv EQ.
+    xmatch.
+    asserts: (y \in nodes G).
+      applys~ has_edge_in_nodes_r x w. rewrite~ <- Adj. rewrite EQ. applys* Mem_app_or.
+    xlet. xret. xextract as Dy. (* todo xret does xlet *)
     xapps~. xlet.
-    xframe - []. xpost (\= istrue (len_lt (B\(y)) dy)).
+    xframe - []. xpost (\= istrue (len_gt (B\(y)) dy)).
     destruct (B\(y)); xgo~. 
     xok. xextracts. rewrite app_last in EQ. rewrite <- rev_cons in EQ.
-    show_all. unfold I, data. skip: (Finite d = dist G s x).
+    show_all. unfold I, data.
+    (* skip: (Finite d = dist G s x).*)
     xif.
     (* ---------- case smaller dist -- *) 
     xapps~. xapps~. hsimpl. apply EQ. applys~ inv_step_push d. 
@@ -819,9 +870,10 @@ Qed.
 
 (*-----------------------------------------------------------*)
 
-
+(* todo: cleanup the boolean equalities *)
 (* todo: prettyprint for  "let (x,y) =" and "fun (x,y) ="
-
+(* todo: automate multiset_in *)
+(* todo: try intro_subst_hyp should deal with tuples *)
 
 (*-----------------------------------------------------------*)
 
