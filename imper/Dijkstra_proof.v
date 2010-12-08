@@ -497,16 +497,22 @@ Variables (NG:nonneg_edges G) (Ns:s \in nodes G).
 
 Hint Resolve nonneg_edges_to_path.
 
+Lemma from_out_in_nodes : forall V z p,
+  from_out V z p -> z \in nodes G.
+Proof. introv [F _]. apply* is_path_in_nodes_r. Qed.
+
+Lemma from_out_cons_in_nodes : forall V z p y w q, 
+  from_out V z p -> p = (y,z,w)::q -> y \in nodes G.
+Proof. introv [F _] E. subst. inverts F. apply* is_path_in_nodes_r. Qed.
+
+Hint Resolve from_out_in_nodes from_out_cons_in_nodes.
+
 Lemma enters_step : forall L V x, 
   V\(x) = false -> size_ok V -> x \in nodes G ->
   outgoing_edges x L ->
   new_enters x L V = enters (V\(x:=true)).
 Proof.
   introv Vx SV Nx EQ. extens. intros z p. 
-  asserts Nz: (forall V, from_out V z p -> z \in nodes G).
-    introv [F _]. apply* is_path_in_nodes_r.
-  asserts Ny: (forall V y w q, p = (y,z,w)::q -> from_out V z p -> y \in nodes G).
-    introv E [F _]. subst. inverts F. apply* is_path_in_nodes_r.
   asserts EF: (z \in nodes G -> z <> x -> from_out (V\(x:=true)) z p = from_out V z p).
     intros. unfold from_out. rew_array~.
   iff (Nzx&H) H.
@@ -570,30 +576,32 @@ Qed.
 
 (*-----------------------------------------------------------*)
 
+Axiom make_index : forall `{Inhab A} n i (v:A),
+  index n i -> index (make n v) i.
+Hint Resolve @make_index.
+Hint Resolve len_inhab.
+
 Lemma inv_start : forall n, 
-  (forall x, x \in nodes G = index n x) ->
+  (forall x, x \in nodes G -> index n x) ->
   inv (make n false) (make n Infinite\(s:=Finite 0)) 
       ('{(s, 0)}) (enters (make n false)).
 Proof.
-  introv NG. intros z. case_If as Vi.
-  tests (z = s).
-    rew_array~. rewrite~ dist_source.
-    rew_array~ in Vi. false.
-  asserts N: (enters (make n false) s nil).
+  introv EQ. intros z Nz. 
+  asserts Es: (enters (make n false) s nil).
     splits~. splits~. rew_array~.
-   splits.
-    tests (z = s).
-      rew_array~. rewrite~ (mininf_finite (nil:path int)). 
-       intros p ((?&?)&?). apply* nonneg_path. 
-      rew_array~. rewrite~ mininf_infinite.
-       intros p (P&[Pn|(q&y&w&_&E)]).
-         subst. destruct P as [H _]. inverts H. false.
-         rew_array~ in E.
+  case_If as Vi. rew_array~ in Vi. false. splits.
+  tests (z = s).
+    rew_arr~. rewrite~ (mininf_finite (nil:path int)). 
+     intros p ((?&?)&?). apply* nonneg_edges_to_path.
+    rew_array~. rewrite~ mininf_infinite.
+     intros p (P&[Pn|(q&y&w&Py&Ey)]).
+       subst. destruct P as [P _]. inverts P. false.
+       rew_array* in Ey.
   introv E. multiset_in E. intros E. inverts E. exists~ (nil:path int).
-  introv (P&[Pn|(q&y&w&_&E)]). 
-    exists 0. subst p. destruct P as [H _]. inverts H. split.
-     auto. apply le_refl. (* todo: auto le_refl *)
-    rew_array~ in E. false.    
+  introv (P&[Pn|(q&y&w&Py&Ey)]). 
+    exists 0. subst p. destruct P as [P _]. inverts P.
+     split. multiset_in. rewrite weight_nil. math.
+    rew_array* in Ey. false.
 Qed.
 
 Lemma inv_end_elim : forall e V B,
