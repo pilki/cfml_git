@@ -157,6 +157,28 @@ Tactic Notation "test_prop" constr(P) :=
   let H := fresh "C" in test_prop P as H.
 
 
+Ltac apply_to_If cont :=
+  match goal with 
+  | |- context [If ?B then _ else _] => cont B
+  | K: context [If ?B then _ else _] |- _ => cont B
+  end.
+
+Ltac case_If_core B I1 I2:=
+  let H1 := fresh "TEMP" in let H2 := fresh "TEMP" in
+  destruct (classicT B) as [H1|H2]; 
+  [ tryfalse; rew_logic in H1; revert H1; intros I1; tryfalse
+  | tryfalse; rew_logic in H2; revert H2; intros I2; tryfalse ].
+
+Tactic Notation "case_If" "as" simple_intropattern(I1) simple_intropattern(I2) :=
+  apply_to_If ltac:(fun B => case_If_core B I1 I2).
+
+Tactic Notation "case_If" "as" simple_intropattern(I) :=
+  apply_to_If ltac:(fun B => case_If_core B I I).
+
+Tactic Notation "case_If" :=
+  let C := fresh "C" in case_If as C.
+
+
 (************************************************************)
 (* * Predicate for post-conditions on boolean values *)
 (* --> todo: remove *)

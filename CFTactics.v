@@ -549,6 +549,17 @@ Tactic Notation "xrets" "*" :=
 Tactic Notation "xpost" :=
   eapply xpost_lemma; [ try xlocal | | ].
 
+Lemma fix_post : forall (B:Type) (Q':B->hprop) (F:~~B) (H:hprop) Q,
+  is_local F ->
+  F H Q' -> 
+  Q' ===> Q ->
+  F H Q.
+Proof. intros. apply* local_weaken. Qed.
+
+Tactic Notation "xpost" constr(Q) := 
+  apply (@fix_post _ Q); [ try xlocal | | try apply rel_le_refl ].
+
+
 (*--------------------------------------------------------*)
 (* ** [xgc] *)
 
@@ -1063,7 +1074,7 @@ Tactic Notation "xfun" constr(s) "as" ident(B) :=
 Tactic Notation "xfun_noxbody" constr(s) :=
   xfun_core s ltac:(xfun_namebody).
 
-(** [xfun_mg] is equivalent to [xfun S] where [S] is the most
+(** [xfun] is equivalent to [xfun S] where [S] is the most
     general specification that can be provided for the function.
     This specification is simply defined in terms of the 
     body assumption. --todo: be more precise 
@@ -1071,9 +1082,14 @@ Tactic Notation "xfun_noxbody" constr(s) :=
     function at its call sites, and reason only on particular
     applications of the function. *)
 
-Tactic Notation "xfun_mg" :=
+Ltac xfun_mg_core tt :=
+  apply local_erase;
   intro; let f := get_last_hyp tt in let H := fresh "S" f in
   esplit; split; intros H; [ pattern f in H; eexact H | ].
+
+Tactic Notation "xfun_mg" := xfun_mg_core tt.
+
+Tactic Notation "xfun_mg" := xfun. (* todo: remove *)
 
 (** [xfun S1 S2] allows to specify a pair of mutually-recursive
     functions, be providng both their specifications. *)
@@ -1533,6 +1549,9 @@ Tactic Notation "xmatch_simple_subst_alias" :=
    xmatch_simple_keep_alias; repeat xalias_subst.
 
 
+Tactic Notation "xmatch" constr(Q) :=
+  xpost Q; xmatch.
+
 (*--------------------------------------------------------*)
 (* ** [xwhile_inv] *)
 
@@ -1586,6 +1605,16 @@ Proof.
 Qed.
 *)
 Admitted.
+
+Ltac xwhile_inv_core W I :=
+  match type of W with
+  | wf _ => eapply (@while_loop_cf_to_inv _ I _ W)
+  | _ -> nat => eapply (@while_loop_cf_to_inv _ I (measure W))
+  | _ => eapply (@while_loop_cf_to_inv _ I W)
+  end.
+
+Tactic Notation "xwhile_inv" constr(W) constr(I) :=
+  xwhile_pre ltac:(fun _ => xwhile_inv_core W I).
 
 
 (*--------------------------------------------------------*)

@@ -313,6 +313,13 @@ Hint Extern 1 (RegisterSpec ml_array_length) => Provide ml_array_length_spec.
 
 Parameter ml_list_iter : func.
 
+Lemma ml_list_iter_spec : forall a,
+  Spec ml_list_iter f l |R>> forall (I:list a->hprop),
+    (Spec f x |R>> forall t, R (I (x::t)) (# I t)) -> 
+    R (I l) (# I nil).
+Admitted.
+Hint Extern 1 (RegisterSpec  ml_list_iter) => Provide ml_list_iter_spec.
+
 
 (********************************************************************)
 (** IO manipulations *)

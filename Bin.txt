@@ -3999,3 +3999,52 @@ Implicit Arguments Id_unfocus [A].
 *)
 
 
+
+
+Lemma cases_or_l : forall (P Q:Prop),
+  P \/ (~ P /\ Q) \/ (~ P /\ ~ Q).
+Proof. intros. tautoB P Q. Qed.
+(**
+
+Ltac my_cases :=
+  apply_to_If ltac:(fun B =>
+    match B with ?P \/ ?Q =>
+     destruct (cases_or_l P Q) as [So|[[So Vi]|[So Vi]]] end).
+
+*)
+Lemma mininf_len_lt_not : forall d A (f:A->int) (P:A->Prop),
+  ~ (len_lt (mininf f P) d) ->
+  value_nonneg f P ->
+  exists x, P x /\ f x <= d.
+Proof.
+  unfold len_lt. introv H NE. sets_eq l:(mininf f P).  (* todo: case_eq*)
+  destruct l.
+    unfold mininf in EQl. case_if; tryfalse. inverts EQl.
+     destruct e as [x Px]. 
+skip. 
+    false~ H.
+Qed.
+
+
+(*--bin
+Lemma inv_step_end : forall V x H B L,
+  (forall y w, Mem (y,w) L = has_edge G x y w) ->  (* todo: use def for this *)
+  V\(x) = false ->
+  inv V B H (new_enters x L V) ->
+  inv (V\(x:=true)) B H (enters (V\(x:=true))).
+Proof.
+  introv EL Vx [Dok Hcorr Hcomp]. constructors; unfolds.
+  intros. tests (x = z); rew_array~.
+    case_If as _ [_ ?]. skip. (*best*)
+    specializes Dok z. case_If as I.
+      auto.
+      rewrite~ enters_step in Dok.
+  introv Vz Nze Hzd. tests (x = z).
+   rewrite~ @array_update_read_eq in Vz. false. (* todo: fix*)
+   rew_array~ in Vz. forwards~ (p&M&?): Hcorr Hzd. 
+    exists p. split~. rewrite~ enters_step in M.
+  introv En. tests (x = z).
+    false. lets ((_&E)&_): En. rewrite~ @array_update_read_eq in E. false. (* todo: fix*)
+    apply Hcomp. rewrite~ enters_step.
+Qed.
+*)
