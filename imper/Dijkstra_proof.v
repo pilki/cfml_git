@@ -647,10 +647,7 @@ Proof.
   apply (eq_trans' Infinite); rewrite~ mininf_infinite.
   intros p P. forwards* (z&q&Q&?): enters_shorter P. 
 Qed.
-(*
-Hint Resolve SizeV SizeB.
 
-*)
 Lemma size_ok_elim : forall `{Inhab A} (T:array A) x,
   size_ok T -> x \in nodes G -> index T x.
 Proof. unfolds~ size_ok. Qed.
@@ -693,85 +690,124 @@ Lemma inv_end_loop : forall V x H B L,
   inv (V\(x:=true)) B H (new_enters x L V) ->
   inv (V\(x:=true)) B H (enters (V\(x:=true))).
 Proof.
-  introv EL Nx Vx [Bd Bb Hc Hk SB SV]. constructors~.
-  introv Nz. lets R: Inv Nz. tests (x = z).
-  rew_arr~. rewrite~ @array_update_read_eq in R. case_If. auto.
-  rew_array~. rew_array~ in R. case_If. auto. 
-   destruct R as (Dok&Hcorr&Hcomp). splits.  
-     rewrite~ enters_step in Dok.
-     introv Hzd. forwards~ (p&M&?): Hcorr Hzd. 
+  introv EL Nx Vx [Inv SB SV]. constructors~.
+  introv Nz. lets [Bd Bb Hc Hk]: Inv Nz. tests (x = z).
+  constructors.
+    auto.
+    rew_arr~; auto_false.
+    rew_arr~; auto_false.
+    introv En. lets ((_&N)&_): En. rew_arr~ in N. false.
+  constructors.
+    auto.
+    rewrite~ enters_step in Bb.
+     introv Vi Hzd. forwards~ (p&M&?): Hc Hzd. 
       exists p. split~. rewrite~ enters_step in M.
-     introv En. apply Hcomp. rewrite~ enters_step.
+     introv En. apply Hk. rewrite~ enters_step.
 Qed.
 
-Lemma inv_update_le : forall L dx x y w V B H,
-  inv (V\(x:=true)) B H (new_enters x L V) ->
+Lemma inv_update_le : forall L x y w dx dy V B H,
   x \in nodes G ->
+  has_edge G x y w ->
+  dy = dx + w ->
   Finite dx = dist G s x ->
-  size_ok V -> size_ok B ->
-  ~ len_gt (B\(y)) (dx + w) ->
-  inv (V\(x:=true)) B H (new_enters x ((y, w)::L) V).
+  inv (V\(x:=true)) B H (new_enters x L V) -> 
+  If len_gt (B\(y)) dy 
+    then inv (V\(x:=true)) (B\(y:=Finite dy)) ('{(y, dy)} \u H) (new_enters x ((y,w)::L) V)
+    else inv (V\(x:=true)) B H (new_enters x ((y, w)::L) V).
 Proof.
-  introv Inv Nx Eq SV SB Nlt. introv Nz. lets R: Inv Nz. tests (z = y).
-  case_If. auto. destruct R as (Dok&Hcorr&Hcomp). splits.  
-    rewrite Dok in Nlt. forwards~ (d&Md&Ld): mininf_len_gt_not Nlt.
-     forwards~ (q&Q&Wq&Mq): (@mininf_finite_inv (path int)) Md.
-     rewrite Dok. rewrite Md. rewrite~ (mininf_finite q).
+  introv Nx Ed Dy Eq [Inv SB SV]. sets_eq V': (V\(x:=true)).
+  cuts K: (forall_ z \in nodes G, 
+    If len_gt (B\(y)) dy 
+    then inv_of z V' (B\(y:=Finite dy)) ('{(y, dy)} \u H) (new_enters x ((y,w)::L) V)
+    else inv_of z V' B H (new_enters x ((y, w)::L) V)).
+    case_If; constructors~.
+  introv Nz. lets [Bd Bb Hc Hk]: Inv Nz. tests (z = y).
+  (* case z = y *)
+  forwards~ (px&Px&Wx&Mx): (@mininf_finite_inv (path int)) (eq_sym Eq).
+  sets p: ((x,y,w)::px). 
+  asserts W: (weight p = dy). subst p. rewrite weight_cons. math. 
+  tests (V'\(y)) as C; case_If as Nlt.
+  (* subcase y visisted, distance improved *)
+  false. rewrite~ Bd in Nlt. forwards M: mininf_len_gt Nlt p; subst p; auto.
+   rewrite weight_cons in M. math.
+  (* subcase y visisted, distance not improved *)
+ (*
+  rewrite Bb in Nlt. forwards~ (d&Md&Ld): mininf_len_gt_not Nlt.
+  constructors.
+
+  intros. auto.
+ intros.
+   forwards~ (q&Q&Wq&Mq): (@mininf_finite_inv (path int)) Md.
+     rewrite~ Bd. .. rewrite~ (mininf_finite q).
       rewrite~ Wq. apply~ new_enters_grows.
       intros p Ep. rewrite Wq. lets [E|[(P'&Vy') (p'&Ep')]]: (new_enters_inv Ep).
         apply~ Mq.
         subst p. inverts P' as P' W. rewrite weight_cons. 
          forwards~ M: (@mininf_finite_elim (path int)) p' (eq_sym Eq). 
          math.
-    introv Iy. lets (p&P&Wp): Hcorr Iy. exists p. split~.
-     apply~ new_enters_grows.   
-    introv Ey. lets [E|[(P'&Vy') (p'&Ep)]]: (new_enters_inv Ey).
-      applys Hcomp E.
-      subst p. inverts P' as P' W. rewrite weight_cons.
-       forwards~ M: (@mininf_finite_elim (path int)) p' (eq_sym Eq). 
-        rewrite Dok in Nlt. forwards~ (q&Q&Wq): mininf_len_gt_not_elim Nlt.
-        lets (dy&Iy&Wy): Hcomp Q. exists dy. split~. math.    
-  case_If. auto. unfolds heap_correct, heap_complete.
-   do 3 rewrite~ new_enters_not. 
-Qed.
- 
-Lemma inv_update_gt : forall V B H y w x dy dx L,
-  inv (V\(x:=true)) B H (new_enters x L V) ->
-  Finite dx = dist G s x ->
-  dy = dx + w ->
-  has_edge G x y w ->
-  len_gt (B\(y)) dy ->
-  size_ok V -> size_ok B ->
-  inv (V\(x:=true)) (B\(y:=Finite dy)) ('{(y, dy)} \u H) (new_enters x ((y,w)::L) V).
-Proof.
-  introv Inv Eq Dy Ed Nlt SV SB. introv Nz. lets R: Inv Nz. tests (z = y).
-  forwards~ (px&Px&Wx&Mx): (@mininf_finite_inv (path int)) (eq_sym Eq).
-  case_If.
-    false. rewrite R in Nlt. forwards~ M: mininf_len_gt Nlt ((x,y,w)::px).
-     rewrite weight_cons in M. math.
-  sets p: ((x,y,w)::px). asserts P: (new_enters x ((y, w) :: L) V y p).
-    subst p. split. intro_subst. rew_arr~ in C. right. split. split. auto.
-    tests (x = y). rew_arr~ in C. rew_array~ in C. exists___~. 
-  asserts W: (weight p = dy). subst p. rewrite weight_cons. math. 
-  destruct R as (Dok&Hcorr&Hcomp). splits.  
-    rew_arr~. rewrite~ (mininf_finite p). rewrite~ W.
+
+  false. rewrite~ Bd in Nlt. forwards M: mininf_len_gt Nlt p; subst p; auto.
+   rewrite weight_cons in M. math.
+*)
+(*
+  cuts_rewrite~ (new_enters x ((y,w)::L) V = new_enters x L V).
+clears p.
+   extens. intros z q. iff M. 
+   destruct (new_enters_inv M) as [M'|M']. auto.
+    inverts M'. inverts H0. destruct H1. subst q. inverts H2.
+   tests (x= y). . rew_array~ in C. false.  
+   apply~ new_enters_grows.
+ *)
+
+  skip.
+  (* subcase y not visisted, distance improved *)
+  asserts P: (new_enters x ((y, w) :: L) V y p).
+    subst p. split. intro_subst. subst V'. rew_arr~ in C.
+    right. split. split. auto.
+    subst V'. tests (x = y). rew_arr~ in C. rew_array~ in C. exists___~. 
+  constructors.
+    intros. false. destruct (V'\(y)); false. (* todo fix *)
+    introv Vi. rew_arr~. rewrite~ (mininf_finite p). rewrite~ W.
      intros q Enq. lets [E|[(P'&Vy') (p'&Ep)]]: (new_enters_inv Enq).
-       rewrite Dok in Nlt. forwards~: mininf_len_gt Nlt E. math.
+       rewrite~ Bb in Nlt. forwards~: mininf_len_gt Nlt E. math.
        subst q. rewrite weight_cons. inverts P' as Q' _. forwards: Mx Q'. math.
-    introv Iy. multiset_in Iy.
+    introv Vi Iy. multiset_in Iy.
       introv E. inverts E. exists~ p.
-      lets (p'&P'&Wp'): Hcorr H0. exists p'. split~. apply~ new_enters_grows.   
+      lets~ (p'&P'&Wp'): Hc H0. exists p'. split~. apply~ new_enters_grows.   
     intros py Ey. lets [E|[(P'&Vy') (p'&Ep)]]: (new_enters_inv Ey).
       forwards~ (d&D'&In'): Hcomp E. exists d. split~. multiset_in.
       subst py. inverts P' as P' W. rewrite weight_cons.
        exists dy. split~. multiset_in.
        forwards~ M: (@mininf_finite_elim (path int)) p' (eq_sym Eq). math.
-  case_If. rew_array~. destruct R as (Dok&Hcorr&Hcomp). splits.  
-    rew_array~. rewrite~ new_enters_not.
-    intros dz Iz. rewrite~ new_enters_not. apply Hcorr.
-     multiset_in Iz. intros EQ. inverts EQ. false. auto. (* cleanup *) 
-    introv En. rewrite~ new_enters_not in En. forwards (dz&Hz&?): Hcomp En.
+  (* subcase y not visisted, distance not improved *)
+  constructors.
+    intros. false. destruct (V'\(y)); false. (* todo fix *)
+    intros Vi. rewrite~ Bb in Nlt. forwards~ (d&Md&Ld): mininf_len_gt_not Nlt.
+     forwards~ (q&Q&Wq&Mq): (@mininf_finite_inv (path int)) Md.
+     rewrite~ Bb. rewrite Md. rewrite~ (mininf_finite q).
+      rewrite~ Wq. apply~ new_enters_grows.
+      intros p0 Ep0. rewrite Wq. lets [E|[(P'&Vy') (p'&Ep')]]: (new_enters_inv Ep0).
+        apply~ Mq.
+        subst p0. inverts P' as P' W. rewrite weight_cons. 
+         forwards~ M: (@mininf_finite_elim (path int)) p' (eq_sym Eq). 
+         math.
+    introv Vi Iy. forwards~ (p0&P&Wp0): Hc Iy. exists p0. split~.
+     apply~ new_enters_grows.   
+    introv Ey. lets [E|[(P'&Vy') (p'&Ep)]]: (new_enters_inv Ey).
+      applys Hk E.
+      subst p0. inverts P' as P' W. rewrite weight_cons.
+       forwards~ M: (@mininf_finite_elim (path int)) p' (eq_sym Eq). 
+        rewrite~ Bb in Nlt. forwards~ (q&Q&Wq): mininf_len_gt_not_elim Nlt.
+        lets (dy'&Iy&Wy): Hk Q. exists dy'. split~. math.    
+  (* case z <> y *)
+  case_If.
+  constructors.
+    intros. rew_array~.
+    intros. rew_array~. rewrite~ new_enters_not. 
+    introv Vi In. multiset_in In. auto_false. rewrite~ new_enters_not.
+    introv En. rewrite~ new_enters_not in En. forwards (dz&Hz&?): Hk En.
      exists~ dz. split~. multiset_in.
+  constructors; try solve [ auto | rewrite~ new_enters_not ].
 Qed.
 
 Lemma inv_no_update : forall V' B H x d,
@@ -779,10 +815,10 @@ Lemma inv_no_update : forall V' B H x d,
   inv V' B ('{(x,d)}\u H) (enters V') ->
   inv V' B H (enters V').
 Proof.
-  introv Vx Inv Nz. lets R: Inv Nz. case_If. auto. 
-  destruct R as (Dok&Hcorr&Hcomp). splits~.
-    introv In. apply~ Hcorr. multiset_in.
-    introv En. forwards (d'&In&?): Hcomp En.
+  introv Vx [Inv SB SV]. constructors~. introv Nz.
+  lets [Bd Bb Hc Hk]: Inv Nz. constructors~.
+    introv Vi In. apply~ Hcorr. multiset_in.
+    introv En. forwards (d'&In&?): Hk En. lets ((_&?)&?): En.
      exists d'. split~. multiset_in In; auto_false.
 Qed.
 
