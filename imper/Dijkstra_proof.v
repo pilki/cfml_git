@@ -464,26 +464,18 @@ Definition size_ok `{Inhab A} (T:array A) :=
   forall x, x \in nodes G -> index T x.
 
 Hint Unfold size_ok.
-(*
-Lemma size_ok_elim : forall `{Inhab A} (T:array A) x,
-  size_ok T -> x \in nodes G -> index T x.
-Proof. unfolds~ size_ok. Qed.
-Hint Extern 1 (index _ _) => apply size_ok_elim.
-*)
 
-(*-----------------------------------------------------------*)
-Definition heap_correct V H reach z := 
-  forall d, (z,d) \in H -> exists p, reach z p /\ weight p = d.
+(*-----------------------------------------------------------*)
+Record inv_of z V B H reach : Prop := {
+  Bdist: V\(z) = true -> B\(z) = dist G s z;
+  Bbest: V\(z) = false -> B\(z) = mininf weight (reach z); 
+  Hcorr: forall d, V\(z) = false -> (z,d) \in H -> exists p, reach z p /\ weight p = d;
+  Hcomp: forall p, reach z p -> exists d, (z,d) \in H /\ d <= weight p }.
 
-Definition heap_complete V H reach z := forall p,
-   reach z p -> exists d, (z,d) \in H /\ d <= weight p. 
-
-Definition inv V B H reach := forall z, z \in nodes G ->
-  If V\(z) = true 
-    then B\(z) = dist G s z
-    else B\(z) = mininf weight (reach z)
-      /\ heap_correct V H reach z
-      /\ heap_complete V H reach z.
+Record inv V B H reach : Prop := {
+  Invof: forall z, z \in nodes G -> inv_of z V B H reach;
+  SizeV: size_ok V;
+  SizeB: size_ok B }.
 
 Definition from_out V z p :=
   is_path G s z p /\ V\(z) = false.
@@ -614,79 +606,95 @@ Proof.
 Qed.
 
 (*-----------------------------------------------------------*)
+
 Lemma inv_start : forall n, 
   (forall x, x \in nodes G -> index n x) ->
   inv (make n false) (make n Infinite\(s:=Finite 0)) 
       ('{(s, 0)}) (enters (make n false)).
 Proof.
-  introv EQ. intros z Nz. 
-  asserts Es: (enters (make n false) s nil).
-    splits~. splits~. rew_array~.
-  case_If as Vi. rew_array~ in Vi. false. splits.
-  tests (z = s).
-    rew_arr~. rewrite~ (mininf_finite (nil:path int)). 
+  introv EQ.
+  asserts Es: (enters (make n false) s nil).  splits~. splits~. rew_array~.
+  constructors~; [| skip (*todo: size_ok*)].
+  introv Nz. constructors~.
+  introv Vi. rew_array~ in Vi. false.
+  introv Vi. tests (z = s).
+    rew_arr~. rewrite~ (mininf_finite (nil:path int)).    
      intros p ((?&?)&?). apply* nonneg_edges_to_path.
     rew_array~. rewrite~ mininf_infinite.
      intros p (P&[Pn|(q&y&w&Py&Ey)]).
        subst. destruct P as [P _]. inverts P. false.
        rew_array* in Ey.
-  introv E. multiset_in E. intros E. inverts E. exists~ (nil:path int).
+  introv Vi E. multiset_in E. intros E. inverts E. exists~ (nil:path int).
   introv (P&[Pn|(q&y&w&Py&Ey)]). 
     exists 0. subst p. destruct P as [P _]. inverts P.
      split. multiset_in. rewrite weight_nil. math.
-    rew_array* in Ey. false.
+    rew_array* in Ey. false. 
 Qed.
+
+Axiom boolneg : forall b, !b -> b = false.
+Hint Resolve boolneg.
 
 Lemma inv_end_elim : forall x V B,
   inv V B \{} (enters V) -> 
   x \in nodes G ->
   B\(x) = dist G s x.
 Proof.
-  introv Inv Nx. lets H: Inv x. case_If. auto.
-  destruct~ H as (Dok&?&?). unfold dist. rewrite Dok.
+  introv [Inv SB SV] Nx.
+  tests (V\(x)) as C. applys* (Bdist (Inv _ Nx)).
+  rewrite~ (Bbest (Inv _ Nx)). unfold dist.
   asserts Ne: (forall z p, z \in nodes G -> ~ enters V z p).
-    introv Nz P. lets R: Inv Nz. lets ((_&?)&_): P. case_If.
-     forwards (d&N&_): (proj33 R) P. multiset_in N.
+    introv Nz P. forwards* (d&N&_): (Hcomp (Inv _ Nz)). multiset_in N.
   apply (eq_trans' Infinite); rewrite~ mininf_infinite.
-  intros p P. forwards* (z&q&Q&?): enters_shorter P.
+  intros p P. forwards* (z&q&Q&?): enters_shorter P. 
 Qed.
+(*
+Hint Resolve SizeV SizeB.
+
+*)
+Lemma size_ok_elim : forall `{Inhab A} (T:array A) x,
+  size_ok T -> x \in nodes G -> index T x.
+Proof. unfolds~ size_ok. Qed.
+Hint Extern 1 (index _ _) => apply size_ok_elim.
+
 
 Lemma inv_begin_loop : forall x d V B H H',
   H = '{(x,d)} \u H' -> 
   is_min_of H (x,d) ->
   x \in nodes G ->
   V\(x) = false ->
-  size_ok V -> size_ok B ->
   inv V B H (enters V) ->
      inv (V\(x:=true)) B H' (new_enters x nil V)
   /\ Finite d = dist G s x.
 Proof.
-  introv EQ [In Mi] Nx Vx SV SB Inv. 
+  introv EQ [In Mi] Nx Vx [Inv SB SV]. 
   asserts: (forall y q, enters V y q -> d <= weight q). 
-    introv Ey. lets ((_&?)&_): Ey. forwards* IY: Inv y.
-    case_If. lets (d'&In'&?): (proj33 IY) Ey. 
+    introv Ey. lets ((_&?)&_): Ey. specializes~ Inv (>> y __).  
+    forwards* (d'&In'&?): (Hcomp Inv) Ey.
     lets Sy: Mi In'. skip: (d <= d'). math. (* todo with modules *)
-  lets Rx: Inv Nx. case_If. lets (p&E&W): (proj32 Rx) In. 
+  forwards* (p&En&W): Hcorr (Inv _ Nx).
   apply conj_dup_r. subst d. rewrite~ (@enters_best V x p).
-  clear Rx. introv Dx Nz. lets R: Inv Nz. tests (z = x).
-  rew_arr~. case_If. case_If. rewrite (proj31 R).
-   subst d. rewrite* (mininf_finite p).
-  rew_array~. case_If. auto. destruct R as (Dok&Hcorr&Hcomp). splits.
-   rewrite~ new_enters_nil. 
-   intros dz Iz. rewrite~ new_enters_nil. apply Hcorr. subst H. multiset_in.
-   introv En. rewrite~ new_enters_nil in En. forwards (dz&Hz&?): Hcomp En.
-    exists~ dz. subst H. multiset_in Hz; intros; tryfalse. split~.
+  introv Dx. constructors~. introv Nz. forwards [Bd Bb Hc Hk]: Inv Nz.
+  tests (z = x). constructors; rew_arr~; try solve[auto_false].
+    intros _. rewrite~ Bb. subst d. rewrite* (mininf_finite p).
+    introv En'. false~ (proj1 En').
+  constructors; rew_array~.
+    introv Vi. rewrite~ new_enters_nil.
+    introv Vi Iz. rewrite~ new_enters_nil. 
+     apply~ Hc. subst H. multiset_in.
+    introv En'. lets: (proj1 En'). rewrite~ new_enters_nil in En'.
+     forwards~ (dz&Hz&?): Hk En'. exists~ dz.
+     subst H. multiset_in Hz; intros; tryfalse. split~.
 Qed.
 
 Lemma inv_end_loop : forall V x H B L,
   outgoing_edges x L ->
   x \in nodes G ->
   V\(x) = false ->
-  size_ok V -> size_ok B ->
   inv (V\(x:=true)) B H (new_enters x L V) ->
   inv (V\(x:=true)) B H (enters (V\(x:=true))).
 Proof.
-  introv EL Nx Vx SV SB Inv. introv Nz. lets R: Inv Nz. tests (x = z).
+  introv EL Nx Vx [Bd Bb Hc Hk SB SV]. constructors~.
+  introv Nz. lets R: Inv Nz. tests (x = z).
   rew_arr~. rewrite~ @array_update_read_eq in R. case_If. auto.
   rew_array~. rew_array~ in R. case_If. auto. 
    destruct R as (Dok&Hcorr&Hcomp). splits.  
