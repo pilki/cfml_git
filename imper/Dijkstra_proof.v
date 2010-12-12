@@ -828,35 +828,41 @@ Proof.
   xapps. xapps. xapps. xapps. xapps*. xapps.
   set (data := fun B V Q =>
     g ~> Array Id N \* v ~> Array Id V \* b ~> Array Id B \* q ~> Heap Q).
-  set (hinv := fun Q:multiset(int*int) => 
-    Hexists B V, data B V Q \* [inv G s V B Q (enters G s V)]).
-  xseq (# hinv \{}). xwhile_inv (fun H:multiset(int*int) => 0%nat) hinv. 
-    skip. (* todo: termination *)
+  set (hinv := fun VQ => let '(V,Q) := VQ in
+    Hexists B, data B V Q \* [inv G s V B Q (enters G s V)]).
+  xseq (# Hexists V, hinv (V,\{})).  (* todo: rem xseq *) 
+  set (termin := lexico2 (binary_map (count (=true)) (upto (length N)))
+                       (binary_map (fun Q:multiset(int*int) => card Q:int) (downto 0))).
+  xwhile_inv termin hinv. subst termin. prove_wf. (* todo: automate *)
+(* (# hinv \{}). *) 
+Definition ex_intro' A (x:A) (P:A->Prop) (H:P x) := @ex_intro A P x H.
+Implicit Arguments ex_intro' [A [P] [H]].
     (* -- initial state satisfies invariant -- *)
-    esplit. unfold hinv,data. hsimpl*. 
-      applys_eq~ inv_start 2. permut_simpl.
+    refine (ex_intro' (_,_)). unfold hinv,data. hsimpl. 
+     applys_eq~ inv_start 2. permut_simpl. (* todo: rename *)
     (* -- verification of the loop body -- *) 
-    intros H. unfold hinv. xextract as B V Inv. 
-     apply local_erase. esplit. splits.
+    intros [V Q]. unfold hinv. xextract as B Inv.  (* todo: lost notation *)
+     apply local_erase. esplit. splits. 
     (* ---- loop condition -- *) 
     unfold data. xapps. xret.
     (* ---- loop body -- *) 
     xextract as HN. xapp. intros [x d] H' Mi HE. intro_subst.
     lets [Inv' SB SV]: Inv.
     asserts: (x \in nodes G). (* todo : move *)
-      lets [_ _ Hc _]: Inv' x. forwards~ [? _]: Hc d. subst H. multiset_in.
+      lets [_ _ Hc _]: Inv' x. forwards~ [? _]: Hc d.
+       subst Q. multiset_in. (* todo: auto*)
     xmatch. xapps~. xif; [ skip: (V\(x) = false) | ]. (* todo: cleanup *)
     (* ------ node treated -- *) 
     forwards~ [Inv'' Dx]: inv_begin_loop HE Inv.
-    xapps~. xfun_mg. xapps~.
+    xapps~. xfun. xapps~.
     sets V': (V\(x:=true)).
-    sets I: (fun L => Hexists L', Hexists B H, data B V' H (* todo bug when writing Hexists *)
-        \* [inv G s V' B H (new_enters G s x L' V) ] \* [N\(x) = rev(L')++L]).
+    sets I: (fun L => Hexists L', Hexists B Q, data B V' Q (* todo bug when writing Hexists *)
+        \* [inv G s V' B Q (new_enters G s x L' V) ] \* [N\(x) = rev(L')++L]).
     xapp_manual. xapply (KR I); clear KR; match goal with |- context [update] => idtac | _ => clears update end.
     (* -------- verification of update -- *) 
     apply Supdate. xisspec. clears update. clear hinv. (* todo tactic *)
-    unfold I at 1. hide I. unfold data. hide data. clears B H.  
-    intros [y w] L. xextract as L' B H Inv EQ.
+    unfold I at 1. hide I. unfold data. hide data. clears B Q.  
+    intros [y w] L. xextract as L' B Q Inv EQ. sort.
     xmatch.
     lets [_ _ SV]: Inv. 
     asserts Ew: (has_edge G x y w). rewrite~ <- Adj. rewrite EQ. applys* Mem_app_or.
@@ -874,20 +880,43 @@ Proof.
     unfold I. unfold data. hsimpl~ (nil:list (int*int)). xok.
     (* -------- iter post-condition -- *) 
     clears update. subst I.
-    hextract as L B' H'' I' Leq. skip: (size_ok G B'). (* todo extract from data *)
-     hsimpl~ H'' B' V'.
-    skip. (* termination *)
+    hextract as L B' Q'' I' Leq. hsimpl~ (V',Q'') B'.
+    left. hnf. subst V'. 
+  (* todo :swapped SB and SV *)
+  (* todo : changer sizer_ok pour avoir length B = n *) 
+  (* todo: garder n = length N *)
+  skip LenV: (length V = length N).
+Lemma count_bounds : forall `{Inhab A} (t:array A) (f:A->Prop),
+  0 <= count f t <= length t.
+Admitted.
+  split.
+    rewrite <- LenV. forwards K: (count_bounds (V\(x:=true)) (=true)).
+     rewrite length_update in K. math.
+    lets M: (@count_update bool _). rewrite M. clear M. (* bug coq -> rewrites (rm) *)
+     do 2 case_If. math.
     rew_app in Leq. applys~ inv_end_loop I'.
-      hnf. intros. rewrite~ <- Adj. rewrite Leq. skip. (*apply Mem_rev.*)
+      hnf. intros. rewrite~ <- Adj. rewrite Leq.
+Lemma Mem_last : forall A (L:list A) x,
+  Mem x (L & x).
+Proof. intros. apply~ Mem_app_or. Qed.
+Lemma Mem_rev : forall A (L:list A) x,
+  Mem x L -> Mem x (rev L).
+Proof. introv H. induction H; rew_rev; apply~ Mem_app_or. Qed.
+Lemma Mem_rev_eq : forall A (L:list A) x,
+  Mem x L = Mem x (rev L).
+Proof. extens. iff M. apply~ Mem_rev. rewrite <- rev_rev. apply~ Mem_rev. Qed.
+  apply Mem_rev_eq.
     (* ------ node ignored -- *) 
-    xret. unfold data. hsimpl*.
-      skip. (*termination*) 
+    xret. unfold data. hsimpl (V,H'). (* todo improve pair *) (* todo: rename H' *)
+      right. split~. hnf. subst Q. rewrite card_union. rewrite card_single. math.
+  (* todo: name card_int as a function *)
       skip: (V\(x) = true) . (* cleanup*)
-    subst H. apply* inv_no_update. 
+    subst Q. apply* inv_no_update. 
     (* ---- loop post-condition -- *) 
-    hextract as He. fold_bool. rew_logic in He. subst H. unfold data. xsimpl~.
+    hextract as He. fold_bool. rew_logic in He. subst Q. unfold data.
+    xsimpl~.
   (* ---- return value -- *) 
-  unfold hinv, data. xextract as B V Inv. lets [_ _ ?]: Inv.
+  intros V B Inv. unfold hinv, data. lets [_ _ ?]: Inv.
   xapp~. intros l. hdata_simpl GraphAdjList. xsimpl~.
   subst l. apply* inv_end_elim.
 Qed.
@@ -895,6 +924,7 @@ Qed.
 
 (*-----------------------------------------------------------*)
 
+(* todo: rename Q into H *)
 (* todo: cleanup the boolean equalities *)
 (* todo: prettyprint for  "let (x,y) =" and "fun (x,y) ="
 (* todo: automate multiset_in *)
