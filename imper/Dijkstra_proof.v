@@ -32,11 +32,6 @@ Qed.
 Axiom bool_test' : forall b,
   b = true \/ b = false.
 
-Axiom bool_neq_true_eq_false : forall b,
-  b <> true -> b = false.
-Hint Resolve bool_neq_true_eq_false.
-
-Hint Resolve istrue_True.
 
 
 Hint Rewrite @array_update_read_eq : rew_arr.
@@ -130,6 +125,109 @@ Tactic Notation "tests" constr(E) "as" simple_intropattern(I) :=
 
 Tactic Notation "tests" constr(E) :=
   let H := fresh "C" in tests E as H.
+
+
+Definition ex_intro' A (x:A) (P:A->Prop) (H:P x) := @ex_intro A P x H.
+Implicit Arguments ex_intro' [A [P] [H]].
+
+
+Lemma count_bounds : forall `{Inhab A} (t:array A) (f:A->Prop),
+  0 <= count f t <= length t.
+Admitted.
+
+Lemma Mem_last : forall A (L:list A) x,
+  Mem x (L & x).
+Proof. intros. apply~ Mem_app_or. Qed.
+Lemma Mem_rev : forall A (L:list A) x,
+  Mem x L -> Mem x (rev L).
+Proof. introv H. induction H; rew_rev; apply~ Mem_app_or. Qed.
+Lemma Mem_rev_eq : forall A (L:list A) x,
+  Mem x L = Mem x (rev L).
+Proof. extens. iff M. apply~ Mem_rev. rewrite <- rev_rev. apply~ Mem_rev. Qed.
+
+Lemma xgen_lemma : forall A (J:A->hprop) (E:A),
+  J E ==> heap_is_pack J.
+Proof. intros. hsimpl*. Qed.
+
+Ltac xgen_abstract H E :=
+  let Jx := eval pattern E in H in
+  match Jx with ?J _ => constr:(J) end.
+
+Ltac xgen_nosimpl E :=
+  match goal with |- ?H ==> _ =>
+    let J := xgen_abstract H E in 
+    eapply pred_le_trans; [ apply (@xgen_lemma _ J E) | ] end.
+
+
+Ltac xgen_base E := 
+  xgen_nosimpl E.    
+
+Tactic Notation "xgen" constr(E1) :=
+  xgen_base E1.
+Tactic Notation "xgen" constr(E1) constr(E2) :=
+  xgen_base E1; xgen_base E2.
+
+
+Lemma xgen_demo : forall (x E y F:int) H1 R,
+  (forall H2, x ~> R E \* y ~> R F \* H1 ==> H2 -> H2 = H2 -> True) -> True.
+Proof.
+  introv H. dup.
+  eapply H. xgen E. xgen F. xok. auto.
+  eapply H. xgen E F. xok. auto.
+Qed.
+
+Hint Extern 1 (wf ?R) => unfold R : wf.
+
+
+Lemma ml_list_iter_spec : forall a,
+  Spec ml_list_iter f l |R>> forall (I:list a->hprop),
+    (forall x t, (App f x;) (I (x::t)) (# I t)) -> 
+    R (I l) (# I nil).
+Admitted.
+Hint Extern 1 (RegisterSpec  ml_list_iter) => Provide ml_list_iter_spec.
+
+
+Ltac xret_pre cont ::= 
+  match ltac_get_tag tt with
+  | tag_ret => cont tt
+  | tag_let_trm => xlet; [ cont tt | instantiate ]
+  end. 
+
+Ltac xwhile_inv_core W I ::=
+  match type of W with
+  | wf _ => eapply (@while_loop_cf_to_inv _ I _ W)
+  | _ -> nat => eapply (@while_loop_cf_to_inv _ I (measure W)); [ try prove_wf | | ]
+  | _ => eapply (@while_loop_cf_to_inv _ I W); [ try prove_wf | | ]
+  end.
+
+Tactic Notation "xapp_body" :=
+  xuntag; let f := spec_goal_fun tt in
+  xfind f; let H := fresh "TEMP" in intro H; 
+  eapply app_spec_1; apply H; clear H; try xisspec.
+
+Tactic Notation "clears" ident(X1) ident(X2) ident(X3) :=
+  clears X1; clears X2; clears X3.
+Tactic Notation "clears" ident(X1) ident(X2) ident(X3) ident(X4) :=
+  clears X1; clears X2; clears X3; clears X4.
+Tactic Notation "clears" ident(X1) ident(X2) ident(X3) ident(X4) 
+ ident(X5) :=
+  clears X1; clears X2; clears X3; clears X4; clears X5.
+Tactic Notation "clears" ident(X1) ident(X2) ident(X3) ident(X4)
+ ident(X5) ident(X6) :=
+  clears X1; clears X2; clears X3; clears X4; clears X5; clears X6.
+
+Lemma array_count_upto : forall `{Inhab A} (P:A->Prop) (t:array A) n i v,
+  ~ P (t\(i)) -> P v -> length t <= n ->
+  upto n (count P (t\(i:=v))) (count P t).
+Proof.
+  introv Ni Pv Le. forwards K: (count_bounds (t\(i:=v)) P). split.
+  rewrite length_update in K. math.
+  lets M: (@count_update A _). rewrite M. clear M. do 2 case_If. math.
+Qed.
+
+Tactic Notation "xwhile_body" :=
+  apply local_erase; esplit; splits (3%nat). 
+
 
 
 
@@ -498,12 +596,6 @@ Hint Extern 1 (RegisterSpec pop) => Provide pop_spec.
 
 Hint Constructors Mem is_path.Ltac auto_star ::= try solve [ auto | jauto ]. 
 
-(*
-Hint Extern 3 (_ \in _) => in_union_extract.
-Hint Extern 3 (_ \in _ \u _) => in_union_get.
-*)
-
-
 Lemma multiset_in_union_single_eq_l : forall A (x:A) E F,
   E = \{x} \u F -> x \in E.
 Proof. intros. subst. multiset_in. Qed.
@@ -514,6 +606,15 @@ Proof. introv M N. subst. multiset_in. Qed.
 
 Hint Resolve multiset_in_union_single_eq_l multiset_in_union_single_eq_r.
 
+Hint Extern 1 (_ \in _ \u _) => multiset_in.
+Hint Extern 1 (_ \in \{_}) => multiset_in.
+
+Lemma graph_adj_index : forall A B (T:array A) (G:graph B) n x,
+  (forall x, x \in nodes G = index n x) -> length T = n -> 
+  x \in nodes G -> index T x.
+Proof. introv Nod Len Nx. subst. rewrite array_index_def. rewrite~ <- Nod. Qed.
+Hint Extern 1 (index ?T ?x) =>
+  eapply graph_adj_index; [try eassumption | try congruence | ].
 
 (*-----------------------------------------------------------*)
 
@@ -523,17 +624,10 @@ Implicit Types Q : multiset (int*int).
 Implicit Types p : path int.
 
 Section Invariants.
-Variables (G:graph int) (s:int).
+Variables (G:graph int) (N:array (int*int)) (s:int).
 
-(*-----------------------------------------------------------*)
-
-Definition size_ok `{Inhab A} (T:array A) :=
-  forall x, x \in nodes G -> index T x.
-
-Hint Unfold size_ok.
-
-Require Import LibArray.
-Require Import LibSet.
+Definition size_ok A (T:array A) :=
+  forall x, x \in nodes G -> index T x.  
 
 (*-----------------------------------------------------------*)
 
@@ -546,8 +640,8 @@ Record inv_of z V B Q reach : Prop := {
 
 Record inv V B Q reach : Prop := {
   Invof: forall z, inv_of z V B Q reach;
-  SizeV: size_ok V;
-  SizeB: size_ok B }.
+  SizeV: length V = length N;
+  SizeB: length B = length N }.
 
 Definition from_out V z p :=
   is_path G s z p /\ V\(z) = false.
@@ -584,13 +678,13 @@ Qed.
 
 Lemma new_crossing_grows : forall x L V z p y w,
   new_crossing x L V z p -> new_crossing x ((y,w)::L) V z p.
-Proof. introv (N&[H|(q&w'&?&?&M)]); eauto 10. Qed.
+Proof. introv (Nxz&[H|(q&w'&?&?&M)]); eauto 10. Qed.
 
 Lemma new_crossing_inv : forall x L V z p y w,
   new_crossing x ((y,w)::L) V z p -> 
       new_crossing x L V z p 
    \/ (z <> x /\ from_out V z p /\ exists q, p = (x,y,w)::q).
-Proof. introv (N&[H|(P&(q&w'&E&M))]). eauto. inverts M; eauto 10. Qed.
+Proof. introv (Nxz&[H|(P&(q&w'&E&M))]). eauto. inverts M; eauto 10. Qed.
 
 End NewEnters.
 
@@ -629,7 +723,7 @@ Proof.
 Qed.
 
 Lemma crossing_step : forall L V x, 
-  V\(x) = false -> size_ok V -> x \in nodes G ->
+  ~ isTrue (V\(x)) -> size_ok V -> x \in nodes G ->
   outgoing_edges x L ->
   new_crossing x L V = crossing (V\(x:=true)).
 Proof.
@@ -637,14 +731,14 @@ Proof.
   asserts EF: (z \in nodes G -> z <> x -> from_out (V\(x:=true)) z p = from_out V z p).
     intros. unfold from_out. rew_array~.
   iff (Nzx&H) H.
-   hnf in H. destruct H as [(F&[N|(q&y&w&E&Vy)])|(P&(q&w&E&M))];
+   hnf in H. destruct H as [(F&[Nxz|(q&y&w&E&Vy)])|(P&(q&w&E&M))];
     (split; [ rewrite* EF | ]).
      auto.
      right. exists q y w. split~. rew_array*. auto_false.
      right. exists q x w. rew_arr~.     
    asserts: (z <> x).
      intro_subst. lets ((_&E)&_): H. rew_arr~ in E. false.
-    destruct H as (F&[N|(q&y&w&E&Vy)]).
+    destruct H as (F&[Nxz|(q&y&w&E&Vy)]).
       rewrite* EF in F. subst. split~. left. split~.
       rewrite* EF in F. tests (y = x); split~.
         right. split~. exists q w. split~. rewrite EQ. 
@@ -653,7 +747,7 @@ Proof.
 Qed.
 
 Lemma crossing_shorter : forall V z p, 
-  is_path G s z p -> V\(z) = false -> 
+  is_path G s z p -> ~ isTrue (V\(z)) -> 
   exists x q, crossing V x q /\ weight q <= weight p.
 Proof.
   introv P. set_eq s': s in P. set_eq G': G in P. 
@@ -668,7 +762,7 @@ Proof.
 Qed.
 
 Lemma crossing_best : forall V x p,
-  V\(x) = false -> crossing V x p -> 
+  ~ isTrue (V\(x)) -> crossing V x p -> 
   (forall y q, crossing V y q -> weight p <= weight q) ->
   dist G s x = Finite (weight p).
 Proof.
@@ -680,19 +774,19 @@ Qed.
 
 
 (*-----------------------------------------------------------*)
+Axiom length_make : forall A n (v:A),
+  length (make n v) = n.
 
 
-Hint Extern 1 (_ \in _ \u _) => multiset_in.
-Hint Extern 1 (_ \in \{_}) => multiset_in.
 
-Lemma inv_start : forall n, 
+Lemma inv_start : let n := length N in 
   (forall x, x \in nodes G -> index n x) ->
   inv (make n false) (make n Infinite\(s:=Finite 0)) 
       ('{(s, 0)}) (crossing (make n false)).
 Proof.
-  introv EQ.
+  intros n. introv EQ.
   asserts Es: (crossing (make n false) s nil).  splits~. splits~. rew_array~.
-  constructors~; [| skip (*todo: size_ok*)].
+  constructors. 
   intros z. constructors~.
   introv Nz Vi. rew_array~ in Vi. false.
   introv Nz Vi. tests (z = s).
@@ -707,11 +801,9 @@ Proof.
     exists 0. subst p. destruct P as [P _]. inverts P.
      split~. rewrite weight_nil. math.
     rew_array* in Ey. false. 
+  rewrite~ length_make.
+  rewrite~ length_update. rewrite~ length_make.
 Qed.
-
-Axiom boolneg : forall b, !b -> b = false.
-Hint Resolve boolneg.
-
 
 Lemma inv_end_elim : forall x V B,
   inv V B \{} (crossing V) -> 
@@ -722,7 +814,7 @@ Proof.
   tests (V\(x)). applys* (Bdist (Inv x)).
   rewrite~ (Bbest (Inv x)). unfold dist.
   asserts Ne: (forall z p, z \in nodes G -> ~ crossing V z p).
-    introv Nz P. forwards* (d&N&_): (Hcomp (Inv z)). multiset_in N.
+    introv Nz P. forwards* (d&Na&_): (Hcomp (Inv z)). multiset_in Na.
   apply (eq_trans' Infinite); rewrite~ mininf_infinite.
   intros p P. forwards* (z&q&Q'&?): crossing_shorter P. 
 Qed.
@@ -870,7 +962,7 @@ Proof.
 Qed.
 
 Lemma inv_no_update : forall V' B H x d,
-  V'\(x) = true ->
+  isTrue (V'\(x)) ->
   inv V' B ('{(x,d)}\u H) (crossing V') ->
   inv V' B H (crossing V').
 Proof.
@@ -883,68 +975,6 @@ Qed.
 End Invariants.
 
 (*-----------------------------------------------------------*)
-
-Definition ex_intro' A (x:A) (P:A->Prop) (H:P x) := @ex_intro A P x H.
-Implicit Arguments ex_intro' [A [P] [H]].
-
-Hint Unfold size_ok.
-
-Lemma count_bounds : forall `{Inhab A} (t:array A) (f:A->Prop),
-  0 <= count f t <= length t.
-Admitted.
-
-Lemma Mem_last : forall A (L:list A) x,
-  Mem x (L & x).
-Proof. intros. apply~ Mem_app_or. Qed.
-Lemma Mem_rev : forall A (L:list A) x,
-  Mem x L -> Mem x (rev L).
-Proof. introv H. induction H; rew_rev; apply~ Mem_app_or. Qed.
-Lemma Mem_rev_eq : forall A (L:list A) x,
-  Mem x L = Mem x (rev L).
-Proof. extens. iff M. apply~ Mem_rev. rewrite <- rev_rev. apply~ Mem_rev. Qed.
-
-Lemma xgen_lemma : forall A (J:A->hprop) (E:A),
-  J E ==> heap_is_pack J.
-Proof. intros. hsimpl*. Qed.
-
-Ltac xgen_abstract H E :=
-  let Jx := eval pattern E in H in
-  match Jx with ?J _ => constr:(J) end.
-
-Ltac xgen_nosimpl E :=
-  match goal with |- ?H ==> _ =>
-    let J := xgen_abstract H E in 
-    eapply pred_le_trans; [ apply (@xgen_lemma _ J E) | ] end.
-
-
-Ltac xgen_base E := 
-  xgen_nosimpl E.    
-
-Tactic Notation "xgen" constr(E1) :=
-  xgen_base E1.
-Tactic Notation "xgen" constr(E1) constr(E2) :=
-  xgen_base E1; xgen_base E2.
-
-
-Lemma xgen_demo : forall (x E y F:int) H1 R,
-  (forall H2, x ~> R E \* y ~> R F \* H1 ==> H2 -> H2 = H2 -> True) -> True.
-Proof.
-  introv H. dup.
-  eapply H. xgen E. xgen F. xok. auto.
-  eapply H. xgen E F. xok. auto.
-Qed.
-
-Hint Extern 1 (wf ?R) => unfold R : wf.
-
-
-Lemma ml_list_iter_spec : forall a,
-  Spec ml_list_iter f l |R>> forall (I:list a->hprop),
-    (forall x t, (App f x;) (I (x::t)) (# I t)) -> 
-    R (I l) (# I nil).
-Admitted.
-Hint Extern 1 (RegisterSpec  ml_list_iter) => Provide ml_list_iter_spec.
-
-
 
 Lemma shortest_path_spec :
   Spec shortest_path g a b |R>> forall G,
@@ -960,81 +990,58 @@ Proof.
     g ~> Array Id N \* v ~> Array Id V \* b ~> Array Id B \* q ~> Heap Q).
   set (hinv := fun VQ => let '(V,Q) := VQ in
     Hexists B, data B V Q \* [inv G s V B Q (crossing G s V)]).
-  xseq. (* (# Hexists V, hinv (V,\{})).  *) 
-  set (termin := lexico2 (binary_map (count (=true)) (upto (length N)))
-                       (binary_map (fun Q:multiset(int*int) => card Q:int) (downto 0))).
-  xwhile_inv termin hinv. prove_wf. (* todo: automate *)
-    (* -- initial state satisfies invariant -- *)
-    refine (ex_intro' (_,_)). unfold hinv,data. hsimpl. 
-     applys_eq~ inv_start 2. permut_simpl. (* todo: rename *)
-    (* -- verification of the loop body -- *) 
-    intros [V Q]. unfold hinv. xextract as B Inv.  (* todo: lost notation *)
-     apply local_erase. esplit. splits. (* todo :tactic *)
-    (* ---- loop condition -- *) 
-    unfold data. xapps. xret.
-    (* ---- loop body -- *) 
-    xextract as HN. xapp. intros [x d] Q' Mi HE. intro_subst.
-    lets [Inv' SB SV]: Inv.
-    asserts: (x \in nodes G). lets [_ _ Hc _]: Inv' x. forwards* [? _]: Hc d.
-    xmatch. xapps~. xif. 
-    (* ------ node treated -- *) 
-    forwards~ [Inv'' Dx]: inv_begin_loop HE Inv.
-    sets V': (V\(x:=true)).
-    sets hinv': (fun L => Hexists L', Hexists B Q, data B V' Q 
-        \* [inv G s V' B Q (new_crossing G s x L' V) ] \* [N\(x) = rev(L')++L]).
-    xapps~. xfun. xapps~. xapp hinv'.
-    (* -------- verification of update -- *) 
-    intros m L.
-    eapply app_spec_1. applys (rm Supdate). xisspec. intros [y w]. intro_subst_hyp. (* todo tactic *)
-    clears B Q update hinv. unfold hinv' at 1. unfold data. 
-    xextract as L' B Q Inv EQ. lets [_ _ SV]: Inv. sort. 
-    asserts Ew: (has_edge G x y w). rewrite~ <- Adj. rewrite EQ. applys* Mem_app_or.
-    asserts Ny: (y \in nodes G). applys~ has_edge_in_nodes_r x w.
-    xmatch. 
-Ltac xret_pre cont ::= 
-  match ltac_get_tag tt with
-  | tag_ret => cont tt
-  | tag_let_trm => xlet; [ cont tt | instantiate ]
-  end. 
-    xret. xextract as Dy. xapps~. xlet.
-    xframe - []. xpost (\= istrue (len_gt (B\(y)) dy)). 
-    xgo~. (*  destruct (B\(y)); xgo~. *)
-    xok. xextracts. rewrite app_last in EQ. rewrite <- rev_cons in EQ.
-    unfold hinv', data. forwards~ K: inv_update_le s Ew Dy Inv.
-    xif; case_If. 
-      xapps~. xapps~. xsimpl*.
-      xret. xsimpl*.
-    (* -------- iter pre-condition -- *) 
-    subst hinv' data. hsimpl~ (nil:list (int*int)).
-    (* -------- iter post-condition -- *) 
-    clears update. subst hinv'.
-    hextract as L B' Q'' I' Leq. hsimpl~ (V',Q'') B'.
-    left. hnf. subst V'. 
-  (* todo :swapped SB and SV *)
-  (* todo : changer sizer_ok pour avoir length B = n *) 
-  (* todo: garder n = length N *)
-  skip LenV: (length V = length N).
-
-  split.
-    rewrite <- LenV. forwards K: (count_bounds (V\(x:=true)) (=true)).
-     rewrite length_update in K. math.
-    lets M: (@count_update bool _). rewrite M. clear M. (* bug coq -> rewrites (rm) *)
-     do 2 case_If. math.
-    rew_app in Leq. applys~ inv_end_loop I'.
-      hnf. intros. rewrite~ <- Adj. rewrite Leq. apply Mem_rev_eq.
-    (* ------ node ignored -- *) 
-    xret. unfold data. hsimpl (V,Q'). (* todo improve pair *) (* todo: rename H' *)
-      right. split~. hnf. subst Q. rewrite card_union. rewrite card_single. math.
-    subst Q. apply* inv_no_update. 
-    (* ---- loop post-condition -- *) 
-    hextract as He. fold_bool. rew_logic in He. subst Q. unfold data.
-    xsimpl~.
+  xseq (# Hexists V, hinv (V,\{})). 
+  set (W := lexico2 (binary_map (count (=true)) (upto (length N)))
+                    (binary_map (fun Q:multiset(int*int) => card Q:int) (downto 0))).
+  xwhile_inv W hinv. 
+  (* -- initial state satisfies invariant -- *)  refine (ex_intro' (_,_)). unfold hinv,data. hsimpl. 
+  applys_eq~ inv_start 2. permut_simpl.
+  (* -- verification of the loop body -- *) 
+  intros [V Q]. unfold hinv. xextract as B Inv. xwhile_body. 
+  (* ---- loop condition -- *) 
+  unfold data. xapps. xret.
+  (* ---- loop body -- *) 
+  xextract as HN. xapp. intros [x d] Q' Mi HE. intro_subst.
+  lets [Inv' SV SB]: Inv. asserts: (x \in nodes G).
+    lets [_ _ Hc _]: Inv' x. forwards* [? _]: Hc d.
+  xmatch. xapps~. xif. 
+  (* ------ node treated -- *) 
+  sets V': (V\(x:=true)). forwards~ [Inv'' Dx]: inv_begin_loop HE Inv.
+  sets hinv': (fun L => Hexists L', Hexists B Q, data B V' Q 
+    \* [inv G s V' B Q (new_crossing G s x L' V) ] \* [N\(x) = rev(L')++L]).
+  xapps~. xfun. xapps~. xapp hinv'.
+  (* -------- verification of update -- *) 
+  intros m L. xapp_body. intros [y w]. intro_subst_hyp.
+  clears B Q update hinv. unfold hinv' at 1. unfold data. 
+  xextract as L' B Q Inv EQ. lets [_ _ SB]: Inv. sort. 
+  asserts Ew: (has_edge G x y w). rewrite~ <- Adj. rewrite EQ. applys* Mem_app_or.
+  asserts Ny: (y \in nodes G). applys* has_edge_in_nodes_r.
+  xmatch. xret. xextract as Dy. xapps~. xlet.
+  xframe - []. xpost (\= istrue (len_gt (B\(y)) dy)). xgo~. xok. xextracts. 
+  rewrite app_last in EQ. rewrite <- rev_cons in EQ.
+  unfold hinv', data. forwards~ K: inv_update_le s Ew Dy Inv.
+  xif; case_If. xapps~. xapps~. xsimpl*. xret. xsimpl*.
+  (* -------- iter pre-condition -- *) 
+  subst hinv' data. hsimpl~ (nil:list (int*int)).
+  (* -------- iter post-condition -- *) 
+  clears update. subst hinv'.
+  hextract as L B' Q'' I' Leq. hsimpl~ (V',Q'') B'.
+  left. unfolds. subst V'. applys~ @array_count_upto. skip.
+  rew_app in Leq. applys~ inv_end_loop I'.
+    hnf. intros. rewrite~ <- Adj. rewrite Leq. apply Mem_rev_eq.
+  (* ------ node ignored -- *) 
+  xret. unfold data. hsimpl (V,Q'). 
+    right. split~. hnf. subst Q. rewrite card_union, card_single. math.
+  subst Q. apply* inv_no_update. 
+  (* ---- loop post-condition -- *) 
+  hextract as He. xclean. subst Q. unfold data. xsimpl~.
   (* ---- return value -- *) 
-  intros V B Inv. unfold hinv, data. lets [_ _ ?]: Inv.
+  intros V B Inv. unfold hinv, data. lets [_ _ SB]: Inv.
   xapp~. intros l. hdata_simpl GraphAdjList. xsimpl~.
   subst l. apply* inv_end_elim.
 Qed.
 
+(* 37 proofs + 9 inv *)
 
 (*-----------------------------------------------------------*)
 Tactic Notation "show_unfold" constr(R1) :=
@@ -1045,6 +1052,10 @@ Tactic Notation "show_unfold" constr(R1) "," constr(R2) :=
 (* todo: prettyprint for  "let (x,y) =" and "fun (x,y) ="
 (* todo bug when writing Hexists *)
  (* todo: name card_int as a function *)
+permut_simpl. (* todo: rename *)
+ (* todo: lost notation  on while *)
+apply local_erase (* todo :tactic *)
+ (* todo  rewrites (rm) *)
 (*-----------------------------------------------------------*)
 
 End DijkstraSpec. 

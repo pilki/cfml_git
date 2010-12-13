@@ -4069,3 +4069,14 @@ Ltac xgen_nosimpl E :=
 *)
 
 (*bin:    xapp_manual. xapply (KR I); clear KR.*)
+
+Axiom boolneg : forall b, !b -> b = false.
+Hint Resolve boolneg.
+
+
+
+Axiom bool_neq_true_eq_false : forall b,
+  b <> true -> b = false.
+Hint Resolve bool_neq_true_eq_false.
+
+Hint Resolve istrue_True.
