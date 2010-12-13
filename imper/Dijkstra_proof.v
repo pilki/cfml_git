@@ -2,6 +2,88 @@ Set Implicit Arguments.
 Require Import CFLib Dijkstra_ml.
 Open Scope comp_scope.
 
+Tactic Notation "exists" := 
+  exists___.
+Tactic Notation "exists" "~" := 
+  exists; auto_tilde.
+Tactic Notation "exists" "*" := 
+  exists; auto_star.
+
+
+Ltac subst_hyp_base H ::=
+  match type of H with 
+  | (_,_,_,_) = (_,_,_,_) => injection H; clear H; do 3 intro_subst_hyp
+  | (_,_,_) = (_,_,_) => injection H; clear H; do 3 intro_subst_hyp
+  | (_,_) = (_,_) => injection H; clear H; do 2 intro_subst_hyp
+  | ?x = ?y => first [ subst x | subst y ] 
+  end.
+
+Lemma subst_hyp_demo : forall x y x' y' z z' : nat, forall P:nat->Prop, 
+  (x,y,z) = (x',y',z') -> P x -> P x' -> P y -> P y' -> P z -> P z' -> z = z'.
+Proof.
+  introv H. intros. 
+  subst_hyp_base H. auto.
+Qed.
+ 
+(* todo: __ in introv means "intros" *)
+
+
+
+Axiom bool_test' : forall b,
+  b = true \/ b = false.
+
+Axiom bool_neq_true_eq_false : forall b,
+  b <> true -> b = false.
+Hint Resolve bool_neq_true_eq_false.
+
+Hint Resolve istrue_True.
+
+
+Hint Rewrite @array_update_read_eq : rew_arr.
+
+Tactic Notation "rew_arr" := 
+  autorewrite with rew_arr.
+Tactic Notation "rew_arr" "in" hyp(H) := 
+  autorewrite with rew_arr in H.
+Tactic Notation "rew_arr" "in" "*" := 
+  autorewrite with rew_arr in *.
+
+Tactic Notation "rew_arr" "~" :=
+  rew_arr; auto_tilde.
+Tactic Notation "rew_arr" "*" :=
+  rew_arr; auto_star.
+Tactic Notation "rew_arr" "~" "in" hyp(H) :=
+  rew_arr in H; auto_tilde.
+Tactic Notation "rew_arr" "*" "in" hyp(H) :=
+  rew_arr in H; auto_star.
+
+
+Axiom make_index : forall `{Inhab A} n i (v:A),
+  index n i -> index (make n v) i.
+Hint Resolve @make_index.
+
+Lemma pred_ext_elim_l_0 : forall A (P Q:A->Prop),
+  (forall x, P x = Q x) -> (forall x, P x -> Q x).
+Proof. introv H. intros. rewrite~ <- H. Qed.
+Implicit Arguments pred_ext_elim_l_0 [A P Q].
+
+Axiom index_update : forall `{Inhab A} (T:array A) n i j (v:A),
+  index n i -> index (T\(j:=v)) i.
+Hint Resolve @index_update.
+
+Require Import LibArray.
+Axiom index_array_length : forall A (t : array A) i,
+  index (length t) i -> index t i.
+
+Hint Resolve index_array_length.
+
+Hint Resolve bool_inhab.
+
+Lemma conj_dup_r : forall P Q : Prop,
+  Q -> (Q -> P) -> P /\ Q.
+Proof. auto*. Qed.
+
+
 (*
 Module Type MLOrderedPairInt :=
   MLOrdered with Definition t := (int*int)%type.
@@ -12,6 +94,43 @@ Module MLNextNode' :  MLOrdered with Definition t := (int*int)%type.
 Lemma not_True_to_False : ~ True -> False.
 Proof. intros. rew_logic in *. auto. Qed.
 Hint Immediate not_True_to_False.
+
+
+
+Ltac testsd_base E H1 H2 :=
+  destruct E as [H1|H2].
+
+Ltac testsp_base E H1 H2 :=
+  testsd_base (classicT E) H1 H2.
+
+Ltac testsb_base E H1 H2 :=
+  testsp_base (isTrue E) H1 H2.
+
+Ltac tests_dispatch E H1 H2 :=
+  match type of E with
+  | bool => testsb_base E H1 H2
+  | Prop => testsp_base E H1 H2
+  | {_}+{_} => testsd_base E H1 H2
+  end.
+
+Ltac tests_post H I :=
+  tryfalse; rew_logic in H; revert H; 
+  first [ intro_subst_hyp | intros I ]; tryfalse.
+
+Ltac tests_base E I1 I2 :=
+  let H1 := fresh "TEMP" in
+  let H2 := fresh "TEMP" in
+  tests_dispatch E H1 H2; [ tests_post H1 I1 | tests_post H2 I2 ].
+
+Tactic Notation "tests" constr(E) "as" simple_intropattern(I1) simple_intropattern(I2) := 
+  tests_base E I1 I2.
+
+Tactic Notation "tests" constr(E) "as" simple_intropattern(I) :=
+  tests E as I I.
+
+Tactic Notation "tests" constr(E) :=
+  let H := fresh "C" in tests E as H.
+
 
 
 (*************************************************************)
@@ -333,7 +452,7 @@ End NextNodeSpec.
 
 Global Instance len_inhab : Inhab len.
 Proof. constructor. exact Infinite. Qed.
-
+Hint Resolve len_inhab.
 
 (*************************************************************)
 Require Import LibArray LibMap.
@@ -377,21 +496,7 @@ Hint Extern 1 (RegisterSpec pop) => Provide pop_spec.
 
 (*-----------------------------------------------------------*)
 
-Hint Constructors Mem.
-
-Axiom bool_test' : forall b,
-  b = true \/ b = false.
-
-Hint Constructors is_path.
-
-Axiom bool_neq_true_eq_false : forall b,
-  b <> true -> b = false.
-Hint Resolve bool_neq_true_eq_false.
-
-Ltac auto_star ::= try solve [ auto | jauto ]. 
-  (* todo: congruence *)
-
-Hint Resolve istrue_True.
+Hint Constructors Mem is_path.Ltac auto_star ::= try solve [ auto | jauto ]. 
 
 (*
 Hint Extern 3 (_ \in _) => in_union_extract.
@@ -399,60 +504,22 @@ Hint Extern 3 (_ \in _ \u _) => in_union_get.
 *)
 
 
+Lemma multiset_in_union_single_eq_l : forall A (x:A) E F,
+  E = \{x} \u F -> x \in E.
+Proof. intros. subst. multiset_in. Qed.
 
-(*-----------------------------------------------------------*)
+Lemma multiset_in_union_single_eq_r : forall A (x y:A) E F,
+  E = \{x} \u F -> y \in F-> y \in E.
+Proof. introv M N. subst. multiset_in. Qed.
 
-Hint Rewrite @array_update_read_eq : rew_arr.
-
-Tactic Notation "rew_arr" := 
-  autorewrite with rew_arr.
-Tactic Notation "rew_arr" "in" hyp(H) := 
-  autorewrite with rew_arr in H.
-Tactic Notation "rew_arr" "in" "*" := 
-  autorewrite with rew_arr in *.
-
-Tactic Notation "rew_arr" "~" :=
-  rew_arr; auto_tilde.
-Tactic Notation "rew_arr" "*" :=
-  rew_arr; auto_star.
-Tactic Notation "rew_arr" "~" "in" hyp(H) :=
-  rew_arr in H; auto_tilde.
-Tactic Notation "rew_arr" "*" "in" hyp(H) :=
-  rew_arr in H; auto_star.
-
-
-Axiom make_index : forall `{Inhab A} n i (v:A),
-  index n i -> index (make n v) i.
-Hint Resolve @make_index.
-Hint Resolve len_inhab.
-
-Lemma pred_ext_elim_l_0 : forall A (P Q:A->Prop),
-  (forall x, P x = Q x) -> (forall x, P x -> Q x).
-Proof. introv H. intros. rewrite~ <- H. Qed.
-Implicit Arguments pred_ext_elim_l_0 [A P Q].
-
-Axiom index_update : forall `{Inhab A} (T:array A) n i j (v:A),
-  index n i -> index (T\(j:=v)) i.
-Hint Resolve @index_update.
-
-Axiom index_array_length : forall A (t : array A) i,
-  index (length t) i -> index t i.
-
-Hint Resolve index_array_length.
-
-Hint Resolve bool_inhab.
-
-Lemma conj_dup_r : forall P Q : Prop,
-  Q -> (Q -> P) -> P /\ Q.
-Proof. auto*. Qed.
-
+Hint Resolve multiset_in_union_single_eq_l multiset_in_union_single_eq_r.
 
 
 (*-----------------------------------------------------------*)
 
 Implicit Types V : array bool.
 Implicit Types B : array len.
-Implicit Types H : multiset (int*int).
+Implicit Types Q : multiset (int*int).
 Implicit Types p : path int.
 
 Section Invariants.
@@ -465,31 +532,34 @@ Definition size_ok `{Inhab A} (T:array A) :=
 
 Hint Unfold size_ok.
 
+Require Import LibArray.
+Require Import LibSet.
+
 (*-----------------------------------------------------------*)
 
-Record inv_of z V B H reach : Prop := {
-  Bdist: z \in nodes G -> V\(z) = true -> B\(z) = dist G s z;
-  Bbest: z \in nodes G -> V\(z) = false -> B\(z) = mininf weight (reach z); 
-  Hcorr: forall d, (z,d) \in H -> z \in nodes G /\
-           (V\(z) = false -> exists p, reach z p /\ weight p = d);
-  Hcomp: forall p, z \in nodes G -> reach z p -> exists d, (z,d) \in H /\ d <= weight p }.
+Record inv_of z V B Q reach : Prop := {
+  Bdist: z \in nodes G -> isTrue (V\(z)) -> B\(z) = dist G s z;
+  Bbest: z \in nodes G -> ~ isTrue (V\(z)) -> B\(z) = mininf weight (reach z); 
+  Hcorr: forall d, (z,d) \in Q -> z \in nodes G /\
+           (~ isTrue (V\(z)) -> exists p, reach z p /\ weight p = d);
+  Hcomp: forall p, z \in nodes G -> reach z p -> exists d, (z,d) \in Q /\ d <= weight p }.
 
-Record inv V B H reach : Prop := {
-  Invof: forall z, inv_of z V B H reach;
+Record inv V B Q reach : Prop := {
+  Invof: forall z, inv_of z V B Q reach;
   SizeV: size_ok V;
   SizeB: size_ok B }.
 
 Definition from_out V z p :=
   is_path G s z p /\ V\(z) = false.
 
-Definition enters V z p :=
+Definition crossing V z p :=
   from_out V z p /\ (p = nil \/ exists q y w, p = (y,z,w)::q /\ V\(y) = true).
 
-Definition enters_via x L V z p :=
+Definition crossing_via x L V z p :=
   from_out V z p /\ exists q w, p = (x,z,w)::q /\ Mem (z,w) L.
 
-Definition new_enters x L V z p :=
-  z <> x /\ (enters V z p \/ enters_via x L V z p).
+Definition new_crossing x L V z p :=
+  z <> x /\ (crossing V z p \/ crossing_via x L V z p).
 
 Definition outgoing_edges x L :=
   forall y w, Mem (y,w) L = has_edge G x y w.
@@ -497,28 +567,28 @@ Definition outgoing_edges x L :=
 (*-----------------------------------------------------------*)
 
 Section NewEnters.
-Hint Unfold new_enters enters_via.
+Hint Unfold new_crossing crossing_via.
 
-Lemma new_enters_nil : forall x V z, z <> x -> 
-  new_enters x nil V z = enters V z.
+Lemma new_crossing_nil : forall x V z, z <> x -> 
+  new_crossing x nil V z = crossing V z.
 Proof.
-  intros. extens. intros p. unfold new_enters.
+  intros. extens. intros p. unfold new_crossing.
   iff (?&[?|((P&Vz)&(q&w&E&M))]) ?; auto*. inverts M.
-Qed.
-Lemma new_enters_not : forall x L V z y w, y <> z ->
-  new_enters x ((y,w)::L) V z = new_enters x L V z.
+Qed.
+Lemma new_crossing_not : forall x L V z y w, y <> z ->
+  new_crossing x ((y,w)::L) V z = new_crossing x L V z.
 Proof.
   intros. extens. intros p. iff (?&[?|(?&(q&w'&?&M))]).
    eauto 10. inverts M. false. eauto 10. eauto 10. eauto 10.
 Qed.
 
-Lemma new_enters_grows : forall x L V z p y w,
-  new_enters x L V z p -> new_enters x ((y,w)::L) V z p.
+Lemma new_crossing_grows : forall x L V z p y w,
+  new_crossing x L V z p -> new_crossing x ((y,w)::L) V z p.
 Proof. introv (N&[H|(q&w'&?&?&M)]); eauto 10. Qed.
 
-Lemma new_enters_inv : forall x L V z p y w,
-  new_enters x ((y,w)::L) V z p -> 
-      new_enters x L V z p 
+Lemma new_crossing_inv : forall x L V z p y w,
+  new_crossing x ((y,w)::L) V z p -> 
+      new_crossing x L V z p 
    \/ (z <> x /\ from_out V z p /\ exists q, p = (x,y,w)::q).
 Proof. introv (N&[H|(P&(q&w'&E&M))]). eauto. inverts M; eauto 10. Qed.
 
@@ -529,13 +599,12 @@ End NewEnters.
 
 Variables (NG:nonneg_edges G) (Ns:s \in nodes G).
 
-
-Lemma value_nonneg_new_enters : forall x L V y,
-  value_nonneg weight (new_enters x L V y).
+Lemma value_nonneg_new_crossing : forall x L V y,
+  value_nonneg weight (new_crossing x L V y).
 Proof. introv [_ [((F&_)&_)|((F&_)&_)]]; apply* nonneg_edges_to_path. Qed.
 
-Hint Resolve value_nonneg_new_enters.
-Hint Resolve nonneg_edges_to_path.
+Hint Resolve value_nonneg_new_crossing.
+Hint Resolve nonneg_edges_to_path. (* todo try remove *)
 
 Lemma from_out_in_nodes : forall V z p,
   from_out V z p -> z \in nodes G.
@@ -545,16 +614,24 @@ Lemma from_out_cons_in_nodes : forall V z p y w q,
   from_out V z p -> p = (y,z,w)::q -> y \in nodes G.
 Proof. introv [F _] E. subst. inverts F. apply* is_path_in_nodes_r. Qed.
 
-Lemma enters_in_nodes : forall V z p, 
-  enters V z p -> z \in nodes G.
+Lemma crossing_in_nodes : forall V z p, 
+  crossing V z p -> z \in nodes G.
 Proof. introv [F _]. apply* from_out_in_nodes. Qed.
 
-Hint Resolve from_out_in_nodes from_out_cons_in_nodes enters_in_nodes.
+Hint Resolve from_out_in_nodes from_out_cons_in_nodes crossing_in_nodes.
 
-Lemma enters_step : forall L V x, 
+(*-----------------------------------------------------------*)
+
+Lemma dist_source : dist G s s = Finite 0.
+Proof.
+  applys~ (mininf_finite (nil:path int)).
+  intros. apply* nonneg_edges_to_path.
+Qed.
+
+Lemma crossing_step : forall L V x, 
   V\(x) = false -> size_ok V -> x \in nodes G ->
   outgoing_edges x L ->
-  new_enters x L V = enters (V\(x:=true)).
+  new_crossing x L V = crossing (V\(x:=true)).
 Proof.
   introv Vx SV Nx EQ. extens. intros z p. 
   asserts EF: (z \in nodes G -> z <> x -> from_out (V\(x:=true)) z p = from_out V z p).
@@ -575,9 +652,9 @@ Proof.
         left. subst p. rew_array* in Vy. splits~. right*.
 Qed.
 
-Lemma enters_shorter : forall V z p, 
+Lemma crossing_shorter : forall V z p, 
   is_path G s z p -> V\(z) = false -> 
-  exists x q, enters V x q /\ weight q <= weight p.
+  exists x q, crossing V x q /\ weight q <= weight p.
 Proof.
   introv P. set_eq s': s in P. set_eq G': G in P. 
   induction P; intros; subst. 
@@ -590,32 +667,31 @@ Proof.
      rewrite weight_cons. forwards: NG H. math.    
 Qed.
 
-Lemma enters_best : forall V x p,
-  V\(x) = false -> enters V x p -> 
-  (forall y q, enters V y q -> weight p <= weight q) ->
+Lemma crossing_best : forall V x p,
+  V\(x) = false -> crossing V x p -> 
+  (forall y q, crossing V y q -> weight p <= weight q) ->
   dist G s x = Finite (weight p).
 Proof.
   introv Vx En BE. unfold dist.
   lets ((?&_)&_): En. applys~ (@mininf_finite (path int)) p.
-  intros p' P'. forwards~ (y&q&E'&L): enters_shorter V P'.
+  intros p' P'. forwards~ (y&q&E'&L): crossing_shorter V P'.
    forwards: BE E'. math.
 Qed.
 
-Lemma dist_source : dist G s s = Finite 0.
-Proof.
-  applys~ (mininf_finite (nil:path int)).
-  intros. apply* nonneg_edges_to_path.
-Qed.
 
 (*-----------------------------------------------------------*)
+
+
+Hint Extern 1 (_ \in _ \u _) => multiset_in.
+Hint Extern 1 (_ \in \{_}) => multiset_in.
 
 Lemma inv_start : forall n, 
   (forall x, x \in nodes G -> index n x) ->
   inv (make n false) (make n Infinite\(s:=Finite 0)) 
-      ('{(s, 0)}) (enters (make n false)).
+      ('{(s, 0)}) (crossing (make n false)).
 Proof.
   introv EQ.
-  asserts Es: (enters (make n false) s nil).  splits~. splits~. rew_array~.
+  asserts Es: (crossing (make n false) s nil).  splits~. splits~. rew_array~.
   constructors~; [| skip (*todo: size_ok*)].
   intros z. constructors~.
   introv Nz Vi. rew_array~ in Vi. false.
@@ -626,28 +702,29 @@ Proof.
      intros p (P&[Pn|(q&y&w&Py&Ey)]).
        subst. destruct P as [P _]. inverts P. false.
        rew_array* in Ey.
-  introv E. multiset_in E. intros E. inverts E. splits~. exists~ (nil:path int).
+  introv E. multiset_in E. splits~. exists~ (nil:path int).
   introv Nz (P&[Pn|(q&y&w&Py&Ey)]). 
     exists 0. subst p. destruct P as [P _]. inverts P.
-     split. multiset_in. rewrite weight_nil. math.
+     split~. rewrite weight_nil. math.
     rew_array* in Ey. false. 
 Qed.
 
 Axiom boolneg : forall b, !b -> b = false.
 Hint Resolve boolneg.
 
+
 Lemma inv_end_elim : forall x V B,
-  inv V B \{} (enters V) -> 
+  inv V B \{} (crossing V) -> 
   x \in nodes G ->
   B\(x) = dist G s x.
 Proof.
   introv [Inv SB SV] Nx.
-  tests (V\(x)) as C. applys* (Bdist (Inv x)).
+  tests (V\(x)). applys* (Bdist (Inv x)).
   rewrite~ (Bbest (Inv x)). unfold dist.
-  asserts Ne: (forall z p, z \in nodes G -> ~ enters V z p).
+  asserts Ne: (forall z p, z \in nodes G -> ~ crossing V z p).
     introv Nz P. forwards* (d&N&_): (Hcomp (Inv z)). multiset_in N.
   apply (eq_trans' Infinite); rewrite~ mininf_infinite.
-  intros p P. forwards* (z&q&Q&?): enters_shorter P. 
+  intros p P. forwards* (z&q&Q'&?): crossing_shorter P. 
 Qed.
 
 Lemma size_ok_elim : forall `{Inhab A} (T:array A) x,
@@ -656,22 +733,22 @@ Proof. unfolds~ size_ok. Qed.
 Hint Extern 1 (index _ _) => apply size_ok_elim.
 
 
-Lemma inv_begin_loop : forall x d V B H H',
-  H = '{(x,d)} \u H' -> 
-  is_min_of H (x,d) ->
+Lemma inv_begin_loop : forall x d V B Q Q',
+  Q = '{(x,d)} \u Q' -> 
+  is_min_of Q (x,d) ->
   x \in nodes G ->
-  V\(x) = false ->
-  inv V B H (enters V) ->
-     inv (V\(x:=true)) B H' (new_enters x nil V)
+  ~ isTrue (V\(x)) ->
+  inv V B Q (crossing V) ->
+     inv (V\(x:=true)) B Q' (new_crossing x nil V)
   /\ Finite d = dist G s x.
 Proof.
   introv EQ [In Mi] Nx Vx [Inv SB SV]. 
-  asserts: (forall y q, enters V y q -> d <= weight q). 
+  asserts: (forall y q, crossing V y q -> d <= weight q). 
     introv Ey. lets ((_&?)&_): Ey. specializes~ Inv y.  
     forwards* (d'&In'&?): (Hcomp Inv) Ey.
     lets Sy: Mi In'. skip: (d <= d'). math. (* todo with modules *)
   forwards* (_&p&En&W): Hcorr (Inv x).
-  apply conj_dup_r. subst d. rewrite~ (@enters_best V x p).
+  apply conj_dup_r. subst d. rewrite~ (@crossing_best V x p).
   introv Dx. constructors~. intros z. forwards [Bd Bb Hc Hk]: Inv z.
   tests (z = x). constructors; rew_arr~.
     intros _ _. rewrite~ Bb. subst d. rewrite* (mininf_finite p).
@@ -680,20 +757,20 @@ Proof.
     introv _ En'. false~ (proj1 En').
   constructors.
     introv Nz Vi. rew_array~ in Vi.
-    introv Nz Vi. rew_array~ in Vi. rewrite~ new_enters_nil.
-    intros d' Iz. forwards [Nz Hcz]: Hc d'. subst H. multiset_in. split~.
-     introv Vz. rew_array~ in Vz. rewrite~ new_enters_nil.  
-    introv Nz En'. lets: (proj1 En'). rewrite~ new_enters_nil in En'.
+    introv Nz Vi. rew_array~ in Vi. rewrite~ new_crossing_nil.
+    intros d' Iz. forwards [Nz Hcz]: Hc d'. eauto. split~.
+     introv Vz. rew_array~ in Vz. rewrite~ new_crossing_nil.  
+    introv Nz En'. lets: (proj1 En'). rewrite~ new_crossing_nil in En'.
      forwards~ (dz&Hz&?): Hk En'. exists~ dz.
-     subst H. multiset_in Hz; intros; tryfalse. split~.
+     subst Q. multiset_in Hz; intros; tryfalse. split~.
 Qed.
 
-Lemma inv_end_loop : forall V x H B L,
+Lemma inv_end_loop : forall V x Q B L,
   outgoing_edges x L ->
   x \in nodes G ->
-  V\(x) = false ->
-  inv (V\(x:=true)) B H (new_enters x L V) ->
-  inv (V\(x:=true)) B H (enters (V\(x:=true))).
+  ~ isTrue (V\(x)) ->
+  inv (V\(x:=true)) B Q (new_crossing x L V) ->
+  inv (V\(x:=true)) B Q (crossing (V\(x:=true))).
 Proof.
   introv EL Nx Vx [Inv SB SV]. constructors~.
   intros z. lets [Bd Bb Hc Hk]: Inv z. tests (x = z).
@@ -704,26 +781,28 @@ Proof.
     introv Nz En. lets ((_&N)&_): En. rew_arr~ in N. false.
   constructors.
     auto.
-    rewrite~ enters_step in Bb.
-    introv Hzd. forwards~ [? M]: Hc Hzd. rewrite~ enters_step in M.
-    introv Nz En. apply~ Hk. rewrite~ enters_step.
+    rewrite~ crossing_step in Bb.
+    introv Hzd. forwards~ [? M]: Hc Hzd. rewrite~ crossing_step in M.
+    introv Nz En. apply~ Hk. rewrite~ crossing_step.
 Qed.
 
-Lemma inv_update_le : forall L x y w dx dy V B H,
+
+
+Lemma inv_update_le : forall L V B Q x y w dx dy,
   x \in nodes G ->
   has_edge G x y w ->
   dy = dx + w ->
   Finite dx = dist G s x ->
-  inv (V\(x:=true)) B H (new_enters x L V) -> 
+  inv (V\(x:=true)) B Q (new_crossing x L V) -> 
   If len_gt (B\(y)) dy 
-    then inv (V\(x:=true)) (B\(y:=Finite dy)) ('{(y, dy)} \u H) (new_enters x ((y,w)::L) V)
-    else inv (V\(x:=true)) B H (new_enters x ((y, w)::L) V).
+    then inv (V\(x:=true)) (B\(y:=Finite dy)) (\{(y, dy)} \u Q) (new_crossing x ((y,w)::L) V)
+    else inv (V\(x:=true)) B Q (new_crossing x ((y, w)::L) V).
 Proof.
   introv Nx Ed Dy Eq [Inv SB SV]. sets_eq V': (V\(x:=true)).
   cuts K: (forall z, 
     If len_gt (B\(y)) dy 
-    then inv_of z V' (B\(y:=Finite dy)) ('{(y, dy)} \u H) (new_enters x ((y,w)::L) V)
-    else inv_of z V' B H (new_enters x ((y, w)::L) V)).
+    then inv_of z V' (B\(y:=Finite dy)) ('{(y, dy)} \u Q) (new_crossing x ((y,w)::L) V)
+    else inv_of z V' B Q (new_crossing x ((y, w)::L) V)).
     case_If; constructors~.
   intros z. lets [Bd Bb Hc Hk]: Inv z. tests (z = y).
   (* case z = y *)
@@ -738,83 +817,126 @@ Proof.
   (* subcase y visisted, distance not improved *)
   constructors; auto_false. 
   introv In. forwards [? ?]: Hc In. split~. auto_false.
-  intros py _ Ey. lets [E|(Nxy&(P'&Vy')&(p'&Ep))]: (new_enters_inv Ey).
+  intros py _ Ey. lets [E|(Nxy&(P'&Vy')&(p'&Ep))]: (new_crossing_inv Ey).
     forwards~ (d&D'&In'): Hcomp E.
     subst V'. rew_array~ in C. auto_false.
   (* subcase y not visisted, distance improved *)
-  asserts P: (new_enters x ((y, w) :: L) V y p).
+  asserts P: (new_crossing x ((y, w) :: L) V y p).
     subst p. split. intro_subst. subst V'. rew_arr~ in C.
     right. split. split. auto.
     subst V'. tests (x = y). rew_arr~ in C. rew_array~ in C. exists___~. 
   constructors.
-    intros. false. destruct (V'\(y)); false. (* todo fix *)
+    auto_false.
     introv Vi. rew_arr~. rewrite~ (mininf_finite p). rewrite~ W.
-     intros q Enq. lets [E|(Nxy&(P'&Vy')&(p'&Ep))]: (new_enters_inv Enq).
+     intros q Enq. lets [E|(Nxy&(P'&Vy')&(p'&Ep))]: (new_crossing_inv Enq).
        rewrite~ Bb in Nlt. forwards~: mininf_len_gt Nlt E. math.
        subst q. rewrite weight_cons. inverts P' as Q' _. forwards: Mx Q'. math.
     introv Iy. split~. multiset_in Iy.
       introv E. inverts E. introv Vi. exists~ p.
-      introv Vi. lets~ (_&p'&P'&Wp'): Hc H0.
-       exists p'. split~. apply~ new_enters_grows.   
-    intros py _ Ey. lets [E|(Nxy&(P'&Vy')&(p'&Ep))]: (new_enters_inv Ey).
-      forwards~ (d&D'&In'): Hcomp E. exists d. split~. multiset_in.
-      subst py. inverts P' as P' W. rewrite weight_cons.
-       exists dy. split~. multiset_in.
+      introv Vi. lets~ (_&p'&P'&Wp'): Hc H.
+       exists p'. split~. apply~ new_crossing_grows.   
+    intros py _ Ey. lets [E|(Nxy&(P'&Vy')&(p'&Ep))]: (new_crossing_inv Ey).
+      forwards~ (d&D'&In'): Hcomp E. exists~ d.
+      subst py. inverts P' as P' W. rewrite weight_cons. exists dy. split~.
        forwards~ M: (@mininf_finite_elim (path int)) p' (eq_sym Eq). math.
   (* subcase y not visisted, distance not improved *)
   constructors.
-    intros. false. destruct (V'\(y)); false. (* todo fix *)
+    auto_false.
     intros Vi. rewrite~ Bb in Nlt. forwards~ (d&Md&Ld): mininf_len_gt_not Nlt.
-     forwards~ (q&Q&Wq&Mq): (@mininf_finite_inv (path int)) Md.
-     rewrite~ Bb. rewrite Md. rewrite~ (mininf_finite q).
-      rewrite~ Wq. apply~ new_enters_grows.
-      intros p0 Ep0. rewrite Wq. lets [E|(Nxy&(P'&Vy')&(p'&Ep'))]: (new_enters_inv Ep0).
-        apply~ Mq.
-        subst p0. inverts P' as P' W. rewrite weight_cons. 
-         forwards~ M: (@mininf_finite_elim (path int)) p' (eq_sym Eq). 
+     forwards~ (p'&P'&Wq&Mq): (@mininf_finite_inv (path int)) Md.
+     rewrite~ Bb. rewrite Md. rewrite~ (mininf_finite p').
+      rewrite~ Wq. apply~ new_crossing_grows.
+      intros p0 Ep0. rewrite Wq. lets~ [E|(Nxy&(Py&Vy')&(p''&Ep''))]: (new_crossing_inv Ep0).
+        subst p0. inverts Py as Py W. rewrite weight_cons. 
+         forwards~ M: (@mininf_finite_elim (path int)) p'' (eq_sym Eq). 
          math.
-    introv Iy. forwards~ (_&p0&P&Wp0): Hc Iy. split~. introv Vi. exists p0. split~.
-     apply~ new_enters_grows.   
-    introv _ Ey. lets [E|(Nxy&(P'&Vy')&(p'&Ep))]: (new_enters_inv Ey).
+    introv Iy. forwards~ (_&p'&P'&Wp'): Hc Iy. split~. introv Vi. exists p'. split~.
+     apply~ new_crossing_grows.   
+    intros py _ Ey. lets [E|(Nxy&(Py&Vy')&(p'&Ep))]: (new_crossing_inv Ey).
       applys~ Hk E.
-      subst p0. inverts P' as P' W. rewrite weight_cons.
+      subst py. inverts Py as Py W. rewrite weight_cons.
        forwards~ M: (@mininf_finite_elim (path int)) p' (eq_sym Eq). 
-        rewrite~ Bb in Nlt. forwards~ (q&Q&Wq): mininf_len_gt_not_elim Nlt.
-        lets~ (dy'&Iy&Wy): Hk Q. exists dy'. split~. math.    
+        rewrite~ Bb in Nlt. forwards~ (p''&Q''&Wq''): mininf_len_gt_not_elim Nlt.
+        lets~ (dy'&Iy&Wy): Hk Q''. exists dy'. split~. math.    
   (* case z <> y *)
   case_If.
   constructors.
     intros. rew_array~.
-    intros. rew_array~. rewrite~ new_enters_not. 
-    introv In. multiset_in In. intros; false. rewrite~ new_enters_not.
-    introv Nz En. rewrite~ new_enters_not in En. forwards~ (dz&Hz&?): Hk En.
-     exists~ dz. split~. multiset_in.
-  constructors; try solve [ auto | rewrite~ new_enters_not ].
+    intros. rew_array~. rewrite~ new_crossing_not. 
+    introv In. multiset_in In. intros; false. rewrite~ new_crossing_not.
+    introv Nz En. rewrite~ new_crossing_not in En. 
+     forwards~ (dz&Hz&?): Hk En. exists~ dz.
+  constructors; try solve [ auto | rewrite~ new_crossing_not ].
 Qed.
 
 Lemma inv_no_update : forall V' B H x d,
   V'\(x) = true ->
-  inv V' B ('{(x,d)}\u H) (enters V') ->
-  inv V' B H (enters V').
+  inv V' B ('{(x,d)}\u H) (crossing V') ->
+  inv V' B H (crossing V').
 Proof.
   introv Vx [Inv SB SV]. constructors~. intros z.
   lets [Bd Bb Hc Hk]: Inv z. constructors~.
-    introv In. apply~ Hcorr. multiset_in.
     introv Nz En. forwards~ (d'&In&?): Hk En. lets~ ((_&?)&?): En.
      exists d'. split~. multiset_in In; auto_false.
 Qed.
-
-(* bin
-Lemma inv_extract_size : forall V B Q reach,
-  [inv V B Q reach] ==> [size_ok V] \* [size_ok B] \* [inv V B Q reach].
-Proof. intros. hextract as I. lets [_ ? ?]: I. hsimpl~. Qed.
-*)
 
 End Invariants.
 
 (*-----------------------------------------------------------*)
 
+Definition ex_intro' A (x:A) (P:A->Prop) (H:P x) := @ex_intro A P x H.
+Implicit Arguments ex_intro' [A [P] [H]].
+
 Hint Unfold size_ok.
+
+Lemma count_bounds : forall `{Inhab A} (t:array A) (f:A->Prop),
+  0 <= count f t <= length t.
+Admitted.
+
+Lemma Mem_last : forall A (L:list A) x,
+  Mem x (L & x).
+Proof. intros. apply~ Mem_app_or. Qed.
+Lemma Mem_rev : forall A (L:list A) x,
+  Mem x L -> Mem x (rev L).
+Proof. introv H. induction H; rew_rev; apply~ Mem_app_or. Qed.
+Lemma Mem_rev_eq : forall A (L:list A) x,
+  Mem x L = Mem x (rev L).
+Proof. extens. iff M. apply~ Mem_rev. rewrite <- rev_rev. apply~ Mem_rev. Qed.
+
+Lemma xgen_lemma : forall A (J:A->hprop) (E:A),
+  J E ==> heap_is_pack J.
+Proof. intros. hsimpl*. Qed.
+
+Ltac xgen_abstract H E :=
+  let Jx := eval pattern E in H in
+  match Jx with ?J _ => constr:(J) end.
+
+Ltac xgen_nosimpl E :=
+  match goal with |- ?H ==> _ =>
+    let J := xgen_abstract H E in 
+    eapply pred_le_trans; [ apply (@xgen_lemma _ J E) | ] end.
+
+
+Ltac xgen_base E := 
+  xgen_nosimpl E.    
+
+Tactic Notation "xgen" constr(E1) :=
+  xgen_base E1.
+Tactic Notation "xgen" constr(E1) constr(E2) :=
+  xgen_base E1; xgen_base E2.
+
+
+Lemma xgen_demo : forall (x E y F:int) H1 R,
+  (forall H2, x ~> R E \* y ~> R F \* H1 ==> H2 -> H2 = H2 -> True) -> True.
+Proof.
+  introv H. dup.
+  eapply H. xgen E. xgen F. xok. auto.
+  eapply H. xgen E F. xok. auto.
+Qed.
+
+Hint Extern 1 (wf ?R) => unfold R : wf.
+
+
 
 Lemma shortest_path_spec :
   Spec shortest_path g a b |R>> forall G,
@@ -829,26 +951,23 @@ Proof.
   set (data := fun B V Q =>
     g ~> Array Id N \* v ~> Array Id V \* b ~> Array Id B \* q ~> Heap Q).
   set (hinv := fun VQ => let '(V,Q) := VQ in
-    Hexists B, data B V Q \* [inv G s V B Q (enters G s V)]).
-  xseq (# Hexists V, hinv (V,\{})).  (* todo: rem xseq *) 
+    Hexists B, data B V Q \* [inv G s V B Q (crossing G s V)]).
+  xseq. (* (# Hexists V, hinv (V,\{})).  *) 
   set (termin := lexico2 (binary_map (count (=true)) (upto (length N)))
                        (binary_map (fun Q:multiset(int*int) => card Q:int) (downto 0))).
-  xwhile_inv termin hinv. subst termin. prove_wf. (* todo: automate *)
-(* (# hinv \{}). *) 
-Definition ex_intro' A (x:A) (P:A->Prop) (H:P x) := @ex_intro A P x H.
-Implicit Arguments ex_intro' [A [P] [H]].
+  xwhile_inv termin hinv. prove_wf. (* todo: automate *)
     (* -- initial state satisfies invariant -- *)
     refine (ex_intro' (_,_)). unfold hinv,data. hsimpl. 
      applys_eq~ inv_start 2. permut_simpl. (* todo: rename *)
     (* -- verification of the loop body -- *) 
     intros [V Q]. unfold hinv. xextract as B Inv.  (* todo: lost notation *)
-     apply local_erase. esplit. splits. 
+     apply local_erase. esplit. splits. (* todo :tactic *)
     (* ---- loop condition -- *) 
     unfold data. xapps. xret.
     (* ---- loop body -- *) 
     xextract as HN. xapp. intros [x d] H' Mi HE. intro_subst.
     lets [Inv' SB SV]: Inv.
-    asserts: (x \in nodes G). (* todo : move *)
+    asserts: (x \in nodes G). 
       lets [_ _ Hc _]: Inv' x. forwards~ [? _]: Hc d.
        subst Q. multiset_in. (* todo: auto*)
     xmatch. xapps~. xif; [ skip: (V\(x) = false) | ]. (* todo: cleanup *)
@@ -857,7 +976,7 @@ Implicit Arguments ex_intro' [A [P] [H]].
     xapps~. xfun. xapps~.
     sets V': (V\(x:=true)).
     sets I: (fun L => Hexists L', Hexists B Q, data B V' Q (* todo bug when writing Hexists *)
-        \* [inv G s V' B Q (new_enters G s x L' V) ] \* [N\(x) = rev(L')++L]).
+        \* [inv G s V' B Q (new_crossing G s x L' V) ] \* [N\(x) = rev(L')++L]).
     xapp_manual. xapply (KR I); clear KR; match goal with |- context [update] => idtac | _ => clears update end.
     (* -------- verification of update -- *) 
     apply Supdate. xisspec. clears update. clear hinv. (* todo tactic *)
@@ -886,9 +1005,7 @@ Implicit Arguments ex_intro' [A [P] [H]].
   (* todo : changer sizer_ok pour avoir length B = n *) 
   (* todo: garder n = length N *)
   skip LenV: (length V = length N).
-Lemma count_bounds : forall `{Inhab A} (t:array A) (f:A->Prop),
-  0 <= count f t <= length t.
-Admitted.
+
   split.
     rewrite <- LenV. forwards K: (count_bounds (V\(x:=true)) (=true)).
      rewrite length_update in K. math.
@@ -896,15 +1013,7 @@ Admitted.
      do 2 case_If. math.
     rew_app in Leq. applys~ inv_end_loop I'.
       hnf. intros. rewrite~ <- Adj. rewrite Leq.
-Lemma Mem_last : forall A (L:list A) x,
-  Mem x (L & x).
-Proof. intros. apply~ Mem_app_or. Qed.
-Lemma Mem_rev : forall A (L:list A) x,
-  Mem x L -> Mem x (rev L).
-Proof. introv H. induction H; rew_rev; apply~ Mem_app_or. Qed.
-Lemma Mem_rev_eq : forall A (L:list A) x,
-  Mem x L = Mem x (rev L).
-Proof. extens. iff M. apply~ Mem_rev. rewrite <- rev_rev. apply~ Mem_rev. Qed.
+
   apply Mem_rev_eq.
     (* ------ node ignored -- *) 
     xret. unfold data. hsimpl (V,H'). (* todo improve pair *) (* todo: rename H' *)
@@ -929,7 +1038,7 @@ Qed.
 (* todo: prettyprint for  "let (x,y) =" and "fun (x,y) ="
 (* todo: automate multiset_in *)
 (* todo: try intro_subst_hyp should deal with tuples *)
-(* todo: exists___~ into exists~. *)
+
 
 (*-----------------------------------------------------------*)
 
