@@ -449,11 +449,12 @@ Parameter edges_are_nodes : forall A (g : graph A) x y w,
 
 (*-----------------------------------------------------------*)
 
-Parameter range : int -> int -> set int.
+Definition nodes_index A (G:graph A) n :=
+  forall x, x \in nodes G = index n x.
 
 Definition GraphAdjList (G:graph int) (g:loc) :=
   Hexists N, g ~> Array Id N
-   \* [forall x, x \in nodes G = index (LibArray.length N) x]
+   \* [nodes_index G (LibArray.length N)]
    \* [forall x y w, x \in nodes G ->
          Mem (y,w) (N\(x)) = has_edge G x y w].
 
@@ -610,9 +611,9 @@ Hint Extern 1 (_ \in _ \u _) => multiset_in.
 Hint Extern 1 (_ \in \{_}) => multiset_in.
 
 Lemma graph_adj_index : forall A B (T:array A) (G:graph B) n x,
-  (forall x, x \in nodes G = index n x) -> length T = n -> 
-  x \in nodes G -> index T x.
+  nodes_index G n -> length T = n -> x \in nodes G -> index T x.
 Proof. introv Nod Len Nx. subst. rewrite array_index_def. rewrite~ <- Nod. Qed.
+
 Hint Extern 1 (index ?T ?x) =>
   eapply graph_adj_index; [try eassumption | try congruence | ].
 
@@ -624,10 +625,12 @@ Implicit Types Q : multiset (int*int).
 Implicit Types p : path int.
 
 Section Invariants.
-Variables (G:graph int) (N:array (int*int)) (s:int).
+Variables (G:graph int) (n:int) (s:int).
 
+(*
 Definition size_ok A (T:array A) :=
   forall x, x \in nodes G -> index T x.  
+*)
 
 (*-----------------------------------------------------------*)
 
@@ -640,14 +643,15 @@ Record inv_of z V B Q reach : Prop := {
 
 Record inv V B Q reach : Prop := {
   Invof: forall z, inv_of z V B Q reach;
-  SizeV: length V = length N;
-  SizeB: length B = length N }.
+  SizeV: length V = n;
+  SizeB: length B = n }.
 
 Definition from_out V z p :=
-  is_path G s z p /\ V\(z) = false.
+  is_path G s z p /\ ~ isTrue(V\(z)).
 
 Definition crossing V z p :=
-  from_out V z p /\ (p = nil \/ exists q y w, p = (y,z,w)::q /\ V\(y) = true).
+     from_out V z p 
+  /\ (p = nil \/ exists q y w, p = (y,z,w)::q /\ isTrue(V\(y))).
 
 Definition crossing_via x L V z p :=
   from_out V z p /\ exists q w, p = (x,z,w)::q /\ Mem (z,w) L.
@@ -690,8 +694,7 @@ End NewEnters.
 
 (*-----------------------------------------------------------*)
 
-
-Variables (NG:nonneg_edges G) (Ns:s \in nodes G).
+Variables (NG:nonneg_edges G) (Nn: nodes G n) (Ns:s \in nodes G).
 
 Lemma value_nonneg_new_crossing : forall x L V y,
   value_nonneg weight (new_crossing x L V y).
@@ -723,13 +726,15 @@ Proof.
 Qed.
 
 Lemma crossing_step : forall L V x, 
-  ~ isTrue (V\(x)) -> size_ok V -> x \in nodes G ->
+  ~ isTrue (V\(x)) -> length V = n -> x \in nodes G ->
   outgoing_edges x L ->
   new_crossing x L V = crossing (V\(x:=true)).
 Proof.
   introv Vx SV Nx EQ. extens. intros z p. 
   asserts EF: (z \in nodes G -> z <> x -> from_out (V\(x:=true)) z p = from_out V z p).
     intros. unfold from_out. rew_array~.
+
+
   iff (Nzx&H) H.
    hnf in H. destruct H as [(F&[Nxz|(q&y&w&E&Vy)])|(P&(q&w&E&M))];
     (split; [ rewrite* EF | ]).
@@ -737,7 +742,7 @@ Proof.
      right. exists q y w. split~. rew_array*. auto_false.
      right. exists q x w. rew_arr~.     
    asserts: (z <> x).
-     intro_subst. lets ((_&E)&_): H. rew_arr~ in E. false.
+     intro_subst. lets ((_&E)&_): H. rew_arr~ in E. 
     destruct H as (F&[Nxz|(q&y&w&E&Vy)]).
       rewrite* EF in F. subst. split~. left. split~.
       rewrite* EF in F. tests (y = x); split~.
@@ -753,7 +758,7 @@ Proof.
   introv P. set_eq s': s in P. set_eq G': G in P. 
   induction P; intros; subst. 
   exists s (nil:path int). splits_all~. apply le_refl.
-  destruct (bool_test' (V\(y))).
+  tests (V\(y)).
     exists z ((y,z,w)::p). split. 
       split. split~.
       right. exists p y w. split~. math.
@@ -776,8 +781,6 @@ Qed.
 (*-----------------------------------------------------------*)
 Axiom length_make : forall A n (v:A),
   length (make n v) = n.
-
-
 
 Lemma inv_start : let n := length N in 
   (forall x, x \in nodes G -> index n x) ->
@@ -819,11 +822,12 @@ Proof.
   intros p P. forwards* (z&q&Q'&?): crossing_shorter P. 
 Qed.
 
+(*
 Lemma size_ok_elim : forall `{Inhab A} (T:array A) x,
   size_ok T -> x \in nodes G -> index T x.
 Proof. unfolds~ size_ok. Qed.
 Hint Extern 1 (index _ _) => apply size_ok_elim.
-
+*)
 
 Lemma inv_begin_loop : forall x d V B Q Q',
   Q = '{(x,d)} \u Q' -> 
@@ -834,7 +838,7 @@ Lemma inv_begin_loop : forall x d V B Q Q',
      inv (V\(x:=true)) B Q' (new_crossing x nil V)
   /\ Finite d = dist G s x.
 Proof.
-  introv EQ [In Mi] Nx Vx [Inv SB SV]. 
+  introv EQ [In Mi] Nx Vx [Inv SV SB]. 
   asserts: (forall y q, crossing V y q -> d <= weight q). 
     introv Ey. lets ((_&?)&_): Ey. specializes~ Inv y.  
     forwards* (d'&In'&?): (Hcomp Inv) Ey.
@@ -844,6 +848,8 @@ Proof.
   introv Dx. constructors~. intros z. forwards [Bd Bb Hc Hk]: Inv z.
   tests (z = x). constructors; rew_arr~.
     intros _ _. rewrite~ Bb. subst d. rewrite* (mininf_finite p).
+  eapply graph_adj_index. ; [try eassumption | try congruence | 
+
     auto_false.
     introv In'. split~. auto_false~.
     introv _ En'. false~ (proj1 En').
@@ -864,7 +870,7 @@ Lemma inv_end_loop : forall V x Q B L,
   inv (V\(x:=true)) B Q (new_crossing x L V) ->
   inv (V\(x:=true)) B Q (crossing (V\(x:=true))).
 Proof.
-  introv EL Nx Vx [Inv SB SV]. constructors~.
+  introv EL Nx Vx [Inv SV SB]. constructors~.
   intros z. lets [Bd Bb Hc Hk]: Inv z. tests (x = z).
   constructors.
     auto.
@@ -890,7 +896,7 @@ Lemma inv_update_le : forall L V B Q x y w dx dy,
     then inv (V\(x:=true)) (B\(y:=Finite dy)) (\{(y, dy)} \u Q) (new_crossing x ((y,w)::L) V)
     else inv (V\(x:=true)) B Q (new_crossing x ((y, w)::L) V).
 Proof.
-  introv Nx Ed Dy Eq [Inv SB SV]. sets_eq V': (V\(x:=true)).
+  introv Nx Ed Dy Eq [Inv SV SB]. sets_eq V': (V\(x:=true)).
   cuts K: (forall z, 
     If len_gt (B\(y)) dy 
     then inv_of z V' (B\(y:=Finite dy)) ('{(y, dy)} \u Q) (new_crossing x ((y,w)::L) V)
@@ -961,10 +967,10 @@ Proof.
   constructors; try solve [ auto | rewrite~ new_crossing_not ].
 Qed.
 
-Lemma inv_no_update : forall V' B H x d,
+Lemma inv_no_update : forall V' B Q x d,
   isTrue (V'\(x)) ->
-  inv V' B ('{(x,d)}\u H) (crossing V') ->
-  inv V' B H (crossing V').
+  inv V' B ('{(x,d)}\u Q) (crossing V') ->
+  inv V' B Q (crossing V').
 Proof.
   introv Vx [Inv SB SV]. constructors~. intros z.
   lets [Bd Bb Hc Hk]: Inv z. constructors~.
