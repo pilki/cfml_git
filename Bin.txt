@@ -4067,3 +4067,5 @@ Ltac xgen_nosimpl E :=
     let H' := xgen_abstract H E in 
     apply (@pred_le_trans _ H') end.
 *)
+
+(*bin:    xapp_manual. xapply (KR I); clear KR.*)

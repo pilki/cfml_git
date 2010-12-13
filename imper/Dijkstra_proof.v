@@ -937,6 +937,14 @@ Qed.
 Hint Extern 1 (wf ?R) => unfold R : wf.
 
 
+Lemma ml_list_iter_spec : forall a,
+  Spec ml_list_iter f l |R>> forall (I:list a->hprop),
+    (forall x t, (App f x;) (I (x::t)) (# I t)) -> 
+    R (I l) (# I nil).
+Admitted.
+Hint Extern 1 (RegisterSpec  ml_list_iter) => Provide ml_list_iter_spec.
+
+
 
 Lemma shortest_path_spec :
   Spec shortest_path g a b |R>> forall G,
@@ -965,40 +973,41 @@ Proof.
     (* ---- loop condition -- *) 
     unfold data. xapps. xret.
     (* ---- loop body -- *) 
-    xextract as HN. xapp. intros [x d] H' Mi HE. intro_subst.
+    xextract as HN. xapp. intros [x d] Q' Mi HE. intro_subst.
     lets [Inv' SB SV]: Inv.
-    asserts: (x \in nodes G). 
-      lets [_ _ Hc _]: Inv' x. forwards~ [? _]: Hc d.
-       subst Q. multiset_in. (* todo: auto*)
-    xmatch. xapps~. xif; [ skip: (V\(x) = false) | ]. (* todo: cleanup *)
+    asserts: (x \in nodes G). lets [_ _ Hc _]: Inv' x. forwards* [? _]: Hc d.
+    xmatch. xapps~. xif. 
     (* ------ node treated -- *) 
     forwards~ [Inv'' Dx]: inv_begin_loop HE Inv.
-    xapps~. xfun. xapps~.
     sets V': (V\(x:=true)).
-    sets I: (fun L => Hexists L', Hexists B Q, data B V' Q (* todo bug when writing Hexists *)
+    sets hinv': (fun L => Hexists L', Hexists B Q, data B V' Q 
         \* [inv G s V' B Q (new_crossing G s x L' V) ] \* [N\(x) = rev(L')++L]).
-    xapp_manual. xapply (KR I); clear KR; match goal with |- context [update] => idtac | _ => clears update end.
+    xapps~. xfun. xapps~. xapp hinv'.
     (* -------- verification of update -- *) 
-    apply Supdate. xisspec. clears update. clear hinv. (* todo tactic *)
-    unfold I at 1. hide I. unfold data. hide data. clears B Q.  
-    intros [y w] L. xextract as L' B Q Inv EQ. sort.
-    xmatch.
-    lets [_ _ SV]: Inv. 
+    intros m L.
+    eapply app_spec_1. applys (rm Supdate). xisspec. intros [y w]. intro_subst_hyp. (* todo tactic *)
+    clears B Q update hinv. unfold hinv' at 1. unfold data. 
+    xextract as L' B Q Inv EQ. lets [_ _ SV]: Inv. sort. 
     asserts Ew: (has_edge G x y w). rewrite~ <- Adj. rewrite EQ. applys* Mem_app_or.
     asserts Ny: (y \in nodes G). applys~ has_edge_in_nodes_r x w.
-    xlet. xret. xextract as Dy. (* todo xret does xlet *)
-    xapps~. xlet.
-    xframe - []. xpost (\= istrue (len_gt (B\(y)) dy)). (* todo automate *)
-    destruct (B\(y)); xgo~. 
+    xmatch. 
+Ltac xret_pre cont ::= 
+  match ltac_get_tag tt with
+  | tag_ret => cont tt
+  | tag_let_trm => xlet; [ cont tt | instantiate ]
+  end. 
+    xret. xextract as Dy. xapps~. xlet.
+    xframe - []. xpost (\= istrue (len_gt (B\(y)) dy)). 
+    xgo~. (*  destruct (B\(y)); xgo~. *)
     xok. xextracts. rewrite app_last in EQ. rewrite <- rev_cons in EQ.
-    show_all. unfold I, data. 
-    forwards~ K: inv_update_le s Ew Dy Inv. xif; case_If. 
-      xapps~. xapps~. hsimpl;eauto.
-      xret. hsimpl;eauto. 
+    unfold hinv', data. forwards~ K: inv_update_le s Ew Dy Inv.
+    xif; case_If. 
+      xapps~. xapps~. xsimpl*.
+      xret. xsimpl*.
     (* -------- iter pre-condition -- *) 
-    unfold I. unfold data. hsimpl~ (nil:list (int*int)). xok.
+    subst hinv' data. hsimpl~ (nil:list (int*int)).
     (* -------- iter post-condition -- *) 
-    clears update. subst I.
+    clears update. subst hinv'.
     hextract as L B' Q'' I' Leq. hsimpl~ (V',Q'') B'.
     left. hnf. subst V'. 
   (* todo :swapped SB and SV *)
@@ -1012,14 +1021,10 @@ Proof.
     lets M: (@count_update bool _). rewrite M. clear M. (* bug coq -> rewrites (rm) *)
      do 2 case_If. math.
     rew_app in Leq. applys~ inv_end_loop I'.
-      hnf. intros. rewrite~ <- Adj. rewrite Leq.
-
-  apply Mem_rev_eq.
+      hnf. intros. rewrite~ <- Adj. rewrite Leq. apply Mem_rev_eq.
     (* ------ node ignored -- *) 
-    xret. unfold data. hsimpl (V,H'). (* todo improve pair *) (* todo: rename H' *)
+    xret. unfold data. hsimpl (V,Q'). (* todo improve pair *) (* todo: rename H' *)
       right. split~. hnf. subst Q. rewrite card_union. rewrite card_single. math.
-  (* todo: name card_int as a function *)
-      skip: (V\(x) = true) . (* cleanup*)
     subst Q. apply* inv_no_update. 
     (* ---- loop post-condition -- *) 
     hextract as He. fold_bool. rew_logic in He. subst Q. unfold data.
@@ -1032,14 +1037,14 @@ Qed.
 
 
 (*-----------------------------------------------------------*)
+Tactic Notation "show_unfold" constr(R1) :=
+  show_defs; unfold R1; hide_defs.
+Tactic Notation "show_unfold" constr(R1) "," constr(R2) :=
+  show_defs; unfold R1,R2; hide_defs.
 
-(* todo: rename Q into H *)
-(* todo: cleanup the boolean equalities *)
 (* todo: prettyprint for  "let (x,y) =" and "fun (x,y) ="
-(* todo: automate multiset_in *)
-(* todo: try intro_subst_hyp should deal with tuples *)
-
-
+(* todo bug when writing Hexists *)
+ (* todo: name card_int as a function *)
 (*-----------------------------------------------------------*)
 
 End DijkstraSpec. 
