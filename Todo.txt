@@ -1,5 +1,15 @@
 (* todo: coqbug: pas de warning si un autre format existe déjà *)
 
+(*-----------------------------------------------------------*)
+dijkstra:
+(* todo: prettyprint for  "let (x,y) =" and "fun (x,y) ="
+(* todo bug when writing Hexists *)
+(* todo: name card_int as a function *)
+(* todo: lost notation  on while *)
+apply local_erase (* todo :tactic *)
+(*-----------------------------------------------------------*)
+
+
 
 
 

@@ -1,16 +1,7 @@
 Set Implicit Arguments.
 Require Import CFLib Dijkstra_ml.
 Open Scope comp_scope.
-Require Import LibArray LibGraph.
-Require Import MinInf.
-
-
-(*
-Module Type MLOrderedPairInt :=
-  MLOrdered with Definition t := (int*int)%type.
-Module MLNextNode' :  MLOrdered with Definition t := (int*int)%type.
-*)
-
+Require Import LibArray LibGraph MinInf.
 
 (*************************************************************)
 (** * More on graphs *)
@@ -31,6 +22,7 @@ Definition GraphAdjList (G:graph int) (g:loc) :=
 
 
 (*************************************************************)
+(** Specification of ordered types *)
 
 Module Type OrderedSigSpec.
 
@@ -51,13 +43,10 @@ End OrderedSigSpec.
 
 
 (*************************************************************)
-
-(** Definition of the minimum of a multiset *)
+(** Specification of priority queues *)
 
 Definition is_min_of `{Le A} (E:multiset A) (X:A) := 
   X \in E /\ forall_ Y \in E, X <= Y.
-
-(*************************************************************)
 
 Module Type MLPqueueSigSpec.
 
@@ -65,24 +54,26 @@ Declare Module Q : MLPqueueSig.
 Declare Module OS : OrderedSigSpec with Module O := Q.MLElement.
 Import Q MLElement OS. 
 
-Parameter Heap : htype T t -> htype (multiset T) heap.
+Parameter HeapOf : htype T t -> htype (multiset T) heap.
+
+Notation "'Heap'" := (HeapOf Id).
 
 Parameter create_spec :
   Spec create () |R>> 
-    R [] (~> Heap S \{}).
+    R [] (~> HeapOf S \{}).
 
 Parameter is_empty_spec : 
   Spec is_empty (h:heap) |R>> forall E,
-    keep R (h ~> Heap S E) (\= istrue (E = \{})).
+    keep R (h ~> HeapOf S E) (\= istrue (E = \{})).
 
 Parameter push_spec : 
   Spec push (x:t) (h:heap) |R>> forall E X,
-    R (h ~> Heap S E \* x ~> S X) (# h ~> Heap S (\{X} \u E)).
+    R (h ~> HeapOf S E \* x ~> S X) (# h ~> HeapOf S (\{X} \u E)).
 
 Parameter pop_spec : 
   Spec pop (h:heap) |R>> forall E,
-    R (h ~> Heap S E) (fun x => Hexists X F, 
-      [is_min_of E X] \* [E = \{X} \u F] \* x ~> S X \* h ~> Heap S F).
+    R (h ~> HeapOf S E) (fun x => Hexists X F, 
+      [is_min_of E X] \* [E = \{X} \u F] \* x ~> S X \* h ~> HeapOf S F).
 
 Hint Extern 1 (RegisterSpec create) => Provide create_spec.
 Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
@@ -92,6 +83,7 @@ End MLPqueueSigSpec.
 
 
 (*************************************************************)
+(** Verification of the module describing elements of the Pqueue *) 
 
 Module MLNextNodeSpec <: OrderedSigSpec with Module O := MLNextNode.
 Module O := MLNextNode.
@@ -123,17 +115,22 @@ Hint Extern 1 (RegisterSpec le) => Provide le_spec.
 End MLNextNodeSpec.
 
 (*************************************************************)
+(** Properties of [len], the data type representing distances *)
 
 Global Instance len_inhab : Inhab len.
 Proof. constructor. exact Infinite. Qed.
 Hint Resolve len_inhab.
 
+
 (*************************************************************)
-Require Import LibArray LibMap.
+(** Verification of Dijkstra's algorithm *)
 
 Module DijkstraSpec.
-Declare Module MLPqueue : MLPqueueSig with Module MLElement := MLNextNode.
-Declare Module MLPqueueSpec : MLPqueueSigSpec with Module Q := MLPqueue.
+Declare Module MLPqueue 
+  : MLPqueueSig with Module MLElement := MLNextNode.
+Declare Module MLPqueueSpec 
+  : MLPqueueSigSpec with Module Q := MLPqueue
+                    with Module OS := MLNextNodeSpec.
 Import MLPqueue MLPqueueSpec MLNextNodeSpec.
 Module Import Dijkstra := MLDijkstra MLPqueue.
 
@@ -520,7 +517,7 @@ Qed.
 End Invariants.
 
 (*-----------------------------------------------------------*)
-(** Proof of Dijkstra using the characteristic formula *)
+(** Proof of Dijkstra's algorithm using the characteristic formula *)
 
 Lemma shortest_path_spec :
   Spec shortest_path g a b |R>> forall G,
@@ -531,9 +528,9 @@ Lemma shortest_path_spec :
 Proof.
   xcf. introv Pos Ns Ne. unfold GraphAdjList at 1. hdata_simpl. 
   xextract as N Neg Adj. xapp. intros Ln. rewrite <- Ln in Neg. 
-  xapps. xapps. xapps. xapps*. xapps.
+  xapps. xapps. xapps. xapps*. xapps. 
   set (data := fun B V Q =>
-    g ~> Array Id N \* v ~> Array Id V \* b ~> Array Id B \* q ~> Heap Q).
+    g ~> Array N \* v ~> Array V \* b ~> Array B \* q ~> Heap Q).
   set (hinv := fun VQ => let '(V,Q) := VQ in
     Hexists B, data B V Q \* [inv G n s V B Q (crossing G s V)]).
   xseq (# Hexists V, hinv (V,\{})). 
@@ -548,7 +545,8 @@ Proof.
   (* ---- loop condition -- *) 
   unfold data. xapps. xret.
   (* ---- loop body -- *) 
-  xextract as HN. xapp. intros [x dx] Q' Mi HE. intro_subst.
+  xextract as HN. xapp. intros [x dx] Q' Mi HE.
+  unfold S. xextract. intro_subst. 
   lets [Inv' SV SB]: Inv. asserts Nx: (x \in nodes G).
     lets [_ _ Hc _]: Inv' x. forwards* [? _]: Hc dx.
   xmatch. xapps~. xif Vx. 
@@ -578,8 +576,8 @@ Proof.
   rew_app in Leq. applys~ inv_end_loop I'.
     hnf. intros. rewrite~ <- Adj. rewrite Leq. apply Mem_rev_eq.
   (* ------ node ignored -- *) 
-  xret. unfold data. hsimpl (V,Q'). 
-    right. split~. hnf. subst Q. rewrite card_union, card_single. math.
+  xret. unfold data. hsimpl (V,Q'). right. split~. hnf. subst Q.
+    rewrite card_union, card_single. unfold T. math.
   subst Q. apply* inv_no_update. 
   (* ---- loop post-condition -- *) 
   hextract as He. xclean. subst Q. unfold data. xsimpl~.
@@ -589,15 +587,6 @@ Proof.
   subst l. apply* inv_end_elim.
 Qed.
 
-
-(*-----------------------------------------------------------*)
-
-(* todo: prettyprint for  "let (x,y) =" and "fun (x,y) ="
-(* todo bug when writing Hexists *)
-(* todo: name card_int as a function *)
-(* todo: lost notation  on while *)
-apply local_erase (* todo :tactic *)
-(*-----------------------------------------------------------*)
 
 End DijkstraSpec. 
 
