@@ -71,11 +71,6 @@ Axiom ml_set_spec_group : forall a,
 
 
 
-
-(* todo: bug de congruence *)
-
-
-
 (****************************************************)
 (** Reflexive-symmetric-transitive closure *) 
 
@@ -223,7 +218,7 @@ Lemma is_equiv_iff_same_repr : forall M x y rx ry,
   is_repr M x rx -> is_repr M y ry ->
   ((rx = ry) = is_equiv M x y).
 Proof. 
-  introv Rx Ry. iff H (r&Rx'&Ry'). subst*.
+  introv Rx Ry. extens. iff H (r&Rx'&Ry'). subst*.
   applys (eq_trans r); applys is_repr_inj; eauto.
 Qed.
 
@@ -256,7 +251,7 @@ Proof. introv H. induction~ H. Qed.
 
 Lemma is_repr_equiv_root : forall M x r,
   is_repr M x r -> is_equiv M x r.
-Proof. introv H. exists* r. Qed.
+Proof. introv H. forwards: is_repr_binds_root H. exists* r. Qed.
 
 Hint Resolve is_repr_binds_root is_repr_equiv_root.
 Hint Resolve is_repr_in_dom_l is_repr_in_dom_r.
@@ -270,7 +265,6 @@ Proof. introv N H. induction H; constructors*. Qed.
 Lemma binds_diff_false : forall x y M,
   binds M x Root -> binds M x (Node y) -> False.
 Proof. introv H1 H2. forwards~: binds_inj H1 H2. false. Qed.
-
 
 Lemma node_not_root : forall r x M y,
   binds M r Root -> binds M x (Node y) -> x <> r.
@@ -419,10 +413,10 @@ Lemma repr_spec :
 Proof.
   xintros. intros x M FM D. forwards~ [r Hr]: FM x. induction Hr.
   (* case root *)
-  xcf_app. xlet. xapp_spec~ ml_get_spec_group. xextracts. (*todo:xapps_spec*)
+  xcf_app. xlet. xapp_spec~ ml_get_spec_group. xextracts. 
   rewrite (binds_get H). xgos*. 
   (* case node *)
-  xcf_app. xlet. xapp_spec~ ml_get_spec_group. xextracts. (*todo:xapps_spec*) 
+  xcf_app. xlet. xapp_spec~ ml_get_spec_group. xextracts.
   rewrite (binds_get H). xmatch. 
   forwards K: IHHr. apply* is_repr_in_dom_l. xapplys* K.
 Admitted.
@@ -500,96 +494,3 @@ Hint Extern 1 (RegisterSpec union) => Provide union_spec.
 
 
 
----------------
----------------
----------------
-
-(*
-Lemma connected_eq : forall A (G' G:graph A),
-  edges G = edges G' -> connected G = connected G'.
-Proof. introv H. unfolds. rewrite~ H. Qed.
-
-Implicit Arguments connected_eq [A].
-*)
-
-(*
-Lemma is_equiv_add_node : forall M r,
-  is_forest M -> r \notindom' M ->
-  is_equiv (M\(r:=Root)) = is_equiv M.
-Proof.
-  introv FM D. extens. intros x y.
-  tests (x = r); tests (y = r).
-
- (* todo: wlog *)
-  iff H. apply~ is_equiv_refl.
-  unfold is_equiv.
-*)
-Admitted.
-(*
-Lemma is_equiv_add_node : forall M r x y,
-  is_equiv (M\(r:=Root)) x y = (is_equiv M x y \/ (x = r /\ y = r)).
-Admitted.
-*)
-
-(****************************************************)
-(** Graph structure *)
-
-(** A graph has nodes and edges, which are pairs of nodes. *)
-
-Record graph A := graph_of { 
-  nodes : set A;
-  edges : set (A*A) }.
-
-(** The functions [add_node] and [add_edge] can be used to
-    augment a given graph. *)
-
-Definition add_node A (G:graph A) x :=
-  graph_of (nodes G \u \{x}) (edges G).
-
-Definition add_edge A (G:graph A) x y :=
-  graph_of (nodes G) (edges G \u \{(x,y)}).
-
-(** [connected G x y] indicates that the nodes [x] and [y]
-    belong to the same connected component in [G]. 
-    A connected component is defined as the reflexive-
-    symmetric-transitive closure of the edges. *)
-
-Definition connected A (G:graph A) x y :=
-  closure (fun x y => (x,y) \in edges G) x y.
-
-(*-----
-Lemma is_repr_added_node : forall M x z,
-  z \notindom' M -> is_repr (M\(z:=Root)) x z -> x = z.
-Proof.
-  introv D Rx. inverts~ Rx.
-Qed.
-
-
-
-(*
-Lemma indom_from_innodes : forall x G M,
-  dom M = nodes G -> x \in nodes G -> x \indom' M.
-Proof. introv H D. rewrite H. auto. Qed.
-Hint Resolve indom_from_innodes.
-*)
-
-
-
-(*
-
-Inductive closure (A:Type) (R:binary A) : binary A :=
-  | closure_step : forall x y,
-      R x y -> closure R x y
-  | closure_refl : forall x,
-      closure R x x
-  | closure_sym : forall x y, 
-      closure R x y -> closure R y x
-  | closure_trans : forall y x z,
-      closure R x y -> closure R y z -> closure R x z.
-
-
-Hint Constructors closure.
-Lemma closure_le : forall A (R1 R2 : binary A),
-  rel_le R1 R2 -> rel_le (closure R1) (closure R2).
-Proof. unfolds rel_le, pred_le. introv Le H. induction* H. Qed.
-*)

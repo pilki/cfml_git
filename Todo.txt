@@ -7,11 +7,12 @@ dijkstra:
 (* todo: name card_int as a function *)
 (* todo: lost notation  on while *)
 apply local_erase (* todo :tactic *)
+
 (*-----------------------------------------------------------*)
+xapp_spec~ ml_get_spec_group. xextracts. (*todo:xapps_spec*) 
+(* todo: bug de congruence qui unfold toutes les defs *)
 
-
-
-
+(*-----------------------------------------------------------*)
 
 *) exists ___ ne doit pas ouvrir les /\
 

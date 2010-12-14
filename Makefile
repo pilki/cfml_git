@@ -97,6 +97,7 @@ OKA=$(OKAS) $(OKAQ) $(OKAH) $(OKAO)
 
 VAC=\
 	vacid/union_find_ml.v \
+	vacid/union_find_proof.v \
 	vacid/sparse_array_ml.v \
 	vacid/sparse_array_proof.v 
 

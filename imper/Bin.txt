@@ -609,3 +609,100 @@ Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
 Hint Extern 1 (RegisterSpec push) => Provide push_spec.
 Hint Extern 1 (RegisterSpec pop) => Provide pop_spec.
 
+
+
+
+
+---------------
+---------------
+---------------
+
+(*
+Lemma connected_eq : forall A (G' G:graph A),
+  edges G = edges G' -> connected G = connected G'.
+Proof. introv H. unfolds. rewrite~ H. Qed.
+
+Implicit Arguments connected_eq [A].
+*)
+
+(*
+Lemma is_equiv_add_node : forall M r,
+  is_forest M -> r \notindom' M ->
+  is_equiv (M\(r:=Root)) = is_equiv M.
+Proof.
+  introv FM D. extens. intros x y.
+  tests (x = r); tests (y = r).
+
+ (* todo: wlog *)
+  iff H. apply~ is_equiv_refl.
+  unfold is_equiv.
+*)
+Admitted.
+(*
+Lemma is_equiv_add_node : forall M r x y,
+  is_equiv (M\(r:=Root)) x y = (is_equiv M x y \/ (x = r /\ y = r)).
+Admitted.
+*)
+
+(****************************************************)
+(** Graph structure *)
+
+(** A graph has nodes and edges, which are pairs of nodes. *)
+
+Record graph A := graph_of { 
+  nodes : set A;
+  edges : set (A*A) }.
+
+(** The functions [add_node] and [add_edge] can be used to
+    augment a given graph. *)
+
+Definition add_node A (G:graph A) x :=
+  graph_of (nodes G \u \{x}) (edges G).
+
+Definition add_edge A (G:graph A) x y :=
+  graph_of (nodes G) (edges G \u \{(x,y)}).
+
+(** [connected G x y] indicates that the nodes [x] and [y]
+    belong to the same connected component in [G]. 
+    A connected component is defined as the reflexive-
+    symmetric-transitive closure of the edges. *)
+
+Definition connected A (G:graph A) x y :=
+  closure (fun x y => (x,y) \in edges G) x y.
+
+(*-----
+Lemma is_repr_added_node : forall M x z,
+  z \notindom' M -> is_repr (M\(z:=Root)) x z -> x = z.
+Proof.
+  introv D Rx. inverts~ Rx.
+Qed.
+
+
+
+(*
+Lemma indom_from_innodes : forall x G M,
+  dom M = nodes G -> x \in nodes G -> x \indom' M.
+Proof. introv H D. rewrite H. auto. Qed.
+Hint Resolve indom_from_innodes.
+*)
+
+
+
+(*
+
+Inductive closure (A:Type) (R:binary A) : binary A :=
+  | closure_step : forall x y,
+      R x y -> closure R x y
+  | closure_refl : forall x,
+      closure R x x
+  | closure_sym : forall x y, 
+      closure R x y -> closure R y x
+  | closure_trans : forall y x z,
+      closure R x y -> closure R y z -> closure R x z.
+
+
+Hint Constructors closure.
+Lemma closure_le : forall A (R1 R2 : binary A),
+  rel_le R1 R2 -> rel_le (closure R1) (closure R2).
+Proof. unfolds rel_le, pred_le. introv Le H. induction* H. Qed.
+*)
