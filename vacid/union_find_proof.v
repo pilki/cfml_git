@@ -129,20 +129,40 @@ Proof.
 Qed.
 
 Lemma per_dom_add_edge : forall A (B:binary A) x y,
-   per_dom (add_edge B x y) = per_dom B \u \{x} \u \{y}.
+  per B -> x \in per_dom B -> y \in per_dom B -> 
+  per_dom (add_edge B x y) = per_dom B \u \{x} \u \{y}.
 Proof.
-(*
-  intros. unfold per_dom. apply set_ext. intros y.
-  rewrite in_set. iff H.*) skip.
+  introv [Sy Tr] Bx By. unfold add_edge. apply set_ext. intros z.
+  unfold LibRelation.union. unfold per_dom. unfold single.
+  do 2 rewrite in_union_eq, in_set. do 2 rewrite in_single_eq.
+  iff H.
+  set (a:=z) in H at 1. set (b := z) in H.
+  asserts~ K: (a = z \/ b = z). clearbody a b. gen K.
+  induction H; introv E.
+  left. destruct E; subst; destruct H as [M|[? ?]]; subst*.
+  intuition.
+  intuition.
+  destruct H as [E|[Zx|Zy]]; subst*.
+Qed.
+
+Lemma per_add_node : forall A (B:binary A) r,
+  per B -> per (add_node B r).
+Proof.
+  introv [Sy Tr]. unfold add_node, single, LibRelation.union.
+  constructors.
+  intros_all. hnf in Sy. intuition.  
+  intros_all. hnf in Tr. intuition; subst*.
 Qed.
 
 Lemma per_dom_add_node : forall A (B:binary A) x,
-   per_dom (add_edge B x x) = per_dom B \u \{x}.
+  per_dom (add_node B x) = per_dom B \u \{x}.
 Proof.
-(*
-  intros. unfold per_dom. apply set_ext. intros y.
-  rewrite in_set. iff H.*) skip.
+  intros. unfold add_node. apply set_ext. intros y.
+  unfold LibRelation.union. unfold per_dom. unfold single.
+  rewrite in_union_eq. rewrite in_single_eq. do 2 rewrite in_set. 
+  intuition. 
 Qed.
+
 
 
 (****************************************************)
@@ -326,14 +346,6 @@ Proof.
   subst x y. exists* z.
 Admitted. (*faster*)
 
-Axiom inv_add_node' : forall M B z,
-  is_forest M ->
-  dom M = per_dom B ->
-  is_equiv M = B ->
-  z \notindom' M -> 
-  is_equiv (M\(z:=Root)) = add_edge B z z.
-
-
 (** Lemmas for 'union' function *)
 
 Lemma is_forest_add_edge : forall M rx ry,
@@ -429,15 +441,15 @@ Hint Extern 1 (RegisterSpec repr) => Provide repr_spec.
 
 Lemma create_spec :
   Spec create () |R>> forall B,
-    R (UF B) (fun r => [r \notin (per_dom B)] \* UF (add_edge B r r)).
+    R (UF B) (fun r => [r \notin (per_dom B)] \* UF (add_node B r)).
 Proof.
   xcf. intros. unfold UF. xextract as M (PM&FM&DM&EM).
   xapp_spec ml_ref_spec_group.
   intros r. hextract as Neq. hsimpl. splits.
-    apply~ per_add_edge.
+    apply~ per_add_node.
     apply~ is_forest_add_node.
     rewrite~ dom_update_notin. rewrite per_dom_add_node. fequals.
-    applys~ inv_add_node'.
+    applys~ inv_add_node.
     rewrite~ <- DM.
 Admitted.
 
@@ -490,6 +502,7 @@ Proof.
 Admitted.
 
 Hint Extern 1 (RegisterSpec union) => Provide union_spec.
+
 
 
 

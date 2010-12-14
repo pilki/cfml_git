@@ -706,3 +706,11 @@ Lemma closure_le : forall A (R1 R2 : binary A),
   rel_le R1 R2 -> rel_le (closure R1) (closure R2).
 Proof. unfolds rel_le, pred_le. introv Le H. induction* H. Qed.
 *)
+
+Axiom inv_add_node' : forall M B z,
+  is_forest M ->
+  dom M = per_dom B ->
+  is_equiv M = B ->
+  z \notindom' M -> 
+  is_equiv (M\(z:=Root)) = add_edge B z z.
+
