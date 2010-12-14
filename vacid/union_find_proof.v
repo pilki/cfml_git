@@ -195,9 +195,19 @@ Definition is_equiv M x y :=
     cells describing the union-find structure associated with
     the PER [R], which is a binary relation over locations. *)
 
+(* todo move *)
+
+Notation "l ~~~> v" := (heap_is_single l v) (at level 69).
+
+Definition Cells : htype (content*int) loc :=
+  fun p l => let '(c,i) := p in l ~~~> _cell_of c i.
+
 Definition UF (B:binary loc) : hprop :=
-  Hexists (M:map loc content), Group (Ref Id) M \*
-    [ per B /\
+  Hexists (M:map loc content) (C:map loc (content*int)), 
+    Group Cells C \*
+    [ dom C = dom M /\
+      (forall x, x \indom M -> fst (C\(x) : content*int) = M\(x)) /\
+      per B /\
       is_forest M /\
       dom M = per_dom B /\
       is_equiv M = B ].
@@ -415,13 +425,14 @@ End InvAdd.
 (****************************************************)
 (** Verification *)
 
+
 (*--------------------------------------------------*)
 (** Function [repr] *)
 
 Lemma repr_spec :
   Spec repr x |R>> forall M,
     is_forest M -> x \indom M ->
-    keep R (Group (Ref Id) M) (\[is_repr M x]).
+    keep R (Group Id M) (\[is_repr M x]).
 Proof.
   xintros. intros x M FM D. forwards~ [r Hr]: FM x. induction Hr.
   (* case root *)
