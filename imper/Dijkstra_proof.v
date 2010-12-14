@@ -24,7 +24,7 @@ Definition nodes_index A (G:graph A) n :=
 (** Representation predicate for graphs *)
 
 Definition GraphAdjList (G:graph int) (g:loc) :=
-  Hexists N, g ~> Array Id N
+  Hexists N, g ~> Array N
    \* [nodes_index G (LibArray.length N)]
    \* [forall x y w, x \in nodes G ->
          Mem (y,w) (N\(x)) = has_edge G x y w].
@@ -40,7 +40,7 @@ Parameter T : Type.
 Parameter S : htype T t.
 
 Global Instance le_inst : Le T.
-Global Instance le_order : Le_total_order.
+Global Instance le_order : Le_total_preorder.
 
 Parameter le_spec : Spec le (x:t) (y:t) |R>> forall X Y,  
   keep R (x ~> S X \* y ~> S Y) (\= istrue (LibOrder.le X Y)).
@@ -59,11 +59,11 @@ Definition is_min_of `{Le A} (E:multiset A) (X:A) :=
 
 (*************************************************************)
 
-Module Type HeapSigSpec.
+Module Type MLPqueueSigSpec.
 
-Declare Module H : MLHeapSig.
-Declare Module OS : OrderedSigSpec with Module O := H.MLElement.
-Import H MLElement OS. 
+Declare Module Q : MLPqueueSig.
+Declare Module OS : OrderedSigSpec with Module O := Q.MLElement.
+Import Q MLElement OS. 
 
 Parameter Heap : htype T t -> htype (multiset T) heap.
 
@@ -88,12 +88,12 @@ Hint Extern 1 (RegisterSpec create) => Provide create_spec.
 Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
 Hint Extern 1 (RegisterSpec push) => Provide push_spec.
 Hint Extern 1 (RegisterSpec pop) => Provide pop_spec.
-End HeapSigSpec.
+End MLPqueueSigSpec.
 
 
 (*************************************************************)
 
-Module NextNodeSpec <: OrderedSigSpec with Module O := MLNextNode.
+Module MLNextNodeSpec <: OrderedSigSpec with Module O := MLNextNode.
 Module O := MLNextNode.
 Import O.
 Definition T : Type := (int*int)%type.
@@ -105,8 +105,12 @@ Proof.
   exact (fun (p1 p2 : int*int) => snd p1 <= snd p2).
 Defined.
   
-Global Instance le_order : Le_total_order.
-Admitted. (* todo :order prod *)
+Global Instance le_order : Le_total_preorder.
+Proof.
+  constructors. constructors. 
+  intros [x1 y1] [x2 y2] [x3 y3]. rapply (le_trans (A:=int)).
+  intros [x1 y1] [x2 y2]. destruct~ (le_total y1 y2). 
+Qed.
 
 Lemma le_spec : Spec le (x:t) (y:t) |R>> forall X Y, 
   keep R (x ~> S X \* y ~> S Y) (\= istrue (LibOrder.le X Y)).
@@ -116,7 +120,7 @@ Qed.
 
 Hint Extern 1 (RegisterSpec le) => Provide le_spec.
 
-End NextNodeSpec.
+End MLNextNodeSpec.
 
 (*************************************************************)
 
@@ -128,40 +132,10 @@ Hint Resolve len_inhab.
 Require Import LibArray LibMap.
 
 Module DijkstraSpec.
-Declare Module MLHeap : MLHeapSig with Module MLElement := MLNextNode.
-Import NextNodeSpec.
-Module Dijkstra := MLDijkstra MLHeap.
-Import Dijkstra.
-
-Import MLHeap.
-
-(*-----------------------------------------------------------*)
-(* todo : fix *)
-
-Parameter Heap : htype (multiset (int*int)) heap.
-
-Parameter create_spec :
-  Spec create () |R>> 
-    R [] (~> Heap \{}).
-
-Parameter is_empty_spec : 
-  Spec is_empty (h:heap) |R>> forall E,
-    keep R (h ~> Heap E) (\= istrue (E = \{})).
-
-Parameter push_spec : 
-  Spec push (x:int*int) (h:heap) |R>> forall E X,
-    R (h ~> Heap E \* x ~> S X) (# h ~> Heap (\{X} \u E)).
-
-Parameter pop_spec : 
-  Spec pop (h:heap) |R>> forall E,
-    R (h ~> Heap E) (fun x => Hexists X F, 
-      [is_min_of E X] \* [E = \{X} \u F] \* x ~> Id X \* h ~> Heap F).
-
-Hint Extern 1 (RegisterSpec create) => Provide create_spec.
-Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
-Hint Extern 1 (RegisterSpec push) => Provide push_spec.
-Hint Extern 1 (RegisterSpec pop) => Provide pop_spec.
-
+Declare Module MLPqueue : MLPqueueSig with Module MLElement := MLNextNode.
+Declare Module MLPqueueSpec : MLPqueueSigSpec with Module Q := MLPqueue.
+Import MLPqueue MLPqueueSpec MLNextNodeSpec.
+Module Import Dijkstra := MLDijkstra MLPqueue.
 
 
 (*-----------------------------------------------------------*)
@@ -410,7 +384,7 @@ Proof.
   asserts: (forall y q, crossing V y q -> d <= weight q). 
     introv Ey. lets ((_&?)&_): Ey. specializes~ Inv y.  
     forwards* (d'&In'&?): (Hcomp Inv) Ey.
-    lets Sy: Mi In'. skip: (d <= d'). math. (* todo with modules *)
+    lets Sy: Mi In'. asserts: (d <= d'). apply Sy. math.
   forwards* (_&p&En&W): Hcorr (Inv x).
   apply conj_dup_r. subst d. rewrite~ (@crossing_best V x p).
   introv Dx. constructors~. intros z. forwards [Bd Bb Hc Hk]: Inv z.

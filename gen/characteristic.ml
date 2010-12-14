@@ -982,8 +982,7 @@ and cfg_signature_item s =
          match mt with
          | Tmty_ident p -> Mod_typ_var (lift_full_path_name p)
          | Tmty_signature s -> 
-             
-            (* *)
+            (*
             Printf.printf "%d\n" (List.length s);
              begin match List.hd s with
               | Tsig_value (id,vd) -> unsupported "u" 
@@ -994,7 +993,7 @@ and cfg_signature_item s =
               | Tsig_class _ -> unsupported "objects"
               | Tsig_cltype _ -> unsupported "objects"
               end;
-              
+             *) 
             unsupported "module constraint is not just a name (4) -- todo: should be supported"  
          | _ -> unsupported "module constraint is not just a name (2)"  
          in
@@ -1043,10 +1042,17 @@ and cfg_module id m =
       | Tmod_ident p -> return (Mod_def_inline [lift_full_path_name p]), None
       | Tmod_structure str -> return Mod_def_declare, Some (cfg_structure str)
       | Tmod_functor (x, mt, m1) -> 
+          let x = lift_ident_name x in
           if cast <> Mod_cast_free then unsupported "cast before arguments in module declaration";
           begin match mt with
-          | Tmty_ident p -> aux (([lift_ident_name x], Mod_typ_var (lift_full_path_name p))::bindings) cast m1
-          | _ -> unsupported "functor with on-the-fly signature for its argument"
+          | Tmty_ident p -> aux (([x], Mod_typ_var (lift_full_path_name p))::bindings) cast m1
+          | _ -> 
+             (* hack for Dijkstra   Printf.printf "-->%s %s\n" (lift_ident_name x) id; Pident (Ident.create ("PqueueSig") *)
+             if id = "MLDijkstra" && x = "MLPqueue" 
+             then 
+               aux (([x], Mod_typ_with_mod (Mod_typ_var "MLPqueueSig", "MLElement", "MLNextNode"))::bindings) cast m1
+             else unsupported "functor with on-the-fly signature for its argument"
+            
           end
       | Tmod_apply (m1, m2, coercion) ->
           let rec get_apps acc m0 =

@@ -579,3 +579,33 @@ Proof.
      exists~ dz. split~. multiset_in.
 Qed.
 *)
+
+
+
+(*-----------------------------------------------------------*)
+(* todo : fix *)
+
+Parameter Heap : htype (multiset (int*int)) heap.
+
+Parameter create_spec :
+  Spec create () |R>> 
+    R [] (~> Heap \{}).
+
+Parameter is_empty_spec : 
+  Spec is_empty (h:heap) |R>> forall E,
+    keep R (h ~> Heap E) (\= istrue (E = \{})).
+
+Parameter push_spec : 
+  Spec push (x:int*int) (h:heap) |R>> forall E X,
+    R (h ~> Heap E \* x ~> S X) (# h ~> Heap (\{X} \u E)).
+
+Parameter pop_spec : 
+  Spec pop (h:heap) |R>> forall E,
+    R (h ~> Heap E) (fun x => Hexists X F, 
+      [is_min_of E X] \* [E = \{X} \u F] \* x ~> Id X \* h ~> Heap F).
+
+Hint Extern 1 (RegisterSpec create) => Provide create_spec.
+Hint Extern 1 (RegisterSpec is_empty) => Provide is_empty_spec.
+Hint Extern 1 (RegisterSpec push) => Provide push_spec.
+Hint Extern 1 (RegisterSpec pop) => Provide pop_spec.
+

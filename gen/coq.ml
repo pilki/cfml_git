@@ -413,7 +413,7 @@ and string_of_mod_typ mt =
    | Mod_typ_with_def (mt',x,c) -> 
       sprintf " %s with Definition %s := %s " (string_of_mod_typ mt') x (string_of_coq c)
    | Mod_typ_with_mod (mt',x,y) ->
-      sprintf " %s with Definition %s := %s " (string_of_mod_typ mt') x y
+      sprintf " %s with Module %s := %s " (string_of_mod_typ mt') x y
 
 and string_of_mod_expr vs = 
    show_list (fun x ->x) " " vs
