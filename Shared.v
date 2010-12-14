@@ -105,7 +105,11 @@ Tactic Notation "old_cases" "*" :=
 
 
 (************************************************************)
-(* * TODO: move *)
+(* * others *)
+
+Lemma Mem_rev_eq : forall A (L:list A) x,
+  Mem x L = Mem x (rev L).
+Proof. extens. iff M. apply~ Mem_rev. rewrite <- rev_rev. apply~ Mem_rev. Qed.
 
 Axiom isTrue_andb : forall b1 b2 : bool,
   isTrue (b1 && b2) = (isTrue b1 /\ isTrue b2).
@@ -155,7 +159,6 @@ Tactic Notation "test_prop" constr(P) "as" ident(H) :=
 
 Tactic Notation "test_prop" constr(P) :=
   let H := fresh "C" in test_prop P as H.
-
 
 Ltac apply_to_If cont :=
   match goal with 
@@ -327,6 +330,9 @@ Notation "P ===> Q" := (rel_le P Q)
 
 Open Scope func.
 
+Lemma rel_le_refl : forall A B (P:A->B->Prop),
+  rel_le P P.
+Proof. intros_all~. Qed.
 
 Lemma pred_le_extens : forall A (H1 H2 : A->Prop),
   H1 ==> H2 -> H2 ==> H1 -> H1 = H2.
@@ -345,42 +351,15 @@ Implicit Arguments pred_le_proj2 [A H1 H2].
 Implicit Arguments pred_le_extens [A H1 H2].
 
 
-
 (********************************************************************)
-(* todo: move *)
-
-Inductive Mem (A:Type) (x:A) : list A -> Prop :=
-  | Mem_here : forall l, 
-      Mem x (x::l)
-  | Mem_next : forall y l, 
-      Mem x l -> 
-      Mem x (y::l).
-
-Axiom Mem_app_or : forall (A:Type) (l1 l2 : list A) x,
-  Mem x l1 \/ Mem x l2 -> Mem x (l1 ++ l2).
-  (* todo: prove *)
+(* Hints *)
 
 Hint Constructors Mem.
-
-Lemma If_l : forall (A:Type) (P:Prop) (x y : A), 
-  P -> (If P then x else y) = x.
-Proof. intros. case_if*. Qed.
-
-Lemma If_r : forall (A:Type) (P:Prop) (x y : A), 
-  ~ P -> (If P then x else y) = y.
-Proof. intros. case_if*. Qed.
-
-Lemma rel_le_refl : forall A B (P:A->B->Prop),
-  rel_le P P.
-Proof. intros_all~. Qed.
 Hint Resolve rel_le_refl.
 
-(********************************************************************)
-
-(* todo: move *)
-Implicit Arguments list_sub [[A]].
-
-(* todo: move *)
+Lemma not_True_to_False : ~ True -> False.
+Proof. intros. rew_logic in *. auto. Qed.
+Hint Immediate not_True_to_False.
 
 Hint Resolve (0%nat) : typeclass_instances.
 Hint Resolve (0%Z) : typeclass_instances.
@@ -398,4 +377,7 @@ Ltac inhab :=
 
 Instance inhabited_Z : Inhabited Z.
 Admitted. (* todo -- trivial, use 0%Z *)
+
+Hint Resolve bool_inhab.
+
 

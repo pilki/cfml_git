@@ -4080,3 +4080,25 @@ Axiom bool_neq_true_eq_false : forall b,
 Hint Resolve bool_neq_true_eq_false.
 
 Hint Resolve istrue_True.
+
+(*
+Lemma size_ok_elim : forall `{Inhab A} (T:array A) x,
+  size_ok T -> x \in nodes G -> index T x.
+Proof. unfolds~ size_ok. Qed.
+Hint Extern 1 (index _ _) => apply size_ok_elim.
+*)
+
+
+Lemma graph_adj_index : forall A B (T:array A) (G:graph B) n x,
+  nodes_index G n -> length T = n -> x \in nodes G -> index T x.
+Proof. introv Nod Len Nx. subst. rewrite array_index_def. rewrite~ <- Nod. Qed.
+
+(*
+Definition size_ok A (T:array A) :=
+  forall x, x \in nodes G -> index T x.  
+*)
+
+
+Axiom bool_test' : forall b,
+  b = true \/ b = false.
+

@@ -4,7 +4,7 @@ sig
    val le : t -> t -> bool
 end 
 
-module type HeapSig =
+module type PqueueSig =
 sig
   module Element : Ordered
   type heap
@@ -16,23 +16,14 @@ end
 
 type len = Finite of int | Infinite
 
-module NextNode = (* Ordered with type t = int * int *)
+module NextNode =
 struct
    type t = int * int
    let le : t -> t -> bool =
      fun (_,d1) (_,d2) -> (d1 <= d2)
 end
 
-module type HeapNextNodeSig =
-sig
-  type heap
-  val create : unit -> heap
-  val is_empty : heap -> bool
-  val push : NextNode.t -> heap -> unit
-  val pop : heap -> NextNode.t
-end
-
-module Dijkstra (Pqueue:HeapNextNodeSig) = (* Heap : HeapSig with module Element = NextNode *)
+module Dijkstra (Pqueue : PqueueSig with module Element = NextNode) =
 struct 
    let shortest_path g s e = 
       let n = Array.length g in

@@ -265,7 +265,6 @@ Proof.
   intros _. hchanges~ (Group_add' l M).
 Qed.
 
-
 (** Strong References *) (* todo: unify with normal ref? *)
 
 Parameter ml_sset : func.
@@ -282,27 +281,29 @@ Parameter ml_array_set : func.
 Parameter ml_array_init : func.
 Parameter ml_array_length : func.
 
-Parameter Array : forall a A (T:htype A a) (M:array A) (l:loc), hprop.
+Parameter ArrayOf : forall a A (T:htype A a) (M:array A) (l:loc), hprop.
+
+Notation "'Array'" := (ArrayOf Id).
 
 Require Import LibBag.
 
 Parameter ml_array_make_spec : forall a,
   Spec ml_array_make (n:int) (v:a) |R>> 
-     R [] (~> Array Id (LibArray.make n v)).
+     R [] (~> Array (LibArray.make n v)).
 
 Parameter ml_array_get_spec : forall a,
   Spec ml_array_get (l:loc) (i:int) |R>> 
     forall `{Inhab a} (t:array a), index t i ->
-    keep R (l ~> Array Id t) (\= t\(i)).
+    keep R (l ~> Array t) (\= t\(i)).
 
 Parameter ml_array_set_spec : forall a,
   Spec ml_array_set (l:loc) (i:int) (v:a) |R>> 
     forall (t:array a), index t i -> 
-    R (l ~> Array Id t) (# l ~> Array Id (t\(i:=v))).
+    R (l ~> Array t) (# l ~> Array (t\(i:=v))).
 
 Parameter ml_array_length_spec : forall a,
   Spec ml_array_length (l:loc) |R>> forall (t:array a),
-    keep R (l ~> Array Id t) (\= LibArray.length t).
+    keep R (l ~> Array t) (\= LibArray.length t).
 
 Hint Extern 1 (RegisterSpec ml_array_make) => Provide ml_array_make_spec.
 Hint Extern 1 (RegisterSpec ml_array_get) => Provide ml_array_get_spec.
@@ -315,7 +316,7 @@ Parameter ml_list_iter : func.
 
 Lemma ml_list_iter_spec : forall a,
   Spec ml_list_iter f l |R>> forall (I:list a->hprop),
-    (Spec f x |R>> forall t, R (I (x::t)) (# I t)) -> 
+    (forall x t, (App f x;) (I (x::t)) (# I t)) -> 
     R (I l) (# I nil).
 Admitted.
 Hint Extern 1 (RegisterSpec  ml_list_iter) => Provide ml_list_iter_spec.
@@ -367,7 +368,7 @@ Lemma list_dyn_cons : forall A X (L:list A),
 Proof. auto. Qed.
 
 Lemma list_dyn_last : forall A X (L:list A),
-  list_dyn (L&X) = (list_dyn L)&(dyn X).
+  list_dyn (L&X) = (list_dyn L) & (dyn X).
 Proof. intros. unfold list_dyn. rew_list~. Qed.
 
 Hint Rewrite list_dyn_nil : rew_app.

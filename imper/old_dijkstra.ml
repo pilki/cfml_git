@@ -1885,3 +1885,15 @@ End Dijkstra.
 
 *)
 
+
+
+
+module type HeapNextNodeSig =
+sig
+  type heap
+  val create : unit -> heap
+  val is_empty : heap -> bool
+  val push : NextNode.t -> heap -> unit
+  val pop : heap -> NextNode.t
+end
+ (* : Ordered with type t = int * int *)

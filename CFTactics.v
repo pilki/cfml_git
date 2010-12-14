@@ -1,4 +1,4 @@
- Set Implicit Arguments.
+Set Implicit Arguments.
 Require Export LibInt CFSpec CFPrint.
 
 
@@ -514,7 +514,10 @@ Ltac xret_core :=
         | apply xret_lemma ].
 
 Ltac xret_pre cont := 
-  cont tt.
+  match ltac_get_tag tt with
+  | tag_ret => cont tt
+  | tag_let_trm => xlet; [ cont tt | instantiate ]
+  end. 
 
 (* todo: special treatment of xlet/xret
 Ltac xret_pre cont := 
@@ -558,6 +561,39 @@ Proof. intros. apply* local_weaken. Qed.
 
 Tactic Notation "xpost" constr(Q) := 
   apply (@fix_post _ Q); [ try xlocal | | try apply rel_le_refl ].
+
+
+(*--------------------------------------------------------*)
+(* ** [xgen] *)
+
+Lemma xgen_lemma : forall A (J:A->hprop) (E:A),
+  J E ==> heap_is_pack J.
+Proof. intros. hsimpl*. Qed.
+
+Ltac xgen_abstract H E :=
+  let Jx := eval pattern E in H in
+  match Jx with ?J _ => constr:(J) end.
+
+Ltac xgen_nosimpl E :=
+  match goal with |- ?H ==> _ =>
+    let J := xgen_abstract H E in 
+    eapply pred_le_trans; [ apply (@xgen_lemma _ J E) | ] end.
+
+Ltac xgen_base E := 
+  xgen_nosimpl E.    
+
+Tactic Notation "xgen" constr(E1) :=
+  xgen_base E1.
+Tactic Notation "xgen" constr(E1) constr(E2) :=
+  xgen_base E1; xgen_base E2.
+
+Lemma xgen_demo : forall (x E y F:int) H1 R,
+  (forall H2, x ~> R E \* y ~> R F \* H1 ==> H2 -> H2 = H2 -> True) -> True.
+Proof.
+  introv H. dup.
+  eapply H. xgen E. xgen F. xok. auto.
+  eapply H. xgen E F. xok. auto.
+Qed.
 
 
 (*--------------------------------------------------------*)
@@ -861,6 +897,10 @@ Tactic Notation "xapps" "*" constr(E) :=
 
 (* todo: when hypothesis in an app instance *)
 
+Tactic Notation "xapp_body" :=
+  xuntag; let f := spec_goal_fun tt in
+  xfind f; let H := fresh "TEMP" in intro H; 
+  eapply app_spec_1; apply H; clear H; try xisspec.
 
 Tactic Notation "xapp_hyp" := (* todo: remove*)
   eapply local_weaken; 
@@ -869,7 +909,6 @@ Tactic Notation "xapp_hyp" := (* todo: remove*)
       apply (proj2 H) (* todo generalize to arities*)
     | hsimpl
     | hsimpl ].
-
 
 Ltac xapp_as_base spec args solver x :=
   let cont tt := xapp_inst args solver in
@@ -1609,12 +1648,15 @@ Admitted.
 Ltac xwhile_inv_core W I :=
   match type of W with
   | wf _ => eapply (@while_loop_cf_to_inv _ I _ W)
-  | _ -> nat => eapply (@while_loop_cf_to_inv _ I (measure W))
-  | _ => eapply (@while_loop_cf_to_inv _ I W)
+  | _ -> nat => eapply (@while_loop_cf_to_inv _ I (measure W)); [ try prove_wf | | ]
+  | _ => eapply (@while_loop_cf_to_inv _ I W); [ try prove_wf | | ]
   end.
 
 Tactic Notation "xwhile_inv" constr(W) constr(I) :=
   xwhile_pre ltac:(fun _ => xwhile_inv_core W I).
+
+Tactic Notation "xwhile_inv_body" :=
+  apply local_erase; esplit; splits (3%nat). 
 
 
 (*--------------------------------------------------------*)
