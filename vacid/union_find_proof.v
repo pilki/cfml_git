@@ -453,32 +453,36 @@ End InvAdd.
 (*--------------------------------------------------*)
 (** Function [repr] *)
 
-
-
+Definition same_repr M M' :=
+  forall x r, is_repr M x r = is_repr M' x r.
 
 
 Lemma repr_spec :
   Spec repr x |R>> forall B M,
     describes B M -> x \in (per_dom B) ->
     R (Group (Ref Id) M) (fun r => Hexists M', 
-      [is_repr M' x r] \* Group (Ref Id) M' \* [describes B M']).
-(*
+      [describes B M'] \* [same_repr M' M] \*
+      [is_repr M' x r] \* Group (Ref Id) M').
 Proof.
   xintros. intros x B M BM D. lets (PB&FM&DE&EQ): BM.
   rewrite <- DE in D. forwards~ [r Hr]: FM x. induction Hr.
   (* case root *)
   xcf_app. xlet. xapp_spec~ ml_get_spec_group. xextracts. 
-  rewrite (binds_get H). xgos*. 
+  rewrite (binds_get H). xgos*. hnfs~.
   (* case node *)
   xcf_app. xlet. xapp_spec~ ml_get_spec_group. xextracts.
   rewrite (binds_get H). xmatch.
   forwards K: IHHr. apply* is_repr_in_dom_l.
-  xlet as rx. xapply K. hsimpl. xok. xextract as M' Ry BM'.
+  xlet as rx. xapply K. hsimpl. xok. xextract as M' BM' SM' Ry.
   lets (PB'&FM'&DE'&EQ'): BM'.
   xapp_spec~ ml_set_spec_group. rewrite~ DE'. rewrite~ <- DE.
-  xret. hsimpl. 
-  apply~ path_compression. applys (per_trans PB y).
+  xret. hsimpl.
+  skip.
+  skip. (* intros z rz. extens. tests (z = x). *)
+  hnf.
+  applys~ path_compression. applys (per_trans PB y).
    rewrite* <- EQ. rewrite* <- EQ'.
+(*
   applys is_repr_step rx. eauto.  
   asserts*: (binds M' rx Root).
   asserts: (x <> rx).
@@ -521,11 +525,11 @@ Lemma same_spec :
 Proof.
   xcf. introv Dx Dy. unfold UF. xextract as M BM.
   lets (PM&FM&DM&EM): BM.
-  xapp* as rx. intros M' Rx BM'. xapp* as ry. intros M'' Ry BM''.
+  xapp* as rx. intros M' BM' SM' Rx.
+  xapp* as ry. intros M'' BM'' SM'' Ry.
   xapp. intros b. hextracts. hsimpl~ M''.
-skip. (* needs to know that roots not changed *)
-(*  applys eq_trans 
-  rewrite <- (proj44 BM''). fequals. applys~ is_equiv_iff_same_repr.*)
+   rewrite <- (proj44 BM''). fequals.
+   applys~ is_equiv_iff_same_repr. rewrite~ SM''.
 Admitted.
 
 Hint Extern 1 (RegisterSpec equiv) => Provide same_spec.
@@ -543,10 +547,11 @@ Lemma temp2 : forall B M x,
 Proof. introv Eq In. skip. Qed.
 Hint Extern 1 (_ \in per_dom _) => 
   eapply temp2; [ eassumption | ].
+
 Lemma describes_add_edge_already : forall B M M' x y r,
   describes B M ->
   describes B M' ->
-  x \in per_dom B -> (* todo: derivable *)
+  x \in per_dom B -> (* todo: derivable? *)
   y \in per_dom B ->
   is_repr M x r ->
   is_repr M' y r ->
@@ -558,7 +563,7 @@ Proof.
   auto*.
   rewrite~ per_dom_add_edge. skip. (* set_eq *)
   rewrite* add_edge_already. applys (per_trans PM r).
-    rewrite~ <- EM. rewrite~ <- EM'. exists___*.
+   rewrite~ <- EM. rewrite~ <- EM'. exists___*.
 Admitted.
 
 Lemma describes_two_dom : forall B M M',
@@ -571,14 +576,14 @@ Lemma union_spec :
     R (UF B) (# UF (add_edge B x y)). 
 Proof.
   xcf. introv Dx Dy. unfold UF. xextract as M BM.
-  xapp* as rx. intros M' Rx BM'. xapp* as ry. intros M'' Ry BM''.
+  xapp* as rx. intros M' BM' SM' Rx. 
+  xapp* as ry. intros M'' BM'' SM'' Ry.
   xapps. xif.
   (* case [rx <> ry] *)
   xapp_spec~ ml_set_spec_group.
     rewrite* (describes_two_dom BM'' BM').
-  hsimpl. apply~ describes_add_edge. rewrite* <- (proj43 BM').
-   (* forwards*: is_repr_binds_root Rx. *)
-   skip. (* roots not changed *)
+  hsimpl. apply~ describes_add_edge.
+   rewrite* <- (proj43 BM'). rewrite~ SM''.
   (* case [rx = ry] *)
   xrets. applys* describes_add_edge_already BM' BM''.
 Admitted.
