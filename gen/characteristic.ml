@@ -244,10 +244,24 @@ let pattern_aliases p : (typed_var*coq) list =
 (*#########################################################################*)
 (* ** Helper functions for primitive functions *)
 
-let prefix_for_label typ = 
+let rec prefix_for_label typ = 
   match typ.desc with  
   | Tconstr (p, _, _) -> lift_path_name p 
-  | _ -> failwith "string_of_label: type of a record should be a Tconstr" 
+  | Tlink t -> prefix_for_label t
+  | _ -> failwith "string_of_label: type of a record should be a Tconstr or Tlink"
+  (*
+  | Tvar -> failwith "x1"
+  | Tarrow _ -> failwith "x2"
+  | Ttuple  _ -> failwith "x3"
+  | Tconstr _ -> failwith "x4"
+  | Tobject  _ -> failwith "x5"
+  | Tfield _ -> failwith "x6"
+  | Tnil _ -> failwith "x7"
+  | Tsubst  _ -> failwith "x9"
+  | Tvariant  _ -> failwith "x10"
+  | Tunivar -> failwith "x11"
+  | Tpoly  _ -> failwith "x12"
+  *)
 
 let string_of_label_with prefix lbl =
   prefix ^ "_" ^ lbl.lbl_name
@@ -730,7 +744,7 @@ and cfg_type_abbrev (name,dec) =
       | None -> [Coqtop_param (x, sort)]
       | Some t -> [Coqtop_def ((x, sort), coq_fun_types args (lift_typ_exp t));
                    Coqtop_hint_unfold ([x],"typeclass_instances") ] in
-   coqs 
+   coqs, [] 
 
 (** Generate the top-level Coq declarations associated with 
     a record definition. *)
@@ -764,7 +778,8 @@ and cfg_type_record (name,dec) =
       | _ -> List.map (fun field -> Coqtop_implicit (field, List.map (fun p -> p, Coqi_maximal) params)) fields_names 
       in
    let type_abbrev = Coqtop_def ((x,Coq_wild), coq_fun_types params loc_type) in
-   [ type_abbrev; Coqtop_record top ] 
+   [ type_abbrev ],
+   [ Coqtop_record top ] 
    @ (implicit_decl)
    @ [ Coqtop_hint_constructors ([record_name], "typeclass_instances") ]
    @ record_functions record_name (record_name ^ "_of") (make_upper x) params fields_names fields_types
@@ -905,21 +920,27 @@ and cfg_algebraic decls =
    let inds,maxiss = List.split (List.map trans_ind decls) in
      [ Coqtop_ind inds ] 
    @ (List.concat maxiss)
-   @ [ Coqtop_hint_constructors (List.map (fun i -> i.coqind_name) inds, "typeclass_instances") ]
+   @ [ Coqtop_hint_constructors (List.map (fun i -> i.coqind_name) inds, "typeclass_instances") ],
+   []
 
 (** Generate the top-level Coq declarations associated with 
     a type definition. *)
 
 and cfg_type_decls decls =
-    if List.length decls = 1 && is_type_abbrev (List.hd decls)  
-       then cfg_type_abbrev (List.hd decls)
-    else if List.length decls = 1 && is_type_record (List.hd decls)  
-       then cfg_type_record (List.hd decls)
-    else if (List.for_all is_algebraic decls)  
-       then cfg_algebraic decls
-    else (* /todo/ very experimental support: simply break circularity *)
-       list_concat_map cfg_type_decls (List.map (fun x -> [x]) decls)
-       (* unsupported "type definitions must be single abbreviations or mutually-recursive inductive definitions (mixing both is not supported in Coq)" *)
+   let rec aux decls =
+       if List.length decls = 1 && is_type_abbrev (List.hd decls)  
+          then cfg_type_abbrev (List.hd decls)
+       else if List.length decls = 1 && is_type_record (List.hd decls)  
+          then cfg_type_record (List.hd decls)
+       else if (List.for_all is_algebraic decls)  
+          then cfg_algebraic decls
+       else (* /todo/ very experimental support: simply break circularity *)
+          let (a,b) = List.split (List.map aux (List.map (fun x -> [x]) decls)) in
+          (List.concat a, List.concat b)
+          (* unsupported "type definitions must be single abbreviations or mutually-recursive inductive definitions (mixing both is not supported in Coq)" *)
+      in
+   let (a,b) = aux decls in 
+   a @ b
 
 (** Generate the top-level Coq declarations associated with 
     the content of a module. *)

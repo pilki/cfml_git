@@ -195,19 +195,9 @@ Definition is_equiv M x y :=
     cells describing the union-find structure associated with
     the PER [R], which is a binary relation over locations. *)
 
-(* todo move *)
-
-Notation "l ~~~> v" := (heap_is_single l v) (at level 69).
-
-Definition Cells : htype (content*int) loc :=
-  fun p l => let '(c,i) := p in l ~~~> _cell_of c i.
-
 Definition UF (B:binary loc) : hprop :=
-  Hexists (M:map loc content) (C:map loc (content*int)), 
-    Group Cells C \*
-    [ dom C = dom M /\
-      (forall x, x \indom M -> fst (C\(x) : content*int) = M\(x)) /\
-      per B /\
+  Hexists (M:map loc content), Group (Ref Id) M \*
+    [ per B /\
       is_forest M /\
       dom M = per_dom B /\
       is_equiv M = B ].
@@ -425,24 +415,59 @@ End InvAdd.
 (****************************************************)
 (** Verification *)
 
-
 (*--------------------------------------------------*)
 (** Function [repr] *)
 
+Definition describes B M :=
+  per B /\
+  is_forest M /\
+  dom M = per_dom B /\
+  is_equiv M = B.
+(*
+Lemma indom_prove : forall B M x,
+  dom M = per_dom B -> x \in per_dom B -> x \indom M.
+Proof. introv Eq In. rewrite~ Eq. Qed.
+Hint Extern 1 (_ \indom _) => eapply indom_prove; [ eassumption | ]. 
+*)
+Lemma indom_prove : forall B M x,
+  dom M = per_dom B -> x \indom M -> x \in per_dom B.
+Proof. introv Eq In. rewrite~ <- Eq. Qed.
+Hint Resolve indom_prove.
+(*
+Hint Extern 1 (_ \indom _) => eapply indom_prove; [ eassumption | ].
+*)
+
 Lemma repr_spec :
-  Spec repr x |R>> forall M,
-    is_forest M -> x \indom M ->
-    keep R (Group Id M) (\[is_repr M x]).
+  Spec repr x |R>> forall B M,
+    describes B M -> x \in (per_dom B) ->
+    R (Group (Ref Id) M) (fun r => Hexists M', 
+      [is_repr M' x r] \* Group (Ref Id) M' \* [describes B M']).
 Proof.
-  xintros. intros x M FM D. forwards~ [r Hr]: FM x. induction Hr.
+  xintros. intros x B M BM D. lets (PB&FM&DE&EQ): BM.
+  rewrite <- DE in D. forwards~ [r Hr]: FM x. induction Hr.
   (* case root *)
   xcf_app. xlet. xapp_spec~ ml_get_spec_group. xextracts. 
   rewrite (binds_get H). xgos*. 
   (* case node *)
   xcf_app. xlet. xapp_spec~ ml_get_spec_group. xextracts.
-  rewrite (binds_get H). xmatch. 
-  forwards K: IHHr. apply* is_repr_in_dom_l. xapplys* K.
+  rewrite (binds_get H). xmatch.
+  forwards K: IHHr. apply* is_repr_in_dom_l.
+  xlet as rx. xapply K. hsimpl. xok. xextract as M' Ry BM'.
+  lets (PB'&FM'&DE'&EQ'): BM'.
+  xapp_spec~ ml_set_spec_group. rewrite~ DE'. rewrite~ <- DE.
+  xret. hsimpl. 
+Lemma path_compression : forall M B x r,
+   describes B M -> B x r -> describes B (M\(x:=Node r)).
 Admitted.
+  apply~ path_compression. applys (per_trans PB y).
+   rewrite* <- EQ. rewrite* <- EQ'.
+  applys is_repr_step rx. eauto.  
+  asserts*: (binds M' rx Root).
+  asserts: (x <> rx).
+
+Admitted.
+
+
 
 Hint Extern 1 (RegisterSpec repr) => Provide repr_spec.
 
