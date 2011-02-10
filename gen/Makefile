@@ -1,14 +1,17 @@
 OPTIONS=-I parsing -I typing -I utils -I tools
 OCAMLBUILD=ocamlbuild $(OPTIONS)
 
-all: 
-	$(OCAMLBUILD) main.byte tools/myocamldep.byte
+all: progs lib
 
-dep:
-	$(OCAMLBUILD) tools/myocamldep.byte
+progs: force
+	$(OCAMLBUILD) main.byte makecmi.byte tools/myocamldep.byte 
 
-main:
-	$(OCAMLBUILD) main.byte 
+lib: makecmi.byte
+	./makecmi.byte -nostdlib -nopervasives stdlib/pervasives.mli
+	./makecmi.byte -nostdlib -I stdlib stdlib/list.mli
+	./makecmi.byte -nostdlib -I stdlib stdlib/array.mli
+
+force:
 
 clean:
 	rm -Rf _build

@@ -1,3 +1,4 @@
+COQBIN=/var/tmp/coq-8.2pl2/bin/
 #COQBIN=/home/charguer/coq/trunk/bin/
 INCLUDES=-I . -I ./demo -I ./okasaki -I ./lib -I ./imper
 # -I ocamllib 
@@ -223,7 +224,7 @@ cod: $(OKACOD:.v=.vo)
 dvpt: $(DEV:.v=.vo) 
 test: $(TEST:.v=.vo) 
 gen: 
-	make -C gen
+	make -C gen all
 dep: .camldep $(ALL:.v=.d) 
 none:
 
@@ -237,7 +238,6 @@ edits:
 	coqide -I lib $(OKAS) &
 editi:
 	coqide -I lib $(IMP) &
-
 
 stats:
 	@php -f stats.php $(OKAQ) $(OKAH) $(OKAO) > stats.txt

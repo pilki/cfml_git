@@ -200,3 +200,16 @@ let typecheck_implementation_file ppf sourcefile parsetree =
           raise e
       | e ->
           raise e
+
+
+let typecheck_interface_file ppf sourcefile output_prefix =
+  init_path ();
+  let prefixname = Filename.chop_extension sourcefile in
+  let modulename = String.capitalize(Filename.basename prefixname) in
+  Env.set_unit_name modulename;
+  let inputfile = preprocess sourcefile in
+  let ast = parse_file inputfile Parse.interface ast_intf_magic_number in
+  let sg = Typemod.transl_signature (initial_env()) ast in
+  Warnings.check_fatal ();
+  Env.save_signature sg modulename (output_prefix ^ ".cmi")
+

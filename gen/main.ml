@@ -15,12 +15,15 @@ let ppf = Format.std_formatter
 
 let onlycmi = ref false
 
+let no_mystd_include = ref false
+
 (* err_formatter *)
 
 (*#########################################################################*)
 
 let _ =
    Clflags.strict_value_restriction := true;
+   Clflags.no_std_include := true;
 
    (*---------------------------------------------------*)
    trace "1) parsing of command line";
@@ -30,16 +33,24 @@ let _ =
                       "includes a directory where to look for interface files");
        ("-pure", Arg.Set Characteristic.pure_mode, "generate formulae for purely-functional code");
        ("-rectypes", Arg.Set Clflags.recursive_types, "activates recursive types");
-       ("-onlycmi", Arg.Set onlycmi, "only generate the cmi file");
+       ("-nostdlib", Arg.Set no_mystd_include, "do not include standard library");
+       ("-nopervasives", Arg.Set Clflags.nopervasives, "do not include standard pervasives file");
+       ("-onlycmi", Arg.Set onlycmi, "only generate the cmi file, not the coq file");
        ("-debug", Arg.Set is_tracing, "trace the various steps") ]
      (fun f -> files := f::!files)
-     ("usage: [-I dir] [-pure] [-rectypes] file.ml");
+     ("usage: [-I dir] [..other options..] file.ml");
    (*
    let args = Sys.argv in
    if Array.length args < 2 then
       failwith "Expects one argument: the filename of the ML source file";
    let sourcefile = args.(1) in
    *)
+
+   (* todo: improve the path to mystdlib *)
+   let gen_dir = Filename.dirname Sys.argv.(0) in
+   if not !no_mystd_include 
+      then Clflags.include_dirs := (gen_dir ^ "/stdlib/")::!Clflags.include_dirs;
+
    trace "1) parsing of command line";
    if List.length !files <> 1 then
       failwith "Expects one argument: the filename of the ML source file";
@@ -48,9 +59,12 @@ let _ =
    let outputfile = basename ^ "_ml.v" in
    let dirname = Filename.dirname sourcefile in
    let debugdir = dirname ^ "/output/" in
+   let cmd = Printf.sprintf "test -d %s || mkdir 640 %s" debugdir debugdir in
+   begin try ignore (Sys.command cmd)
+         with _ -> Printf.printf "Could not create debug directory\n" end;
 
    (*---------------------------------------------------*)
-if sourcefile = "imper/MyLib.ml" then exit 0;
+   if sourcefile = "imper/MyLib.ml" then exit 0;
 
    (*---------------------------------------------------*)
    trace "2) reading and typing source file";
@@ -81,6 +95,7 @@ if sourcefile = "imper/MyLib.ml" then exit 0;
       trace "5) exiting after cmi has been generated";
       exit 0;
    end;
+
 
    (*---------------------------------------------------*)
    trace "5) constructing caracteristic formula ast";

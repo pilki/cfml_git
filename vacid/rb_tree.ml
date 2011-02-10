@@ -1,4 +1,4 @@
-
+(*
 type heap = { 
   mutable n : int;
   mutable data : int array; }
@@ -22,3 +22,4 @@ let pop h =
   let k = ref 1 in
   while k < h.n do
       
+*)
