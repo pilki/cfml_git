@@ -1,12 +1,11 @@
 COQBIN=/var/tmp/coq-8.2pl2/bin/
 #COQBIN=/home/charguer/coq/trunk/bin/
-INCLUDES=-I . -I ./demo -I ./okasaki -I ./lib -I ./imper
+INCLUDES=-I . -I ./demo -I ./okasaki -I ./lib -I ./imper -I ./vacid
 # -I ocamllib 
 COQC=$(COQBIN)coqc -dont-load-proofs $(INCLUDES)
 COQDEP=$(COQBIN)coqdep $(INCLUDES)
 COQDOC=$(COQBIN)coqdoc
-OCAMLC=ocamlc $(INCLUDES)
-OCAMLDEP=ocamldep $(INCLUDES)
+MAKECMI=gen/makecmi.byte $(INCLUDES)
 MYOCAMLDEP=gen/myocamldep.byte 
 GENERATOR=gen/main.byte
 
@@ -133,12 +132,13 @@ IMPER=\
 	imper/StrongUpdate_ml.v \
 	imper/InOut_ml.v \
 	imper/Facto_proof.v \
-	imper/TreeCopy_proof.v \
-	imper/Loops_proof.v \
+	imper/Dijkstra_ml.v \
+	imper/MinInf.v \
+	imper/Dijkstra_proof.v 
+
+MORE_IMPER=\
 	imper/StrongUpdate_proof.v \
 	imper/InOut_proof.v \
-	imper/Dijkstra_ml.v \
-	imper/Dijkstra_proof.v \
 	imper/TreeCopy_proof.v \
 	demo/test_ml.v \
 	demo/test_proof.v \
@@ -146,7 +146,8 @@ IMPER=\
 	imper/ListIterators_proof.v \
 	imper/LambdaEval_ml.v \
 	imper/LambdaEval_proof.v \
-
+	imper/Loops_proof.v \
+	imper/TreeCopy_proof.v 
 
 #	okasaki/Okasaki_ml.v
 #	imper/CPS_ml.v \
@@ -276,9 +277,9 @@ $(MYOCAMLDEP):
 
 
 imper/StrongPointers.cmi: imper/StrongPointers.mli
-	$(OCAMLC) $<
+	$(MAKECMI) $<
 imper/NullPointers.cmi: imper/NullPointers.mli
-	$(OCAMLC) $<
+	$(MAKECMI) $<
 #TODO	$(GENERATOR) -rectypes -onlycmi imper/MyLib.mli
 
 

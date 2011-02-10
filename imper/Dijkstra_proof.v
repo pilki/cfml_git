@@ -566,7 +566,7 @@ Proof.
    hsimpl. simpl. rewrite~ istrue_True. xok. xextracts. 
   rewrite app_last in EQ. rewrite <- rev_cons in EQ.
   unfold hinv', data. forwards~ K: inv_update s Ew Dy Inv.
-  xif; case_If. xapps~. xapps~. xsimpl*. xret. xsimpl*.
+  xif; case_If. xapps~. xapps~. show_def. xsimpl*. xret. show_def. xsimpl*.
   (* -------- iter pre-condition -- *) 
   subst hinv' data. hsimpl~ (nil:list (int*int)).
   (* -------- iter post-condition -- *) 

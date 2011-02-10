@@ -117,7 +117,17 @@ Proof.
   auto.
 Admitted.
 
-Lemma hsimpl_demo_4 : forall n m J H2 H3 H4,
+Require Import CFPrim.
+
+
+Lemma hsimpl_demo_4 : forall x y (n m : int) (My:int->int->hprop),
+  x ~> Ref Id n \* y ~> Ref Id n ==> x ~> Ref Id m \* y ~> Ref My m.
+Proof.
+  intros. hsimpl. skip. (* todo: replace equal with ==> *)
+Admitted.
+
+
+Lemma hsimpl_demo_5 : forall n m J H2 H3 H4,
   n = m + m ->
   H2 \* J m \* H3 \* H4 ==> H4 \* (Hexists y, y ~> Id 2) \* (Hexists x, [n = x + x] \* J x \* H2) \* H3.
 Proof.

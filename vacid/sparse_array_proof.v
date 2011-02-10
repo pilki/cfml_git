@@ -9,7 +9,7 @@ Notation "'tab'" := (array int).
 Notation "'L'" := maxlen.
 
 Definition SarrayPacked :=
-  @Sarray int (array int) (array int) (array int) Id (Array Id) (Array Id) (Array Id).
+  @Sarray int (array int) (array int) (array int) Id Array Array Array.
 
 Definition SarrayUnpacked :=
   @Sarray int loc loc loc Id Id Id Id.
@@ -197,14 +197,14 @@ Proof.
   hchanges (Sarray_unfocus s). splits.
     hnf. rew_array. hnf in Siz. jauto_set; auto; math.     (* easy for SMT *)
     intros k Ik. tests (k = n).                            (* easy for SMT *)
-      rew_array*.                                          (* easy for SMT *)
+      rew_arr*.                                            (* easy for SMT *)
       rewrite @int_index_def in Ik.                        (* easy for SMT *)
        asserts [? ?]: (index n k /\ index L k). strong.    (* easy for SMT *)
        forwards~ [? ?]: Bok k. rew_array*.                 (* easy for SMT *)
     intros j. unfold update_fun. specializes Iok j. case_if.
       asserts: (index (n + 1) n).                          (* easy for SMT *)
         eapply int_index_prove; math.                      (* easy for SMT *)
-       subst. unfold Valid. rew_map_array*.                (* easy for SMT *)
+       subst. unfold Valid. rew_arr*.                      (* easy for SMT *)
        case_if; tryfalse*; auto.                           (* easy for SMT *)
       rewrite Iok. apply~ If_eq.
         myunfold. apply~ Valid_extend.
@@ -213,7 +213,7 @@ Proof.
    xret. hsimpl. splits~. unfold update_fun.
    intros j. specializes Iok j.                            (* easy for SMT *)
    case_if; case_if; tryfalse; auto.                       (* easy for SMT *)
-     subst. rew_map_array*.                                (* easy for SMT *)
+     subst. rew_arr*.                                      (* easy for SMT *)
      rew_map_array*.                                       (* easy for SMT *)
 Qed.
 

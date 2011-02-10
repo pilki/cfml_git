@@ -1014,12 +1014,17 @@ Ltac hsimpl_extract_exists tt :=
       end)
   | eapply hsimpl_exists ].
 
-
 Ltac hsimpl_find_data_post tt :=
   try solve 
    [ reflexivity
-   | fequal; fequal; first [ eassumption | symmetry; eassumption ] ].
-   (* todo: match goal *)
+   | fequal; fequal; first [ eassumption | symmetry; eassumption ] ];
+  try match goal with |- hdata ?X ?l = hdata ?Y ?l => match constr:(X,Y) with
+  | (?F1 _, ?F1 _) => fequal; fequal
+  | (?F1 ?F2 _, ?F1 ?F2 _) => fequal; fequal
+  | (?F1 ?F2 ?F3 _, ?F1 ?F2 ?F3 _) => fequal; fequal
+  | (?F1 ?F2 ?F3 ?F4 _, ?F1 ?F2 ?F3 ?F4 _) => fequal; fequal
+  | (?F1 ?F2 ?F3 ?F4 ?F5 _, ?F1 ?F2 ?F3 ?F4 ?F5 _) => fequal; fequal
+  end end.
 
 (* todo: better implemented in cps style ? *)
 

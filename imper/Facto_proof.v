@@ -30,13 +30,14 @@ Proof.
   xinduction (downto 0). 
   xcf. intros. xif.
   xret. xsimpl. rewrite~ fact_zero.
-  xapp~. intros.
-  xapp~. intros.  subst. xret. hsimpl. rewrite~ <- fact_succ.
+  xapps~. xret. hsimpl. rewrite~ <- fact_succ.
 Qed.
 
 
 (********************************************************************)
 (* ** Factorial function: for-loop implementation *)
+
+
 
 Lemma facto_for_spec : Spec facto_for n |R>>
   n >= 0 -> R [] (\= fact n).
@@ -46,7 +47,7 @@ Proof.
     xapply_local~ Inv. hsimpl. simpl. rewrite~ fact_zero. 
     intros i. induction_wf IH: (int_upto_wf (n+1)) i. introv Gt.
     apply HS. clear HS. split; intros C.
-    xseq. xapps. xapp. xapply_local~ IH. 
+    xseq. xapps. xapp. xapply_local~ IH.
     hsimpl. math_rewrite (i+1-1 = i). rewrite~ (@fact_succ i). ring.
     hsimpl. xret. hsimpl. fequals. math.
   xapp. hsimpl~.

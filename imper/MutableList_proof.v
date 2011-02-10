@@ -118,7 +118,7 @@ Proof.
     (* case cons *)
     xchange (MList_not_null lf) as x lf' X Lf' EL. auto.
     xseq. xapps. xapps. xapps. xapp. xapp. xapp.
-    xchange (MList_uncons lf). subst Lf.
+    xchange (>> MList_uncons lf a A). subst Lf.
     xapply_local~ (>> (rm IH) Lf' (X::Lr) lf' lf). hsimpl. xsimpl. rew_rev~.
     (*case nil *)
     xret. hchange MList_null. xsimpl. subst~. 
@@ -141,7 +141,7 @@ Proof.
   xchange (MList_not_null x) as v l' V L' E; auto. subst L.
    xfun (fun k' => Spec k' z |R>> 
      R (x ~> Mlist Id Id v l' \* v ~> T V \* z ~> MList T (L'++M) \* H) Q).
-     xapp. xchange (MList_uncons x) as. applys_eq Sk 2. apply pred_le_extens; hsimpl.
+     xapp. xchange (>> MList_uncons x a A) as. applys_eq Sk 2. apply pred_le_extens; hsimpl.
    xapps. xapp~ (x ~> Mlist Id Id v l' \* v ~> T V \* H).
     intros. xapply_local* (spec_elim_1_1 Sf). xsimpl. xok.
 Qed.

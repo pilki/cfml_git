@@ -23,7 +23,7 @@ Lemma make_counter_spec :
   Specs make_counter () >> [] (~> Counter 0).
 Proof.
   xcf. xapps. sets I: (fun n:int => r ~~> n).
-  xfun (CounterSpec I). xgo*. unfold I. hsimpl.
+  xfun (CounterSpec I). unfold I. xgo*.
   xret. hdata_simpl Counter. hsimpl~ I.
 Qed.
 
@@ -87,10 +87,9 @@ Proof.
   (* case cons *)
   xchange (focus_cons' f l) as n L' E. 
   xseq (# f ~> Counter (n + 1) \* l ~> List Counter L'). 
-  eapply (spec_elim_1 Sg).
-  xframe (l ~> List Counter L'). apply Counter_apply. xok. intros. xsimpl.
-  subst L. xapply_local~ (>>> IH L'). hsimpl.
-  intros _. rew_map. hchange (unfocus_cons f l (n+1)). hsimpl.
+  eapply (spec_elim_1 Sg). xapply_local Counter_apply; xauto~. intros. xsimpl.
+  subst L. xapply_local~ (>> IH L'). hsimpl.
+  rew_map. hchange (unfocus_cons f l (n+1)). hsimpl.
 Qed.
 
 
