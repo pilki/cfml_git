@@ -91,7 +91,8 @@ Proof.
    clear l L. intros L. induction_wf IH: (@list_sub_wf A) L; intros. 
    applys (rm HR). xlet. xapps. xapps. xifs.
    (* case cons *)
-   xchange (MList_not_null l) as x l' X L' EL. auto.
+   (* TODO xchange (MList_not_null l) as x l' X L' EL. auto *)
+   xchange_debug (MList_not_null l). auto. hsimpl. xextract. intros x l' X L' EL.
    xapps. xapps. xapps. xapp. subst L. xapply_local~ (>> IH L' l').
    hsimpl. intros _. hchanges (MList_uncons l). rew_length. math.
    (* case nil *)
@@ -116,7 +117,8 @@ Proof.
     intros Lf. induction_wf IH: (@list_sub_wf A) Lf.
     intros. applys (rm HR). xlet. xapps. xapps. xifs.
     (* case cons *)
-    xchange (MList_not_null lf) as x lf' X Lf' EL. auto.
+    (* TODO xchange (MList_not_null lf) as x lf' X Lf' EL. auto. *)
+    xchange_debug (MList_not_null lf). auto. hsimpl. xextract. intros x lf' X Lf' EL.
     xseq. xapps. xapps. xapps. xapp. xapp. xapp.
     xchange (>> MList_uncons lf a A). subst Lf.
     xapply_local~ (>> (rm IH) Lf' (X::Lr) lf' lf). hsimpl. xsimpl. rew_rev~.
@@ -138,7 +140,9 @@ Proof.
   intros. xinduct (unproj41 loc loc func (@list_sub A)).
   xcf. intros x y k L IH M T H Q Sk. xapps. xif.
   xchange MList_null as E. subst. apply Sk.
-  xchange (MList_not_null x) as v l' V L' E; auto. subst L.
+  (* TODO  xchange (MList_not_null x) as v l' V L' E; auto. *)
+    xchange_debug (MList_not_null x). auto. hsimpl. xextract. intros v l' V L' E.
+  subst L. 
    xfun (fun k' => Spec k' z |R>> 
      R (x ~> Mlist Id Id v l' \* v ~> T V \* z ~> MList T (L'++M) \* H) Q).
      xapp. xchange (>> MList_uncons x a A) as. applys_eq Sk 2. apply pred_le_extens; hsimpl.

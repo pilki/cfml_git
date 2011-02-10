@@ -1,4 +1,5 @@
 Set Implicit Arguments.
+Generalizable Variables a A.
 Require Import CFLib Dijkstra_ml.
 Open Scope comp_scope.
 Require Import LibArray LibGraph MinInf.
@@ -31,8 +32,8 @@ Import O.
 Parameter T : Type.
 Parameter S : htype T t.
 
-Global Instance le_inst : Le T.
-Global Instance le_order : Le_total_preorder.
+Declare Instance le_inst : Le T.
+Declare Instance le_order : Le_total_preorder.
 
 Parameter le_spec : Spec le (x:t) (y:t) |R>> forall X Y,  
   keep R (x ~> S X \* y ~> S Y) (\= istrue (LibOrder.le X Y)).
@@ -145,11 +146,11 @@ Ltac auto_star ::= try solve [ auto | jauto ].
 
 (** Hints for multisets *)
 
-Lemma multiset_in_union_single_eq_l : forall A (x:A) E F,
+Lemma multiset_in_union_single_eq_l : forall A (x:A) (E F : multiset A),
   E = \{x} \u F -> x \in E.
 Proof. intros. subst. multiset_in. Qed.
 
-Lemma multiset_in_union_single_eq_r : forall A (x y:A) E F,
+Lemma multiset_in_union_single_eq_r : forall A (x y:A) (E F : multiset A),
   E = \{x} \u F -> y \in F-> y \in E.
 Proof. introv M N. subst. multiset_in. Qed.
 
