@@ -560,7 +560,7 @@ Proof.
   clears B Q update hinv. unfold hinv' at 1. unfold data. 
   xextract as L' B Q Inv EQ. lets [_ _ SB]: Inv. sort. 
   asserts Ew: (has_edge G x y w). rewrite~ <- Adj. rewrite EQ. applys* Mem_app_or.
-  asserts Ny: (y \in nodes G). applys* has_edge_in_nodes_r.
+  asserts Ny: (y \in nodes G). applys* has_edge_in_nodes_r. hide_defs.
   xmatch. xret. xextract as Dy. xapps~. xlet.
   xframe - []. xpost (\= istrue (len_gt (B\(y)) dy)). xgo~.
    hsimpl. simpl. rewrite~ istrue_True. xok. xextracts. 

@@ -11,20 +11,27 @@ Parameter fact : int -> int.
 Parameter fact_zero : fact 0 = 1.
 Parameter fact_succ : forall n, n > 0 ->
   fact n = n * fact (n-1).
-Lemma fact_one : fact 1 = 1.
-Proof. rewrite~ fact_succ. math_rewrite (1-1=0). rewrite~ fact_zero. Qed.
+Parameter fact_one : fact 1 = 1.
 
 
 (********************************************************************)
-(* ** Factorial function: recursive implementation *)
+(* ** Factorial function: recursive implementation
+
+Lemma :
+  forall n,
+  let R := fun P Q => AppReturns facto_rec n P Q in
+  downto 0 n n' -> n >= 0 -> R [] (fun x => [x = fact n]).
+
+ *)
 
 Lemma facto_rec_spec : Spec facto_rec n |R>>
-  n >= 0 -> R [] (\= fact n).
-Proof.
-  apply (spec_induction_1_noheap (lt:=downto 0)). prove_wf.
+  (n >= 0 -> R [] (\= fact n)).
+Proof. 
+  xinduction (downto 0). 
   xcf. intros. xif.
   xret. xsimpl. rewrite~ fact_zero.
-  xapp~. intro_subst. xret. hsimpl. rewrite~ <- fact_succ.
+  xapp~. intros.
+  xapp~. intros.  subst. xret. hsimpl. rewrite~ <- fact_succ.
 Qed.
 
 
@@ -104,6 +111,7 @@ Proof.
 Qed.
 
   
+
 
 
 
