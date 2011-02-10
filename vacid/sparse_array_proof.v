@@ -5,7 +5,7 @@ Require Import CFLib LibSet LibMap LibArray sparse_array_ml.
 (****************************************************)
 (** Shorthand *)
 
-Notation "'tab'" := (array int).
+Notation "'tab'" := (array int) (at level 0).
 Notation "'L'" := maxlen.
 
 Definition SarrayPacked :=
@@ -189,7 +189,7 @@ Proof.
   xapps*. hnf in Siz; math. xif.
   (* case create back-index *)
   xchange (Sarray_focus s) as n' val idx back. intro_subst.
-  lets Nbk: not_Valid_to_notin_Back Bok; eauto.
+  lets Nbk: not_Valid_to_notin_Back i Bok; eauto. (* TODO: bug sans le i *)
   skip: (n < L). (* pigeon-holes, see task description *)
   asserts: (0 <= n < L). hnf in Siz; math.                 (* easy for SMT *)
   asserts: (index L n). rewrite~ int_index_def.            (* easy for SMT *)

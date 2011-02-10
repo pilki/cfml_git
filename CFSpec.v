@@ -1049,8 +1049,8 @@ Proof.
   intros X. induction_wf IH: W X.
   destruct (M X) as (M1&M2&M3).
   applys HR. exists (J X). splits~.
-  apply local_erase. esplit. split. apply M2. 
-  apply~ local_extract_exists. intros x.
+  apply local_erase. esplit. split. apply M2.
+  applys local_extract_exists; auto~. intros x.
    rewrite star_comm. apply~ CFHeaps.local_intro_prop'.
 Qed. 
 

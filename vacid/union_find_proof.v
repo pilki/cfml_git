@@ -1,7 +1,7 @@
 Set Implicit Arguments.
 Require Import CFLib LibMap LibRelation union_find_ml.
 Require Import LibSet.
-
+Generalizable Variables a A.
 
 (** LibRelation *)
 
@@ -60,13 +60,13 @@ Axiom ml_ref_spec_group : forall a,
     R (Group (Ref Id) M) (fun l => Group (Ref Id) (M\(l:=v)) \* [l\notindom' M]).
 
 Axiom ml_get_spec_group : forall a,
-  Spec ml_get (l:loc) |R>> forall (M:map loc a),   
-    Inhab a -> l \indom M ->
+  Spec ml_get (l:loc) |R>> forall (M:map loc a), 
+    forall `{Inhab a}, l \indom M ->
     keep R (Group (Ref Id) M) (\= M\(l)).
 
 Axiom ml_set_spec_group : forall a, 
   Spec ml_set (l:loc) (v:a) |R>> forall (M:map loc a), 
-    Inhab a -> l \indom M ->
+    forall `{Inhab a}, l \indom M ->
     R (Group (Ref Id) M) (# Group (Ref Id) (M\(l:=v))).
 
 

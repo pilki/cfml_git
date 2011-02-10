@@ -594,6 +594,12 @@ Qed.
 
 Implicit Arguments Group_add [a A].
 
+(*
+Lemma Group_rem : forall a (x:a) A `{Inhab A} (M:map a A) (G:htype A a),
+  x \indom M ->
+  Group G M = Group G (M \- \{x}) . Group G (M \- \{x}) \* (x ~> G (M\(x))).
+
+
 Lemma Group_rem : forall a (x:a) A `{Inhab A} (M:map a A) (G:htype A a),
   x \indom M ->
   Group G M = Group G (M \- \{x}) \* (x ~> G (M\(x))).
@@ -614,6 +620,7 @@ Qed.
 
 Implicit Arguments Group_add' [a A [H]].
 
+*)
 
 (********************************************************************)
 (* ** Other tactics *)

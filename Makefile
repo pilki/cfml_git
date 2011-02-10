@@ -1,6 +1,6 @@
-COQBIN=/var/tmp/coq-8.2pl2/bin/
+#COQBIN=/var/tmp/coq-8.2pl2/bin/
 #COQBIN=/home/charguer/coq/trunk/bin/
-INCLUDES=-I . -I ./demo -I ./okasaki -I ./lib -I ./imper -I ./vacid
+INCLUDES=-I . -I ./demo -I ./okasaki -I ./lib/v3 -I ./imper -I ./vacid
 # -I ocamllib 
 COQC=$(COQBIN)coqc -dont-load-proofs $(INCLUDES)
 COQDEP=$(COQBIN)coqdep $(INCLUDES)
@@ -254,7 +254,7 @@ statsml:
 	@php -f stats.php $(CAMLFILES:.ml=_proof.v)
 
 libcompile:
-	make lib -C lib
+	make lib -C lib/v3
 
 #cp lib/*.vo .
 
