@@ -257,7 +257,6 @@ Definition decode_func t :=
 
 Definition decode_func' (t : trm) : option Func.
 Proof.
-  intros t.
   gen_eq p: t. case t; introv Eq.
   exact None.
   exact None.

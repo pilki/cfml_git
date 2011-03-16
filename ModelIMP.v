@@ -225,7 +225,7 @@ Lemma local_idem : forall (R:Formula) H Q,
 Proof.
   introv M Pre. destruct~ (M st) as (H'&Q'&?&?&I1).
   destruct~ (H1 st) as (H''&Q''&?&?&I2).
-  lets*: (>>> assertion_impl_trans I2 I1).
+  lets*: (>> assertion_impl_trans I2 I1).
 Qed.
 
 (** [local] supports the rule of consequence *)
@@ -361,16 +361,16 @@ Proof.
   eauto.
   eauto. 
   destruct F as (H'&H1&H2).
-   forwards* (st1&Red1&Post1): (>>> IHc1 H1).
-   forwards* (st2&Red2&Post2): (>>> IHc2 H2).
+   forwards* (st1&Red1&Post1): (>> IHc1 H1).
+   forwards* (st2&Red2&Post2): (>> IHc2 H2).
   destruct F as (H1&H2). case_eq (beval st b); intro B.
-   forwards* (st1&Red1&Post1): (>>> IHc1 H1).
-   forwards* (st2&Red2&Post2): (>>> IHc2 H2).
+   forwards* (st1&Red1&Post1): (>> IHc1 H1).
+   forwards* (st2&Red2&Post2): (>> IHc2 H2).
   gen st. apply F. clear F H Q. intros H Q M st Hst.
    destruct (M _ Hst) as (H'&Q'&Pre'&(M1&M2)&Post'). clear M.
    case_eq (beval st b); intro B.
      forwards~ (P''&Q''&?&(H''&M11&M12)&?): (M1 st). clear M1 M2.
-      forwards* (st1&Red1&Post1): (>>> IHc M11).
+      forwards* (st1&Red1&Post1): (>> IHc M11).
       forwards* (st2&Red2&Post2): M12.
       esplit. split. apply* E_WhileLoop. eauto.
      forwards* (?&?&?&?&?): (M2 st). eauto 8.
