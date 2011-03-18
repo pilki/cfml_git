@@ -47,9 +47,9 @@ let rec compile k = function
   | Tapp (t1,t2) -> compile (compile (Iapp::k) t2) t1
 
 let run (e0:menv) (s0:mstack) (c0:mcode) = 
-  let e := ref e0 in
-  let s := ref s0 in
-  let c := ref c0 in
+  let e = ref e0 in
+  let s = ref s0 in
+  let c = ref c0 in
   while !c <> [] do
     match !c with i::c' ->
     match i with
@@ -82,7 +82,7 @@ let exec t =
     will always satisfy all the patterns. *)
 
 
-(*---------------------------------------------------
+(*---------------------------------------------------*)
 (* Note: an equivalent code in CPS form 
 
 let rec run e s = function

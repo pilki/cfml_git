@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-Require Import CFLib LibMap LibRelation union_find_ml.
+Require Import CFLib LibMap LibRelation UnionFind_ml.
 Require Import LibSet.
 Generalizable Variables a A.
 
@@ -332,7 +332,7 @@ Hint Resolve binds_update_neq_inv.
 Lemma path_compression : forall M B x r,
   describes B M -> B x r -> 
   describes B (M\(x:=Node r)).
-Admitted.
+Admitted. (* todo *)
 
 Lemma describes_add_node : forall M B z,
   describes B M -> z \notindom' M -> 
@@ -571,7 +571,7 @@ Lemma describes_two_dom : forall B M M',
 Proof. introv H1 H2. hnf in H1, H2. jauto_set. congruence. Qed.
 
 Lemma union_spec :
-  Spec union_find_ml.union x y |R>> forall B,
+  Spec UnionFind_ml.union x y |R>> forall B,
     x \in (per_dom B) -> y \in (per_dom B) ->
     R (UF B) (# UF (add_edge B x y)). 
 Proof.

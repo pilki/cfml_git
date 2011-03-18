@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-Require Import CFLib LibSet LibMap LibArray sparse_array_ml.
+Require Import CFLib LibSet LibMap LibArray SparseArray_ml.
 
 
 (****************************************************)
