@@ -1,4 +1,6 @@
 
+(** Functions over purely functional lists *)
+
 let rec append x y k = 
    match x with
    | [] -> k y

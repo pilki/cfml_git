@@ -6,12 +6,11 @@ Generalizable Variables a A.
 (** Imperative Representation for base types *)
 
 Global Opaque heap_is_empty hdata heap_is_single heap_is_empty_st. 
-  (* todo: check needed *)
+ (* todo: check needed *)
 
 Global Opaque Zplus. (* todo: move *)
 
 Transparent hdata. (* todo: should use hdata_simpl instead *)
-
 
 (*------------------------------------------------------------------*)
 (* ** References *)
@@ -320,11 +319,11 @@ Hint Extern 1 (RegisterSpec ml_array_length) => Provide ml_array_length_spec.
 
 Parameter ml_list_iter : func.
 
-Lemma ml_list_iter_spec : forall a,
+Parameter ml_list_iter_spec : forall a,
   Spec ml_list_iter f l |R>> forall (I:list a->hprop),
     (forall x t, (App f x;) (I (x::t)) (# I t)) -> 
     R (I l) (# I nil).
-Admitted.
+
 Hint Extern 1 (RegisterSpec  ml_list_iter) => Provide ml_list_iter_spec.
 
 

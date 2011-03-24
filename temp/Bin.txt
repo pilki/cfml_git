@@ -583,7 +583,7 @@ Proof. intros. apply (Build_Rep eq). congruence. Defined.
 Axiom lt_to_le : forall x y : T,
   x < y -> x <= y.
 Hint Immediate lt_to_le.
-(* todo: refaire sans Ã§a 
+(* todo: refaire sans ça 
 
 Definition rep_spec_2 (a1 a2 A1 A2 B : Type)
   (rep1:a1->A1->Prop) (rep2:a2->A2->Prop)
@@ -668,7 +668,7 @@ Definition k := #nat.
 Eval hnf in k.
 Parameter y : #nat.
 Check (y : nat).
-(*pas gÃ©nÃ©ral
+(*pas général
 Lemma convert : nat -> model nat.
 Proof. exact (@id _). Qed.
 Coercion convert : nat >-> model.
@@ -1540,7 +1540,7 @@ Qed.
 
 
 
-  (* dÃ©tails de xapp
+  (* détails de xapp
   xapp_manual. applys KR. hsimpl.
 
   xfind ml_ref; let H := fresh in intro H.
@@ -4102,3 +4102,60 @@ Definition size_ok A (T:array A) :=
 Axiom bool_test' : forall b,
   b = true \/ b = false.
 
+
+
+
+
+Lemma step_all_imper_spec : 
+  Spec step_all_imper (l:loc) |R>> forall L, 
+    R (l ~> MList Counter L) (# l ~> MList Counter (LibList.map (fun i => i+1) L)).
+Proof.
+  xcf. intros. xfun (fun g => Spec g f |R>> forall (Q':int->hprop) H (Q:unit->hprop),
+    (App f tt;) H Q' -> (forall x, Q' x ==> Q tt) -> R H Q).
+    intros M W. xlet. apply M. xapp. hsimpl. applys pred_le_trans (W _x3). hsimpl.
+    renames _f0 to g, S_f0 to Sg.
+  lets K: (>> (spec_elim_2 (@miter_spec func int)) [] []). xapply K; try hsimpl.
+  introv In Ic. generalize l. clears l. induction L; intros. apply In.
+  rewrite map_cons. apply Ic. exists []. split.
+  intros f. xapp. apply Counter_apply. intros r. hextract. apply hsimpl_to_qunit. reflexivity.
+   hsimpl. hsimpl. intros m'. apply IHL.
+Qed.
+
+
+
+
+(********************************************************************)
+(* ** Imperative functional list iterator --OLD
+
+Lemma miter_spec : forall a A,
+  Spec miter (f:func) (m:loc) | R>>
+    forall (T:A->a->hprop) H H' (L L':list A),
+    (forall (I:loc -> list A -> list A -> hprop -> hprop -> Prop), 
+       (forall m H, I m nil nil H H) ->
+       (forall m H H' X X' L L',
+          (exists H'', (forall x, (App f x;) (H \* x ~> T X) (# H'' \* x ~> T X'))
+                   /\ (forall m', I m' L L' H'' H')) ->
+          I m (X::L) (X'::L') H H') ->
+       I m L L' H H') ->
+    R (H \* m ~> MList T L) (# H' \* m ~> MList T L'). 
+Proof.
+  intros. xcf. introv M. xapp. xwhile.
+  sets I: (fun m L L' H H' => R (H \* m ~> MList T L \* h ~> Ref Id m) (# H' \* m ~> MList T L')).
+  specializes M I. unfold I in M at 4.
+  apply M; clears H.
+  (* nil *)
+  intros. unfolds. apply HR. xchange (@MList_nil m) as M. subst_hyp M.
+  xlet. xapps. xapps. xextracts. xif. xret_gc. hchanges (MList_unnil).
+  (* cons *)
+  introv (H''&B1&B2). unfolds. apply HR. xchange (@MList_cons m) as x m'.
+   xchange (@Mlist_not_null m). xextract as N.
+  xlet. xapps. xapps. xextracts. xif. 
+  xseq. xapps. xapp_spec (@_get_hd_spec a loc). intro_subst.
+  xseq. xapplys B1. apply hsimpl_to_qunit. reflexivity.
+   (* xseq (# H'' \* m' ~> MList T L0 \* x ~> T X' \* h ~> Ref Id m \* m ~> Mlist Id Id x m').*)
+  xapps. xapps. xapps. unfold I in B2. xapply B2. hsimpl. hsimpl.
+  hchange (@MList_uncons m). hsimpl.
+Qed.
+
+Hint Extern 1 (RegisterSpec miter) => Provide miter_spec.
+ *)

@@ -364,13 +364,29 @@ Proof.
        intros g'. specializes Po g'. applys* local_wgframe.
 Qed.
 
+End AppIntro.
+
+Section AppIntro'.
+Variables (Q':func->hprop).
+Variables (A1 A2 A3 A4 B : Type) (f : func).
+Variables (x1:A1) (x2:A2) (x3:A3) (x4:A4).
+Variables (H:hprop) (Q:B->hprop).
+
 Lemma app_intro_3_4 : 
   app_3 f x1 x2 x3 H Q' ->
   (forall g, app_1 g x4 (Q' g) Q) ->
   app_4 f x1 x2 x3 x4 H Q.
-Proof. skip. (* todo : generalize the previous case *) Qed.
+Proof. 
+  introv M1 M2.
+  introv Hh. specializes M1 Hh. destruct M1 as (H1&H2&Q1&H'&?&(Q''&Ap1&Ap2)&Po).
+  exists (= h) [] Q []. splits; rew_heap~.
+  exists (Q'' \*+ H2). splits.
+    applys* local_wframe. intros h'. intro_subst~.
+    intros g. applys* app_intro_2_3 Q'. 
+    apply* local_wgframe.
+Qed.
 
-End AppIntro.
+End AppIntro'.
 
 
 (********************************************************************)
@@ -420,8 +436,8 @@ Proof.
   specializes Ap2 g1. 
   forwards* (H''&(h3&h4&PH3&PH4&?&?)): (>> (@pureapp_and_app_1 A1 func) f x1).
   destruct (Ap2 _ PH3) as (H1'&H2'&Q1'&H'''&(h1'&h2'&?&?&?&?)&(Q''&Ap1'&Ap2')&Po'). 
-  forwards* (Hf&(h3'&h4'&PH3'&PH4'&?&?)): (>> (@pureapp_and_app_1 A2 func) g1 x2).
   specializes Ap2' g2.
+  forwards* (Hf&(h3'&h4'&PH3'&PH4'&?&?)): (>> (@pureapp_and_app_1 A2 func) g1 x2).
   exists (Q'' g2 \* H'') (H2 \* H2' \* Hf) __ (H' \* H'' \* H''' \* Hf). splits.
     exists (h3' \+ h4) (h2 \+ h2' \+ h4'). splits.
       exists___. subst. splits*. rew_disjoint*.
@@ -429,6 +445,7 @@ Proof.
         exists___. subst. splits*. rew_disjoint*. subst. rew_disjoint*. 
         subst. rew_disjoint*.    
       subst. do 2 rewrite heap_union_assoc. auto. 
+        (* goal is (((h3' \+ h4') \+ h2') \+ h4) \+ h2 = (((h3' \+ h4) \+ h2) \+ h2') \+ h4' *)
         skip. (* todo: need a tactic to prove commutativity *)
     apply* local_wframe.
     intros v. hsimpl. hchange (Po' v). hchange (Po v). hsimpl.
@@ -440,8 +457,41 @@ Lemma spec_intro_4 : forall A1 A2 A3 A4 B f (K:A1->A2->A3->A4->~~B->Prop),
   (forall x1 x2 x3 x4, K x1 x2 x3 x4 (app_4 f x1 x2 x3 x4)) ->
   spec_4 K f.
 Proof.
-  (* todo: follow the same idea as previous proof -- need a tactic! *)
-Admitted.
+  introv I C HK. split~.
+  intros x1. destruct (pureapp_witness (proj2 C x1)) as [g1 [S1 Hg1]].
+  apply* pureapp_abstract. split~.
+  intros x2. destruct (pureapp_witness (proj2 S1 x2)) as [g2 [S2 Hg2]].
+  apply* pureapp_abstract. split~. apply I. 
+  intros x3. destruct (pureapp_witness (proj2 S2 x3)) as [g3 [_ Hg3]].
+  apply* pureapp_abstract. split~. apply I. 
+  intros x4. eapply I. apply HK.
+  intros H Q M. rewrite app_local_1. introv Hh.
+  destruct (M _ Hh) as (H1&H2&Q1&H'&(h1&h2&?&?&?&?)&(Q'&Ap1&Ap2)&Po). clear M.
+  specializes Ap2 g1. 
+  forwards* (H''&(h3&h4&PH3&PH4&?&?)): (>> (@pureapp_and_app_1 A1 func) f x1).
+  destruct (Ap2 _ PH3) as (H1'&H2'&Q1'&H'''&(h1'&h2'&?&?&?&?)&(Q''&Ap1'&Ap2')&Po'). 
+  specializes Ap2' g2. 
+  forwards* (ZH1&(Zh3&Zh4&ZPH3&ZPH4&?&?)): (>> (@pureapp_and_app_1 A2 func) g1 x2).
+  destruct (Ap2' _ ZPH3) as (ZH1'&ZH2'&ZQ1'&ZH'''&(Zh1'&Zh2'&?&?&?&?)&(ZQ''&ZAp1'&ZAp2')&ZPo'). 
+  specializes ZAp2' g3.
+  forwards* (Hf&(h3'&h4'&PH3'&PH4'&?&?)): (>> (@pureapp_and_app_1 A3 func) g2 x3).
+  exists (ZQ'' g3 \* H'' \* ZH1) (H2 \* H2' \* ZH2' \* Hf) __ (H' \* H'' \* ZH1 \* H''' \* ZH''' \* Hf). splits.
+    exists (h3' \+ h4 \+ Zh4) (h2 \+ h2' \+ Zh2' \+ h4'). splits.
+      exists h3' (h4 \+ Zh4). splits~.
+        exists___. subst. splits*. rew_disjoint*.
+        subst. rew_disjoint*.
+      exists h2 (h2' \+ Zh2' \+ h4'). splits~.
+        exists h2' (Zh2' \+ h4'). splits~.
+          exists___. subst. splits*. rew_disjoint*. subst. rew_disjoint*. 
+          subst. rew_disjoint*.    
+        subst. rew_disjoint*.
+      subst. 
+         (* goal is (((((h3' \+ h4') \+ Zh2') \+ Zh4) \+ h2') \+ h4) \+ h2 
+                    = (h3' \+ h4 \+ Zh4) \+ h2 \+ h2' \+ Zh2' \+ h4' *)
+         skip. (* todo: need a tactic to prove commutativity *)
+    apply* local_wframe. 
+    intros v. hsimpl. hchange (ZPo' v). hchange (Po' v). hchange (Po v). hsimpl.
+Qed.
 
 
 (********************************************************************)

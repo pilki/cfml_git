@@ -2,7 +2,6 @@ Set Implicit Arguments.
 Require Import LibCore CFLib MutableList_ml LibList.
 
 
-
 (********************************************************************)
 (* ** Representation predicate and focus lemmas for mutable lists *)
 
@@ -68,12 +67,81 @@ Proof.
   hchange (MList_cons l). hextract. hsimpl~.
 Qed.
   
+Lemma Mlist_not_null : forall l a (x:a) l',
+  l ~> Mlist Id Id x l' ==> l ~> Mlist Id Id x l' \* [l <> null].
+Proof.
+  intros. test (l = null); [ subst | hsimpl~ ].
+  hdata_simpl Mlist. hextract.
+  rewrite heap_is_single_null_eq_false. hsimpl.
+Qed.
+
 Implicit Arguments MList_uncons [a A].
 Implicit Arguments MList_null_keep [A].
 Implicit Arguments MList_not_null_keep [A a].
 Implicit Arguments MList_not_null [A a].
 
 Global Opaque MList.
+
+
+(********************************************************************)
+(* ** CPS-append *)
+
+Lemma cps_mappend_spec : forall a b A,
+  Spec cps_mappend (x:loc) (y:loc) (k:func) |R>>
+     forall (L M:list A) (T:A->a->hprop) H (Q:b->hprop),
+     (forall z, AppReturns k z (z ~> MList T (L++M) \* H) Q) ->
+     R (x ~> MList T L \* y ~> MList T M \* H) Q.
+Proof.
+  intros. xinduct (unproj41 loc loc func (@list_sub A)).
+  xcf. intros x y k L IH M T H Q Sk. xapps. xif.
+  xchange MList_null as E. subst. apply Sk.
+   (* ideally should be: xchange (MList_not_null x) as v l' V L' E; auto. *)
+    xchange_debug (MList_not_null x). auto. hsimpl. xextract. intros v l' V L' E.
+  subst L. 
+   xfun (fun k' => Spec k' z |R>> 
+     R (x ~> Mlist Id Id v l' \* v ~> T V \* z ~> MList T (L'++M) \* H) Q).
+     xapp. xchange (>> MList_uncons x a A) as. applys_eq Sk 2. apply pred_le_extens; hsimpl.
+   xapps. xapp~ (x ~> Mlist Id Id v l' \* v ~> T V \* H).
+    intros. xapply_local* (spec_elim_1_1 Sf). xsimpl. xok.
+Qed.
+
+Hint Extern 1 (RegisterSpec cps_mappend) => Provide cps_mappend_spec.
+
+(********************************************************************)
+(* ** Imperative functional list iterator *)
+
+Lemma miter_spec : forall a A,
+  Spec miter (f:func) (m:loc) | R>>
+    forall (T:A->a->hprop) H H' (L L':list A),
+    (forall (I:list A -> list A -> hprop -> hprop -> Prop), 
+       (forall H, I nil nil H H) ->
+       (forall H'' H H' X X' L L',
+          (forall x, (App f x;) (H \* x ~> T X) (# H'' \* x ~> T X')) ->
+          I L L' H'' H' ->
+          I (X::L) (X'::L') H H') ->
+       I L L' H H') ->
+    R (H \* m ~> MList T L) (# H' \* m ~> MList T L'). 
+Proof.
+  intros. xcf. introv M. xapp. xwhile.
+  sets I: (fun L L' H H' => forall m, 
+     R (H \* m ~> MList T L \* h ~> Ref Id m) (# H' \* m ~> MList T L')).
+  specializes M I. unfold I in M at 4.
+  apply M; clears H.
+  (* nil *)
+  intros. unfolds. intros. apply HR. xchange (@MList_nil m) as M. subst_hyp M.
+  xlet. xapps. xapps. xextracts. xif. xret_gc. hchanges (MList_unnil).
+  (* cons *)
+  introv B1 B2. unfolds. intros. apply HR. xchange (@MList_cons m) as x m'.
+   xchange (@Mlist_not_null m). xextract as N.
+  xlet. xapps. xapps. xextracts. xif. 
+  xseq. xapps. xapp_spec (@_get_hd_spec a loc). intro_subst.
+  xseq. xapplys B1. apply hsimpl_to_qunit. reflexivity.
+   (* xseq (# H'' \* m' ~> MList T L0 \* x ~> T X' \* h ~> Ref Id m \* m ~> Mlist Id Id x m').*)
+  xapps. xapps. xapps. unfold I in B2. xapply B2. hsimpl. hsimpl.
+  hchange (@MList_uncons m). hsimpl.
+Qed.
+
+Hint Extern 1 (RegisterSpec miter) => Provide miter_spec.
 
 
 (********************************************************************)
@@ -101,6 +169,7 @@ Proof.
   xapp. hsimpl~.
 Qed.
 
+Hint Extern 1 (RegisterSpec mlength) => Provide mlength_spec.
 
 (********************************************************************)
 (* ** In-place reversal *)
@@ -127,40 +196,5 @@ Proof.
   xextract as l'. xgc. xapp. rew_app. hextract. subst. hsimpl.
 Qed.
 
-
-(********************************************************************)
-(* ** CPS-append *)
-
-Lemma append_spec : forall a b A,
-  Spec cps_mappend (x:loc) (y:loc) (k:func) |R>>
-     forall (L M:list A) (T:A->a->hprop) H (Q:b->hprop),
-     (forall z, AppReturns k z (z ~> MList T (L++M) \* H) Q) ->
-     R (x ~> MList T L \* y ~> MList T M \* H) Q.
-Proof.
-  intros. xinduct (unproj41 loc loc func (@list_sub A)).
-  xcf. intros x y k L IH M T H Q Sk. xapps. xif.
-  xchange MList_null as E. subst. apply Sk.
-  (* TODO  xchange (MList_not_null x) as v l' V L' E; auto. *)
-    xchange_debug (MList_not_null x). auto. hsimpl. xextract. intros v l' V L' E.
-  subst L. 
-   xfun (fun k' => Spec k' z |R>> 
-     R (x ~> Mlist Id Id v l' \* v ~> T V \* z ~> MList T (L'++M) \* H) Q).
-     xapp. xchange (>> MList_uncons x a A) as. applys_eq Sk 2. apply pred_le_extens; hsimpl.
-   xapps. xapp~ (x ~> Mlist Id Id v l' \* v ~> T V \* H).
-    intros. xapply_local* (spec_elim_1_1 Sf). xsimpl. xok.
-Qed.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Hint Extern 1 (RegisterSpec rev) => Provide rev_spec.
 

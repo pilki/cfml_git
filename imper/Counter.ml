@@ -1,14 +1,20 @@
+open MutableList
+
+(** Creation and manipulation of counter functions *)
 
 let make_counter () =
    let r = ref 0 in
    let f () = incr r; !r in
    f
 
-let rec iter f = function
-  | [] -> ()
-  | a::l -> f a; iter f l
+(** Definition of the ignore function used in the example *)
 
 let ignore x = ()
 
-let step_all (l:(unit->int)list) = 
-  iter (fun f -> ignore (f())) l
+(** Iterating over a mutable list of counter functions *)
+
+let step_all_imper (l : (unit->int) mlist) = 
+  miter (fun (f:unit->int) -> ignore (f())) l
+
+
+

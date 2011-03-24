@@ -13,8 +13,6 @@ GENERATOR=gen/main.byte
 
 CUR=\
 	CFLib.v \
-	imper/Dijkstra_ml.v \
-	imper/Dijkstra_proof.v 
 
 TOOLS=\
 	CFHeaps.v \
@@ -25,6 +23,7 @@ TOOLS=\
 	CFLib.v 
 
 IMP=\
+	imper/Dijkstra_ml.v \
 	imper/Compose_ml.v \
 	imper/Swap_ml.v \
 	imper/MutableList_ml.v \
@@ -49,17 +48,19 @@ IMP=\
 
  # those probably do not compile
 MORE=\
+	imper/FunctionalList_ml.v \
+	imper/FunctionalList_proof.v \
 	imper/InOut_ml.v \
 	imper/InOut_proof.v \
 	imper/StrongUpdate_ml.v \
 	imper/StrongUpdate_proof.v \
 	imper/TreeCopy_ml.v \
 	imper/TreeCopy_proof.v \
-	imper/ListIterators_ml.v \
-	imper/ListIterators_proof.v \
 	imper/LambdaEval_ml.v \
 	imper/LambdaEval_proof.v \
-	imper/Loops_proof.v 
+	imper/Loops_proof.v \
+
+
 
 BUILTIN=\
 	imper/NullPointers.cmi \

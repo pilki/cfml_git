@@ -1,7 +1,76 @@
+
 Set Implicit Arguments.
-Require Import CFPrim ListIterators_ml LibList.
-Module LI := ListIterators_ml.
+Require Import CFLib FunctionalList_ml LibList.
+Module FL := FunctionalList_ml.
 Opaque List.
+
+
+(** Iterating over a functional list of counter functions *)
+open FunctionalList
+let step_all_func (l : (unit->int) list) = 
+  iter (fun f -> ignore (f())) l
+
+
+(********************************************************************)
+(* ** Iterating calls to a functional list of counter functions *)
+
+Lemma step_all_func_spec : 
+  Spec step_all_func (l:list func) |R>> forall L, 
+    R (l ~> List Counter L) (# l ~> List Counter (LibList.map (fun i => i+1) L)).
+Proof.
+  xcf. intros. 
+  xfun (fun g => Spec g f |R>> forall (Q':int->hprop) H (Q:unit->hprop),
+     (App f tt;) H Q' -> (forall x, Q' x ==> Q tt) -> R H Q).
+     intros M W. xlet. apply M. xapp. hsimpl.
+      applys pred_le_trans (W _x3). hsimpl.
+     renames _f0 to g, S_f0 to Sg.
+  apply (spec_elim_2 (@iter_spec func)). intros S LS HS.
+  gen l. induction_wf: (@list_sub_wf int) L. intros.
+  apply HS. clear HS. destruct l.
+  (* case nil *)
+  xret. hchange (@unfocus_nil' _ L _ Counter). hextract. subst.
+  hchange (@focus_nil _ _ Counter). hsimpl.
+  (* case cons *)
+  xchange (focus_cons' f l) as n L' E. 
+  xseq (# f ~> Counter (n + 1) \* l ~> List Counter L'). 
+  eapply (spec_elim_1 Sg). xapply_local Counter_apply; xauto~. intros. xsimpl.
+  subst L. xapply_local~ (>> IH L'). hsimpl.
+  rew_map. hchange (unfocus_cons f l (n+1)). hsimpl.
+Qed.
+
+
+Require Import FunctionalList_ml FunctionalList_proof.
+
+
+
+
+
+
+
+
+Lemma iter_spec : forall A,
+  Spec iter (f:func) (l0:list A) | R>>
+    forall H (Q:unit->hprop),
+    (forall (S:list A -> _ -> _ -> Prop),
+       is_local_1 S ->
+       (forall l H' Q',
+          match l with
+          | nil => (Ret tt) H' Q'
+          | x::l' => ((App f x;) ;; S l') H' Q'
+          end -> S l H' Q') ->
+       S l0 H Q) ->
+    R H Q.
+Proof.
+  intros. xintros. intros f l0. introv M.
+  sets_eq S: (app_2 (A1:=func) (A2:=list A) (B:=unit) iter f).
+  apply M; clear M H Q. rewrite EQS. intros_all. xlocal.
+  intros l H' Q' HS. rewrite EQS. eapply app_spec_2.
+  xcf. intros. subst. xmatch; auto.
+Qed.
+
+Hint Extern 1 (RegisterSpec iter) => Provide iter_spec.
+
+
 
 
 (********************************************************************)
@@ -9,7 +78,7 @@ Opaque List.
 
 
 Lemma append_spec : forall A B,
-  Spec LI.append (x:list A) (y:list A) (k:func) |R>>  (*todo R:~~B*)
+  Spec FL.append (x:list A) (y:list A) (k:func) |R>>  (*todo R:~~B*)
      App k (x++y); ===> (R:~~B).
      (* @app_1 (list A) B k (x++y) ===> R. *)
      (* forall H Q, @app_1 (list A) B k (x++y) H Q -> R H Q. *)
@@ -28,7 +97,7 @@ Qed.
  (* todo: use xapp_noframe for unification *)
   
 Lemma append_spec' : forall A B,
-  Spec LI.append x y k |R>> forall (K:list A->~~B->Prop),
+  Spec FL.append x y k |R>> forall (K:list A->~~B->Prop),
      Spec_1 k K -> forall H Q,
      (forall R', is_local R' -> K (x++y) R' -> R' H Q) ->
      R H Q.
@@ -49,7 +118,7 @@ Qed.
 
 (*
 Lemma append_spec : forall A B,
-  Spec LI.append x y k |R>> forall (K:list A->~~B->Prop),
+  Spec FL.append x y k |R>> forall (K:list A->~~B->Prop),
      Spec_1 k K -> K (x++y) R.
 Proof.
   intros. xinduction (unproj31 (list A) func (@list_sub A)).
@@ -73,7 +142,7 @@ Qed.
 Hint Constructors Forall2.
 
 Lemma map_spec : forall a b,
-  Spec LI.map (f:func) (l:list a) |R>> forall A B L (T:htype A a) (U:htype B b) (I:A->B->Prop),
+  Spec FL.map (f:func) (l:list a) |R>> forall A B L (T:htype A a) (U:htype B b) (I:A->B->Prop),
     (Spec f x |R'>> forall X, In X L -> keep R' (x ~> T X) (fun y => Hexists Y, (y ~> U Y) \* [I X Y])) ->
     keep R (l ~> List T L) (fun m => Hexists M, m ~> List U M \* [Forall2 I L M]).
 Proof.
@@ -97,9 +166,6 @@ Proof.
       auto.
 Qed.
   
-
-
-
 
 
 
