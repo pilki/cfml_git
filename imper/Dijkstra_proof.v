@@ -517,6 +517,8 @@ Qed.
 
 End Invariants.
 
+Definition VQ_type := (array bool * multiset (int*int))%type.
+
 (*-----------------------------------------------------------*)
 (** Proof of Dijkstra's algorithm using the characteristic formula *)
 
@@ -536,17 +538,18 @@ Proof.
     Hexists B, data B V Q \* [inv G n s V B Q (crossing G s V)]).
   xseq (# Hexists V, hinv (V,\{})). 
   set (W := lexico2 (binary_map (count (=true)) (upto (length N)))
-                    (binary_map (fun Q:multiset(int*int) => card Q:int) (downto 0))).
-  xwhile_inv W hinv. 
+                    (binary_map (fun Q:multiset(int*int) => card Q:int) (downto 0))). 
+  set (C := (fun (VQ:VQ_type) => bool_of (let '(V,Q) := VQ in isTrue (!(Q '= \{}))))).
+  xwhile_inv W hinv C. 
   (* -- initial state satisfies the invariant -- *)
   refine (ex_intro' (_,_)). unfold hinv,data. hsimpl.
     applys_eq~ inv_start 2. multiset_eq.
   (* -- verification of the loop -- *) 
-  intros [V Q]. unfold hinv. xextract as B Inv. xwhile_inv_body. 
+  intros [V Q]. unfold hinv. subst C. splits. 
   (* ---- loop condition -- *) 
-  unfold data. xapps. xret.
+  unfold data. xextract as ? ?. xapps. xret. hsimpl. auto. xclean.
   (* ---- loop body -- *) 
-  xextract as HN. xapp. intros [x dx] Q' Mi HE.
+  unfold data. xextract as HN B Inv. xapp. intros [x dx] Q' Mi HE.
   unfold S. xextract. intro_subst. 
   lets [Inv' SV SB]: Inv. asserts Nx: (x \in nodes G).
     lets [_ _ Hc _]: Inv' x. forwards* [? _]: Hc dx.
@@ -571,7 +574,7 @@ Proof.
   (* -------- iter pre-condition -- *) 
   subst hinv' data. hsimpl~ (nil:list (int*int)).
   (* -------- iter post-condition -- *) 
-  clears update. subst hinv'.
+  clears update. subst hinv'. unfold data.
   hextract as L B' Q'' I' Leq. hsimpl~ (V',Q'') B'.
   left. unfolds. subst V'. applys~ @array_count_upto. math.
   rew_app in Leq. applys~ inv_end_loop I'.
@@ -581,7 +584,7 @@ Proof.
     rewrite card_union, card_single. unfold T. math.
   subst Q. apply* inv_no_update. 
   (* ---- loop post-condition -- *) 
-  hextract as He. xclean. subst Q. unfold data. xsimpl~.
+  hextract as He B Inv. xclean. subst Q. unfold data. xsimpl~.
   (* ---- return value -- *) 
   intros V B Inv. unfold hinv, data. lets [_ _ SB]: Inv.
   xapp~. intros l. hdata_simpl GraphAdjList. xsimpl~.

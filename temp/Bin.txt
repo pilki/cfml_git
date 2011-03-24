@@ -4159,3 +4159,89 @@ Qed.
 
 Hint Extern 1 (RegisterSpec miter) => Provide miter_spec.
  *)
+
+
+
+
+Lemma while_loop_cf_to_inv : 
+   forall (A:Type) (I:A->hprop) (lt:binary A) (W:wf lt),
+   forall (F1:~~bool) (F2:~~unit) H (Q:unit->hprop),
+   is_local F1 -> is_local F2 ->
+   (exists X0, H ==> (I X0)) ->
+   (forall X, local (fun H Q => exists Q',
+        F1 H Q' 
+     /\ F2 (Q' true) (# Hexists Y, (I Y) \* [lt Y X])
+     /\ Q' false ==> Q tt) (I X) Q) ->
+  (While F1 Do F2 _Done) H Q.
+Proof.
+  introv W LF1 LF2 (X0&I0) M. apply local_erase.
+  introv LR HR. applys* local_weaken (rm I0). gen X0.
+  intros X. induction_wf IH: W X. 
+  applys HR. intros h IXh.
+  destruct~ (M X h) as (H1&H2&Q1&H3&M1&(Q'&M2&M3&M4)&M5).
+  exists (H1 \* H2) [] (Q \*+ H3) H3. splits*.
+  exists___. splits*.
+  exists (Q' \*+ H2). splits~. xapplys M2.
+  intros x. xpost; [ | apply M5 ]. applys local_frame H2. xlocal.
+ xframe H2.
+; [| xsimpl]. skip. apply pred_le_
+ eapply local_wgframe. xlocal.
+  xframe H2; [ | apply M5].
+  intros m. destruct m. hsimpl.
+xif.
+    xseq (#Hexists Y, I Y \* [lt Y X] \* H2). xapplys* M3.
+     intros Y LYX. skip.
+    xret. destruct x; auto_false. hchange M4. hchange M5; hsimpl. 
+
+
+
+    intros Y LYX. eapply local_wgframe. eauto. eauto.
+     hsimpl. hchange M5.
+ eapply xchange_lemma
+xweaken_post (Q \*+ H3). xgc. xapply_local* IH. hsimpl. hchange 
+    xret. destruct x; auto_false. hchange M4. hsimpl.
+  intros m. destruct m. hchange M5; hsimpl.
+Qed.
+ 
+  intros x. xif. xseq*. xextract as Y L. eauto.
+skip. 
+(* xapply_local IH. eauto. hsimpl. skip. *)
+  xret. destruct x; auto_false.
+
+  cuts K: (forall X, exists H, R (I X) Q'(Q \* H)).
+ exists (fun x:bool => if x then Q else Q1). splits~. intros x.
+  xif. xseq*. xextract as Y L. eauto.
+  xapply_local* IH; hsimpl.
+  xret. destruct x; auto_false. hchange M4.
+Qed.
+
+
+(*
+Proof.
+  introv W (X0&I0) M. apply local_erase.
+  introv LR HR. applys* local_weaken (rm I0). gen X0. 
+  intros X. induction_wf IH: W X. 
+  rewrite LR. introv Hh.
+  lets (H1&H2&Q1&H'&?&(Q'&?&?&?)&?): (>> (rm M) X Hh).
+  exists (H1 \* H2) [] (Q1 \*+ H2) H'. splits~.
+  rew_heap~.
+  applys HR. xextract. xlet (Q' \*+ H2). skip. (* todo: F1 local *)
+  xif. xseq  (#Hexists Y, I Y \* [lt Y X] \* H2). skip. 
+  intros Y L. xapply_local* IH; hsimpl.
+  xret. destruct x; auto_false. hsimpl. 
+Qed.
+*)
+Admitted.
+
+Ltac xwhile_inv_core W I :=
+  match type of W with
+  | wf _ => eapply (@while_loop_cf_to_inv _ I _ W)
+  | _ -> nat => eapply (@while_loop_cf_to_inv _ I (measure W)); [ try prove_wf | | ]
+  | _ => eapply (@while_loop_cf_to_inv _ I W); [ try prove_wf | | ]
+  end.
+
+Tactic Notation "xwhile_inv" constr(W) constr(I) :=
+  xwhile_pre ltac:(fun _ => xwhile_inv_core W I).
+
+Tactic Notation "xwhile_inv_body" :=
+  apply local_erase; esplit; splits (3%nat). 

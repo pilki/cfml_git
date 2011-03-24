@@ -1147,8 +1147,8 @@ Tactic Notation "xfun" constr(s1) constr(s2) :=
     More precisely, it combines [xfun S] with [xinduction I]. 
     The tactic [xfun_induction_nointro S I] is similar except
     that it does not introduces the arguments of the function. *)
-  (* --todo: en gÃ©nÃ©ral les noms des arguments sont perdus,
-       donc le dÃ©faut pourrait etre nointro, ou un mode "as" *)
+  (* --todo: en général les noms des arguments sont perdus,
+       donc le défaut pourrait etre nointro, ou un mode "as" *)
   (* --todo: xfun_induction I S *)
 
 Ltac unfolds_to_spec tt := 
@@ -1620,40 +1620,26 @@ Proof.
 Qed.
 
 Lemma while_loop_cf_to_inv : 
-   forall (A:Type) (I:A->hprop) (lt:binary A) (W:wf lt),
+   forall (A:Type) (I:A->hprop) (B:A->bool->Prop) (lt:binary A) (W:wf lt),
    forall (F1:~~bool) (F2:~~unit) H (Q:unit->hprop),
-   (exists X0, H ==> (I X0)) ->
-   (forall X, local (fun H Q => exists Q',
-        F1 H Q' 
-     /\ F2 (Q' true) (# Hexists Y, (I Y) \* [lt Y X])
-     /\ Q' false ==> Q tt) (I X) Q) ->
+    (exists X0, H ==> (I X0)) ->
+   (forall X, F1 (I X) (fun b => [B X b] \* I X)
+              /\ F2 ([B X true] \* I X) (# Hexists Y, (I Y) \* [lt Y X])
+              /\ [B X false] \* I X ==> Q tt) ->
   (While F1 Do F2 _Done) H Q.
-(*
 Proof.
-  introv W (X0&I0) M. apply local_erase.
-  introv LR HR. applys* local_weaken (rm I0). gen X0. 
-  intros X. induction_wf IH: W X. 
-  rewrite LR. introv Hh.
-  lets (H1&H2&Q1&H'&?&(Q'&?&?&?)&?): (>> (rm M) X Hh).
-  exists (H1 \* H2) [] (Q1 \*+ H2) H'. splits~.
-  rew_heap~.
-  applys HR. xextract. xlet (Q' \*+ H2). skip. (* todo: F1 local *)
-  xif. xseq  (#Hexists Y, I Y \* [lt Y X] \* H2). skip. 
-  intros Y L. xapply_local* IH; hsimpl.
-  xret. destruct x; auto_false. hsimpl. 
+  intros. eapply while_loop_cf_to_inv' with (J:= fun X b => [B X b] \* I X); eauto.
 Qed.
-*)
-Admitted.
 
-Ltac xwhile_inv_core W I :=
+Ltac xwhile_inv_core W I B :=
   match type of W with
-  | wf _ => eapply (@while_loop_cf_to_inv _ I _ W)
-  | _ -> nat => eapply (@while_loop_cf_to_inv _ I (measure W)); [ try prove_wf | | ]
-  | _ => eapply (@while_loop_cf_to_inv _ I W); [ try prove_wf | | ]
+  | wf _ => eapply (@while_loop_cf_to_inv _ I B _ W)
+  | _ -> nat => eapply (@while_loop_cf_to_inv _ I B (measure W)); [ try prove_wf | | ]
+  | _ => eapply (@while_loop_cf_to_inv _ I B W); [ try prove_wf | | ]
   end.
 
-Tactic Notation "xwhile_inv" constr(W) constr(I) :=
-  xwhile_pre ltac:(fun _ => xwhile_inv_core W I).
+Tactic Notation "xwhile_inv" constr(W) constr(I) constr(B) :=
+  xwhile_pre ltac:(fun _ => xwhile_inv_core W I B).
 
 Tactic Notation "xwhile_inv_body" :=
   apply local_erase; esplit; splits (3%nat). 
