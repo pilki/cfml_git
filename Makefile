@@ -1,365 +1,282 @@
-#COQBIN=/var/tmp/coq-8.2pl2/bin/
-#COQBIN=/home/charguer/coq/trunk/bin/
+# make sure that you first do
+#   chmod +x ocamldep.wrapper 
+#   chmod +x go.sh
 
-INCLUDES=-I . -I ./lib/v3 -I ./imper # -I ./okasaki 
+# you might also need "chmod +x *.byte" when you recompile
 
+SETTINGS=local_settings.sh
+SETTINGS_TEMPLATE=template_settings.sh
+
+# if you have a local installation of Coq, you should edit the file 
+# local_settings.sh (once the Makefile has created it) with something like:
+# COQBIN=/var/tmp/coq-8.3pl2/bin/
+
+
+############################################################################
+# Targets
+
+.PHONY: all settings tools tlclib cflib camllib cf imper clean tests
+.SUFFIXES: .camldep .ml .ml.d .v.d _ml.v _ml.vo _proof.v _proof.vo .v .vo .cmo .cmi
+.SECONDARY: *.ml.d *.v.d *.cmi *.cmo *.vo imper/*.ml.d imper/*.v.d imper/*.cmi imper/*_ml.v imper/*_ml.vo 
+.PRECIOUS: *.ml.d *.v.d *.cmi *.cmo *.vo 
+
+all: settings tools tlclib cf cflib imper
+
+
+############################################################################
+# Creation of a default settings file if none exist
+
+settings: $(SETTINGS)
+
+$(SETTINGS):
+	@if [ -f $(SETTINGS) ]; then \
+		echo found; \
+	else \
+		cp $(SETTINGS_TEMPLATE) $(SETTINGS); \
+	fi
+
+#ifeq ($(findstring $(SETTINGS), $(wildcard *.sh)), $(SETTINGS))
+#	echo > $(SETTINGS)
+#	echo export COQBIN= >> $(SETTINGS)
+#	echo export OCAMLBIN= >> $(SETTINGS)
+#	echo export TLCLIB=./lib/v3/ >> $(SETTINGS)
+#	echo export CORE=-j2 >> $(SETTINGS)
+#endif
+
+include $(SETTINGS)
+
+ifeq ($(TLCLIB),)
+export COQBIN=
+export OCAMLBIN=
+export TLCLIB=./lib/v3/
+export CORES=-j2 
+endif
+
+
+############################################################################
+
+# List of dependencies
+TLCLIB_SRC=$(wildcard $(TLCLIB)*.v)
+CAML_FILES_IN=$(addprefix $(1)/,*.ml *.mli *.mll *.mly)
+MAP=$(foreach a,$(2),$(call $(1),$(a)))
+GENERATOR_SUBDIRS=. lex parsing typing tools utils
+GENERATOR_DIRS=$(addprefix gen/,$(GENERATOR_SUBDIRS))
+GENERATOR_PATTERNS=$(call MAP, CAML_FILES_IN, $(GENERATOR_DIRS))
+GENERATOR_SRC=$(wildcard $(GENERATOR_PATTERNS))
+CAMLLIB_MLI=$(filter-out gen/stdlib/camlinternal% %genlex.mli %moreLabels.mli %oo.mli, $(wildcard gen/stdlib/*.mli))
+# TODO: compute dependencies between the /gen/stdlib/*.mli files to avoid the above filter-out 
+CAMLLIB_CMI=$(CAMLLIB_MLI:.mli=.cmi)
+
+# OPTIONS
+INCLUDES=-I . -I gen/stdlib -I $(TLCLIB) -I ./imper 
+GENERATOR_OPTIONS=-rectypes $(INCLUDES)
+
+# Tools that should be available on the machine
 COQC=$(COQBIN)coqc -dont-load-proofs $(INCLUDES)
 COQDEP=$(COQBIN)coqdep $(INCLUDES)
 COQDOC=$(COQBIN)coqdoc
-MAKECMI=gen/makecmi.byte $(INCLUDES)
-MYOCAMLDEP=gen/myocamldep.byte 
-GENERATOR=gen/main.byte
+OCAMLBUILD=$(OCAMLBIN)ocamlbuild
+
+# Tools that are built
+GENERATOR=./main.byte
+MYOCAMLCMI=./makecmi.byte 
+MYOCAMLDEP=./myocamldep.byte 
+MYTOOLS=$(GENERATOR) $(MYOCAMLCMI) $(MYOCAMLDEP)
+#$(INCLUDES) #todo:rename
 
 
-CUR=\
-	CFLib.v \
 
-TOOLS=\
-	CFHeaps.v \
-	CFSpec.v \
-	CFPrint.v \
-	CFTactics.v \
-	CFPrim.v \
-	CFLib.v 
+############################################################################
+# List of library files and developments
 
-IMP=\
-	imper/Dijkstra_ml.v \
-	imper/Compose_ml.v \
-	imper/Swap_ml.v \
-	imper/MutableList_ml.v \
-	imper/Facto_ml.v \
-	imper/Counter_ml.v \
-	imper/Landin_ml.v \
-	imper/Loops_ml.v \
-	imper/UnionFind_ml.v \
-	imper/SparseArray_ml.v \
-	imper/Dijkstra_ml.v \
-	imper/Compose_proof.v \
-	imper/Swap_proof.v \
-	imper/Facto_proof.v \
-	imper/MutableList_proof.v \
-	imper/Counter_proof.v \
-	imper/Landin_proof.v \
-	imper/Facto_proof.v \
-	imper/MinInf.v \
-	imper/Dijkstra_proof.v \
-	imper/UnionFind_proof.v \
-	imper/SparseArray_proof.v 
+CFLIB=\
+	CFHeaps \
+	CFSpec \
+	CFPrint \
+	CFTactics \
+	CFPrim \
+	CFLib 
 
- # those probably do not compile
+IMPER=\
+	imper/Compose \
+	imper/Swap \
+	imper/MutableList \
+	imper/Counter \
+	imper/Landin \
+	imper/Dijkstra \
+	imper/UnionFind \
+	imper/SparseArray 
+
+# those do not compile
 MORE=\
-	imper/FunctionalList_ml.v \
-	imper/FunctionalList_proof.v \
-	imper/InOut_ml.v \
-	imper/InOut_proof.v \
-	imper/StrongUpdate_ml.v \
-	imper/StrongUpdate_proof.v \
-	imper/TreeCopy_ml.v \
-	imper/TreeCopy_proof.v \
-	imper/LambdaEval_ml.v \
-	imper/LambdaEval_proof.v \
-	imper/Loops_proof.v \
+	imper/Facto \
+	imper/FunctionalList \
+	imper/InOut \
+	imper/StrongUpdate \
+	imper/TreeCopy \
+	imper/LambdaEval \
+	imper/Loops \
+
+SPECIAL_INTERFACES=\
+	imper/NullPointers \
+	imper/StrongPointers
 
 
+############################################################################
+# DETAILED TARGETS
 
-BUILTIN=\
-	imper/NullPointers.cmi \
-	imper/StrongPointers.cmi
+# todo: first compute dependencies, then run .vo compilation
+# todo: integrate shadow compilation of .vo files
 
+tlclib: $(TLCLIB_SRC)
+	make -C $(TLCLIB) lib
 
-ALL=$(TOOLS) $(IMP) #$(MORE)
+cflib: $(CFLIB:=.vo)
 
-.PHONY: all def clean cleanall dep tools tools demo oka vac new cod dvpt test gen lib none
-.SUFFIXES: .camldep .ml _ml.v _ml.vo _proof.v _proof.vo .v .vo 
-.SECONDARY: *.cmi okasaki/*.cmi imper/*.cmi 
-.SECONDARY: *_ml.v okasaki/*_ml.v imper/*_ml.v 
-.SECONDARY: *_ml.vo okasaki/*_ml.vo imper/*_ml.vo 
-.SECONDARY: *.d okasaki/*.d imper/*.d 
+camllib: $(CAMLLIB_CMI)
 
-all: gen full .camldep 
-full: $(ALL:.v=.vo) 
-cur: $(CUR:.v=.vo)
-imp: $(IMP:.v=.vo)
-tools: $(TOOLS:.v=.vo)
-builtin: $(BUILTIN)
+imper: $(IMPER:=_proof.vo)
 
-oka: $(OKA:.v=.vo) $(OKACOD:.v=.vo)
-okac: $(OKACOD:.v=.vo)
-okaq: $(OKAQ:.v=.vo)
-okao: $(OKAO:.v=.vo)
-okah: $(OKAH:.v=.vo)
-okas: $(OKAS:.v=.vo)
-
-new: $(NEW:.v=.vo) 
-cod: $(OKACOD:.v=.vo) 
-dvpt: $(DEV:.v=.vo) 
-test: $(TEST:.v=.vo) 
-gen: 
-	make -C gen all
-dep: .camldep $(ALL:.v=.d) 
-none:
-
-editq:
-	coqide -I lib $(OKAQ) &
-edito:
-	coqide -I lib $(OKAO) &
-edith:
-	coqide -I lib $(OKAH) &
-edits:
-	coqide -I lib $(OKAS) &
-editi:
-	coqide -I lib $(IMP) &
-
-stats:
-	@php -f stats.php $(OKAQ) $(OKAH) $(OKAO) > stats.txt
-	@echo "STAT COMPUTED"
-#$(OKAS)
-
-statstime:
-	@php -f stats.php time $(OKAQ) $(OKAH) $(OKAO) > stats.txt
-	@echo "STAT COMPUTED"
-
-CAMLFILES=$(wildcard okasaki/*.ml)
-statsml:
-	@php -f stats.php $(CAMLFILES:.ml=_proof.v)
-
-libcompile:
-	make lib -C lib/v3
-
-#cp lib/*.vo .
-
-lib: libcompile
-# force
-
-force: ;
-
-#LibCore.vo: lib/LibCore.v
-#	make lib -C lib
-#	cp lib/*.vo .
-#does not depend on all
-
-#during dvpt only: force
-$(GENERATOR): 
-	make -C gen
-
-$(MYOCAMLDEP): 
-	make -C gen 
+force:
+	echo $(FORCED_VFILES)
 
 
-imper/StrongPointers.cmi: imper/StrongPointers.mli
-	$(MAKECMI) $<
-imper/NullPointers.cmi: imper/NullPointers.mli
-	$(MAKECMI) $<
-#TODO	$(GENERATOR) -rectypes -onlycmi imper/MyLib.mli
+############################################################################
+# .vo files
+
+%.vo: %.v %.v.d
+	$(COQC) $< 
 
 
-%_ml.v: %.ml %.cmi $(GENERATOR) $(BUILTIN)
-	@echo "GENERATING $@"
-	@$(GENERATOR) -rectypes $(INCLUDES) $<
-# -debug
+############################################################################
+# _ml.v files
 
-%.cmi: %.ml $(BUILTIN)
-	@echo "MAKING CMI: $@"
-	@$(GENERATOR) -rectypes -onlycmi $(INCLUDES) $<
+cf: $(IMPER:=_ml.v)
 
-%_ml.vo: %_ml.v %_ml.d CFPrim.vo
-	@echo "COQC $<"
-	@$(COQC) $< 
+%_ml.v: %.ml %.ml.d %.cmi $(GENERATOR) $(GENERATOR_SRC) $(SPECIAL_INTERFACES:=.cmi) Makefile
+	$(GENERATOR) $(GENERATOR_OPTIONS) $<
 
-%_proof.vo: %_proof.v %_ml.vo %_proof.d CFLib.vo
-	@echo "COQC $<"
-	@$(COQC) $<
 
-%.vo: %.v %.d 
-	@echo "COQC $<"
-	@$(COQC) $< 
+############################################################################
+# .ml.d files
 
-%.d: %.v
-	@echo "COQDEP $<"
-	@$(COQDEP) $< > $@
+# using ocamldep to compute dependencies between ml files, 
+# then enforcing corresponding dependencies between %_ml.vo files
 
-# how to hide unfound files?
-#%_ml.d: %_ml.v
-#	@$(COQDEP) $< > $@
- 
-.camldep: imper/*.ml okasaki/*.ml $(MYOCAMLDEP) 
-	@echo "OCAMLDEP"
-	$(MYOCAMLDEP) $(INCLUDES) imper/*.ml okasaki/*.ml > .camldeptemp
-	sed 's/.cmo/.cmi/g' .camldeptemp > .camldep
-	rm .camldeptemp
+# todo: add ocamldep wrapper here as well
+%.ml.d: %.ml $(MYOCAMLDEP) Makefile
+	$(MYOCAMLDEP) $(INCLUDES) $< > $@
+	@cp -f $@ $@.tmp
+	@sed -e 's/.*://' -e 's/\\$$//' < $@.tmp | fmt -1 | \
+	  sed -e 's/^ *//' -e 's/$$/:/' >> $@  
+	@sed -i 's/\.cmo/.cmi/g' $@
+	@rm -f $@.tmp
+#todo avoid circular dependencies
 
-.libdep: lib/*.v
-	$(COQDEP) $(wildcard lib/*.v) > .libdep
-
-	
-include .camldep
-#include .libdep
-
-ifeq ($(findstring $(MAKECMDGOALS),stats imp clean gen dep .camldep),)
-include .camldep
-include .libdep
+# avoid computing dependencies with make clean...
+ifeq ($(findstring $(MAKECMDGOALS),clean clean_all),)
+-include $(IMPER:.ml.d)
 endif
 
-COLD=clean cleanall dep new test gen stats .camldep 
-ifeq ($(findstring $(MAKECMDGOALS),$(COLD)),)
-include $(ALL:.v=.d)
+
+############################################################################
+# .cmi files
+
+%.cmi: %.ml %.ml.d $(CAMLLIB_CMI) $(GENERATOR)
+	$(GENERATOR) -rectypes -onlycmi $(INCLUDES) $<
+#todo: could also use $(MYOCAMLCMI) $(INCLUDES) $< with a dependency on $(MYOCAMLCMI) 
+
+# special treatment for compiling the .mli files from the standard library
+
+imper/NullPointers.cmi: imper/NullPointers.mli $(CAMLLIB_CMI) $(MYOCAMLCMI)
+	$(MYOCAMLCMI) -rectypes -I gen/stdlib $<
+imper/StrongPointers.cmi: imper/StrongPointers.mli $(CAMLLIB_CMI) $(MYOCAMLCMI)
+	$(MYOCAMLCMI) -rectypes -I gen/stdlib $<
+
+# special treatment for compiling the .mli files from the standard library
+
+gen/stdlib/pervasives.cmi: gen/stdlib/pervasives.mli $(MYOCAMLCMI)
+	$(MYOCAMLCMI) -nostdlib -nopervasives $<
+gen/stdlib/%.cmi: gen/stdlib/%.mli gen/stdlib/pervasives.cmi $(MYOCAMLCMI)
+	$(MYOCAMLCMI) -nostdlib -I gen/stdlib $<
+
+
+# todo: add support for mli files
+
+############################################################################
+# .v.d files
+
+# using a trick to force dependencies to mention files that do not exist yet
+
+FORCED_VFILES=$(IMPER:=_ml.v)
+
+%.v.d: %.v
+	@./ocamldep.wrapper $(FORCED_VFILES) - $(COQDEP) $< > $@
+
+ifeq ($(findstring $(MAKECMDGOALS),clean clean_all),)
+-include $(CFLIB:=.v.d) $(IMPER:=_proof.v.d) $(IMPER:=_ml.v.d)
 endif
 
-ifneq ($(findstring $(MAKECMDGOALS),new),)
-include $(IMP:.v=.d) $(NEW:.v=.d)
-#include $(ALL:.v=.d) $(NEW:.v=.d)
-#include $(TOOLS:.v=.d)
-endif
+# For some reason the makefile is incapable of working out this dependency on the fly:
+# even though it is contained in imper/Counter.ml.d, the file with this dependency
+# is not included early enough
+imper/Counter.cmi: imper/MutableList.cmi
 
-ifneq ($(findstring $(MAKECMDGOALS),test),)
-include $(TEST:.v=.d) 
-endif
 
-include $(TOOLS:.v=.d)
+############################################################################
+# .byte files
 
-cleancod:
-	rm *_ml.v *_ml.vo
-	rm imper/*_ml.v imper/*_ml.vo
-	rm okasaki/*_ml.v okasaki/*_ml.vo
+tools: $(MYTOOLS)
 
-clean:
-	@rm -f *.d *.vo *.glob *.cmo *.cmi *_ml.v || echo clean_local
-	@rm -f okasaki/*.d okasaki/*_ml.v okasaki/*.vo okasaki/*.glob okasaki/*.cmo okasaki/*.cmi || echo clean_okasaki
-	@rm -f imper/*.d imper/*_ml.v imper/*.vo imper/*.glob imper/*.cmo imper/*.cmi || echo clean_imper
+# the makefile does not like the symbolic link generated by ocamlbuild so we copy file
+
+%.byte: $(GENERATOR_SRC)
+	$(OCAMLBUILD) -I gen $(addprefix -I ,$(GENERATOR_DIRS)) $@
+	@mv $@ temp.byte 
+	@cp -L temp.byte $@
+	@rm temp.byte
+
+
+############################################################################
+# Cleanup
+
+clean:  
+	@rm -f *.d *.vo *.glob *.cmo *.cmi *_ml.v || echo ok
+	@rm -f imper/*.d imper/*_ml.v imper/*.vo imper/*.glob imper/*.cmo imper/*.cmi || echo ok
 	@rm -f .camldep || echo ok
 	@echo "CLEANED UP"
+# todo: factorize better the code above
 
-cleanall: clean
-	@rm -Rf gen/_build gen/main.byte || echo clean_gen
-	@echo "CLEANED UP ALL"
+clean_settings:
+	@rm -f $(SETTINGS) || @echo ok
 
+clean_tools:
+	@rm -Rf _build || echo ok
+	@rm -f *.byte || echo ok
+	@rm -f gen/stdlib/*.cmi || echo ok
 
-
-#todo: faire passer les dossiers de camldep via une liste
-
-
-#-----------------------------------------------old------------------------------
-
-
-
-TOOLS=\
-	Shared.v \
-	FuncDefs.v \
-	FuncPrint.v \
-	FuncPrim.v \
-	FuncTactics.v
-
-OKACOD=\
-	okasaki/Okasaki_ml.v \
-	okasaki/QueueSig_ml.v \
-	okasaki/DequeSig_ml.v \
-	okasaki/OrderedSig_ml.v \
-	okasaki/FsetSig_ml.v \
-	okasaki/HeapSig_ml.v \
-	okasaki/SortableSig_ml.v \
-	okasaki/RandomAccessListSig_ml.v \
-	okasaki/CatenableListSig_ml.v \
-	okasaki/BatchedQueue_ml.v \
-	okasaki/BankersQueue_ml.v \
-	okasaki/PhysicistsQueue_ml.v \
-	okasaki/RealTimeQueue_ml.v \
-	okasaki/ImplicitQueue_ml.v \
-	okasaki/BootstrappedQueue_ml.v \
-	okasaki/HoodMelvilleQueue_ml.v \
-	okasaki/BankersDeque_ml.v \
-	okasaki/RedBlackSet_ml.v \
-	okasaki/LeftistHeap_ml.v \
-	okasaki/PairingHeap_ml.v \
-	okasaki/LazyPairingHeap_ml.v \
-	okasaki/BinomialHeap_ml.v \
-	okasaki/SplayHeap_ml.v \
-	okasaki/RedBlackSet_ml.v \
-	okasaki/UnbalancedSet_ml.v \
-	okasaki/BottomUpMergeSort_ml.v \
-	okasaki/BinaryRandomAccessList_ml.v \
-	okasaki/AltBinaryRandomAccessList_ml.v \
-	okasaki/QueueBisSig_ml.v \
-	okasaki/CatenableListImpl_ml.v \
-	okasaki/Okasaki_ml.v 
-
-OKAS=\
-	okasaki/QueueSig_proof.v \
-	okasaki/DequeSig_proof.v \
-	okasaki/OrderedSig_proof.v \
-	okasaki/FsetSig_proof.v \
-	okasaki/HeapSig_proof.v \
-	okasaki/SortableSig_proof.v \
-	okasaki/RandomAccessListSig_proof.v \
-	okasaki/QueueBisSig_proof.v \
-	okasaki/CatenableListSig_proof.v 
-
-OKAQ=\
-	okasaki/BatchedQueue_proof.v \
-	okasaki/BankersQueue_proof.v \
-	okasaki/PhysicistsQueue_proof.v \
-	okasaki/RealTimeQueue_proof.v \
-	okasaki/ImplicitQueue_proof.v \
-	okasaki/BootstrappedQueue_proof.v \
-	okasaki/HoodMelvilleQueue_proof.v \
-	okasaki/BankersDeque_proof.v 
-
-OKAH=\
-	okasaki/LeftistHeap_proof.v \
-	okasaki/PairingHeap_proof.v \
-	okasaki/LazyPairingHeap_proof.v \
-	okasaki/SplayHeap_proof.v \
-	okasaki/BinomialHeap_proof.v 
-
-OKAO=\
-	okasaki/UnbalancedSet_proof.v \
-	okasaki/RedBlackSet_proof.v \
-	okasaki/BottomUpMergeSort_proof.v \
-	okasaki/CatenableListImpl_proof.v \
-	okasaki/BinaryRandomAccessList_proof.v \
-	okasaki/AltBinaryRandomAccessList_proof.v 
-
-OKA=$(OKAS) $(OKAQ) $(OKAH) $(OKAO)
+clean_all: clean clean_settings clean_tools
 
 
-#	demo/test_ml.v \
-#	demo/test_proof.v \
-#	okasaki/Okasaki_ml.v
-#	imper/CPS_ml.v \
-#	imper/CPS_proof.v \
+############################################################################
+# Debugging commands
 
-# 	
-#	okasaki/BinaryRandomAccessList_ml.v \
+test:
+	@echo $(OCAMLBUILD)
+	@echo $(TLCLIB)
+	@echo $(TLCLIB_SRC)
+	@echo $(GENERATOR_DIRS)	
+	@echo $(GENERATOR_PATTERNS)
+	@echo $(GENERATOR_SRC)
 
-#okasaki/PhysicistsQueue_ml.v 
+changes: $(MYOCAMLDEP)
+	$(MYOCAMLDEP) $(INCLUDES) imper/Counter.ml > changes
+
+needed: $(GENERATOR_SRC)
+	echo newer
+	touch needed
 
 
-# 	okasaki/Stream_ml.v \
-#	okasaki/StreamSig_ml.v \
-#	okasaki/StreamSig_proof.v 
-#	okasaki/list_skew_binary_ml.v \
-#	okasaki/list_skew_binary_proof.v 
 
-#DEMO=\
-#	demo/half_ml.v \#
-#	demo/half_proof.v \
-#	demo/demo_ml.v \
-#	demo/demo_proof.v \
-#	demo/test_ml.v \
-#	demo/test_proof.v 
 
-#	okasaki/queue_realtime_ml.v \
-#	okasaki/queue_batch_ml.v \
-#	demo/map_ml.v \
-#	demo/map_proof.v 
-# 	okasaki/queue.v \
-#	okasaki/queue_realtime_proof.v \
-#	okasaki/queue_hood_melville_proof.v \
-#	okasaki/queue_batch_proof.v 
-
-#TEST=\
-#	demo/test_ml.v \
-#	demo/test_proof.v 
-
-#OLD=$(TOOLS) $(DEMO) $(OKA) $(OKACOD)
-# $(COD) $(DEV) $(TUTO) $(FORM) $(DEV) $(OKA) $(DEV:.v=.vo)
 
