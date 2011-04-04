@@ -27,6 +27,7 @@ and coq =
   | Coq_int of int
   | Coq_app of coq * coq 
   | Coq_impl of coq * coq 
+  | Coq_lettuple of coqs * coq * coq
   | Coq_forall of typed_var * coq
   | Coq_fun of typed_var * coq
   | Coq_wild 
@@ -152,6 +153,11 @@ let coq_funs args c =
 
 let coq_fun_types names c =
   coq_funs (coq_types names) c
+
+(** Let binding [let (x:T) := t1 in t2] *)
+
+let coq_foralls args c =
+  List.fold_right (fun ci acc -> Coq_forall (ci, acc)) args c
 
 (** Universal [forall (x1:T1) .. (xn:Tn), c] *)
 
@@ -302,6 +308,7 @@ let rec string_of_coq c =
   | Coq_int n -> "(" ^ (string_of_int n) ^ ")%Z"
   | Coq_app (c1,c2) -> sprintf "(%s %s)" (aux c1) (aux c2)
   | Coq_impl (c1,c2) -> sprintf "(%s -> %s)" (aux c1) (aux c2)
+  | Coq_lettuple (cs,c2,c3) -> sprintf "(let '(%s) := %s in %s)" (show_list aux "," cs) (aux c2) (aux c3)
   | Coq_forall ((n,c1),c2) -> sprintf "(forall %s : %s, %s)" n (aux c1) (aux c2)
   | Coq_fun ((n,c1),c2) -> sprintf "(fun %s : %s => %s)" n (aux c1) (aux c2)
   | Coq_wild -> "_"

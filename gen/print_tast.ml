@@ -135,7 +135,7 @@ let rec string_of_expression par e =
    | Texp_record (l,None) ->        
        let print_item (li,ei) = 
           Format.sprintf "%s = %s" (li.lbl_name) (aux ei) in
-       let s = Format.sprintf "@[{%s}@]" (show_list print_item " " l) in
+       let s = Format.sprintf "@[{%s}@]" (show_list print_item "; " l) in
        show_par par s
    | Texp_field (e,i) -> 
        let s = Format.sprintf "@[%s.%s@]" (aux e) (i.lbl_name) in

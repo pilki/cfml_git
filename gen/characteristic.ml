@@ -144,6 +144,15 @@ let coq_typ e =
 let coq_typ_pat p =
    lift_typ_exp (p.pat_type)
 
+(** Extracts a record name from a type *)
+
+let get_record_name_for_exp e = 
+   let b = btyp_of_typ_exp (e.exp_type) in   
+   match b with 
+   | Btyp_constr (id,_) -> Path.name id
+   | _ -> failwith "illegal argument for get_record_name_for_exp"
+
+
 
 (*#########################################################################*)
 (* ** Type arity functions *)
@@ -265,6 +274,9 @@ let rec prefix_for_label typ =
 
 let string_of_label_with prefix lbl =
   prefix ^ "_" ^ lbl.lbl_name
+
+let name_for_record_new prefix =
+  "_new" ^ prefix
 
 let name_for_record_get lbl =
   "_get_" ^ lbl.lbl_name
@@ -435,8 +447,16 @@ let rec cfg_exp env e =
    | Texp_constant cst -> ret e
    | Texp_tuple el -> ret e
    | Texp_construct(cstr, args) -> ret e
-   | Texp_record (lbl_expr_list, opt_init_expr) -> ret e
-   (*--later: only in purely-functional setting: | Texp_field (arg, lbl) -> ret e*)
+   (* TODO: only in purely function setting:   | Texp_record (lbl_expr_list, opt_init_expr) -> ret e*)
+
+   | Texp_record (lbl_expr_list, opt_init_expr) ->
+      if opt_init_expr <> None then unsupported "record-with"; (* TODO *)
+      let name = get_record_name_for_exp e in
+      let func = Coq_var (name_for_record_new ("_" ^ name)) in (* tood: move the underscore *)
+      let args = List.map snd (list_ksort str_cmp (List.map (fun (li,ei) -> (li.lbl_name,ei)) lbl_expr_list)) in
+      let tprod = coq_prod (List.map coq_typ args) in
+      Cf_app ([tprod;loc_type], func, [Coq_tuple (List.map lift args)]) 
+
    | Texp_apply (funct, oargs) when is_inlined_primitive funct oargs -> ret e
 
    | Texp_function (pat_expr_list, partial) -> not_normal ()
@@ -761,12 +781,13 @@ and cfg_type_record (name,dec) =
       let btyp = btyp_of_typ_exp typ in 
       ((name_of_field lbl, lift_btyp btyp), fv_btyp ~through_arrow:false btyp)) fields) in
           (* todo: use a function to factorize above work *)
-   let fields_types = List.map snd branches in
+
+   let branches = list_ksort str_cmp branches in
+   let fields_names, fields_types = List.split branches in
    (* let remaining_params = List.concat branches_params in *)
    (* todo: assert remaining_params included in declared_params *)
    (* TODO: enlever le polymorphisme inutile : list_intersect remaining_params declared_params *) 
    let params = declared_params in 
-   let fields_names = List.map fst branches in
    let top = { 
       coqind_name = record_name;
       coqind_targs = coq_types params;
@@ -793,8 +814,10 @@ and record_functions record_name record_constr repr_name params fields_names fie
    let indices = list_nat n in
    let for_indices f = List.map f indices in
 
+   let new_name = name_for_record_new record_name in
    let get_names = for_indices (fun i -> "_get" ^ nth i fields_names) in
    let set_names = for_indices (fun i -> "_set" ^ nth i fields_names) in
+   let new_decl = Coqtop_param (new_name, val_type) in
    let get_set_decl i =
       [ Coqtop_param (nth i get_names, val_type); 
         Coqtop_param (nth i set_names, val_type) ] in
@@ -843,6 +866,19 @@ and record_functions record_name record_constr repr_name params fields_names fie
    let repr_convert_focus_unfocus = [ repr_convert; repr_focus; repr_unfocus;
       coqtop_noimplicit convert_name; coqtop_noimplicit focus_name; coqtop_noimplicit unfocus_name ] in
 
+   let new_spec =
+      let r = "R" in
+      let vr = coq_var r in
+      let tr = (r, formula_type_of loc_type) in
+      let x = "X" in
+      let tx = (x, coq_prod fields_types) in
+      let data_targs = vparams @ fields_types @ (for_indices (fun _ -> id_repr)) in
+      let post = coq_funs [(loc, loc_type)] (hdata vloc (coq_apps (coq_var_at repr_name) (data_targs @ vabstracts))) in
+      let body = coq_funs [tx; tr] (Coq_lettuple (coq_vars abstracts, Coq_var x, coq_apps vr [heap_empty; post])) in
+      let spec = coq_foralls tparams (coq_apps (Coq_var "spec_1") [body; coq_var new_name]) in
+      [ Coqtop_param (new_name ^ "_spec", spec); 
+        Coqtop_registerspec new_name; ]
+      in
    let get_set_spec i = 
       let get_name = nth i get_names in
       let set_name = nth i set_names in
@@ -875,9 +911,11 @@ and record_functions record_name record_constr repr_name params fields_names fie
         Coqtop_registerspec set_name; ]
       in
 
-     (List.concat (List.map get_set_decl indices))
+     [ new_decl ]
+   @ (List.concat (List.map get_set_decl indices))
    @ [ repr_def ]
    @ repr_convert_focus_unfocus
+   @ new_spec
    @ (List.concat (List.map get_set_spec indices))
 
 

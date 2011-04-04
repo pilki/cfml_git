@@ -97,9 +97,15 @@ let rec list_replace i v l = (* i >= 0 *)
    | [] -> failwith "list_replace invalid index" (* todo: illegal argument *)
    | x::t -> if i = 0 then v::t else x::(list_replace (i-1) v t)
 
+let list_ksort cmp l =
+  List.sort (fun (k1,_) (k2,_) -> cmp k1 k2) l
+
 
 (**************************************************************)
 (** String manipulation functions *)
+
+let str_cmp (s1:string) (s2:string) =
+  if s1 < s2 then -1 else if s1 = s2 then 0 else 1
 
 let str_replace char1 char2 s =
    let s2 = String.copy s in

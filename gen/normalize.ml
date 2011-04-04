@@ -291,7 +291,7 @@ let normalize_expression named e =
       | Pexp_record (l,Some eo) -> unsupported "record-with"
       | Pexp_record (l,None) -> 
          let l',bi = List.split (List.map (fun (i,(e,b)) -> ((i,e),b)) (assoc_list_map (aux false) l)) in
-         return (Pexp_record (l', None)), List.flatten bi
+         assign_var (return (Pexp_record (l', None))) (List.flatten bi)
       | Pexp_field (e,i) -> 
           let e',b = aux false e in
           assign_var (return (Pexp_field (e', i))) b
@@ -299,7 +299,7 @@ let normalize_expression named e =
           let e',b = aux false e in
           let e2',b2 = aux false e2 in
           assign_var (return (Pexp_setfield (e', i, e2'))) (b2 @ b)
-      | Pexp_array l -> 
+      | Pexp_array l ->  (* todo: use assign *)
          let l',bi = List.split (List.map (aux false) l) in
          return (Pexp_array l'), List.flatten bi
       | Pexp_ifthenelse (e1, e2, None) ->
