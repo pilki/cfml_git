@@ -2,6 +2,8 @@ Set Implicit Arguments.
 Require Import CFLib Demo_ml.
 
 
+(*
+
 (* [cell A] is equivalent to [loc] *)
 Print cell.
 
@@ -22,6 +24,8 @@ Check _get_next_spec.
 Check _set_next_spec.
 Check _get_content_spec.
 Check _set_content_spec.
+
+*)
 
 (* We can define our own representation on top of [Cell] *)
 

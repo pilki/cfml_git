@@ -30,7 +30,7 @@ let _ =
    (* todo: improve the path to mystdlib *)
    let gen_dir = Filename.dirname Sys.argv.(0) in
    if not !no_mystd_include 
-      then Clflags.include_dirs := (gen_dir ^ "/stdlib/")::!Clflags.include_dirs;
+      then Clflags.include_dirs := (gen_dir ^ "/camllib")::!Clflags.include_dirs;
 
    if List.length !files <> 1 
       then failwith "Expects one argument: the filename of the MLI file";

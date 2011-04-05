@@ -4245,3 +4245,11 @@ Tactic Notation "xwhile_inv" constr(W) constr(I) :=
 
 Tactic Notation "xwhile_inv_body" :=
   apply local_erase; esplit; splits (3%nat). 
+
+
+
+
+#for debugging:
+#changes: $(MYOCAMLDEP)
+#	$(MYOCAMLDEP) $(INCLUDES) imper/Counter.ml > changes
+

@@ -12,30 +12,43 @@ SETTINGS_TEMPLATE=template_settings.sh
 # COQBIN=/var/tmp/coq-8.3pl2/bin/
 
 
+
 ############################################################################
 # Targets
 
-.PHONY: all depend settings tools tlclib cflib camllib cf imper clean tests
+.PHONY: all depend settings tools tlclib cflib camllib cf imper clean clean_files clean_tools clean_settings clean_deps tests
 .SUFFIXES: .camldep .ml .ml.d .v.d _ml.v _ml.v.d _ml.vo _proof.v _proof.vo .v .vo .cmo .cmi .byte
-.SECONDARY: *.ml.d *.v.d *.cmi *.cmo *.vo *.ml.d *.v.d *.cmi *_ml.v *_ml.v.d *_ml.vo *.byte imper/*.cmi 
-.PRECIOUS: *.ml.d *_ml.v.d *.v.d *.cmi *.cmo *_ml.v *_ml.vo *.vo *.byte imper/*.cmi 
+.INTERMEDIATE: %.ml.d %.v.d %.cmi %.cmo %.vo %.ml.d %.v.d %_ml.v %_ml.v.d %_ml.vo %.byte 
+.PRECIOUS: %.ml.d %_ml.v.d %.v.d %.cmi %.cmo %_ml.v %_ml.vo %.vo %.byte 
 
-# Generate a warning if there is no 'depend' file and the target is not 'depend'
-WARNING=
+# Generate an error if there is no 'depend' file and the target is not 'depend'
+NODEPEND=
 ifeq ($(findstring depend, $(wildcard depend)),)
 ifeq ($(findstring $(MAKECMDGOALS),depend),)
-WARNING=warning
+NODEPEND=nodepend
 endif
 endif
 
-all: $(WARNING) settings tools tlclib cf cflib imper
+# Generate an error if there is no 'camllib/*.mli' file is there
+NOCAMLLIB=
+ifeq ($(findstring camllib/pervasives.mli, $(wildcard camllib)),)
+ifeq ($(findstring $(MAKECMDGOALS),camllib),)
+NOCAMLLIB=nodepend
+endif
+endif
 
-warning:
-	echo you must first call make depend 
+
+all: $(NODEPEND) settings tools tlclib cf cflib imper
+
+nodepend:
+	@echo you need to first call make depend 
+	@exit 1
 
 
 ############################################################################
-# Creation of a default settings file if none exist
+# Local settings
+
+# creation of the default local_settings.sh file
 
 settings: $(SETTINGS)
 
@@ -46,17 +59,14 @@ $(SETTINGS):
 		cp $(SETTINGS_TEMPLATE) $(SETTINGS); \
 	fi
 
-#ifeq ($(findstring $(SETTINGS), $(wildcard *.sh)), $(SETTINGS))
-#	echo > $(SETTINGS)
-#	echo export COQBIN= >> $(SETTINGS)
-#	echo export OCAMLBIN= >> $(SETTINGS)
-#	echo export TLCLIB=./lib/v3/ >> $(SETTINGS)
-#	echo export CORE=-j2 >> $(SETTINGS)
-#endif
+# include local_settings.sh file if it exists,
+# otherwise create it (only if target is 'all')
 
+ifeq ($(findstring $(SETTINGS), $(wildcard *.sh)), $(SETTINGS))
+MKSETTINGS=
 include $(SETTINGS)
-
-ifeq ($(TLCLIB),)
+else
+MKSETTINGS=$(SETTINGS)
 export COQBIN=
 export OCAMLBIN=
 export TLCLIB=./lib/v3/
@@ -70,16 +80,14 @@ endif
 TLCLIB_SRC=$(wildcard $(TLCLIB)*.v)
 CAML_FILES_IN=$(addprefix $(1)/,*.ml *.mli *.mll *.mly)
 MAP=$(foreach a,$(2),$(call $(1),$(a)))
-GENERATOR_SUBDIRS=. lex parsing typing tools utils
-GENERATOR_DIRS=$(addprefix gen/,$(GENERATOR_SUBDIRS))
+GENERATOR_SUBDIRS=lex parsing typing tools utils
+GENERATOR_DIRS=gen $(addprefix gen/,$(GENERATOR_SUBDIRS))
 GENERATOR_PATTERNS=$(call MAP, CAML_FILES_IN, $(GENERATOR_DIRS))
 GENERATOR_SRC=$(wildcard $(GENERATOR_PATTERNS))
-CAMLLIB_MLI=$(filter-out gen/stdlib/camlinternal% %genlex.mli %moreLabels.mli %oo.mli, $(wildcard gen/stdlib/*.mli))
-# TODO: compute dependencies between the /gen/stdlib/*.mli files to avoid the above filter-out 
-CAMLLIB_CMI=$(CAMLLIB_MLI:.mli=.cmi)
+# todo: compute dependencies between the /gen/stdlib/*.mli files to avoid the above filter-out 
 
 # OPTIONS
-INCLUDES=-I . -I gen/stdlib -I $(TLCLIB) -I ./imper 
+INCLUDES=-I . -I camllib -I $(TLCLIB) -I ./imper 
 GENERATOR_OPTIONS=-rectypes $(INCLUDES)
 
 # Tools that should be available on the machine
@@ -95,6 +103,14 @@ MYOCAMLDEP=./myocamldep.byte
 MYTOOLS=$(GENERATOR) $(MYOCAMLCMI) $(MYOCAMLDEP)
 #$(INCLUDES) #todo:rename
 
+# Cmi files
+CAMLLIB_MLI_PATH=$(filter-out gen/stdlib/camlinternal% %genlex.mli %moreLabels.mli %oo.mli, $(wildcard gen/stdlib/*.mli))
+CAMLLIB_MLI=$(patsubst gen/stdlib/%,%,$(CAMLLIB_MLI_PATH))
+CAMLLIB_CMI=$(addprefix camllib/,$(CAMLLIB_MLI:.mli=.cmi))
+SPECIAL_INTERFACES=\
+	camllib/NullPointers \
+	camllib/StrongPointers
+SHARED_CMI=$(CAMLLIB_CMI) $(SPECIAL_INTERFACES:=.cmi)
 
 
 ############################################################################
@@ -114,11 +130,11 @@ IMPER=\
 	imper/Swap \
 	imper/MutableList \
 	imper/Counter \
-	imper/Landin \
 	imper/Dijkstra \
 	imper/UnionFind \
 	imper/SparseArray 
 
+#	imper/Landin \
 # those do not compile
 MORE=\
 	imper/Facto \
@@ -128,11 +144,6 @@ MORE=\
 	imper/TreeCopy \
 	imper/LambdaEval \
 	imper/Loops \
-
-SPECIAL_INTERFACES=\
-	imper/NullPointers \
-	imper/StrongPointers
-
 
 ############################################################################
 # DETAILED TARGETS
@@ -145,32 +156,34 @@ tlclib: $(TLCLIB_SRC)
 
 cflib: $(CFLIB:=.vo)
 
-camllib: $(CAMLLIB_CMI)
+camllib: $(SHARED_CMI)
 
 imper: $(IMPER:=_proof.vo)
 
 force:
 	echo $(FORCED_VFILES)
 
-depend: $(IMPER:=.ml.d) $(IMPER:=_ml.v) $(IMPER:=_ml.v.d)
+depend: camllibsrc $(IMPER:=.ml.d) $(IMPER:=_ml.v) $(IMPER:=_ml.v.d) $(IMPER:=_proof.v.d) $(IMPER:=.cmi) $(CFLIB:=.v.d)
 	@touch depend
 
-# include dependencies on ml files only if target is not 'clean' 
-ifeq ($(findstring $(MAKECMDGOALS),clean clean_all),)
--include $(IMPER:.ml.d)
+# include these dependencies only if the target is not 'clean' nor 'depend'
+ifeq ($(findstring $(MAKECMDGOALS),clean clean_files clean_tools clean_deps clean_settings depend),)
+-include $(IMPER:=.ml.d) $(IMPER:=_ml.v.d) $(IMPER:=_proof.v.d) $(CFLIB:=.v.d) 
 endif
+#--todo: why make depends keeps rebuilding the _ml.v files ?
 
-# include dependencies only if target is not 'clean' nor 'depend'
-ifeq ($(findstring $(MAKECMDGOALS),clean clean_all depend),)
--include $(IMPER:=_ml.v.d)
+# include dependencies on ml files only if the target is 'depend' 
+ifeq ($(findstring $(MAKECMDGOALS),depend),depend)
+-include $(IMPER:=.ml.d)
 endif
 
 
 ############################################################################
 # .vo files
 
-%.vo: %.v %.v.d
+%.vo: %.v
 	$(COQC) $< 
+# %.v.d
 
 
 ############################################################################
@@ -178,75 +191,79 @@ endif
 
 cf: $(IMPER:=_ml.v)
 
-%_ml.v: %.ml %.ml.d %.cmo $(GENERATOR) $(GENERATOR_SRC) $(SPECIAL_INTERFACES:=.cmi) 
+%_ml.v: %.ml %.cmo $(GENERATOR) $(SHARED_CMI)
 	$(GENERATOR) $(GENERATOR_OPTIONS) $<
 
 # .cmo files are mentioned in the .ml.d files
 %.cmo: %.cmi
-	@touch $@
+#	@touch $@
+
 
 ############################################################################
 # .ml.d files
 
-# using ocamldep to compute dependencies between ml files, 
-# then enforcing corresponding dependencies between %_ml.vo files
-
 ifeq ($(findstring $(MAKECMDGOALS),depend),depend)
 
-%.ml.d: %.ml $(MYOCAMLDEP) Makefile
-	$(MYOCAMLDEP) $(INCLUDES) $< > $@
-	@cp -f $@ $@.tmp
-	@sed -e 's/.*://' -e 's/\\$$//' < $@.tmp | \
-	  sed -e 's/^ *//' -e 's/$$/:/' >> $@  
-	@rm -f $@.tmp
+imper/%.ml.d: imper/%.ml $(MYOCAMLDEP) 
+	$(MYOCAMLDEP) $(INCLUDES) $< | sed 's/:/: stuff/' > $@
 
 endif
 
-# @sed -i 's/\.cmo/.cmi/g' $@
-#---todo avoid circular dependencies
-#	@sed -e 's/.*://' -e 's/\\$$//' < $@.tmp | fmt -1 | \
-#	  sed -e 's/^ *//' -e 's/$$/:/' >> $@  
+# a dummy target that represents something to do
+stuff: $(SETTINGS)
 
-
-
-############################################################################
-# .cmi files
-
-%.cmi: %.ml %.ml.d $(CAMLLIB_CMI) $(GENERATOR)
-	$(GENERATOR) -rectypes -onlycmi $(INCLUDES) $<
-
-
-# special treatment for compiling the .mli files from the standard library
-
-gen/stdlib/pervasives.cmi: gen/stdlib/pervasives.mli $(MYOCAMLCMI)
-	$(MYOCAMLCMI) -nostdlib -nopervasives $<
-gen/stdlib/%.cmi: gen/stdlib/%.mli gen/stdlib/pervasives.cmi $(MYOCAMLCMI)
-	$(MYOCAMLCMI) -nostdlib -I gen/stdlib $<
-
-
-# special treatment for compiling the .mli files from the extended library
-
-imper/NullPointers.cmi: imper/NullPointers.mli $(CAMLLIB_CMI) $(MYOCAMLCMI)
-	$(MYOCAMLCMI) -rectypes -I gen/stdlib $<
-imper/StrongPointers.cmi: imper/StrongPointers.mli $(CAMLLIB_CMI) $(MYOCAMLCMI)
-	$(MYOCAMLCMI) -rectypes -I gen/stdlib $<
-
-
-# -- todo: add support for user provided mli files
 
 ############################################################################
 # .v.d files
 
 # using a trick to force dependencies to mention files that do not exist yet
-# @./ocamldep.wrapper $(FORCED_VFILES) - ...command...
+
 FORCED_VFILES=$(IMPER:=_ml.v)
 
 ifeq ($(findstring $(MAKECMDGOALS),depend),depend)
 
-%.v.d: %.v Makefile
-	$(COQDEP) $< > $@
+%.v.d: %.v 
+	@echo $(COQDEP) $< > $@
+	@./ocamldep.wrapper $(FORCED_VFILES) - $(COQDEP) $< > $@
 
 endif
+
+
+############################################################################
+# .cmi files
+
+#--todo: should use myocamlcmi instead?
+imper/%.cmi: imper/%.ml $(GENERATOR) $(SHARED_CMI)
+	$(GENERATOR) -rectypes -onlycmi $(INCLUDES) $<
+#%.ml.d 
+
+
+
+############################################################################
+# camllib files
+
+camllibsrc: done
+	touch camllibscr
+	$(foreach file, $(CAMLLIB_MLI), cp gen/stdlib/$(file) camllib/; )
+	touch $@
+
+done: ./go.sh
+
+# special treatment for compiling the .mli files from the standard library
+
+camllib/pervasives.cmi: camllib/pervasives.mli $(MYOCAMLCMI)
+	$(MYOCAMLCMI) -nostdlib -nopervasives $<
+camllib/%.cmi: camllib/%.mli camllib/pervasives.cmi $(MYOCAMLCMI)
+	$(MYOCAMLCMI) -nostdlib -I camllib $<
+
+
+# special treatment for compiling the .mli files from the extended library
+
+camllib/NullPointers.cmi: camllib/NullPointers.mli $(CAMLLIB_CMI) $(MYOCAMLCMI)
+	$(MYOCAMLCMI) -rectypes -I camllib $<
+camllib/StrongPointers.cmi: camllib/StrongPointers.mli $(CAMLLIB_CMI) $(MYOCAMLCMI)
+	$(MYOCAMLCMI) -rectypes -I camllib $<
+
 
 
 ############################################################################
@@ -257,7 +274,8 @@ tools: $(MYTOOLS)
 # the makefile does not like the symbolic link generated by ocamlbuild so we copy file
 
 %.byte: $(GENERATOR_SRC)
-	@rm -f gen/stdlib/*.cmi gen/stdlib/*.ml.d || echo ok
+	@rm -f $@
+	@rm -f camllib/*.cmi camllib/*.ml.d || echo ok
 	$(OCAMLBUILD) -I gen $(addprefix -I ,$(GENERATOR_DIRS)) $@
 	@mv $@ temp.byte 
 	@cp -L temp.byte $@
@@ -267,12 +285,13 @@ tools: $(MYTOOLS)
 ############################################################################
 # Cleanup
 
-clean:  
-	@rm -f *.d *.vo *.glob *.cmo *.cmi *_ml.v || echo ok
-	@rm -f imper/*.d imper/*_ml.v imper/*.vo imper/*.glob imper/*.cmo imper/*.cmi || echo ok
-	@rm -f .camldep || echo ok
-	@echo "CLEANED UP"
-# todo: factorize better the code above
+clean_files:  
+	@rm -f *.vo *.glob *.cmo *.cmi *_ml.v || echo ok
+	@rm -f imper/*_ml.v imper/*.vo imper/*.glob imper/*.cmo imper/*.cmi || echo ok
+	@rm -f camllibsrc camllib/*.cmi camllib/*.d || echo ok
+   
+clean_deps:
+	@rm -f depend *.v.d *.ml.d imper/*.ml.d imper/*.v.d || echo ok
 
 clean_settings:
 	@rm -f $(SETTINGS) || @echo ok
@@ -280,9 +299,9 @@ clean_settings:
 clean_tools:
 	@rm -Rf _build || echo ok
 	@rm -f *.byte || echo ok
-	@rm -f gen/stdlib/*.cmi || echo ok
 
-clean_all: clean clean_settings clean_tools
+clean: clean_deps clean_files clean_settings clean_tools
+	@echo "CLEANED UP"
 
 
 ############################################################################
@@ -295,15 +314,38 @@ test:
 	@echo $(GENERATOR_DIRS)	
 	@echo $(GENERATOR_PATTERNS)
 	@echo $(GENERATOR_SRC)
+	@echo $(CAMLLIB_MLI_PATH)
+	@echo $(SHARED_CMI)
 
-changes: $(MYOCAMLDEP)
-	$(MYOCAMLDEP) $(INCLUDES) imper/Counter.ml > changes
 
-needed: $(GENERATOR_SRC)
-	echo newer
-	touch needed
-
+############################################################################
+# Other tricks
 
 
 
+# -- todo: add support for user provided mli files
+
+# @sed -i 's/\.cmo/.cmi/g' $@
+#	@sed -e 's/.*://' -e 's/\\$$//' < $@.tmp | fmt -1 | \
+#	  sed -e 's/^ *//' -e 's/$$/:/' >> $@  
+
+# .SECONDARY: %.ml.d %.v.d %.cmi %.cmo %.vo %.ml.d %.v.d %.cmi %_ml.v %_ml.v.d %_ml.vo %.byte
+
+#gen/stdlib/pervasives.cmi: gen/stdlib/pervasives.mli $(MYOCAMLCMI)
+#	$(MYOCAMLCMI) -nostdlib -nopervasives $<
+#gen/stdlib/%.cmi: gen/stdlib/%.mli gen/stdlib/pervasives.cmi $(MYOCAMLCMI)
+#	$(MYOCAMLCMI) -nostdlib -I gen/stdlib $<
+
+
+
+#$(MYOCAMLDEP) $(INCLUDES) $<  > $@
+#'s/\($*\)\.o[ :]*/\1/g'
+
+#'\''s/\($*\)\.o[ :]*/\1.o $@ : /g'\'' > $@
+#
+#	$(MYOCAMLDEP) $(INCLUDES) $< > $@
+#	@cp -f $@ $@.tmp
+#	@sed -e 's/.*://' -e 's/\\$$//' < $@.tmp | fmt -1 | \
+#	  sed -e 's/^ *//' -e 's/$$/:/' >> $@  
+#	@rm -f $@.tmp
 
