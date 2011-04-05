@@ -15,23 +15,12 @@ SETTINGS_TEMPLATE=template_settings.sh
 ############################################################################
 # Targets
 
-.PHONY: all depend settings tools tlclib cflib camllib cf imper clean tests
-.SUFFIXES: .camldep .ml .ml.d .v.d _ml.v _ml.v.d _ml.vo _proof.v _proof.vo .v .vo .cmo .cmi .byte
-.SECONDARY: *.ml.d *.v.d *.cmi *.cmo *.vo *.ml.d *.v.d *.cmi *_ml.v *_ml.v.d *_ml.vo *.byte imper/*.cmi 
-.PRECIOUS: *.ml.d *_ml.v.d *.v.d *.cmi *.cmo *_ml.v *_ml.vo *.vo *.byte imper/*.cmi 
+.PHONY: all settings tools tlclib cflib camllib cf imper clean tests
+.SUFFIXES: .camldep .ml .ml.d .v.d _ml.v _ml.vo _proof.v _proof.vo .v .vo .cmo .cmi
+.SECONDARY: *.ml.d *.v.d *.cmi *.cmo *.vo imper/*.ml.d imper/*.v.d imper/*.cmi imper/*_ml.v imper/*_ml.vo 
+.PRECIOUS: *.ml.d *.v.d *.cmi *.cmo *.vo 
 
-# Generate a warning if there is no 'depend' file and the target is not 'depend'
-WARNING=
-ifeq ($(findstring depend, $(wildcard depend)),)
-ifeq ($(findstring $(MAKECMDGOALS),depend),)
-WARNING=warning
-endif
-endif
-
-all: $(WARNING) settings tools tlclib cf cflib imper
-
-warning:
-	echo you must first call make depend 
+all: settings tools tlclib cf cflib imper
 
 
 ############################################################################
@@ -109,7 +98,6 @@ CFLIB=\
 	CFLib 
 
 IMPER=\
-	imper/Demo \
 	imper/Compose \
 	imper/Swap \
 	imper/MutableList \
@@ -152,19 +140,6 @@ imper: $(IMPER:=_proof.vo)
 force:
 	echo $(FORCED_VFILES)
 
-depend: $(IMPER:=.ml.d) $(IMPER:=_ml.v) $(IMPER:=_ml.v.d)
-	@touch depend
-
-# include dependencies on ml files only if target is not 'clean' 
-ifeq ($(findstring $(MAKECMDGOALS),clean clean_all),)
--include $(IMPER:.ml.d)
-endif
-
-# include dependencies only if target is not 'clean' nor 'depend'
-ifeq ($(findstring $(MAKECMDGOALS),clean clean_all depend),)
--include $(IMPER:=_ml.v.d)
-endif
-
 
 ############################################################################
 # .vo files
@@ -178,12 +153,9 @@ endif
 
 cf: $(IMPER:=_ml.v)
 
-%_ml.v: %.ml %.ml.d %.cmo $(GENERATOR) $(GENERATOR_SRC) $(SPECIAL_INTERFACES:=.cmi) 
+%_ml.v: %.ml %.ml.d %.cmi $(GENERATOR) $(GENERATOR_SRC) $(SPECIAL_INTERFACES:=.cmi) Makefile
 	$(GENERATOR) $(GENERATOR_OPTIONS) $<
 
-# .cmo files are mentioned in the .ml.d files
-%.cmo: %.cmi
-	@touch $@
 
 ############################################################################
 # .ml.d files
@@ -191,22 +163,20 @@ cf: $(IMPER:=_ml.v)
 # using ocamldep to compute dependencies between ml files, 
 # then enforcing corresponding dependencies between %_ml.vo files
 
-ifeq ($(findstring $(MAKECMDGOALS),depend),depend)
-
+# todo: add ocamldep wrapper here as well
 %.ml.d: %.ml $(MYOCAMLDEP) Makefile
 	$(MYOCAMLDEP) $(INCLUDES) $< > $@
 	@cp -f $@ $@.tmp
-	@sed -e 's/.*://' -e 's/\\$$//' < $@.tmp | \
+	@sed -e 's/.*://' -e 's/\\$$//' < $@.tmp | fmt -1 | \
 	  sed -e 's/^ *//' -e 's/$$/:/' >> $@  
+	@sed -i 's/\.cmo/.cmi/g' $@
 	@rm -f $@.tmp
+#todo avoid circular dependencies
 
+# avoid computing dependencies with make clean...
+ifeq ($(findstring $(MAKECMDGOALS),clean clean_all),)
+-include $(IMPER:.ml.d)
 endif
-
-# @sed -i 's/\.cmo/.cmi/g' $@
-#---todo avoid circular dependencies
-#	@sed -e 's/.*://' -e 's/\\$$//' < $@.tmp | fmt -1 | \
-#	  sed -e 's/^ *//' -e 's/$$/:/' >> $@  
-
 
 
 ############################################################################
@@ -214,7 +184,14 @@ endif
 
 %.cmi: %.ml %.ml.d $(CAMLLIB_CMI) $(GENERATOR)
 	$(GENERATOR) -rectypes -onlycmi $(INCLUDES) $<
+#todo: could also use $(MYOCAMLCMI) $(INCLUDES) $< with a dependency on $(MYOCAMLCMI) 
 
+# special treatment for compiling the .mli files from the standard library
+
+imper/NullPointers.cmi: imper/NullPointers.mli $(CAMLLIB_CMI) $(MYOCAMLCMI)
+	$(MYOCAMLCMI) -rectypes -I gen/stdlib $<
+imper/StrongPointers.cmi: imper/StrongPointers.mli $(CAMLLIB_CMI) $(MYOCAMLCMI)
+	$(MYOCAMLCMI) -rectypes -I gen/stdlib $<
 
 # special treatment for compiling the .mli files from the standard library
 
@@ -224,29 +201,26 @@ gen/stdlib/%.cmi: gen/stdlib/%.mli gen/stdlib/pervasives.cmi $(MYOCAMLCMI)
 	$(MYOCAMLCMI) -nostdlib -I gen/stdlib $<
 
 
-# special treatment for compiling the .mli files from the extended library
-
-imper/NullPointers.cmi: imper/NullPointers.mli $(CAMLLIB_CMI) $(MYOCAMLCMI)
-	$(MYOCAMLCMI) -rectypes -I gen/stdlib $<
-imper/StrongPointers.cmi: imper/StrongPointers.mli $(CAMLLIB_CMI) $(MYOCAMLCMI)
-	$(MYOCAMLCMI) -rectypes -I gen/stdlib $<
-
-
-# -- todo: add support for user provided mli files
+# todo: add support for mli files
 
 ############################################################################
 # .v.d files
 
 # using a trick to force dependencies to mention files that do not exist yet
-# @./ocamldep.wrapper $(FORCED_VFILES) - ...command...
+
 FORCED_VFILES=$(IMPER:=_ml.v)
 
-ifeq ($(findstring $(MAKECMDGOALS),depend),depend)
+%.v.d: %.v
+	@./ocamldep.wrapper $(FORCED_VFILES) - $(COQDEP) $< > $@
 
-%.v.d: %.v Makefile
-	$(COQDEP) $< > $@
-
+ifeq ($(findstring $(MAKECMDGOALS),clean clean_all),)
+-include $(CFLIB:=.v.d) $(IMPER:=_proof.v.d) $(IMPER:=_ml.v.d)
 endif
+
+# For some reason the makefile is incapable of working out this dependency on the fly:
+# even though it is contained in imper/Counter.ml.d, the file with this dependency
+# is not included early enough
+imper/Counter.cmi: imper/MutableList.cmi
 
 
 ############################################################################
@@ -257,7 +231,6 @@ tools: $(MYTOOLS)
 # the makefile does not like the symbolic link generated by ocamlbuild so we copy file
 
 %.byte: $(GENERATOR_SRC)
-	@rm -f gen/stdlib/*.cmi gen/stdlib/*.ml.d || echo ok
 	$(OCAMLBUILD) -I gen $(addprefix -I ,$(GENERATOR_DIRS)) $@
 	@mv $@ temp.byte 
 	@cp -L temp.byte $@

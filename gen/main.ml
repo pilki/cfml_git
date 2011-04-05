@@ -59,9 +59,11 @@ let _ =
    let outputfile = basename ^ "_ml.v" in
    let dirname = Filename.dirname sourcefile in
    let debugdir = dirname ^ "/output/" in
-   let cmd = Printf.sprintf "test -d %s || mkdir 640 %s" debugdir debugdir in
+   (*  FAILURE ON WINDOWS
+   let cmd = Printf.sprintf "test -d %s || mkdir 640 %s" debugdir in
    begin try ignore (Sys.command cmd)
          with _ -> Printf.printf "Could not create debug directory\n" end;
+     *)
 
    (*---------------------------------------------------*)
    if sourcefile = "imper/MyLib.ml" then exit 0;
