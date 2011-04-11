@@ -109,6 +109,32 @@ and implicit =
 (*#########################################################################*)
 (* ** Helper functions to construct expressions *)
 
+(** Several Coq constants *)
+
+let coq_false =  
+  Coq_var "False"
+  
+let coq_true =  
+  Coq_var "True"
+
+let coq_bool_false =  
+  Coq_var "false"
+  
+let coq_bool_true =  
+  Coq_var "true"
+
+let coq_tt =
+  Coq_var "tt"
+
+let coq_unit =
+  Coq_var "unit"
+
+let coq_int =
+  Coq_var "int" 
+
+let coq_bool =
+  Coq_var "bool"
+
 (** Identifier [x] *)
 
 let coq_var x =
@@ -192,10 +218,10 @@ let coq_pred c =
 (** Product type [(c1 * c2 * .. * cN)%type] *)
 
 let coq_prod cs =
-  assert (List.length cs > 1); (* otherwise not a tupple *)
   match cs with 
+  | [] -> coq_unit
+  | [c] -> c
   | c0::cs' -> List.fold_left (fun acc c -> coq_apps (Coq_var "prod") [acc;c]) c0 cs'
-  | _ -> assert false
 
 (** Logic combinators *)
 
@@ -238,31 +264,6 @@ let coq_gt c1 c2 =
 let coq_plus c1 c2 =
   coq_apps (Coq_var "Zplus") [ c1; c2 ]
 
-(** Several Coq constants *)
-
-let coq_false =  
-  Coq_var "False"
-  
-let coq_true =  
-  Coq_var "True"
-
-let coq_bool_false =  
-  Coq_var "false"
-  
-let coq_bool_true =  
-  Coq_var "true"
-
-let coq_tt =
-  Coq_var "tt"
-
-let coq_unit =
-  Coq_var "unit"
-
-let coq_int =
-  Coq_var "int" 
-
-let coq_bool =
-  Coq_var "bool"
 
 (** Toplevel *)
 
