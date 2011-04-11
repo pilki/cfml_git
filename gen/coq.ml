@@ -315,6 +315,7 @@ let rec string_of_coq c =
   | Coq_wild -> "_"
   | Coq_prop -> "Prop"
   | Coq_type -> "Type"
+  | Coq_tuple [] -> aux coq_tt
   | Coq_tuple cs -> sprintf "(%s)" (show_list aux "," cs)
   | Coq_record lcs -> assert false (* todo: connaitre le constructeur, via une table
                                       sprintf "make_%s" (show_list (fun (l,c) -> sprintf "%s=%s" *)
