@@ -1,3 +1,51 @@
+############################################################################
+############################################################################
+# Garbage
+
+# -- todo: add support for user provided mli files
+
+# @sed -i 's/\.cmo/.cmi/g' $@
+#	@sed -e 's/.*://' -e 's/\\$$//' < $@.tmp | fmt -1 | \
+#	  sed -e 's/^ *//' -e 's/$$/:/' >> $@  
+
+# .SECONDARY: %.ml.d %.v.d %.cmi %.cmo %.vo %.ml.d %.v.d %.cmi %_ml.v %_ml.v.d %_ml.vo %.byte
+
+#gen/stdlib/pervasives.cmi: gen/stdlib/pervasives.mli $(MYOCAMLCMI)
+#	$(MYOCAMLCMI) -nostdlib -nopervasives $<
+#gen/stdlib/%.cmi: gen/stdlib/%.mli gen/stdlib/pervasives.cmi $(MYOCAMLCMI)
+#	$(MYOCAMLCMI) -nostdlib -I gen/stdlib $<
+
+
+#$(MYOCAMLDEP) $(INCLUDES) $<  > $@
+#'s/\($*\)\.o[ :]*/\1/g'
+
+#'\''s/\($*\)\.o[ :]*/\1.o $@ : /g'\'' > $@
+#
+#	$(MYOCAMLDEP) $(INCLUDES) $< > $@
+#	@cp -f $@ $@.tmp
+#	@sed -e 's/.*://' -e 's/\\$$//' < $@.tmp | fmt -1 | \
+#	  sed -e 's/^ *//' -e 's/$$/:/' >> $@  
+#	@rm -f $@.tmp
+
+
+# make sure that you first do
+#   chmod +x ocamldep.wrapper 
+#   chmod +x go.sh
+
+# you might also need "chmod +x *.byte" when you recompile
+
+
+
+#%.byte: $(GENERATOR_SRC)
+#	@rm -f camllib/*.cmi camllib/*.ml.d || echo ok
+
+# $(IMPER:=.cmi) in DEPENDENCIES
+
+############################################################################
+############################################################################
+
+
+
 
 (* todo?
 Lemma Id_focus : forall A (x n : A),

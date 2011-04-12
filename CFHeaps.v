@@ -821,7 +821,7 @@ Proof.
   hsimpl_hint_put (>> 3 true).
   hsimpl_hint_next ltac:(fun x => exists x).
   hsimpl_hint_remove tt.
-Admitted.
+Admitted. (* end of the demo *)
 
 (** Lemmas *)
 
@@ -895,12 +895,12 @@ Admitted. (* skip proof for faster compilation *)
 Lemma hsimpl_cancel_5 : forall H HA HR H1 H2 H3 H4 HT,
   H1 \* H2 \* H3 \* H4 \* HT ==> HA \* HR -> H1 \* H2 \* H3 \* H4 \* H \* HT ==> HA \* (H \* HR).
 (*Proof. intros. rewrite (star_comm_assoc H4). apply~ hsimpl_cancel_4. Qed.*)
-Admitted.
+Admitted. (* skip proof for faster compilation *)
 
 Lemma hsimpl_cancel_6 : forall H HA HR H1 H2 H3 H4 H5 HT,
   H1 \* H2 \* H3 \* H4 \* H5 \* HT ==> HA \* HR -> H1 \* H2 \* H3 \* H4 \* H5 \* H \* HT ==> HA \* (H \* HR).
 (*Proof. intros. rewrite (star_comm_assoc H5). apply~ hsimpl_cancel_5. Qed.*)
-Admitted.
+Admitted. (* skip proof for faster compilation *)
 
 Lemma hsimpl_cancel_eq_1 : forall H H' HA HR HT,
   H = H' -> HT ==> HA \* HR -> H \* HT ==> HA \* (H' \* HR).
