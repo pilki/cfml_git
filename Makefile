@@ -70,9 +70,16 @@
 ############################################################################
 # Sanity checks: make sure that 'settings' and 'depend' have already been run 
 
+# Settings files
+
+LOCAL_SETTINGS=local_settings.sh
+TEMPLATE_SETTINGS=template_settings.sh
+
+# Commands
+
 CLEANCMD=clean clean_all clean_init clean_tools clean_deps
-INITFIRST=
 DEPENDFIRST=
+INITFIRST=
 
 # Generate an error if 'local_settings.sh' does not exist 
 # and target is not 'init' nor 'settings' or 'clean*'
@@ -89,7 +96,7 @@ endif
 # Generate an error if there is the 'camllib/*.mli' files do not seem 
 # to be present and the target is not 'camllibsrc' or 'init' or 'clean*'
 
-ifeq ($(findstring camllib/pervasives.mli, $(wildcard camllib)),)
+ifeq ($(findstring camllib/pervasives.mli, $(wildcard camllib/*.mli)),)
 ifeq ($(findstring $(MAKECMDGOALS),init camllibsrc $(CLEANCMD)),)
 INITFIRST=initfirst
 endif
@@ -97,10 +104,13 @@ endif
 
 # Generate an error if there is no 'depend' file and the target 
 # is not 'depend' nor 'init' nor 'settings' nor 'camllibsrc' or 'clean*'
+# (provided the error INITFIRST has not yet been triggered)
 
+ifeq ($(INITFIRST),)
 ifeq ($(findstring depend, $(wildcard depend)),)
 ifeq ($(findstring $(MAKECMDGOALS),depend init settings camllibsrc $(CLEANCMD)),)
 DEPENDFIRST=dependfirst
+endif
 endif
 endif
 
@@ -118,12 +128,12 @@ IMPER=\
 	imper/MutableList \
 	imper/Counter \
 	imper/Dijkstra \
-	imper/UnionFind \
-	imper/SparseArray 
+	imper/UnionFind 
 
 # Developments that do not compile currently
 
 MORE=\
+	imper/SparseArray \
 	imper/Landin \
 	imper/Facto \
 	imper/FunctionalList \
@@ -149,11 +159,6 @@ GENERATOR=./main.byte
 MYOCAMLCMI=./makecmi.byte 
 MYOCAMLDEP=./myocamldep.byte 
 
-# Settings files
-
-LOCAL_SETTINGS=local_settings.sh
-TEMPLATE_SETTINGS=template_settings.sh
-
 # External tools
 
 COQC=$(COQBIN)coqc -dont-load-proofs 
@@ -163,9 +168,15 @@ OCAMLBUILD=$(OCAMLBIN)ocamlbuild
 OCAMLDEPWRAPPER=ocamldep.wrapper
 GOSCRIPT=go.sh
 
-# Include path
+# Include path (add "-I $(TLCLIB)" only if $(TLCLIB) is not empty)
 
-INCLUDES=-I . -I camllib -I $(TLCLIB) -I ./imper 
+ifeq ($(TLCLIB),)
+TLCLIB_INCLUDE=
+else
+TLCLIB_INCLUDE=-I $(TLCLIB) 
+endif
+
+INCLUDES=-I . -I camllib -I ./imper $(TLCLIB_INCLUDE)
 
 
 ############################################################################
@@ -210,7 +221,7 @@ DEPENDENCIES=$(IMPER:=.ml.d) $(IMPER:=_ml.v.d) $(IMPER:=_proof.v.d) $(CFLIB:=.v.
 
 # Declare the complete list of special targets
 
-.PHONY: all dependfirst initfirst depend settings tools tlclib cflib camllib cf imper clean clean_files clean_tools clean_deps clean_init clean_all test
+.PHONY: all dependfirst initfirst depend settings tools cflib camllib camllibsrc cf imper clean clean_files clean_tools clean_deps clean_init clean_all test 
 
 # Declare the file extensions and declare intermediate files as precious
 
@@ -223,7 +234,7 @@ DEPENDENCIES=$(IMPER:=.ml.d) $(IMPER:=_ml.v.d) $(IMPER:=_proof.v.d) $(CFLIB:=.v.
 ############################################################################
 # Execution of "make all"
 
-all: $(INITFIRST) $(DEPENDFIRST) settings tools tlclib cf cflib imper
+all: $(INITFIRST) $(DEPENDFIRST) tools tlclib cf cflib imper
 
 initfirst:
 	@echo you need to first call make init
@@ -239,18 +250,21 @@ dependfirst:
 # Initialization: creation of local settings and copy of Caml standard library
 
 init: settings camllibsrc
-	chmod +x $(OCAMLDEPWRAPPER)
-	chmod +x $(GOSCRIPT)
+	@chmod +x $(OCAMLDEPWRAPPER)
+	@chmod +x $(GOSCRIPT)
+	@echo initialization successful
 
 settings: 
 	@if [ -f $(LOCAL_SETTINGS) ]; then \
-		echo $(LOCAL_SETTINGS) found; \
+		echo $(LOCAL_SETTINGS) already exists; \
 	else \
+		echo creating a default $(LOCAL_SETTINGS) file; \
 		cp $(TEMPLATE_SETTINGS) $(LOCAL_SETTINGS); \
 	fi
 
 camllibsrc: 
-	$(foreach file, $(CAMLLIB_MLI), cp gen/stdlib/$(file) camllib/; )
+	@$(foreach file, $(CAMLLIB_MLI), cp gen/stdlib/$(file) camllib/; )
+	@echo camllib source files successfully copied 
 
 
 ############################################################################
@@ -262,6 +276,7 @@ camllibsrc:
 
 tlclib: $(TLCLIB_SRC)
 	make -C $(TLCLIB) lib
+	touch $@
 
 # Compilation of the characteristic formula generator
 
@@ -287,6 +302,7 @@ imper: $(IMPER:=_proof.vo)
 
 depend: $(DEPENDENCIES)
 	@touch depend
+	@echo dependency computation successful
 
 
 ############################################################################
@@ -298,16 +314,14 @@ depend: $(DEPENDENCIES)
 ifeq ($(findstring $(MAKECMDGOALS),depend),depend)
 
 
-# To generate the *.ml.d files, we add a dummy target called 'noforce'
+# To generate the *.ml.d files, we add $(LOCAL_SETTINGS) as dummy target 
 # to avoid having a *.cmo file that depends on no other file
-# (TODO: should use a better sed command to add the ml file as dependency,
+# (TODO: should use a better 'sed' command to instead add the ml file as dependency,
 # but the difficulty is to escape the slashes that appear in the filename $<)
 
 imper/%.ml.d: imper/%.ml $(MYOCAMLDEP) 
-	$(MYOCAMLDEP) $(INCLUDES) $< | sed 's/:/: noforce/' > $@
-
-noforce: $(LOCAL_SETTINGS)
-
+	@echo $(MYOCAMLDEP) $(INCLUDES) $<
+	@$(MYOCAMLDEP) $(INCLUDES) $< | sed 's/:/: $(LOCAL_SETTINGS)/' > $@
 
 # To generate *.v.d, we use the ocaml-wrapper trick to 
 # force dependencies to mention files that do not exist yet
@@ -318,7 +332,9 @@ FORCED_VFILES=$(IMPER:=_ml.v)
 	@echo $(COQDEP) $(INCLUDES) $< > $@
 	@./$(OCAMLDEPWRAPPER) $(FORCED_VFILES) - $(COQDEP) $(INCLUDES) $< > $@
 
+
 endif
+
 
 
 ############################################################################
@@ -328,6 +344,7 @@ endif
 # Ocamldep generates dependencies between .cmo files, so we need the following:
 
 %.cmo: %.cmi
+	@touch $@
 
 # We include all dependencies, unless the target is 'init*' or 'depend' or 'clean*'
 
@@ -335,7 +352,7 @@ ifeq ($(findstring $(MAKECMDGOALS),depend init settings camllibsrc $(CLEANCMD)),
 -include $(DEPENDENCIES)
 endif
 
-# We include only the .ml.d dependencies when target is 'depend'
+# When target is 'depend', we include only the .ml.d dependencies 
  
 ifeq ($(findstring $(MAKECMDGOALS),depend),depend)
 -include $(IMPER:=.ml.d)
@@ -370,7 +387,7 @@ endif
 # it requires the %.cmo, hence the %.cmi as well as the 
 # *.cmi files corresponding to the *.ml imported files
 
-%_ml.v: %.ml %.cmo $(GENERATOR) $(SHARED_CMI)
+%_ml.v: %.ml %.cmo $(GENERATOR) $(SHARED_CMI)  
 	$(GENERATOR) -rectypes $(INCLUDES) $<
 
 
@@ -417,7 +434,7 @@ clean: clean_deps clean_files clean_tools
 
 clean_init:
 	@rm -f $(LOCAL_SETTINGS) || @echo ok
-	$(foreach file, $(CAMLLIB_MLI), rm camllib/$(file); )
+	@$(foreach file, $(CAMLLIB_MLI), rm camllib/$(file); )
 
 clean_all: clean clean_init
 
@@ -427,6 +444,7 @@ clean_all: clean clean_init
 # Debugging 
 
 test:
+	@echo $(TLCLIB_INCLUDE)
 	@echo $(OCAMLBUILD)
 	@echo $(TLCLIB)
 	@echo $(TLCLIB_SRC)
@@ -453,3 +471,11 @@ test:
 # have go.sh include local_settings.sh
 
 # use immediate errors instead of INITFIRST= and DEPENDFIRST=
+
+# have MYTOOLS be compiled in a single execution of ocamlbuild
+
+# why demo_ml.v is always rebuilt?
+
+# why imper/*.cmi files are deleted?
+
+# target 'tlclib': if I do not 'touch' a file with this name but place 'tlclib' in the phony then strangely the goal is never up to date
