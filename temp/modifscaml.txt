@@ -1,0 +1,123 @@
+
+
+
+===================================
+typedtree.ml (CHANGES)
+
+and expression_desc =
+  ...
+(*CHANGE*)   | Texp_let of rec_flag * free_vars * (pattern * expression) list * expression
+
+and structure_item =
+  ...
+(*CHANGE*)   | Tstr_value of rec_flag * free_vars * (pattern * expression) list
+
+(*ADD*) and free_vars = type_expr list
+
+
+===================================
+btype.ml (ADD)
+
+(* We maintain an imperative stack of imperative sets
+   of generic variables. The stack corresponds to the
+   nested 'let' declarations. *)
+
+let hook_generic : (((type_expr list) ref) list) ref = ref []
+
+let open_hook () = 
+   let r : (type_expr list) ref = ref [] in
+   hook_generic := r :: !hook_generic
+
+let close_hook () = 
+  match !hook_generic with
+  | [] -> failwith "close_hook called while hook list is empty"
+  | h::hs -> hook_generic := hs; !h
+
+let add_generic t =
+  if !hook_generic <> [] then begin 
+     let list = List.hd !hook_generic in
+     let t = proxy t in
+     match t.desc with
+     | Tvar | Tunivar -> 
+        if not (List.memq t !list) 
+           then list := t :: !list
+     | _ -> ()
+  end
+
+===================================
+btype.ml (CHANGE)
+
+(* Whenever a variable is set to be at generic_level, 
+   we add it to our current set of generic variables *)
+
+let set_level ty level =
+(*ADD*)  if level = generic_level then add_generic ty; 
+  if ty.id <= !last_snapshot then log_change (Clevel (ty, ty.level));
+  ty.level <- level
+
+
+===================================
+typemod.ml (CHANGE)
+
+and type_structure anchor env sstr scope =
+  let type_names = ref StringSet.empty
+  and module_names = ref StringSet.empty
+  and modtype_names = ref StringSet.empty in
+  let rec type_struct env sstr =
+    Ctype.init_def(Ident.current_time());
+    match sstr with
+      [] ->
+        ([], [], env)
+    | {pstr_desc = Pstr_eval sexpr} :: srem ->
+        let expr = Typecore.type_expression env sexpr in
+        let (str_rem, sig_rem, final_env) = type_struct env srem in
+        (Tstr_eval expr :: str_rem, sig_rem, final_env)
+    | {pstr_desc = Pstr_value(rec_flag, sdefs); pstr_loc = loc} :: srem ->
+        let scope =
+          match rec_flag with
+          | Recursive -> Some (Annot.Idef {scope with
+                                 Location.loc_start = loc.Location.loc_start})
+          | Nonrecursive ->
+              let start = match srem with
+                | [] -> loc.Location.loc_end
+                | {pstr_loc = loc2} :: _ -> loc2.Location.loc_start
+              in Some (Annot.Idef {scope with Location.loc_start = start})
+          | Default -> None
+        in
+(*ADD*) Btype.open_hook(); 
+        let (defs, newenv) =
+          Typecore.type_binding env rec_flag sdefs scope in
+(*ADD*) let fvs = Btype.close_hook() in 
+        let (str_rem, sig_rem, final_env) = type_struct newenv srem in
+        let bound_idents = let_bound_idents defs in
+        let make_sig_value id =
+          Tsig_value(id, Env.find_value (Pident id) newenv) in
+(*CHANGE*) (Tstr_value(rec_flag, fvs, defs) :: str_rem,
+         map_end make_sig_value bound_idents sig_rem,
+         final_env)
+
+===================================
+typecore.ml (CHANGE)
+
+let rec type_exp env sexp =
+  match sexp.pexp_desc with
+  ...
+  | Pexp_let(rec_flag, spat_sexp_list, sbody) ->
+      let scp =
+        match rec_flag with
+        | Recursive -> Some (Annot.Idef sexp.pexp_loc)
+        | Nonrecursive -> Some (Annot.Idef sbody.pexp_loc)
+        | Default -> None
+      in
+(*ADD*) open_hook(); 
+      let (pat_exp_list, new_env) = type_let env rec_flag spat_sexp_list scp in
+(*ADD*) let fvs = close_hook() in 
+      let body = type_exp new_env sbody in
+      re {
+(*CHANGE*) exp_desc = Texp_let(rec_flag, fvs, pat_exp_list, body);
+        exp_loc = sexp.pexp_loc;
+        exp_type = body.exp_type;
+        exp_env = env }
+
+
+

@@ -9,10 +9,10 @@ Notation "'tab'" := (array int) (at level 0).
 Notation "'L'" := maxlen.
 
 Definition SarrayPacked :=
-  @Sarray int (array int) (array int) (array int) Id Array Array Array.
+  @Sarray (array int) (array int) int (array int) Array Array Id Array.
 
 Definition SarrayUnpacked :=
-  @Sarray int loc loc loc Id Id Id Id.
+  @Sarray loc loc int loc Id Id Id Id.
 
 
 (****************************************************)
@@ -20,18 +20,18 @@ Definition SarrayUnpacked :=
 
 (** [good_sizes] asserts that the three arrays have size [L] *)
 
-Definition good_sizes n (Val Idx Back : tab) :=
+Definition good_sizes (n:int) (Back:tab) (Idx:tab) (Val:tab) :=
   length Val = L /\ length Idx = L /\ length Back = L /\ 0 <= n <= L.
 
 (** [i] is a [Valid] index if [Back(k) = i] for some [k] *)
 
-Definition Valid n (Idx Back : tab) i :=
+Definition Valid n (Back Idx : tab) i :=
   index L i /\ let k := Idx\(i) in 
   index n k /\ Back\(k) = i.
 
 (** [BackCorrect] holds when [k < n -> Idx(Back(k)) = k]*)
 
-Definition BackCorrect n (Idx Back:tab) :=
+Definition BackCorrect n (Back Idx : tab) :=
   forall k, index n k ->
   let i := Back\(k) in index L i /\ Idx\(i) = k.
 
@@ -39,11 +39,11 @@ Definition BackCorrect n (Idx Back:tab) :=
     describing a sparse array whose model is the function [f] *)
 
 Definition SparseArray (f:int->int) (s:loc) :=
-  Hexists (n:int) (Val:tab) (Idx:tab) (Back:tab),
-     s ~> SarrayPacked n Val Idx Back
-  \* [ good_sizes n Val Idx Back
-       /\ BackCorrect n Idx Back
-       /\ (forall i, f i = If Valid n Idx Back i then Val\(i) else 0) ].
+  Hexists (Back:tab) (Idx:tab) (n:int) (Val:tab),
+     s ~> SarrayPacked Back Idx n Val 
+  \* [ good_sizes n Back Idx Val
+       /\ BackCorrect n Back Idx 
+       /\ (forall i, f i = If Valid n Back Idx i then Val\(i) else 0) ].
 
 
 (****************************************************)
@@ -95,13 +95,13 @@ Tactic Notation "rew_map_array" "*" :=
 (** Function [valid] *)
 
 Lemma valid_spec :
-  Spec valid i s |R>> forall n Val Idx Back, 
-    good_sizes n Val Idx Back -> index L i -> n <= L ->
-    keep R (s ~> SarrayPacked n Val Idx Back)
-           (\= istrue (Valid n Idx Back i)).
+  Spec valid i s |R>> forall n Back Idx Val, 
+    good_sizes n Back Idx Val -> index L i -> n <= L ->
+    keep R (s ~> SarrayPacked Back Idx n Val)
+           (\= istrue (Valid n Back Idx i)).
 Proof.
   xcf. introv Siz Ii Le. unfold SarrayPacked.
-  xchange (Sarray_focus s) as n' val idx back E. subst n'.
+  xchange (Sarray_focus s) as back idx n' val E. subst n'.
   xapps. xapps*. xapps. xif. 
   (* case inbound *)
   xapps. xapps. hnf in Siz. eapply array_index_prove. math.
@@ -125,11 +125,11 @@ Lemma get_spec' :
 Proof.
   xcf. introv ILi.
   unfold SparseArray. hdata_simpl.
-  xextract as n Val Idx Back (Siz&Bok&Iok).
+  xextract as Back Idx n Val (Siz&Bok&Iok).
   xapps*. hnf in Siz; math.
   lets M: Iok i. xif; case_if in M; tryfalse.
   (* case is an index *)
-  xchange (Sarray_focus s) as n' val idx back E. subst n'. xapps. xapp*.
+  xchange (Sarray_focus s) as back idx n' val E. subst n'. xapps. xapp*.
   intros r. hchanges (Sarray_unfocus s); subst~.
   (* case not an index *)
   xrets*.
@@ -147,7 +147,7 @@ Definition update_fun A B (f:A->B) i v :=
 (** Auxiliary lemma for back pointers *)
 
 Lemma not_Valid_to_notin_Back : forall i n Idx Back,
-  ~ (Valid n Idx Back i) -> index L i -> BackCorrect n Idx Back ->
+  ~ (Valid n Back Idx i) -> index L i -> BackCorrect n Back Idx ->
   (forall k, index n k -> i <> Back\(k)).
 Proof.
   introv NVi ILi Bok Ink Eq. forwards~ [_ E]: Bok k. 
@@ -159,7 +159,7 @@ Qed.
 
 Lemma Valid_extend : forall n Idx Back i j,
   length Idx = L -> length Back = L -> index L n -> i <> j ->
-  (Valid n Idx Back j <-> Valid (n + 1) (Idx\(i:=n)) (Back\(n:=i)) j).
+  (Valid n Back Idx j <-> Valid (n + 1) (Back\(n:=i)) (Idx\(i:=n)) j).
 Proof.
   introv Le1 Le2 ILn Neq. unfold Valid. 
   lets M: ILn. rewrite int_index_def in M.
@@ -182,10 +182,10 @@ Lemma set_spec :
     R (l ~> SparseArray f) (# l ~> SparseArray (update_fun f i v)).
 Proof.
   xcf. introv Imi. hdata_simpl SparseArray.
-  xextract as n Val Idx Back (Siz&Bok&Iok).
-  xchange (Sarray_focus s) as n' val idx back. intro_subst.
+  xextract as Back Idx n Val (Siz&Bok&Iok).
+  xchange (Sarray_focus s) as back idx n' val. intro_subst.
   xapps. xapps*.
-  xchange (Sarray_unfocus s n). fold SarrayPacked. clear val idx back.
+  xchange (>> Sarray_unfocus s n). fold SarrayPacked. clear val idx back.
   xapps*. hnf in Siz; math. xif.
   (* case create back-index *)
   xchange (Sarray_focus s) as n' val idx back. intro_subst.

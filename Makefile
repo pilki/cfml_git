@@ -128,12 +128,12 @@ IMPER=\
 	imper/MutableList \
 	imper/Counter \
 	imper/Dijkstra \
+	imper/SparseArray \
 	imper/UnionFind 
 
 # Developments that do not compile currently
 
 MORE=\
-	imper/SparseArray \
 	imper/Landin \
 	imper/Facto \
 	imper/FunctionalList \
