@@ -476,6 +476,6 @@ test:
 
 # why demo_ml.v is always rebuilt?
 
-# why imper/*.cmi files are deleted?
+# why imper/*.cmi files are deleted automatically?
 
 # target 'tlclib': if I do not 'touch' a file with this name but place 'tlclib' in the phony then strangely the goal is never up to date

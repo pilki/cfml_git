@@ -1,0 +1,335 @@
+(* Todo: any tactic called [%_noauto] or [%_debug] or [%_manual]
+   or [%_noclean] or [%_simple] or [%_one] will all be renamed
+   to [%_basic] *)
+
+======================================================
+Grammar of pre-condition and post-conditions
+ 
+H ::= []                     empty heap  
+      [P]                    fact, where [P:Prop]
+      H1 \* H2               disjoint union of two heaps
+      Hexists x1 .. xn, H    existential quantification
+      Hexists (x1:T1) .., H  typed existential quantification
+      r ~> T V               representation predicate
+      r ~> Id V              equivalent to ([r = V])
+      r ~~> v                shorthand for (r ~> Ref V)
+      r ~>> V                shorthand for (r ~> Channel V)
+
+Q ::= (fun x => H)           post-condition
+      (fun x:T => H)         typed post-condition
+      # H                    shorthand for (fun _:unit => H)
+      \[ M ]                 shorthand for (fun x => [M x])
+      \= V                   shorthand for (fun x => [x = V]), same as (\[=V])
+      Q \*+ H                post-condition extended with heap
+      Q \*+ H1 \*+ H2        post-condition extended with two heaps
+      Q \*+ (H1 \* H2)       post-condition extended with a union heap
+
+
+======================================================
+Goals of the form [H1 ==> H2]
+
+*) [hextract] takes all the facts and all the existential
+   quantifiers out of the predicondition [H1], and place them
+   in the context. In order to control the names produced,
+   one should call [hextract as]. In this case, the new hypotheses
+   are produced in the context, and they can be named using
+   [intros] or [introv]. To name directly the results, you can
+   simply call [hextract as X Y Z] .
+   The items of the form [x ~> Id X] are treated in a special way,
+   in the sense that they are systematically replaced by [x = X].
+ 
+*) [hcancel] cancels out matching pieces of heap in [H1] and [H2].
+   If [H1] has an item of the form [x ~> T1 V1] and [H2] has an
+   item of the form [x ~> T2 V2], then it generates the equality
+   [T1 V1 = T2 V2], or even directly [T1 = T2] and [V1 = V2]. 
+   If the equalities are not provable, it is likely that the tactic
+   [hchange] needed to be called beforehand.
+   The items of the form [x ~> Id X] are treated in a special way,
+   in the sense that they are systematically replaced by [x = X].
+
+   If after doing all simplifications the remaining goal is of the form
+   [H3 ==> ?H4], where [?H4] is a Coq unification variable, then 
+   [H4] is set to be equal to [H3]. This unification will be rejected
+   by Coq in the case [H3] contains variables that did not exist at
+   the time [?H4] was created. This usually happens either because
+   an earlier call to [hextract] was made later than it should have been,
+   or because an [hchange (unfocus ..)] needs to be done just before
+   reaching this point in the proof.
+
+*) [hcancel (>> V1 V2 .. VN)] is a syntax that allows to provide
+   hints to instantiate the existential quantifiers in [H2].
+   The hints need to be given in the same order as the quantifiers,
+   however some of the quantifiers may not be given hints.
+   (Use a double underscore to denote that you want to skip a 
+    quantifier in the case where you want to provide a hint for
+    the next quantifier and that this next quantifier quantifies a
+    variable of the same type as the current one.)
+
+*) [hsimpl] calls [hextract] and [hcancel]. The syntax
+   [hsimpl (>> V1 V2 ... VN)], or simply [hsimpl V1 .. VN]
+   can be used when providing hints for existentials is required.
+   In general, for the sake of making proofs more robust, it is
+   recommanded to call [hsimpl] even when [hcancel] is sufficient. 
+
+*) [hchange E], where [E] has type [H3 ==> H4] applies to a goal
+   [H1 ==> H2]. It finds a subset of [H1] that corresponds to [H3]
+   and then replace this subset with [H4].
+
+*) [hchange -> E] or [hchange <- E] can be used to when [E] has
+   for conclusion an equality of the form [H3 = H4], that should
+   be used as [H3 ==> H4] or [H4 ==> H3].
+
+*) [hchange_debug] is similar to [hchange] except that it does
+   not perform any simplification automatically. In theory, this
+   tactic should not be required.
+
+*) [hchanges] is similar to [hchange] except that it tries to
+   make many simplifications automatically. It is a useful shorthand
+   when it works, but [hchanges] cannot be used when for example
+   another step of [hchange] need to be performed, or when some
+   existentials need to be instantiated explicitly.
+
+
+======================================================
+Goals of the form [Q1 ===> Q2]
+
+*) Call [intros r] where [r] is the name of the result
+
+*) Note that [hextract] and [hsimpl] on such a goal would
+   automatically call [intros r]. Moreover, they would
+   destruct [r] if it has type [unit], so as to replace
+   [r] with [tt].
+
+
+======================================================
+Main tactics for goals of the form [F H Q] 
+
+*) [xcf] applies to a goal of the form [Spec f x1 .. xN |R>> ...],
+     and exploits the characteristic formula for [f] to make progress.
+   [xcf_app] applies to a goal of the form [App f x1 .. xN H Q],
+     and exploits the characteristic formula for [f] to make progress.
+   When [xcf] or [xcf_app] fails, it is usually because the types 
+   inferred for the source code do not match the types that appear 
+   in the specification of the function. To find out what when wrong,
+   call [xfind] and set [Set Printing All], and check the types
+   that appear right next to the [@spec] predicate.
+
+*) [xlet] applies to a let that binds a term,
+   [xlet as x] can be used to rename the bound variable,
+   [xlet Q] can be used to specify the post-condition,
+   [xlet Q as x] combines the two,
+   [xseq] applies to a sequence,
+   [xseq H] can be used to provide the intermediate state.
+   One rarely calls [xlet] because [xapp] can be called directly.
+
+*) [xval] applies to a let-node that binds a value,
+   [xval as x] can be used to rename the bound variable,
+   [xval_st P] can be used to give an abstract specification to [x],
+   [xval_st P as x] combines the two,
+   [xvals] substitute the bound variable by its content right away.
+
+*) [xret] applies to a piece of code that simply returns a value,
+   [xrets] is like [xret] followed with [xsimpl],
+   [xret_noclean] calsl [xret] but without calling [xclean] automatically,
+   [xret_gc] produces a goal that allows pieces of heap to be discarded
+     (calling [xret] instead of [xret_gc] might lead to unprovable goals).
+
+*) [xapp] applies to an application node, or a let-node with an application,
+   [xapp V1 .. VN] can be used to specify the ghost variables involved,
+   [xapp_spec E] can be used to provide the specification lemma,
+   [xapp_manual] can be used to deactivate automatic simplifications,
+   [xapp as x] can be used to change the name of the variable bound 
+     to the result of the application,
+   [xapps] is like [xapp] except that it substitutes the result in the
+     continuation of the let-branch in which it is.
+   Many combination of the available options can also be used.
+
+*) [xfail] applies to a [assert false] goal (or the remainder
+   of an incomplete pattern matching). It replaces the goal by [False].
+
+*) [xdone] automatically proves the goal that corresponds to the remainder 
+   of a complete pattern matching.
+
+*) [xif] applies to a if-then-else node, when the argument is a value.
+     If the argument is a term, then [xlet] needs to be called first.
+   [xif H] can be used to specify the name of the hypothesis.
+   [xif_manual] deactivates post-processing of the goal.
+   [xif_manual H] combines the two above features.
+   [xifs] captures the typical proof pattern for conditionals on a
+     simple boolean value. It applies [xif] and assume that [xextract]
+     will produce a single equality, which then gets substituted in the goal.
+
+*) [xcase_one] applies to a branch of a pattern-matching construct.
+   [xcase_one as H] can be used to name the hypothesis produced.
+   [xcases] is like [xcase_one] except that it does a little bit of post-processing.
+   [xcase] is like [xcase_one] except that it does a lot of post-processing,
+     including an inversion on the equality produced by the pattern-matching.
+
+*) [xalias] is used to introduce aliases, i.e. equalities arising from
+     the ocurrence of the "as" keyword in a pattern.
+   [xalias as H] can be used to specify the name of the equality.
+   [xalias as x H] can be used to rename the variable bound by the alias-pattern
+     and also to specify the name of the equality hypothesis.
+   [xalias_subst] can be used to directly substitutes the equality in the goal.
+
+*) [xmatch] applies to a pattern-matching construct with several branches.
+     By default, it introduces aliases as equalities. 
+   [xmatch_keep_alias] can be used to preserve alias definitions.
+   [xmatch_subst_alias] can be used to directly substitute aliases.
+   [xmatch_simple] is like [xmatch] except that it deactivates post-processing.
+     Also available: [xmatch_simple_keep_alias] and [xmatch_simple_subst_alias].
+   [xmatch_nocases] does not analyse all the branches, but instead leaves
+     the user do it manually using the tactic [xcase] described above.
+
+*) [xinduction E] can be used to establish a specification by induction,
+     for a goal of the form [Spec f x1 .. xN |R>> ...].
+     Let [Ai] be the type of [xi]. Then, [E] should be one of
+     - a measure of type [A1*..*AN -> nat] 
+     - a binary relation of type [A1*..*AN -> A1*..*AN -> Prop] 
+     - a proof that a well-foundedness for such a binary relation.
+   [xinduction_heap E] can be used in the case the termination argument
+     depends on the state of the heap. In this case, the goal should be
+     of the form [Spec f x1 .. xN |R>> forall x0, L x0 x1 xN R].
+     Let [Ai] be the type of [xi]. Then, [E] should be one of
+     - a measure of type [A0*A1*..*AN -> nat] 
+     - a binary relation of type [A0*A1*..*AN -> A0*A1*..*AN -> Prop] 
+     - a proof that a well-foundedness for such a binary relation.
+   Measures and binary relations can also be provided in a curried fashion, 
+   at type [A0 -> A1 -> .. -> AN -> nat] and
+   [A0 -> A0 -> A1 -> A1 -> A2 -> A2 -> .. -> AN -> AN -> Prop], respectively.
+   The combinators [unprojNK] are useful for building new binary
+   relations. For example, if [R] has type [A->A->Prop], then
+   [unproj21 B R] has type [A*B -> A*B -> Prop] and compares pairs
+   with respect to their first component only, using [R]. *)
+
+*) [xintros] turns a goal of the form [Spec f x1 .. xN |R>> E]
+     into the form [forall x1 .. xn, E]. It is useful to prove a
+     function correct by induction on a predicate, because [xinduction]
+     only works for induction on a well-founded relation.
+   [xintros_noauto] can be used to deactivate automatic discharging 
+     of side-conditions.
+
+*) [xfun S] is used to handle a local function definition.
+     [S] should be the specification for the function, which should be a  
+     predicate of type [Val -> Prop]. Thus, [S] typically takes the form
+     [fun f => Spec f x1 .. xN |R>> ..].
+   [xfun_nointro S] can be used to avoid automatic introduction of arguments.
+   [xfun] without argument will automatically assign the function its most-
+     general specification, which is the characteristic formula of its body.
+   [xfun S1 S2] can be used to specify a pair of mutually recursive functions.
+   [xfun_induction S E] combines [xfun S] with [xinduction E].
+   [xfun_induction_heap S E] combines [xfun S] with [xinduction_heap E].
+   Several combination of the above features are also available.
+
+*) [xwhile] applies to a while loop that is to be proved without loop
+     invariant but directly using the induction tactic.
+   [xwhile E] is similar excepts that the goal is the goal is first
+     strengthened to [E].
+   [xwhile_inv W I B] can be used to prove a loop using a loop-invariant
+     and a termiation measure, both based on a ghost variable of type [A].
+     - [W] should a measure of type [A->nat] or a binary relation of type
+       [A->A->Prop], or a proof of well-foundedness [wf R] with [R:A->A->Prop],
+     - [I] describes the invariant: it has type [A->hprop],
+     - [B] describes the loop condition: it has type [A->bool->Prop].
+
+*) [xfor] applies to a for loop that is to be proved without loop
+     invariant but directly using the induction tactic.
+   [xfor E] is similar excepts that the goal is the goal is first
+     strengthened to [E].
+   [xfor_inv I] can be used to prove a for-loop using a loop invariant.
+     In this case, I should be of type [int->hprop].
+   [xfor_inv I as i] can be used to specify the name of the loop counter.
+   [xfor_inv I as i C] can be used to also specify the hypothesis
+     providing the bounds for the loop counter.
+
+*) [xgo] automatically applies the appropriate [x-tactic] repeatedly.
+   It stops whenever it lacks information to go on.
+
+
+======================================================
+Auxiliary tactics for goals of the form [F H Q] 
+
+
+*) [xextract] is like [hextract] excepts that it applies to the 
+     precondition of a goal of the form [F H Q].
+   [xextracts] extracts from the precondition an equality of the
+     form [x = v] and substitutes [x] everywhere in the goal.
+   
+*) [xgc H] removes [H] from the pre-condition,
+   [xgc - H] removes everything but [H] from the pre-condition,
+   [xgc_all] removes everything from the pre-condition
+     (it is similar to [xgc - []]).
+   [xgc] does not change the pre-condition but anticipates for
+     the fact that some pieces of heap will be discarded from the
+     post-condition ([xgc] typically avoids calling [xret_gc] later on).
+
+*) [xframe H] removes [H] from both the pre-condition and the post-condition.
+   [xframe - H] removes everything but [H] from the pre-condition
+     and removes the same items from the post-condition.
+
+*) [xchange E] is similar to [hchange E] except that it applies to
+     the pre-condition of a goal of the form [F H Q].
+   [xchange -> E] and [xchange <- E] can be used when [E] is an equality.
+   [xchange E as V1 .. VN] can be used to name the hypotheses 
+     produced by [xextract].
+   [xchange_debug E] can be used to deactivate automatic simplifications.
+
+*) [xweaken] can be used to prove a goal of the form [Spec f x1 .. xN |R>> ..]
+     using a specification for [f] that has already been established and
+     registered in the specification database.
+   [xweaken S] can be used to specify the original specification lemma [S].
+   [xweaken as x1 .. xN] can be used to name the arguments in the goal produced.
+   [xweaken S as x1 .. xN] combines the two above features.
+   [xweaken_noauto] is similar but deactivates treatement of side-conditions.
+
+*) [xapply E] is used to apply a lemma modulo weakening and framing.
+     It is typically used to prove a goal of the form [R H' Q'] using
+     an hypothesis of the form [R H Q].
+   [xapplys E] is similar except that it tries to automatically perform
+     simplifications on the subgoal produced.
+
+*) [xauto~] and [xauto*] are the same as [auto~] and [auto*]
+   excepts that they peform substitution more aggressively.
+
+*) [xpost] replaces a goal [F H Q] with [F H ?Q1] and [?Q1 ===> Q].
+   This is sometimes needed because a few tactics require the
+   post-condition to be a Coq unification variable.
+
+*) [xcleanpat] removes from the context all the hypotheses
+   that correspond to the negation of a pattern matching clause.
+
+*) [xfind f] shows the specification registered for [f].
+   [xfind] show the specification associated with the function  
+   in the current goal.
+
+*) [xlocal] solves a goal of the form [is_local F]
+
+*) [xisspec] solves a goal of the form [is_spec K]
+
+*) [xsimpl] is (roughly) a synonymous for [hsimpl].
+
+*) [xname_spec s] applies to a goal of the form [Spec_n f K]
+    and defines [s] as the predicate [fun f => Spec_n f K].
+
+
+======================================================
+Other tactics (that will evolve)
+
+*) [hclean] cleans up the pre-condition.
+
+*) [xclean] cleans up some boolean hypotheses.
+
+*) [apply hsimpl_to_qunit] solves a goal of the form 
+   [H ==> ?Q tt], where [?Q] is a unification variable.
+
+*) [xgen] is a (limited) experimental tactic for generalizing goals.
+
+*) [xbody] can be used to exploit the most-general specification
+   of a function to reason on its application.
+
+*) [xgeneralize E] can be used to replace a goal by a stronger one,
+     and is typically called before [xwhile].
+   [xgeneralize E as H] can be used to specify the name of the hypothesis.
+
+
+

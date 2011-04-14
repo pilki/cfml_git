@@ -304,7 +304,7 @@ Tactic Notation "xcf" constr(f) := xcf_for_core f.
 Tactic Notation "xcf" := xcf_core.
 
 (** [xcf_app] applies to a goal of the form 
-    [app_n f x1 .. xN P], and exploits the characteristic
+    [app_n f x1 .. xN H Q], and exploits the characteristic
     formula for [f] in order to get started proving the goal. *)
 
 Ltac intro_subst_arity n :=
@@ -927,14 +927,14 @@ Tactic Notation "xapp" "*" "as" ident(x) :=
 (*--------------------------------------------------------*)
 (* ** [xinduction] *)
 
-(** [xinduction E] applies to a goal of the form 
+(** [xinduction_heap E] applies to a goal of the form 
     [Spec_n f (fun x1 .. xN R => forall x0, L x0 x1 xN R)] 
     and replaces it with a weaker goal, which describes the same
     specification but including an induction hypothesis. 
     The argument [E] describes the termination arguments. 
     If [f] has type [A1 -> .. -> AN -> B], then [E] should be one of
     - a measure of type [A0*A1*..*AN -> nat] 
-    - a binary relation of type [A0*A1*..*AN -> A1*..*AN -> Prop] 
+    - a binary relation of type [A0*A1*..*AN -> A0*A1*..*AN -> Prop] 
     - a proof that a well-foundedness for such a relation.
     
     Measures and binary relations can also be provided in
@@ -1366,7 +1366,7 @@ Tactic Notation "xapplys" "*" constr(H) :=
 
 
 (*--------------------------------------------------------*)
-(* ** [xcase] *)
+(* ** [xcleanpat] *)
 
 Definition xnegpat (P:Prop) := P.
 
@@ -1512,7 +1512,7 @@ Tactic Notation "xalias_subst" :=
 
 
 (************************************************************)
-(* **  *)
+(* ** deprecated *)
 
 Ltac xpat_core_new H cont1 cont2 :=
   xuntag tag_case; apply local_erase; split; 
