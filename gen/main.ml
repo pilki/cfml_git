@@ -48,17 +48,25 @@ let _ =
 
    (* todo: improve the path to mystdlib *)
    let gen_dir = Filename.dirname Sys.argv.(0) in
-   if not !no_mystd_include 
+   if not !no_mystd_include
       then Clflags.include_dirs := (gen_dir ^ "/camllib")::!Clflags.include_dirs;
 
    trace "1) parsing of command line";
    if List.length !files <> 1 then
       failwith "Expects one argument: the filename of the ML source file";
    let sourcefile = List.hd !files in
-   let basename = String.sub sourcefile 0 (String.length sourcefile - 3) in
-   let outputfile = basename ^ "_ml.v" in
+   if not (Filename.check_suffix sourcefile ".ml") then
+     failwith "The file name must be of the form *.ml";
+   let basename = Filename.chop_suffix (Filename.basename sourcefile) ".ml" in
    let dirname = Filename.dirname sourcefile in
-   let debugdir = dirname ^ "/output/" in
+
+   (* the output file always start with a capital letter because Coq
+      is case sensitive for its module names*)
+
+   let outputfile = Filename.concat dirname ((String.capitalize basename) ^ "_ml.v") in
+   let debugdir = Filename.concat dirname "output" in
+   if not(Sys.file_exists debugdir && Sys.is_directory debugdir) then
+     failwith (Printf.sprintf "The directory %s must be created by hand" debugdir);
    (*  FAILURE ON WINDOWS
    let cmd = Printf.sprintf "test -d %s || mkdir 640 %s" debugdir debugdir in
    begin try ignore (Sys.command cmd)
