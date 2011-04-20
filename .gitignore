@@ -1,0 +1,11 @@
+*_ml.v
+*.cmo
+*.d
+*/output/
+*.byte
+lib/
+_build
+*~
+local_settings.sh
+depend
+imper/output_*.ml
