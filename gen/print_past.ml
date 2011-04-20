@@ -107,7 +107,7 @@ let rec string_of_expression par e =
        let s = Format.sprintf "@[match@ @[%s@] with@ @[%s@]@]" 
           (aux e) (show_list string_of_branch " | " l) in
        show_par par s
-   | Pexp_try (e,l) -> unsupported "exceptions"
+   | Pexp_try (e,l) -> unsupported "exceptions (print_past)"
    | Pexp_tuple l -> 
        show_par true (show_list aux ", " l)
    | Pexp_construct (li, eo, b) -> 

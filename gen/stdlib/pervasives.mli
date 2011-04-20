@@ -339,7 +339,7 @@ external int_of_float : float -> int = "%intoffloat"
 (** Truncate the given floating-point number to an integer.
    The result is unspecified if the argument is [nan] or falls outside the
    range of representable integers. *)
-
+(* CFML
 val infinity : float
 (** Positive infinity. *)
 
@@ -363,7 +363,7 @@ val min_float : float
 val epsilon_float : float
 (** The difference between [1.0] and the smallest exactly representable
     floating-point number greater than [1.0]. *)
-
+*)
 type fpclass =
     FP_normal           (** Normal number, none of the below *)
   | FP_subnormal        (** Number very close to 0.0, has reduced precision *)
@@ -587,8 +587,8 @@ val flush : out_channel -> unit
    Interactive programs must be careful about flushing standard
    output and standard error at the right time. *)
 
-val flush_all : unit -> unit
-(** Flush all open output channels; ignore errors. *)
+(*CFMLval flush_all : unit -> unit
+(** Flush all open output channels; ignore errors. *)*)
 
 val output_char : out_channel -> char -> unit
 (** Write the character on the given output channel. *)
@@ -647,8 +647,8 @@ val close_out : out_channel -> unit
    Note that [close_out] may raise [Sys_error] if the operating
    system signals an error when flushing or closing. *)
 
-val close_out_noerr : out_channel -> unit
-(** Same as [close_out], but ignore all errors. *)
+(*CFMLval close_out_noerr : out_channel -> unit
+(** Same as [close_out], but ignore all errors. *)*)
 
 val set_binary_mode_out : out_channel -> bool -> unit
 (** [set_binary_mode_out oc true] sets the channel [oc] to binary
@@ -758,8 +758,8 @@ val close_in : in_channel -> unit
   closed channel.  Note that [close_in] may raise [Sys_error] if
   the operating system signals an error. *)
 
-val close_in_noerr : in_channel -> unit
-(** Same as [close_in], but ignore all errors. *)
+(*CFMLval close_in_noerr : in_channel -> unit
+(** Same as [close_in], but ignore all errors. *)*)
 
 val set_binary_mode_in : in_channel -> bool -> unit
 (** [set_binary_mode_in ic true] sets the channel [ic] to binary
@@ -772,7 +772,7 @@ val set_binary_mode_in : in_channel -> bool -> unit
    do not distinguish between text mode and binary mode. *)
 
 (** {7 Operations on large files} *)
-
+(*CFML
 module LargeFile :
   sig
     val seek_out : out_channel -> int64 -> unit
@@ -781,7 +781,7 @@ module LargeFile :
     val seek_in : in_channel -> int64 -> unit
     val pos_in : in_channel -> int64
     val in_channel_length : in_channel -> int64
-  end
+  end*)
 (** Operations on large files.
   This sub-module provides 64-bit variants of the channel functions
   that manipulate file positions and file sizes.  By representing

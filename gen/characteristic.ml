@@ -1066,7 +1066,7 @@ and cfg_signature_item s =
       | Tmodtype_manifest mt -> cfg_modtype id mt
       end
       *)
-  | Tsig_exception _ -> unsupported "exceptions"
+  | Tsig_exception _ -> [] (*unsupported "exceptions"*)
   | Tsig_class _ -> unsupported "objects"
   | Tsig_cltype _ -> unsupported "objects"
 

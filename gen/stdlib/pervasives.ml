@@ -107,6 +107,7 @@ external float : int -> float = "%floatofint"
 external float_of_int : int -> float = "%floatofint"
 external truncate : float -> int = "%intoffloat"
 external int_of_float : float -> int = "%intoffloat"
+(*CFML
 external float_of_bits : int64 -> float = "caml_int64_float_of_bits"
 let infinity =
   float_of_bits 0x7F_F0_00_00_00_00_00_00L
@@ -119,7 +120,7 @@ let max_float =
 let min_float =
   float_of_bits 0x00_10_00_00_00_00_00_00L
 let epsilon_float =
-  float_of_bits 0x3C_B0_00_00_00_00_00_00L
+  float_of_bits 0x3C_B0_00_00_00_00_00_00L*)
 
 type fpclass =
     FP_normal
@@ -237,11 +238,11 @@ external flush : out_channel -> unit = "caml_ml_flush"
 external out_channels_list : unit -> out_channel list
                            = "caml_ml_out_channels_list"
 
-let flush_all () =
+(*CFML let flush_all () =
   let rec iter = function
       [] -> ()
     | a::l -> (try flush a with _ -> ()); iter l
-  in iter (out_channels_list ())
+  in iter (out_channels_list ())*)
 
 external unsafe_output : out_channel -> string -> int -> int -> unit
                        = "caml_ml_output"
@@ -268,9 +269,9 @@ external pos_out : out_channel -> int = "caml_ml_pos_out"
 external out_channel_length : out_channel -> int = "caml_ml_channel_size"
 external close_out_channel : out_channel -> unit = "caml_ml_close_channel"
 let close_out oc = flush oc; close_out_channel oc
-let close_out_noerr oc =
+(*CFMLlet close_out_noerr oc =
   (try flush oc with _ -> ());
-  (try close_out_channel oc with _ -> ())
+  (try close_out_channel oc with _ -> ())*)
 external set_binary_mode_out : out_channel -> bool -> unit
                              = "caml_ml_set_binary_mode"
 
@@ -345,7 +346,7 @@ external seek_in : in_channel -> int -> unit = "caml_ml_seek_in"
 external pos_in : in_channel -> int = "caml_ml_pos_in"
 external in_channel_length : in_channel -> int = "caml_ml_channel_size"
 external close_in : in_channel -> unit = "caml_ml_close_channel"
-let close_in_noerr ic = (try close_in ic with _ -> ());;
+(*CFMLlet close_in_noerr ic = (try close_in ic with _ -> ());;*)
 external set_binary_mode_in : in_channel -> bool -> unit
                             = "caml_ml_set_binary_mode"
 
@@ -376,7 +377,7 @@ let read_int () = int_of_string(read_line())
 let read_float () = float_of_string(read_line())
 
 (* Operations on large files *)
-
+(* CFML
 module LargeFile =
   struct
     external seek_out : out_channel -> int64 -> unit = "caml_ml_seek_out_64"
@@ -386,7 +387,7 @@ module LargeFile =
     external seek_in : in_channel -> int64 -> unit = "caml_ml_seek_in_64"
     external pos_in : in_channel -> int64 = "caml_ml_pos_in_64"
     external in_channel_length : in_channel -> int64 = "caml_ml_channel_size_64"
-  end
+  end *)
 
 (* References *)
 
@@ -429,7 +430,7 @@ let string_of_format fmt =
 
 external sys_exit : int -> 'a = "caml_sys_exit"
 
-let exit_function = ref flush_all
+let exit_function = ref (fun () -> ()) (*CFML flush_all*)
 
 let at_exit f =
   let g = !exit_function in

@@ -119,7 +119,7 @@ let rec string_of_expression par e =
        let s = Format.sprintf "@[match@ @[%s@] with@ @[%s@]@]" 
           se (show_list string_of_branch " | " l) in
        show_par par s
-   | Texp_try (e,l) -> unsupported "exceptions"
+   | Texp_try (e,l) -> unsupported "exceptions (print tast)"
    | Texp_tuple l -> 
        show_par true (show_list aux ", " l)
    | Texp_construct (cd, es) -> 

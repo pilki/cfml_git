@@ -7,7 +7,7 @@
 #       to generate the local_settings.sh file
 #       and copy the files from Caml standard library
 #
-# -> make depend 
+# -> make depend
 #       to generate all the dependency files
 #
 # -> make
@@ -19,11 +19,11 @@
 # -> make imper/Demo_ml.v
 #       to test the generator on one development
 #
-# -> make clean 
+# -> make clean
 #       to remove generated files
 #
-# -> make clean_all 
-#       to also remove the local settings file 
+# -> make clean_all
+#       to also remove the local settings file
 #       and to reset the Caml library files
 #
 ############################################################################
@@ -32,8 +32,8 @@
 # =============================
 #
 # /gen      contains the source code for the generator
-# /imper    contains the developments 
-# /*.v      contains the CFML library 
+# /imper    contains the developments
+# /*.v      contains the CFML library
 # /camllib  contains the mli file for the Caml standard library
 #
 # The dependencies used by the Makefile are the following:
@@ -42,7 +42,7 @@
 # - the *_ml.v files depend on *.ml files
 # - the CFML library depends on its source scripts and on the TLC library
 # - the *_ml.vo files depend on *_ml.vo and on the CFML library
-# - the *_proof.vo files depend on the _proof.v files and on the *_ml.vo files 
+# - the *_proof.vo files depend on the _proof.v files and on the *_ml.vo files
 #
 # Note that if the file A.ml depends on B.ml, then the generation of A_ml.v
 # requires the existence of B.cmi and the generation of A_ml.vo requires the
@@ -68,7 +68,7 @@
 
 ############################################################################
 ############################################################################
-# Sanity checks: make sure that 'settings' and 'depend' have already been run 
+# Sanity checks: make sure that 'settings' and 'depend' have already been run
 
 # Settings files
 
@@ -81,7 +81,7 @@ CLEANCMD=clean clean_all clean_init clean_tools clean_deps
 DEPENDFIRST=
 INITFIRST=
 
-# Generate an error if 'local_settings.sh' does not exist 
+# Generate an error if 'local_settings.sh' does not exist
 # and target is not 'init' nor 'settings' or 'clean*'
 # If 'local_settings.sh' exists, include its content
 
@@ -93,7 +93,7 @@ INITFIRST=initfirst
 endif
 endif
 
-# Generate an error if there is the 'camllib/*.mli' files do not seem 
+# Generate an error if there is the 'camllib/*.mli' files do not seem
 # to be present and the target is not 'camllibsrc' or 'init' or 'clean*'
 
 ifeq ($(findstring camllib/pervasives.mli, $(wildcard camllib/*.mli)),)
@@ -102,7 +102,7 @@ INITFIRST=initfirst
 endif
 endif
 
-# Generate an error if there is no 'depend' file and the target 
+# Generate an error if there is no 'depend' file and the target
 # is not 'depend' nor 'init' nor 'settings' nor 'camllibsrc' or 'clean*'
 # (provided the error INITFIRST has not yet been triggered)
 
@@ -129,7 +129,7 @@ IMPER=\
 	imper/Counter \
 	imper/Dijkstra \
 	imper/SparseArray \
-	imper/UnionFind 
+	imper/UnionFind
 
 # Developments that do not compile currently
 
@@ -141,7 +141,7 @@ MORE=\
 	imper/StrongUpdate \
 	imper/TreeCopy \
 	imper/LambdaEval \
-	imper/Loops 
+	imper/Loops
 
 # Source scripts of the CFML library
 
@@ -151,18 +151,18 @@ CFLIB=\
 	CFPrint \
 	CFTactics \
 	CFPrim \
-	CFLib 
+	CFLib
 
 # Generator tools
 
 GENERATOR=./main.byte
-MYOCAMLCMI=./makecmi.byte 
-MYOCAMLDEP=./myocamldep.byte 
+MYOCAMLCMI=./makecmi.byte
+MYOCAMLDEP=./myocamldep.byte
 
 # External tools
 
-COQC=$(COQBIN)coqc -dont-load-proofs 
-COQDEP=$(COQBIN)coqdep 
+COQC=$(COQBIN)coqc -dont-load-proofs
+COQDEP=$(COQBIN)coqdep
 COQDOC=$(COQBIN)coqdoc
 OCAMLBUILD=$(OCAMLBIN)ocamlbuild
 OCAMLDEPWRAPPER=ocamldep.wrapper
@@ -173,7 +173,7 @@ GOSCRIPT=go.sh
 ifeq ($(TLCLIB),)
 TLCLIB_INCLUDE=
 else
-TLCLIB_INCLUDE=-I $(TLCLIB) 
+TLCLIB_INCLUDE=-I $(TLCLIB)
 endif
 
 INCLUDES=-I . -I camllib -I ./imper $(TLCLIB_INCLUDE)
@@ -204,6 +204,8 @@ MYTOOLS=$(GENERATOR) $(MYOCAMLCMI) $(MYOCAMLDEP)
 
 CAMLLIB_MLI_PATH=$(filter-out gen/stdlib/camlinternal% %genlex.mli %moreLabels.mli %oo.mli, $(wildcard gen/stdlib/*.mli))
 CAMLLIB_MLI=$(patsubst gen/stdlib/%,%,$(CAMLLIB_MLI_PATH))
+CAMLLIB_ML_PATH=$(filter-out gen/stdlib/camlinternal% %genlex.ml %moreLabels.ml %oo.ml, $(wildcard gen/stdlib/*.ml))
+CAMLLIB_ML=$(patsubst gen/stdlib/%,%,$(CAMLLIB_ML_PATH))
 CAMLLIB_CMI=$(addprefix camllib/,$(CAMLLIB_MLI:.mli=.cmi))
 SPECIAL_INTERFACES=\
 	camllib/NullPointers \
@@ -221,11 +223,11 @@ DEPENDENCIES=$(IMPER:=.ml.d) $(IMPER:=_ml.v.d) $(IMPER:=_proof.v.d) $(CFLIB:=.v.
 
 # Declare the complete list of special targets
 
-.PHONY: all dependfirst initfirst depend settings tools cflib camllib camllibsrc cf imper clean clean_files clean_tools clean_deps clean_init clean_all test 
+.PHONY: all dependfirst initfirst depend settings tools cflib camllib camllibsrc cf imper clean clean_files clean_tools clean_deps clean_init clean_all test
 
 # Declare the file extensions and declare intermediate files as precious
 
-.SUFFIXES: .cmi .cmo .byte .ml .ml.d .v .v.d .vo _ml.v _ml.v.d _ml.vo _proof.v _proof.vo  
+.SUFFIXES: .cmi .cmo .byte .ml .ml.d .v .v.d .vo _ml.v _ml.v.d _ml.vo _proof.v _proof.vo
 .INTERMEDIATE: %.cmi %.cmo %.byte %.ml.d %.v.d %.vo %_ml.v %_ml.v.d %_ml.vo %_proof.vo
 .PRECIOUS: %.cmi %.cmo %.byte %.ml.d %.v.d %.vo %_ml.v %_ml.v.d %_ml.vo %_proof.vo
 
@@ -241,7 +243,7 @@ initfirst:
 	@exit 1
 
 dependfirst:
-	@echo you need to first call make depend 
+	@echo you need to first call make depend
 	@exit 1
 
 
@@ -254,7 +256,7 @@ init: settings camllibsrc
 	@chmod +x $(GOSCRIPT)
 	@echo initialization successful
 
-settings: 
+settings:
 	@if [ -f $(LOCAL_SETTINGS) ]; then \
 		echo $(LOCAL_SETTINGS) already exists; \
 	else \
@@ -262,9 +264,10 @@ settings:
 		cp $(TEMPLATE_SETTINGS) $(LOCAL_SETTINGS); \
 	fi
 
-camllibsrc: 
+camllibsrc:
 	@$(foreach file, $(CAMLLIB_MLI), cp gen/stdlib/$(file) camllib/; )
-	@echo camllib source files successfully copied 
+	@$(foreach file, $(CAMLLIB_ML), cp gen/stdlib/$(file) camllib/; )
+	@echo camllib source files successfully copied
 
 
 ############################################################################
@@ -314,21 +317,21 @@ depend: $(DEPENDENCIES)
 ifeq ($(findstring $(MAKECMDGOALS),depend),depend)
 
 
-# To generate the *.ml.d files, we add $(LOCAL_SETTINGS) as dummy target 
+# To generate the *.ml.d files, we add $(LOCAL_SETTINGS) as dummy target
 # to avoid having a *.cmo file that depends on no other file
 # (TODO: should use a better 'sed' command to instead add the ml file as dependency,
 # but the difficulty is to escape the slashes that appear in the filename $<)
 
-imper/%.ml.d: imper/%.ml $(MYOCAMLDEP) 
+imper/%.ml.d: imper/%.ml $(MYOCAMLDEP)
 	@echo $(MYOCAMLDEP) $(INCLUDES) $<
 	@$(MYOCAMLDEP) $(INCLUDES) $< | sed 's/:/: $(LOCAL_SETTINGS)/' > $@
 
-# To generate *.v.d, we use the ocaml-wrapper trick to 
+# To generate *.v.d, we use the ocaml-wrapper trick to
 # force dependencies to mention files that do not exist yet
 
 FORCED_VFILES=$(IMPER:=_ml.v)
 
-%.v.d: %.v 
+%.v.d: %.v
 	@echo $(COQDEP) $(INCLUDES) $< > $@
 	@./$(OCAMLDEPWRAPPER) $(FORCED_VFILES) - $(COQDEP) $(INCLUDES) $< > $@
 
@@ -352,8 +355,8 @@ ifeq ($(findstring $(MAKECMDGOALS),depend init settings camllibsrc $(CLEANCMD)),
 -include $(DEPENDENCIES)
 endif
 
-# When target is 'depend', we include only the .ml.d dependencies 
- 
+# When target is 'depend', we include only the .ml.d dependencies
+
 ifeq ($(findstring $(MAKECMDGOALS),depend),depend)
 -include $(IMPER:=.ml.d)
 endif
@@ -362,17 +365,17 @@ endif
 
 ############################################################################
 ############################################################################
-# Compilation 
+# Compilation
 
 
 # Construction of the generator programs
-# (the Makefile does not handle well the the fact that ocamlbuild 
+# (the Makefile does not handle well the the fact that ocamlbuild
 #  generaters symbolic links, so we need to move the binary file)
 
 %.byte: $(GENERATOR_SRC)
 	@rm -f $@
 	$(OCAMLBUILD) -I gen $(addprefix -I ,$(GENERATOR_DIRS)) $@
-	@mv $@ temp.byte 
+	@mv $@ temp.byte
 	@cp -L temp.byte $@
 	@rm temp.byte
 
@@ -380,14 +383,14 @@ endif
 # Compilation of a Coq file
 
 %.vo: %.v
-	$(COQC) $(INCLUDES) $< 
+	$(COQC) $(INCLUDES) $<
 
 
 # Generation of a characteristic formula file;
-# it requires the %.cmo, hence the %.cmi as well as the 
+# it requires the %.cmo, hence the %.cmi as well as the
 # *.cmi files corresponding to the *.ml imported files
 
-%_ml.v: %.ml %.cmo $(GENERATOR) $(SHARED_CMI)  
+%_ml.v: %.ml %.cmo $(GENERATOR) $(SHARED_CMI)
 	$(GENERATOR) -rectypes $(INCLUDES) $<
 
 
@@ -417,11 +420,11 @@ camllib/StrongPointers.cmi: camllib/StrongPointers.mli $(CAMLLIB_CMI) $(MYOCAMLC
 ############################################################################
 # Cleaning
 
-clean_files:  
+clean_files:
 	@rm -f *.vo *.glob *.cmo *.cmi *_ml.v || echo ok
 	@rm -f imper/*_ml.v imper/*.vo imper/*.glob imper/*.cmo imper/*.cmi || echo ok
 	@rm -f camllib/*.cmi camllib/*.d || echo ok
-   
+
 clean_deps:
 	@rm -f depend *.v.d *.ml.d imper/*.ml.d imper/*.v.d || echo ok
 
@@ -435,20 +438,21 @@ clean: clean_deps clean_files clean_tools
 clean_init:
 	@rm -f $(LOCAL_SETTINGS) || @echo ok
 	@$(foreach file, $(CAMLLIB_MLI), rm camllib/$(file); )
+	@$(foreach file, $(CAMLLIB_ML), rm camllib/$(file); )
 
 clean_all: clean clean_init
 
 
 ############################################################################
 ############################################################################
-# Debugging 
+# Debugging
 
 test:
 	@echo $(TLCLIB_INCLUDE)
 	@echo $(OCAMLBUILD)
 	@echo $(TLCLIB)
 	@echo $(TLCLIB_SRC)
-	@echo $(GENERATOR_DIRS)	
+	@echo $(GENERATOR_DIRS)
 	@echo $(GENERATOR_PATTERNS)
 	@echo $(GENERATOR_SRC)
 	@echo $(CAMLLIB_MLI_PATH)
@@ -457,10 +461,10 @@ test:
 
 ############################################################################
 ############################################################################
-# TODO 
+# TODO
 
-# compute dependencies between the /gen/stdlib/*.mli files 
-# to avoid the filter-out 
+# compute dependencies between the /gen/stdlib/*.mli files
+# to avoid the filter-out
 
 # use myocamlcmi instead to generate imper/%.cmi files
 

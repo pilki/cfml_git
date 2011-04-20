@@ -278,7 +278,7 @@ let normalize_expression named e =
             end in
          let e' = Pexp_match (e0', List.map protect_branch l') in
          assign_var (return e') b0
-      | Pexp_try (e,l) -> unsupported "exceptions"
+      | Pexp_try (e,l) ->unsupported "try exceptions"
       | Pexp_tuple l -> 
          let l',bi = List.split (List.map (aux false) l) in
          return (Pexp_tuple l'), List.flatten bi
